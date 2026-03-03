@@ -110,12 +110,12 @@ export const GOVERNORATE_OPTIONS: { value: string; label: string }[] = [
 function getTurboZone(address: ShippingAddress): number | null {
   let gov = norm(address.governorate).replace(/^محافظة\s*/i, "").trim();
 
-  let zoneFromGov = TURBO_GOV_TO_ZONE[gov];
+  let zoneFromGov: number | undefined = TURBO_GOV_TO_ZONE[gov];
   if (zoneFromGov === undefined) {
     const entry = Object.entries(TURBO_GOV_TO_ZONE).find(
       ([key]) => gov.includes(key) || key.includes(gov)
     );
-    zoneFromGov = entry ? entry[1] : undefined;
+    zoneFromGov = entry ? (entry[1] as number) : undefined;
   }
   return zoneFromGov ?? null;
 }

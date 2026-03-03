@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ function fullPhone(countryCode: string, national: string): string {
   return countryCode + digits;
 }
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect");
   const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
@@ -125,5 +125,13 @@ export default function LoginPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="w-full rounded-2xl border border-border bg-card p-6 shadow-card animate-pulse h-80" />}>
+      <LoginContent />
+    </Suspense>
   );
 }

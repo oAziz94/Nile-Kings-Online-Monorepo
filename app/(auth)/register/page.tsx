@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ function fullPhone(countryCode: string, national: string): string {
 
 type Step = "phone" | "otp" | "profile";
 
-export default function RegisterPage() {
+function RegisterContent() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect");
   const [step, setStep] = useState<Step>("phone");
@@ -347,5 +347,13 @@ export default function RegisterPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="w-full rounded-2xl border border-border bg-card p-6 shadow-card animate-pulse h-80" />}>
+      <RegisterContent />
+    </Suspense>
   );
 }

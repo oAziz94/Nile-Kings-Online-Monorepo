@@ -3,11 +3,12 @@
  * Revenue and counts use CONFIRMED + PROCESSING + SHIPPED + DELIVERED only.
  */
 
+import { type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import type { DateGranularity } from "./types";
 import { CONFIRMED_ORDER_STATUSES } from "./types";
 
-const CONFIRMED = CONFIRMED_ORDER_STATUSES as unknown as string[];
+const CONFIRMED: OrderStatus[] = [...CONFIRMED_ORDER_STATUSES];
 
 function parseRange(from?: string | null, to?: string | null): { from: Date; to: Date } {
   const toDate = to ? new Date(to) : new Date();
@@ -357,7 +358,13 @@ export async function getSeniorPromoReport(
     },
     orderBy: { createdAt: "desc" },
   });
-  return orders;
+  return orders.map((o) => ({
+    orderId: o.id,
+    userId: o.userId,
+    totalPiastres: o.totalPiastres,
+    seniorFreeValuePiastres: o.seniorFreeValuePiastres,
+    createdAt: o.createdAt,
+  }));
 }
 
 export type ProviderPerformanceRow = {

@@ -1,4 +1,3 @@
-import { NextRequest } from "next/server";
 import { requireCustomer } from "@/lib/auth/session";
 import { placeOrder } from "@/lib/checkout/place-order";
 import { apiSuccess, apiBadRequest, apiUnauthorized } from "@/lib/api/response";
@@ -13,7 +12,7 @@ const addressSchema = {
   phone: (v: unknown) => typeof v === "string" && v.trim().length > 0,
 };
 
-async function postHandler(req: NextRequest) {
+async function postHandler(req: Request) {
   let user;
   try {
     user = await requireCustomer();
