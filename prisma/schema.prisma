@@ -1,0 +1,426 @@
+// Nile Kings Online - Prisma schema
+// Database: Neon Postgres
+// Money: integer piastres (e.g. 19900 = 199 EGP)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CREATED   // order created with stock reserved; reservationExpiresAt set
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+// ---------------------------------------------------------------------------
+// Auth & Users
+// ---------------------------------------------------------------------------
+
+model User {
+  id             String    @id @default(cuid())
+  phone          String    @unique
+  passwordHash   String?   // set on register; required for password login
+  name           String?
+  email          String?
+  role           UserRole  @default(CUSTOMER)
+  seniorVerified Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  carts              Cart[]
+  orders             Order[]
+  couponUsages       CouponUsage[]
+  savedAddresses     SavedAddress[]
+  seniorVerification SeniorVerification?
+
+  @@index([phone])
+  @@index([role])
+}
+
+// Egyptian national ID: stored encrypted; fingerprint prevents reuse across accounts
+model SeniorVerification {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  nationalIdEncrypted   String   // AES-256
+  nationalIdFingerprint String   @unique // SHA-256 of raw ID
+  nationalIdLast4       String   // masked for display only
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([nationalIdFingerprint])
+}
+
+// Key-value site settings (e.g. senior promo enabled)
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   // e.g. "true" | "false"
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}
+
+model SavedAddress {
+  id          String   @id @default(cuid())
+  userId      String
+  label       String?  // e.g. "المنزل", "العمل"
+  governorate String
+  city        String?
+  area        String?
+  street      String
+  building    String?
+  floor       String?
+  apartment   String?
+  notes       String?
+  phone       String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AdminPhone {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}
+
+model OTPRequest {
+  id          String    @id @default(cuid())
+  phone       String
+  codeHash    String
+  expiresAt   DateTime
+  attempts    Int       @default(0)
+  lockedUntil DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([phone])
+  @@index([expiresAt])
+}
+
+model OtpAuditLog {
+  id        String   @id @default(cuid())
+  phone     String
+  event     String   // "request" | "verify_success" | "verify_fail"
+  ip        String?
+  outcome   String?  // e.g. "sent" | "rate_limited" | "locked" | "invalid" | "expired"
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Catalog
+// ---------------------------------------------------------------------------
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+
+  @@index([slug])
+  @@index([sortOrder])
+}
+
+model Product {
+  id                  String   @id @default(cuid())
+  categoryId          String
+  name                String
+  slug                String   @unique
+  description         String?
+  imageUrl            String?
+  tags                String[] @default([]) // for search (Arabic + tags)
+  sortOrder           Int      @default(0)
+  active              Boolean  @default(true)
+  weightGrams         Int?     // for shipping calculation
+  basePricePiastres   Int?     // list price (optional)
+  discountPricePiastres Int?   // sale price (optional); variant price overrides when set
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  variants Variant[]
+
+  @@index([categoryId])
+  @@index([slug])
+  @@index([active])
+}
+
+model Variant {
+  id             String   @id @default(cuid())
+  productId      String
+  sku            String   @unique
+  name           String   // e.g. "S", "M", "L", "XL", "XXL" (size)
+  colorHex       String?  // optional color hex e.g. "#000000"
+  colorName      String?  // optional color name e.g. "أسود"
+  pricePiastres  Int      // unit price in piastres
+  stockAvailable Int      @default(0)
+  stockReserved  Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  product    Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@index([productId])
+  @@index([sku])
+  @@index([stockAvailable])
+}
+
+// ---------------------------------------------------------------------------
+// Cart
+// ---------------------------------------------------------------------------
+
+model Cart {
+  id         String    @id @default(cuid())
+  userId     String?
+  guestToken String?   @unique
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items    CartItem[]
+  // One of userId or guestToken should be set
+
+  @@index([userId])
+  @@index([guestToken])
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  variantId String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+  @@index([variantId])
+}
+
+// ---------------------------------------------------------------------------
+// Coupons
+// ---------------------------------------------------------------------------
+
+model Coupon {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  discountType  String   // "PERCENT" | "FIXED"
+  discountValue Int      // percent 1-100 or piastres
+  minOrderPiastres Int?  @default(0)
+  maxUses       Int?
+  usedCount     Int      @default(0)
+  validFrom     DateTime @default(now())
+  validUntil    DateTime?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  usages CouponUsage[]
+
+  @@index([code])
+  @@index([active, validFrom, validUntil])
+}
+
+model CouponUsage {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String
+  orderId   String?  // set when order is placed
+  usedAt    DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([couponId])
+  @@index([userId])
+  @@index([orderId])
+  @@index([usedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Shipping
+// ---------------------------------------------------------------------------
+
+model ShippingRule {
+  id         String   @id @default(cuid())
+  provider   String
+  governorate String
+  city       String?  // optional: more specific
+  area       String?  // optional: most specific
+  weightMin  Int      // grams
+  weightMax  Int      // grams
+  feePiastres Int     // shipping fee in piastres
+  priority   Int      @default(0) // higher = more specific match preferred
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([governorate, city, area])
+  @@index([provider, active])
+  @@index([priority])
+}
+
+// ---------------------------------------------------------------------------
+// Orders (with snapshots)
+// ---------------------------------------------------------------------------
+
+model Order {
+  id                    String       @id @default(cuid())
+  userId                String
+  status                OrderStatus  @default(PENDING)
+  subtotalPiastres      Int
+  discountPiastres      Int          @default(0)   // coupon discount
+  seniorFreeValuePiastres Int        @default(0)   // senior buy-2-get-1-free value
+  shippingPiastres      Int          @default(0)
+  codFeePiastres        Int          @default(0)
+  totalPiastres         Int
+  shippingAddress       Json         // governorate, city, area, street, building, floor, apartment, notes, phone
+  shippingProvider      String       // "Turbo" | "Egypt Post"
+  paymentMethod         String       // "COD" | "PAYMOB"
+  couponCode            String?
+  reservationExpiresAt  DateTime?    // set when status = CREATED; stock reserved until this time
+  cancellationReason   String?      // e.g. "expired" when reservation times out
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items          OrderItem[]
+  paymentAttempts PaymentAttempt[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([reservationExpiresAt])
+  @@index([status, createdAt])
+  @@index([paymentMethod])
+  @@index([shippingProvider])
+}
+
+// Audit trail for order lifecycle (create, confirm, cancel, etc.)
+model OrderAuditLog {
+  id          String   @id @default(cuid())
+  orderId     String
+  event       String   // "created" | "confirmed" | "cancelled" | "status_change"
+  statusFrom  String?
+  statusTo    String?
+  details     Json?    // e.g. { cancellationReason }
+  createdAt   DateTime @default(now())
+
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  orderId         String
+  variantId       String
+  // Snapshots at order time
+  productName     String
+  variantName     String
+  sku             String
+  quantity        Int
+  unitPricePiastres Int
+  totalPiastres   Int
+  createdAt       DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant Variant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([variantId])
+  @@index([orderId, variantId])
+}
+
+// ---------------------------------------------------------------------------
+// Payments
+// ---------------------------------------------------------------------------
+
+model PaymentAttempt {
+  id            String        @id @default(cuid())
+  orderId       String
+  status        PaymentStatus @default(PENDING)
+  amountPiastres Int
+  provider      String
+  providerRef   String?       // external transaction id
+  metadata      Json?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([status])
+  @@index([providerRef])
+}
+
+// ---------------------------------------------------------------------------
+// Analytics (optional MVP)
+// ---------------------------------------------------------------------------
+
+model ViewLog {
+  id         String   @id @default(cuid())
+  productId  String?
+  variantId  String?
+  sessionId  String?
+  createdAt  DateTime @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
+}
+
+model AddToCartLog {
+  id         String   @id @default(cuid())
+  variantId  String
+  quantity   Int
+  sessionId  String?
+  userId     String?
+  createdAt  DateTime @default(now())
+
+  @@index([variantId])
+  @@index([createdAt])
+}

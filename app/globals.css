@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Minimal Luxury: off-white, charcoal, burgundy */
+    --background: 40 20% 96%; /* #F5F3EF warm off-white */
+    --foreground: 0 0% 11%; /* #1C1C1C charcoal */
+    --burgundy: 352 56% 26%; /* #6B1E2B */
+    --gold: 43 74% 52%; /* #D4AF37 warm gold */
+    --card: 40 20% 99%;
+    --card-foreground: 0 0% 11%;
+    --popover: 40 20% 99%;
+    --popover-foreground: 0 0% 11%;
+    --primary: 0 0% 11%;
+    --primary-foreground: 40 20% 98%;
+    --secondary: 40 15% 92%;
+    --secondary-foreground: 0 0% 11%;
+    --muted: 40 15% 93%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 352 56% 26%;
+    --accent-foreground: 40 20% 98%;
+    --destructive: 352 56% 26%;
+    --destructive-foreground: 40 20% 98%;
+    --border: 40 10% 88%;
+    --input: 40 10% 88%;
+    --ring: 0 0% 11%;
+    --radius: 1rem;
+  }
+  * {
+    @apply border-border;
+  }
+  html {
+    @apply antialiased overflow-x-hidden;
+  }
+  body {
+    @apply bg-background text-foreground font-cairo overflow-x-hidden;
+  }
+}

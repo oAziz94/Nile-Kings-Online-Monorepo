@@ -1,0 +1,81 @@
+import { NextRequest } from "next/server";
+import { requireCustomer } from "@/lib/auth/session";
+import { buildCheckoutSummary } from "@/lib/checkout/summary";
+import { apiSuccess, apiBadRequest, apiUnauthorized } from "@/lib/api/response";
+import { SHIPPING_PROVIDERS } from "@/lib/services/shipping";
+
+const addressSchema = {
+  governorate: (v: unknown) => typeof v === "string" && v.trim().length > 0,
+  city: (v: unknown) => v == null || typeof v === "string",
+  area: (v: unknown) => v == null || typeof v === "string",
+  street: (v: unknown) => typeof v === "string" && v.trim().length > 0,
+  building: (v: unknown) => v == null || typeof v === "string",
+  floor: (v: unknown) => v == null || typeof v === "string",
+  apartment: (v: unknown) => v == null || typeof v === "string",
+  notes: (v: unknown) => v == null || typeof v === "string",
+  phone: (v: unknown) => typeof v === "string" && v.trim().length > 0,
+};
+
+export async function POST(req: NextRequest) {
+  let user;
+  try {
+    user = await requireCustomer();
+  } catch {
+    return apiUnauthorized("يجب تسجيل الدخول لإتمام الطلب");
+  }
+
+  let body: {
+    address?: Record<string, unknown>;
+    provider?: string;
+    couponCode?: string | null;
+    paymentMethod?: string;
+  };
+  try {
+    body = await req.json();
+  } catch {
+    return apiBadRequest("جسم الطلب غير صالح");
+  }
+
+  const address = body.address;
+  if (!address || typeof address !== "object") {
+    return apiBadRequest("عنوان التوصيل مطلوب");
+  }
+  if (!addressSchema.governorate(address.governorate)) {
+    return apiBadRequest("المحافظة مطلوبة");
+  }
+  if (!addressSchema.street(address.street)) {
+    return apiBadRequest("الشارع مطلوب");
+  }
+  if (!addressSchema.phone(address.phone)) {
+    return apiBadRequest("رقم هاتف التوصيل مطلوب");
+  }
+
+  const provider = typeof body.provider === "string" ? body.provider.trim() : "";
+  if (!provider || !SHIPPING_PROVIDERS.includes(provider as "Turbo" | "Egypt Post")) {
+    return apiBadRequest("يجب اختيار شركة الشحن (Turbo أو Egypt Post)");
+  }
+
+  const summary = await buildCheckoutSummary({
+    userId: user.userId,
+    address: {
+      governorate: String(address.governorate).trim(),
+      city: address.city != null ? String(address.city) : null,
+      area: address.area != null ? String(address.area) : null,
+      street: String(address.street).trim(),
+      building: address.building != null ? String(address.building) : null,
+      floor: address.floor != null ? String(address.floor) : null,
+      apartment: address.apartment != null ? String(address.apartment) : null,
+      notes: address.notes != null ? String(address.notes) : null,
+      phone: String(address.phone).trim(),
+    },
+    provider,
+    couponCode: body.couponCode ?? null,
+    paymentMethod: body.paymentMethod === "COD" || body.paymentMethod === "PAYMOB" ? body.paymentMethod : undefined,
+  });
+
+  if (!summary) {
+    return apiBadRequest("السلة فارغة أو لا يوجد تسعير شحن للمنطقة المختارة");
+  }
+
+  return apiSuccess(summary);
+}
