@@ -7,7 +7,7 @@ const HERO_IMAGE = "/hero.png";
 export function Hero() {
   return (
     <section
-      className="relative flex min-h-[50vh] flex-col md:min-h-[55vh] md:flex-row"
+      className="relative flex min-h-[70vh] flex-col md:min-h-[75vh] md:flex-row"
       aria-label="الرئيسية"
     >
       {/* Full-width image behind everything */}
@@ -16,7 +16,7 @@ export function Hero() {
           src={HERO_IMAGE}
           alt="نايل كينجز — قطن مصري أصلي"
           fill
-          className="object-cover object-bottom"
+          className="object-cover object-center"
           sizes="100vw"
           priority
         />

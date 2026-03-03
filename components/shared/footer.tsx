@@ -8,7 +8,6 @@ const footerLinks = {
   ],
   مساعدة: [
     { label: "الأسئلة الشائعة", href: "/faq" },
-    { label: "الشحن والإرجاع", href: "/shipping" },
     { label: "اتصل بنا", href: "/contact" },
   ],
   قانونية: [
