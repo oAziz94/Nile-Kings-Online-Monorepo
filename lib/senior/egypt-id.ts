@@ -59,7 +59,7 @@ export function parseEgyptianNationalId(id: string): EgyptIdParseResult {
   if (ageYears < SENIOR_AGE_YEARS) {
     return {
       ok: false,
-      error: `يجب أن يكون عمرك ${SENIOR_AGE_YEARS} عاماً على الأقل للاستفادة من عرض أصحاب المعاشات`,
+      error: `يجب أن يكون عمرك ${SENIOR_AGE_YEARS} عاماً على الأقل للاستفادة من العرض الخاص`,
     };
   }
 

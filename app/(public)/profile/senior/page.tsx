@@ -55,7 +55,7 @@ export default function ProfileSeniorPage() {
       if (res.ok && json?.success && json?.data) {
         setStatus({ seniorVerified: true, nationalIdLast4: json.data.nationalIdLast4 ?? null });
         setNationalId("");
-        toast({ title: "تم التحقق بنجاح. يمكنك الاستفادة من عرض أصحاب المعاشات." });
+        toast({ title: "تم التحقق بنجاح. يمكنك الاستفادة من العرض الخاص." });
       } else {
         toast({ title: json?.error?.message ?? "فشل التحقق", variant: "destructive" });
       }
@@ -69,7 +69,7 @@ export default function ProfileSeniorPage() {
   if (loading) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-foreground">عرض أصحاب المعاشات</h1>
+        <h1 className="text-2xl font-bold text-foreground">العرض الخاص</h1>
         <p className="mt-2 text-muted-foreground">جاري التحميل…</p>
       </div>
     );
@@ -77,7 +77,7 @@ export default function ProfileSeniorPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground">عرض أصحاب المعاشات</h1>
+      <h1 className="text-2xl font-bold text-foreground">العرض الخاص</h1>
       <p className="mt-2 text-muted-foreground">
         إذا كان عمرك 60 عاماً أو أكثر، يمكنك الاستفادة من عرض شراء 2 واحصل على الأرخص مجاناً لكل 3 قطع.
       </p>
@@ -87,7 +87,7 @@ export default function ProfileSeniorPage() {
           <div className="flex items-center gap-3">
             <BadgeCheck className="h-10 w-10 text-amber-600 dark:text-amber-400" />
             <div>
-              <p className="font-semibold text-amber-900 dark:text-amber-100">أنت مسجّل كعضو أصحاب المعاشات</p>
+              <p className="font-semibold text-amber-900 dark:text-amber-100">أنت مسجّل كعضو في العرض الخاص</p>
               {status.nationalIdLast4 && (
                 <p className="text-sm text-amber-800 dark:text-amber-200">
                   رقم الهوية: ****{status.nationalIdLast4}

@@ -37,7 +37,7 @@ export function SeniorPromoToggle({ className }: { className?: string }) {
       if (res.ok && json?.success) {
         setEnabled(next);
         toast({
-          title: next ? "تم تفعيل عرض أصحاب المعاشات" : "تم إيقاف عرض أصحاب المعاشات",
+          title: next ? "تم تفعيل العرض الخاص" : "تم إيقاف العرض الخاص",
         });
       } else {
         toast({ title: json?.error?.message ?? "فشل التحديث", variant: "destructive" });
@@ -74,7 +74,7 @@ export function SeniorPromoToggle({ className }: { className?: string }) {
         />
       </button>
       <span className="text-sm font-medium text-foreground">
-        عرض أصحاب المعاشات (شراء 2 واحصل على الأرخص مجاناً لكل 3 قطع)
+        العرض الخاص (شراء 2 واحصل على الأرخص مجاناً لكل 3 قطع)
       </span>
       <span className="text-sm text-muted-foreground">
         {enabled ? "مفعّل" : "معطّل"}

@@ -511,27 +511,18 @@ export default function CheckoutPage() {
             </div>
           </section>
 
-          {/* Coupon (disabled when senior promo applies) */}
           <div className="rounded-2xl border border-border bg-card p-4">
             <label className="text-xs font-medium text-muted-foreground">كود الخصم</label>
-            {summary && summary.seniorFreeValue > 0 ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                لا يمكن استخدام كود الخصم مع عرض أصحاب المعاشات.
-              </p>
-            ) : (
-              <>
-                <div className="mt-2 flex gap-2">
-                  <Input
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    placeholder="اختياري"
-                    className="flex-1 rounded-xl"
-                  />
-                </div>
-                {summary?.appliedCouponCode && (
-                  <p className="mt-2 text-xs text-green-600">تم تطبيق: {summary.appliedCouponCode}</p>
-                )}
-              </>
+            <div className="mt-2 flex gap-2">
+              <Input
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value)}
+                placeholder="اختياري"
+                className="flex-1 rounded-xl"
+              />
+            </div>
+            {summary?.appliedCouponCode && (
+              <p className="mt-2 text-xs text-green-600">تم تطبيق: {summary.appliedCouponCode}</p>
             )}
           </div>
         </div>
@@ -552,12 +543,6 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-green-600">
                     <span>خصم كود</span>
                     <span>- {piastresToEgp(summary.couponDiscount).toLocaleString("ar-EG")} ج.م</span>
-                  </div>
-                )}
-                {summary.seniorFreeValue > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>خصم أصحاب المعاشات</span>
-                    <span>- {piastresToEgp(summary.seniorFreeValue).toLocaleString("ar-EG")} ج.م</span>
                   </div>
                 )}
                 <div className="flex justify-between text-muted-foreground">
