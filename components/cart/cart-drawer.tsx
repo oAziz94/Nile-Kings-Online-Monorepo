@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useCart } from "@/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { Price } from "@/components/shared/price";
-import { X, ShoppingBag, Minus, Plus, Trash2, BadgeCheck } from "lucide-react";
+import { X, ShoppingBag, Minus, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PLACEHOLDER_IMAGE =
@@ -15,19 +15,6 @@ const PLACEHOLDER_IMAGE =
 export function CartDrawer() {
   const { cart, isDrawerOpen, closeDrawer, refreshCart } = useCart();
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
-  const [seniorPromoMessage, setSeniorPromoMessage] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!isDrawerOpen) return;
-    Promise.all([
-      fetch("/api/auth/me", { credentials: "include" }).then((r) => r.json()),
-      fetch("/api/settings/senior-promo").then((r) => r.json()),
-    ]).then(([me, settings]) => {
-      const verified = me?.success && me?.data?.seniorVerified === true;
-      const enabled = settings?.success && settings?.data?.enabled === true;
-      setSeniorPromoMessage(verified && enabled);
-    }).catch(() => setSeniorPromoMessage(false));
-  }, [isDrawerOpen]);
 
   const updateQty = async (itemId: string, quantity: number) => {
     setUpdatingId(itemId);
@@ -165,12 +152,6 @@ export function CartDrawer() {
 
         {!isEmpty && cart && (
           <div className="border-t border-border p-4">
-            {seniorPromoMessage && (
-              <div className="mb-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                <BadgeCheck className="h-4 w-4 shrink-0" />
-                <span>خصم أصحاب المعاشات: شراء 2 واحصل على الأرخص مجاناً لكل 3 قطع</span>
-              </div>
-            )}
             <div className="mb-4 flex justify-between text-lg font-semibold">
               <span>المجموع</span>
               <Price amount={cart.subtotalEgp} />

@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useCart } from "@/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { Price } from "@/components/shared/price";
-import { ShoppingBag, Minus, Plus, Trash2, BadgeCheck } from "lucide-react";
+import { ShoppingBag, Minus, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const PLACEHOLDER_IMAGE =
@@ -17,22 +17,10 @@ export default function CartPage() {
   const { cart, refreshCart } = useCart();
   const { toast } = useToast();
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
-  const [seniorPromoMessage, setSeniorPromoMessage] = React.useState(false);
 
   useEffect(() => {
     refreshCart();
   }, [refreshCart]);
-
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/auth/me", { credentials: "include" }).then((r) => r.json()),
-      fetch("/api/settings/senior-promo").then((r) => r.json()),
-    ]).then(([me, settings]) => {
-      const verified = me?.success && me?.data?.seniorVerified === true;
-      const enabled = settings?.success && settings?.data?.enabled === true;
-      setSeniorPromoMessage(verified && enabled);
-    }).catch(() => setSeniorPromoMessage(false));
-  }, []);
 
   const updateQty = async (itemId: string, quantity: number) => {
     setUpdatingId(itemId);
@@ -177,12 +165,6 @@ export default function CartPage() {
           </ul>
 
           <div className="rounded-2xl border border-border bg-card p-6 h-fit">
-            {seniorPromoMessage && (
-              <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                <BadgeCheck className="h-4 w-4 shrink-0" />
-                <span>خصم أصحاب المعاشات: شراء 2 واحصل على الأرخص مجاناً لكل 3 قطع</span>
-              </div>
-            )}
             <h2 className="text-lg font-semibold text-foreground">ملخص الطلب</h2>
             <div className="mt-4 flex justify-between text-muted-foreground">
               <span>المجموع ({cart!.itemCount} منتج)</span>

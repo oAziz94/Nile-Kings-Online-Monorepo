@@ -157,15 +157,6 @@ export function Header() {
                       <MapPin className="h-4 w-4 shrink-0" />
                       عناويني
                     </Link>
-                    <Link
-                      href="/profile/senior"
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted/80"
-                      onClick={() => setProfileOpen(false)}
-                      role="menuitem"
-                    >
-                      <User className="h-4 w-4 shrink-0" />
-                      أصحاب المعاشات
-                    </Link>
                     <div className="my-1 border-t border-border" />
                     <button
                       type="button"

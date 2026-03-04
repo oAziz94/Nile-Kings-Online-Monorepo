@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { SeniorPromoToggle } from "../senior-promo-toggle";
 import { Skeleton } from "@/components/shared/skeleton";
 
 type OtpRules = {
@@ -118,16 +117,6 @@ export default function AdminSettingsPage() {
   return (
     <div dir="rtl" className="space-y-6">
       <h1 className="text-2xl font-bold">الإعدادات</h1>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>عرض أصحاب المعاشات</CardTitle>
-          <CardDescription>شراء 2 واحصل على الأرخص مجاناً لكل 3 قطع.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SeniorPromoToggle />
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
