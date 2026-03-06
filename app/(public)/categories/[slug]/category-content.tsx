@@ -228,7 +228,7 @@ export function CategoryContent({
           ) : (
             <>
               <p className="mb-4 text-sm text-muted-foreground">
-                {total} منتج
+                {total.toLocaleString("en-US")} منتج
               </p>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-3">
                 {products.map((p) => (

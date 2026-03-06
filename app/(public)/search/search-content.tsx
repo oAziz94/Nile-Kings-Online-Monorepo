@@ -74,7 +74,7 @@ export function SearchContent({
 
       {q && (
         <p className="mb-4 text-sm text-muted-foreground">
-          النتائج لـ &quot;{q}&quot;: {total} منتج
+          النتائج لـ &quot;{q}&quot;: {total.toLocaleString("en-US")} منتج
         </p>
       )}
 

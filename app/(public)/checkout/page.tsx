@@ -594,7 +594,7 @@ export default function CheckoutPage() {
                 {summary.couponDiscount > 0 && (
                   <div className="flex justify-between text-green-600">
                     <span>خصم كود</span>
-                    <span>- {piastresToEgp(summary.couponDiscount).toLocaleString("ar-EG")} ج.م</span>
+                    <span>- {piastresToEgp(summary.couponDiscount).toLocaleString("en-US")} ج.م</span>
                   </div>
                 )}
                 <div className="flex justify-between text-muted-foreground">

@@ -101,7 +101,7 @@ export function ProductsContent() {
         />
       ) : (
         <>
-          <p className="mb-4 text-sm text-muted-foreground">{total} منتج</p>
+          <p className="mb-4 text-sm text-muted-foreground">{total.toLocaleString("en-US")} منتج</p>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
             {products.map((p) => (
               <ProductCard

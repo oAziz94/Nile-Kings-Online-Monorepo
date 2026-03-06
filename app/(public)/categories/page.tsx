@@ -32,7 +32,7 @@ export default async function CategoriesPage() {
           >
             <span className="font-semibold text-foreground">{c.name}</span>
             <span className="mt-2 text-sm text-muted-foreground">
-              {c._count.products} منتج
+              {c._count.products.toLocaleString("en-US")} منتج
             </span>
           </Link>
         ))}

@@ -126,7 +126,7 @@ export default function CartPage() {
                         <Minus className="h-4 w-4" />
                       </Button>
                       <span className="min-w-[2.5rem] text-center">
-                        {item.quantity}
+                        {item.quantity.toLocaleString("en-US")}
                       </span>
                       <Button
                         variant="ghost"
@@ -157,7 +157,7 @@ export default function CartPage() {
                 </div>
                 <div className="text-left">
                   <p className="font-semibold text-foreground">
-                    {(item.priceEgp * item.quantity).toLocaleString("ar-EG")} ج.م
+                    {(item.priceEgp * item.quantity).toLocaleString("en-US")} ج.م
                   </p>
                 </div>
               </li>
@@ -167,7 +167,7 @@ export default function CartPage() {
           <div className="rounded-2xl border border-border bg-card p-6 h-fit">
             <h2 className="text-lg font-semibold text-foreground">ملخص الطلب</h2>
             <div className="mt-4 flex justify-between text-muted-foreground">
-              <span>المجموع ({cart!.itemCount} منتج)</span>
+              <span>المجموع ({cart!.itemCount.toLocaleString("en-US")} منتج)</span>
               <Price amount={cart!.subtotalEgp} />
             </div>
             <Button

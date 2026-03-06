@@ -115,15 +115,15 @@ export default function ProfileOrdersPage() {
                   {order.items.slice(0, 3).map((item) => (
                     <li key={item.id} className="flex justify-between text-muted-foreground">
                       <span>
-                        {item.productName} — {item.variantName} × {item.quantity}
+                        {item.productName} — {item.variantName} × {item.quantity.toLocaleString("en-US")}
                       </span>
-                      <span>{piastresToEgp(item.totalPiastres).toLocaleString("ar-EG")} ج.م</span>
+                      <span>{piastresToEgp(item.totalPiastres).toLocaleString("en-US")} ج.م</span>
                     </li>
                   ))}
                 </ul>
                 {order.items.length > 3 && (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    +{order.items.length - 3} صنف آخر
+                    +{(order.items.length - 3).toLocaleString("en-US")} صنف آخر
                   </p>
                 )}
                 <p className="mt-2 text-xs text-muted-foreground">

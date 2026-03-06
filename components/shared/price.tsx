@@ -32,15 +32,15 @@ export function Price({
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
       {hasDiscount && (
         <span className={cn("text-muted-foreground line-through", size === "lg" ? "text-base" : "text-sm")}>
-          {originalAmount!.toLocaleString("ar-EG")} {currency}
+          {originalAmount!.toLocaleString("en-US")} {currency}
         </span>
       )}
       <span className={cn("font-medium text-foreground", sizeClasses[size])}>
-        {amount.toLocaleString("ar-EG")} {currency}
+        {amount.toLocaleString("en-US")} {currency}
       </span>
       {percent != null && percent > 0 && (
         <span className="rounded-md bg-burgundy/15 px-1.5 py-0.5 text-xs font-medium text-burgundy">
-          -{percent}%
+          -{percent.toLocaleString("en-US")}%
         </span>
       )}
     </div>
