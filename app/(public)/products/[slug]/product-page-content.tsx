@@ -237,6 +237,8 @@ export function ProductPageContent({
   const mainImageUrl =
     selectedVariant?.imageUrl?.trim() || product.imageUrl?.trim() || PLACEHOLDER_IMAGE;
   const galleryImages = [mainImageUrl];
+  // Force Image to remount when variant (color) changes so the displayed image updates reliably
+  const imageKey = `${selectedSizeId ?? "product"}-${mainImageUrl}`;
 
   return (
     <>
@@ -255,13 +257,14 @@ export function ProductPageContent({
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="relative aspect-square overflow-hidden rounded-2xl border border-border bg-muted">
           <Image
-            key={mainImageUrl}
+            key={imageKey}
             src={mainImageUrl}
             alt={product.name}
             fill
             className="object-cover"
             sizes="(max-width: 1024px) 100vw, 50vw"
             priority
+            unoptimized={mainImageUrl.startsWith("data:")}
           />
         </div>
 
