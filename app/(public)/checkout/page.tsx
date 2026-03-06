@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/cart-context";
 import { SHIPPING_PROVIDERS, GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { PAYMENT_METHODS } from "@/lib/checkout/types";
-import { MapPin, Truck } from "lucide-react";
+import { MapPin, Truck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseJsonResponse } from "@/lib/api/parse-json";
 
@@ -43,6 +43,7 @@ type SavedAddress = {
 };
 
 const emptyAddress = {
+  label: "",
   governorate: "",
   city: "",
   area: "",
@@ -74,6 +75,7 @@ function addressToPayload(addr: typeof emptyAddress) {
 
 function savedToAddress(s: SavedAddress): typeof emptyAddress {
   return {
+    label: s.label ?? "",
     governorate: s.governorate,
     city: s.city ?? "",
     area: s.area ?? "",
@@ -238,6 +240,28 @@ export default function CheckoutPage() {
     }
     setPlaceLoading(true);
     try {
+      // When using a new address, save it to the customer's addresses for future orders
+      if (useNewAddress) {
+        const saveBody = {
+          label: addr.label?.trim() || null,
+          governorate: addr.governorate.trim(),
+          city: addr.city?.trim() || null,
+          area: addr.area?.trim() || null,
+          street: addr.street.trim(),
+          building: addr.building?.trim() || null,
+          floor: addr.floor?.trim() || null,
+          apartment: addr.apartment?.trim() || null,
+          notes: addr.notes?.trim() || null,
+          phone: addr.phone.trim(),
+        };
+        await fetch("/api/profile/addresses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(saveBody),
+        });
+      }
+
       const res = await fetch("/api/checkout/place-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -383,72 +407,85 @@ export default function CheckoutPage() {
             ) : null}
 
             {useNewAddress && (
-              <div className="mt-4 rounded-xl border border-border bg-muted/30 p-4">
-                <p className="mb-3 text-sm font-medium text-foreground">عنوان جديد</p>
-                <div className="grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 rounded-2xl border border-border bg-card p-6">
+                <h2 className="text-lg font-semibold text-foreground">عنوان جديد</h2>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">المحافظة *</label>
+                    <label className="mb-1 block text-sm font-medium text-foreground">تسمية (اختياري)</label>
+                    <Input
+                      value={address.label}
+                      onChange={(e) => setAddress((a) => ({ ...a, label: e.target.value }))}
+                      placeholder="مثال: المنزل"
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-foreground">المحافظة *</label>
                     <select
                       value={address.governorate}
                       onChange={(e) => setAddress((a) => ({ ...a, governorate: e.target.value }))}
-                      className="flex h-9 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                      className="flex h-10 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm"
                       required={useNewAddress}
                       dir="rtl"
                     >
-                      <option value="">اختر</option>
+                      <option value="">اختر المحافظة</option>
                       {GOVERNORATE_OPTIONS.map((o) => (
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">الشارع *</label>
+                    <label className="mb-1 block text-sm font-medium text-foreground">المدينة</label>
                     <Input
-                      value={address.street}
-                      onChange={(e) => setAddress((a) => ({ ...a, street: e.target.value }))}
-                      placeholder="اسم الشارع"
-                      className="h-9 rounded-xl"
-                      required={useNewAddress}
+                      value={address.city}
+                      onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-foreground">المنطقة</label>
+                    <Input
+                      value={address.area}
+                      onChange={(e) => setAddress((a) => ({ ...a, area: e.target.value }))}
+                      className="rounded-xl"
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">هاتف التوصيل *</label>
+                    <label className="mb-1 block text-sm font-medium text-foreground">الشارع *</label>
+                    <Input
+                      value={address.street}
+                      onChange={(e) => setAddress((a) => ({ ...a, street: e.target.value }))}
+                      required={useNewAddress}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-foreground">المبنى</label>
+                    <Input
+                      value={address.building}
+                      onChange={(e) => setAddress((a) => ({ ...a, building: e.target.value }))}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-foreground">هاتف التوصيل *</label>
                     <Input
                       type="tel"
                       value={address.phone}
                       onChange={(e) => setAddress((a) => ({ ...a, phone: e.target.value }))}
-                      placeholder="01xxxxxxxxx"
-                      className="h-9 rounded-xl"
-                      dir="ltr"
                       required={useNewAddress}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">المدينة</label>
-                    <Input
-                      value={address.city}
-                      onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
-                      className="h-9 rounded-xl"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">المنطقة</label>
-                    <Input
-                      value={address.area}
-                      onChange={(e) => setAddress((a) => ({ ...a, area: e.target.value }))}
-                      className="h-9 rounded-xl"
+                      dir="ltr"
+                      className="rounded-xl"
                     />
                   </div>
                 </div>
-                {savedAddresses.length === 0 && (
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    يمكنك حفظ العناوين من{" "}
-                    <Link href="/profile/addresses" className="text-primary underline hover:no-underline">
-                      عناويني
-                    </Link>{" "}
-                    لاستخدامها في الطلبات القادمة.
-                  </p>
-                )}
+                <p className="mt-4 text-sm text-muted-foreground">
+                  يمكنك حفظ العناوين من{" "}
+                  <Link href="/profile/addresses" className="text-primary underline hover:no-underline">
+                    عناويني
+                  </Link>{" "}
+                  لاستخدامها في الطلبات القادمة. العنوان الذي تدخله هنا سيُحفظ أيضاً في عناوينك تلقائياً.
+                </p>
               </div>
             )}
 
@@ -514,15 +551,30 @@ export default function CheckoutPage() {
           <div className="rounded-2xl border border-border bg-card p-4">
             <label className="text-xs font-medium text-muted-foreground">كود الخصم</label>
             <div className="mt-2 flex gap-2">
-              <Input
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-                placeholder="اختياري"
-                className="flex-1 rounded-xl"
-              />
+              <div className="relative flex-1">
+                <Input
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  placeholder="اختياري"
+                  className="rounded-xl pe-9"
+                />
+                {(couponCode.trim() || summary?.appliedCouponCode) && (
+                  <button
+                    type="button"
+                    onClick={() => setCouponCode("")}
+                    className="absolute end-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="إزالة كود الخصم"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
             {summary?.appliedCouponCode && (
               <p className="mt-2 text-xs text-green-600">تم تطبيق: {summary.appliedCouponCode}</p>
+            )}
+            {couponCode.trim() && summary && !summary.appliedCouponCode && (
+              <p className="mt-2 text-xs text-destructive">كود الخصم غير صالح أو منتهي الصلاحية.</p>
             )}
           </div>
         </div>
