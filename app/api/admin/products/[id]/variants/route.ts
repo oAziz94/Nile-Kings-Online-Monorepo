@@ -54,6 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
     name?: string; // size
     colorHex?: string | null;
     colorName?: string | null;
+    imageUrl?: string | null;
     basePricePiastres?: number | null;
     pricePiastres?: number;
     stockAvailable?: number;
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
         name: sizePart,
         colorHex: body.colorHex?.trim() || null,
         colorName: body.colorName?.trim() || null,
+        imageUrl: body.imageUrl?.trim() || null,
         basePricePiastres: variantBase,
         pricePiastres: variantPrice,
         stockAvailable: typeof body.stockAvailable === "number" && body.stockAvailable >= 0 ? body.stockAvailable : 0,

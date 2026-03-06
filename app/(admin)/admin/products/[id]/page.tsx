@@ -48,6 +48,7 @@ type Product = {
     name: string;
     colorHex: string | null;
     colorName: string | null;
+    imageUrl: string | null;
     basePricePiastres: number | null;
     pricePiastres: number;
     stockAvailable: number;
@@ -90,6 +91,7 @@ export default function AdminProductDetailPage() {
     sizeCustom: "",
     colorName: "",
     colorHex: "",
+    imageUrl: "",
     originalEgp: "",
     discountedEgp: "",
     stockAvailable: "0",
@@ -99,6 +101,7 @@ export default function AdminProductDetailPage() {
     name: "",
     colorHex: "",
     colorName: "",
+    imageUrl: "",
     originalEgp: "",
     priceEgp: "",
     stockAvailable: "",
@@ -184,6 +187,7 @@ export default function AdminProductDetailPage() {
       sizeCustom: "",
       colorName: "",
       colorHex: "",
+      imageUrl: "",
       originalEgp: product ? (product.basePricePiastres != null ? (product.basePricePiastres / 100).toString() : "") : "",
       discountedEgp: product ? (product.discountPricePiastres != null ? (product.discountPricePiastres / 100).toString() : "") : "",
       stockAvailable: "0",
@@ -218,6 +222,7 @@ export default function AdminProductDetailPage() {
           name: size,
           colorName: addForm.colorName.trim() || null,
           colorHex: addForm.colorHex.trim() || null,
+          imageUrl: addForm.imageUrl.trim() || null,
           basePricePiastres: originalPiastres,
           pricePiastres: discountedPiastres,
           stockAvailable: parseInt(addForm.stockAvailable, 10) || 0,
@@ -251,6 +256,7 @@ export default function AdminProductDetailPage() {
       name: v.name,
       colorHex: v.colorHex ?? "",
       colorName: v.colorName ?? "",
+      imageUrl: v.imageUrl ?? "",
       originalEgp: v.basePricePiastres != null ? (v.basePricePiastres / 100).toString() : "",
       priceEgp: (v.pricePiastres / 100).toString(),
       stockAvailable: String(v.stockAvailable),
@@ -284,6 +290,7 @@ export default function AdminProductDetailPage() {
           name: editForm.name.trim() || editingVariant.name,
           colorHex: editForm.colorHex.trim() || null,
           colorName: editForm.colorName.trim() || null,
+          imageUrl: editForm.imageUrl.trim() || null,
           basePricePiastres,
           pricePiastres,
           stockAvailable,
@@ -556,6 +563,22 @@ export default function AdminProductDetailPage() {
                 placeholder="#000000"
               />
             </div>
+            <div className="grid gap-2">
+              <Label>صورة اللون (اختياري)</Label>
+              <p className="text-xs text-muted-foreground">تظهر على صفحة المنتج عند اختيار هذا اللون</p>
+              <ImageUpload
+                value={addForm.imageUrl || null}
+                onChange={(url) => setAddForm((f) => ({ ...f, imageUrl: url ?? "" }))}
+                label=""
+                disabled={addVariantLoading}
+              />
+              <Input
+                type="url"
+                value={addForm.imageUrl}
+                onChange={(e) => setAddForm((f) => ({ ...f, imageUrl: e.target.value }))}
+                placeholder="أو رابط الصورة يدوياً"
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>السعر الأساسي (ج.م)</Label>
@@ -631,6 +654,22 @@ export default function AdminProductDetailPage() {
                   value={editForm.colorHex}
                   onChange={(e) => setEditForm((f) => ({ ...f, colorHex: e.target.value }))}
                   placeholder="#000000"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>صورة اللون (اختياري)</Label>
+                <p className="text-xs text-muted-foreground">تظهر على صفحة المنتج عند اختيار هذا اللون</p>
+                <ImageUpload
+                  value={editForm.imageUrl || null}
+                  onChange={(url) => setEditForm((f) => ({ ...f, imageUrl: url ?? "" }))}
+                  label=""
+                  disabled={savingVariant}
+                />
+                <Input
+                  type="url"
+                  value={editForm.imageUrl}
+                  onChange={(e) => setEditForm((f) => ({ ...f, imageUrl: e.target.value }))}
+                  placeholder="أو رابط الصورة يدوياً"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">

@@ -192,6 +192,7 @@ model Variant {
   name                String   // size e.g. "S", "M", "L", "XL", "XXL"
   colorHex            String?  // optional color hex e.g. "#000000"
   colorName           String?  // optional color name e.g. "أسود"
+  imageUrl            String?  // optional image for this color variant; used on product page when selected
   basePricePiastres   Int?     // original price; null = use product's
   pricePiastres       Int      // selling/discounted price in piastres
   stockAvailable      Int      @default(0)

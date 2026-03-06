@@ -51,6 +51,7 @@ async function getProduct(slug: string) {
               stockAvailable: true,
               colorHex: true,
               colorName: true,
+              imageUrl: true,
             },
             orderBy: { name: "asc" },
           },
@@ -74,6 +75,7 @@ async function getProduct(slug: string) {
               stockAvailable: true,
               colorHex: true,
               colorName: true,
+              imageUrl: true,
             },
             orderBy: { name: "asc" },
           },
@@ -122,6 +124,7 @@ async function getProduct(slug: string) {
       inStock: v.stockAvailable > 0,
       colorHex: v.colorHex,
       colorName: v.colorName,
+      imageUrl: v.imageUrl,
     })),
   };
 }

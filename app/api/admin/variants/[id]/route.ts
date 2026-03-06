@@ -32,6 +32,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     name?: string;
     colorHex?: string | null;
     colorName?: string | null;
+    imageUrl?: string | null;
     basePricePiastres?: number | null;
     pricePiastres?: number;
     stockAvailable?: number;
@@ -66,6 +67,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       ...(name !== undefined && { name }),
       ...(body.colorHex !== undefined && { colorHex: body.colorHex?.trim() || null }),
       ...(colorName !== undefined && { colorName }),
+      ...(body.imageUrl !== undefined && { imageUrl: body.imageUrl?.trim() || null }),
       ...(newSku !== undefined && { sku: newSku }),
       ...(newSlug !== undefined && { slug: newSlug }),
       ...(body.basePricePiastres !== undefined && { basePricePiastres: body.basePricePiastres == null || (typeof body.basePricePiastres === "number" && body.basePricePiastres >= 0) ? body.basePricePiastres : undefined }),

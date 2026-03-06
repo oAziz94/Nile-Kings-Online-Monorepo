@@ -26,6 +26,7 @@ type Variant = {
   inStock: boolean;
   colorHex?: string | null;
   colorName?: string | null;
+  imageUrl?: string | null;
 };
 
 const SIZE_ORDER = ["S", "M", "L", "XL", "XXL"];
@@ -232,9 +233,10 @@ export function ProductPageContent({
     }
   };
 
-  const galleryImages = product.imageUrl
-    ? [product.imageUrl]
-    : [PLACEHOLDER_IMAGE];
+  // When a color variant is selected and has its own image, show it; otherwise product image
+  const mainImageUrl =
+    selectedVariant?.imageUrl?.trim() || product.imageUrl?.trim() || PLACEHOLDER_IMAGE;
+  const galleryImages = [mainImageUrl];
 
   return (
     <>
@@ -253,7 +255,8 @@ export function ProductPageContent({
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="relative aspect-square overflow-hidden rounded-2xl border border-border bg-muted">
           <Image
-            src={galleryImages[0]}
+            key={mainImageUrl}
+            src={mainImageUrl}
             alt={product.name}
             fill
             className="object-cover"
