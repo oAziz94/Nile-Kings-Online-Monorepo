@@ -22,6 +22,8 @@ function toDetail(p: {
     name: string;
     pricePiastres: number;
     stockAvailable: number;
+    colorHex: string | null;
+    colorName: string | null;
   }[];
 }): ProductDetail {
   const prices = p.variants.map((v) => v.pricePiastres);
@@ -59,6 +61,8 @@ function toDetail(p: {
       priceEgp: piastresToEgp(v.pricePiastres),
       stockAvailable: v.stockAvailable,
       inStock: v.stockAvailable > 0,
+      colorHex: v.colorHex,
+      colorName: v.colorName,
     })),
   };
 }
@@ -80,6 +84,8 @@ export async function GET(
           name: true,
           pricePiastres: true,
           stockAvailable: true,
+          colorHex: true,
+          colorName: true,
         },
         orderBy: { name: "asc" },
       },

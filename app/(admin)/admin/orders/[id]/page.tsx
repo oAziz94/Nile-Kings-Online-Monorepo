@@ -19,10 +19,9 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
 
-const STATUSES = ["PENDING", "CREATED", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
+const STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
 const STATUS_LABELS: Record<string, string> = {
-  PENDING: "قيد الانتظار",
-  CREATED: "تم الإنشاء",
+  CREATED: "قيد الانشاء",
   CONFIRMED: "مؤكد",
   PROCESSING: "قيد التجهيز",
   SHIPPED: "تم الشحن",

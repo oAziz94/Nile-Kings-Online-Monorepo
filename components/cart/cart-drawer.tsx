@@ -84,7 +84,7 @@ export function CartDrawer() {
               {cart!.items.map((item) => (
                 <li key={item.id} className="flex gap-4 py-4 first:pt-0">
                   <Link
-                    href={`/products/${item.productSlug}`}
+                    href={`/products/${item.variantSlug ?? item.productSlug}`}
                     className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted"
                     onClick={closeDrawer}
                   >
@@ -98,7 +98,7 @@ export function CartDrawer() {
                   </Link>
                   <div className="min-w-0 flex-1">
                     <Link
-                      href={`/products/${item.productSlug}`}
+                      href={`/products/${item.variantSlug ?? item.productSlug}`}
                       className="font-medium text-foreground hover:underline"
                       onClick={closeDrawer}
                     >

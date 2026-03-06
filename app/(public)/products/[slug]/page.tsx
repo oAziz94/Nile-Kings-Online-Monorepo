@@ -13,7 +13,11 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = await prisma.product.findFirst({
+  const variant = await prisma.variant.findFirst({
+    where: { slug },
+    select: { productId: true, product: { select: { name: true, description: true, imageUrl: true } } },
+  });
+  const product = variant?.product ?? await prisma.product.findFirst({
     where: { slug, active: true },
     select: { name: true, description: true, imageUrl: true },
   });
@@ -30,23 +34,54 @@ export async function generateMetadata({
 }
 
 async function getProduct(slug: string) {
-  const product = await prisma.product.findFirst({
-    where: { slug, active: true },
+  // Resolve by variant slug first (productSlug_size_colorHexCode), then by product slug
+  const variantBySlug = await prisma.variant.findFirst({
+    where: { slug },
     include: {
-      category: { select: { slug: true, name: true } },
-      variants: {
-        select: {
-          id: true,
-          sku: true,
-          name: true,
-          pricePiastres: true,
-          stockAvailable: true,
+      product: {
+        include: {
+          category: { select: { slug: true, name: true } },
+          variants: {
+            select: {
+              id: true,
+              sku: true,
+              slug: true,
+              name: true,
+              pricePiastres: true,
+              stockAvailable: true,
+              colorHex: true,
+              colorName: true,
+            },
+            orderBy: { name: "asc" },
+          },
         },
-        orderBy: { name: "asc" },
       },
     },
   });
-  if (!product) return null;
+  const productRow = variantBySlug?.product
+    ? variantBySlug.product
+    : await prisma.product.findFirst({
+        where: { slug, active: true },
+        include: {
+          category: { select: { slug: true, name: true } },
+          variants: {
+            select: {
+              id: true,
+              sku: true,
+              slug: true,
+              name: true,
+              pricePiastres: true,
+              stockAvailable: true,
+              colorHex: true,
+              colorName: true,
+            },
+            orderBy: { name: "asc" },
+          },
+        },
+      });
+  if (!productRow) return null;
+  const product = productRow;
+  const initialVariantId = variantBySlug?.id ?? null;
 
   const prices = product.variants.map((v) => v.pricePiastres);
   const minP = prices.length ? Math.min(...prices) : 0;
@@ -76,13 +111,17 @@ async function getProduct(slug: string) {
     originalPriceEgp,
     discountPercent,
     inStock: product.variants.some((v) => v.stockAvailable > 0),
+    initialVariantId,
     variants: product.variants.map((v) => ({
       id: v.id,
       sku: v.sku,
+      slug: v.slug,
       name: v.name,
       priceEgp: piastresToEgp(v.pricePiastres),
       stockAvailable: v.stockAvailable,
       inStock: v.stockAvailable > 0,
+      colorHex: v.colorHex,
+      colorName: v.colorName,
     })),
   };
 }
@@ -134,11 +173,11 @@ export default async function ProductPage({
   const product = await getProduct(slug);
   if (!product) notFound();
 
-  const related = await getRelated(slug, product.categoryId);
+  const related = await getRelated(product.slug, product.categoryId);
 
   return (
     <div className="container px-4 py-6 md:py-8">
-      <ProductPageContent product={product} related={related} />
+      <ProductPageContent product={product} related={related} initialVariantId={product.initialVariantId} />
     </div>
   );
 }

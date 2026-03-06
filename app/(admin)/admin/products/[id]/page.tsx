@@ -22,6 +22,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
@@ -47,6 +48,7 @@ type Product = {
     name: string;
     colorHex: string | null;
     colorName: string | null;
+    basePricePiastres: number | null;
     pricePiastres: number;
     stockAvailable: number;
     stockReserved: number;
@@ -54,6 +56,22 @@ type Product = {
 };
 
 type Category = { id: string; name: string; slug: string };
+
+/** Admin swatch: use variant colorHex, or infer from colorName so أسود/أبيض show correctly. */
+function variantSwatchHex(v: { colorHex: string | null; colorName: string | null }): string {
+  if (v.colorHex?.trim()) return v.colorHex.trim();
+  const name = (v.colorName ?? "").trim().toLowerCase();
+  const map: Record<string, string> = {
+    أسود: "#000000", أبيض: "#ffffff", أحمر: "#b71c1c", أزرق: "#0d47a1",
+    أخضر: "#1b5e20", أصفر: "#f9a825", برتقالي: "#e65100", رمادي: "#616161",
+    وردي: "#ad1457", بني: "#3e2723", بيج: "#d7ccc8", كحلي: "#0d47a1",
+    black: "#000000", white: "#ffffff", red: "#b71c1c", blue: "#0d47a1",
+    green: "#1b5e20", yellow: "#f9a825", grey: "#616161", gray: "#616161",
+    pink: "#ad1457", brown: "#3e2723", beige: "#d7ccc8", navy: "#0d47a1",
+    orange: "#e65100",
+  };
+  return map[name] ?? "#9e9e9e";
+}
 
 export default function AdminProductDetailPage() {
   const params = useParams();
@@ -64,12 +82,31 @@ export default function AdminProductDetailPage() {
   const [categories, setCategories] = React.useState<Category[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
-  const [generateSizesOpen, setGenerateSizesOpen] = React.useState(false);
-  const [generateSizesLoading, setGenerateSizesLoading] = React.useState(false);
   const [deleteVariantId, setDeleteVariantId] = React.useState<string | null>(null);
+  const [addVariantOpen, setAddVariantOpen] = React.useState(false);
+  const [addVariantLoading, setAddVariantLoading] = React.useState(false);
+  const [addForm, setAddForm] = React.useState({
+    size: "",
+    sizeCustom: "",
+    colorName: "",
+    colorHex: "",
+    originalEgp: "",
+    discountedEgp: "",
+    stockAvailable: "0",
+  });
   const [editingVariant, setEditingVariant] = React.useState<Product["variants"][number] | null>(null);
-  const [editForm, setEditForm] = React.useState({ name: "", colorHex: "", colorName: "", priceEgp: "", stockAvailable: "" });
+  const [editForm, setEditForm] = React.useState({
+    name: "",
+    colorHex: "",
+    colorName: "",
+    originalEgp: "",
+    priceEgp: "",
+    stockAvailable: "",
+  });
   const [savingVariant, setSavingVariant] = React.useState(false);
+
+  const defaultOriginalEgp = product ? (product.basePricePiastres != null ? product.basePricePiastres / 100 : "") : "";
+  const defaultDiscountEgp = product ? (product.discountPricePiastres != null ? product.discountPricePiastres / 100 : "") : "";
 
   const load = React.useCallback(() => {
     if (!id) return;
@@ -124,28 +161,6 @@ export default function AdminProductDetailPage() {
     }
   };
 
-  const generateSizes = async () => {
-    setGenerateSizesLoading(true);
-    try {
-      const res = await fetch(`/api/admin/products/${id}/variants`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ generateSizes: true }),
-      });
-      const json = await res.json();
-      if (res.ok && json?.success) {
-        toast({ title: "تم إنشاء المقاسات" });
-        setGenerateSizesOpen(false);
-        load();
-      } else toast({ title: json?.error?.message ?? "فشل", variant: "destructive" });
-    } catch {
-      toast({ title: "خطأ في الاتصال", variant: "destructive" });
-    } finally {
-      setGenerateSizesLoading(false);
-    }
-  };
-
   const deleteVariant = async (variantId: string) => {
     try {
       const res = await fetch(`/api/admin/variants/${variantId}`, {
@@ -163,12 +178,80 @@ export default function AdminProductDetailPage() {
     }
   };
 
+  const openAddVariant = () => {
+    setAddForm({
+      size: "",
+      sizeCustom: "",
+      colorName: "",
+      colorHex: "",
+      originalEgp: product ? (product.basePricePiastres != null ? (product.basePricePiastres / 100).toString() : "") : "",
+      discountedEgp: product ? (product.discountPricePiastres != null ? (product.discountPricePiastres / 100).toString() : "") : "",
+      stockAvailable: "0",
+    });
+    setAddVariantOpen(true);
+  };
+
+  const addVariant = async () => {
+    if (!product) return;
+    const size = addForm.size === "custom" ? addForm.sizeCustom.trim() : addForm.size;
+    if (!size) {
+      toast({ title: "اختر المقاس أو أدخل مقاساً", variant: "destructive" });
+      return;
+    }
+    if (!addForm.colorName.trim()) {
+      toast({ title: "أدخل اسم اللون", variant: "destructive" });
+      return;
+    }
+    const originalPiastres = addForm.originalEgp === "" ? null : Math.round(parseFloat(addForm.originalEgp) * 100);
+    const discountedPiastres = addForm.discountedEgp === "" ? null : Math.round(parseFloat(addForm.discountedEgp) * 100);
+    if (discountedPiastres === null || discountedPiastres < 0) {
+      toast({ title: "سعر التخفيض مطلوب ويجب أن يكون غير سالب", variant: "destructive" });
+      return;
+    }
+    setAddVariantLoading(true);
+    try {
+      const res = await fetch(`/api/admin/products/${id}/variants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: size,
+          colorName: addForm.colorName.trim() || null,
+          colorHex: addForm.colorHex.trim() || null,
+          basePricePiastres: originalPiastres,
+          pricePiastres: discountedPiastres,
+          stockAvailable: parseInt(addForm.stockAvailable, 10) || 0,
+        }),
+      });
+      const text = await res.text();
+      let json: { success?: boolean; data?: unknown; error?: { message?: string } };
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch {
+        toast({ title: res.ok ? "خطأ في الاتصال" : `خطأ من الخادم (${res.status})`, variant: "destructive" });
+        return;
+      }
+      if (res.ok && json?.data) {
+        toast({ title: "تم إضافة المتغير" });
+        setAddVariantOpen(false);
+        load();
+      } else {
+        toast({ title: json?.error?.message ?? "فشل الإضافة", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setAddVariantLoading(false);
+    }
+  };
+
   const openEditVariant = (v: Product["variants"][0]) => {
     setEditingVariant(v);
     setEditForm({
       name: v.name,
       colorHex: v.colorHex ?? "",
       colorName: v.colorName ?? "",
+      originalEgp: v.basePricePiastres != null ? (v.basePricePiastres / 100).toString() : "",
       priceEgp: (v.pricePiastres / 100).toString(),
       stockAvailable: String(v.stockAvailable),
     });
@@ -177,9 +260,14 @@ export default function AdminProductDetailPage() {
   const saveEditVariant = async () => {
     if (!editingVariant) return;
     const pricePiastres = Math.round(parseFloat(editForm.priceEgp || "0") * 100);
+    const basePricePiastres = editForm.originalEgp === "" ? null : Math.round(parseFloat(editForm.originalEgp) * 100);
     const stockAvailable = parseInt(editForm.stockAvailable, 10);
     if (isNaN(pricePiastres) || pricePiastres < 0) {
-      toast({ title: "أدخل سعراً صحيحاً", variant: "destructive" });
+      toast({ title: "أدخل سعر التخفيض صحيحاً", variant: "destructive" });
+      return;
+    }
+    if (basePricePiastres !== null && (isNaN(basePricePiastres) || basePricePiastres < 0)) {
+      toast({ title: "السعر الأساسي يجب أن يكون غير سالب", variant: "destructive" });
       return;
     }
     if (isNaN(stockAvailable) || stockAvailable < 0) {
@@ -196,6 +284,7 @@ export default function AdminProductDetailPage() {
           name: editForm.name.trim() || editingVariant.name,
           colorHex: editForm.colorHex.trim() || null,
           colorName: editForm.colorName.trim() || null,
+          basePricePiastres,
           pricePiastres,
           stockAvailable,
         }),
@@ -349,48 +438,30 @@ export default function AdminProductDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>المتغيرات (المقاسات / الألوان)</CardTitle>
-              <CardDescription>المخزون والسعر لكل متغير.</CardDescription>
+              <CardTitle>المتغيرات (المقاس + اللون)</CardTitle>
+              <CardDescription>أسعار المنتج تُنسخ تلقائياً؛ يمكنك تعديل أسعار كل متغير.</CardDescription>
             </div>
-            <Dialog open={generateSizesOpen} onOpenChange={setGenerateSizesOpen}>
-              <Button type="button" variant="outline" onClick={() => setGenerateSizesOpen(true)}>
-                <Plus className="h-4 w-4" />
-                إنشاء مقاسات S–XXL
-              </Button>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>إنشاء مقاسات S حتى XXL</DialogTitle>
-                </DialogHeader>
-                <p className="text-sm text-muted-foreground">
-                  سيتم إنشاء متغيرات للمقاسات S, M, L, XL, XXL إن لم تكن موجودة. السعر الافتراضي من سعر المنتج.
-                </p>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="outline">إلغاء</Button>
-                  </DialogClose>
-                  <Button onClick={generateSizes} disabled={generateSizesLoading}>
-                    {generateSizesLoading ? "جاري…" : "إنشاء"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button type="button" variant="default" onClick={openAddVariant}>
+              <Plus className="h-4 w-4" />
+              إضافة متغير
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
           {product.variants.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-12 text-center">
               <Package className="h-10 w-10 text-muted-foreground mb-2" />
-              <p className="text-muted-foreground mb-2">لا توجد متغيرات. أنشئ مقاسات S–XXL أو أضف متغيراً يدوياً.</p>
-              <Button variant="outline" onClick={() => setGenerateSizesOpen(true)}>إنشاء مقاسات S–XXL</Button>
+              <p className="text-muted-foreground mb-2">لا توجد متغيرات. أضِ متغيراً (مقاس + لون).</p>
+              <Button variant="default" onClick={openAddVariant}>إضافة متغير</Button>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>المقاس/الاسم</TableHead>
-                  <TableHead>SKU</TableHead>
+                  <TableHead>المقاس</TableHead>
                   <TableHead>اللون</TableHead>
-                  <TableHead>السعر (ج.م)</TableHead>
+                  <TableHead>السعر الأساسي (ج.م)</TableHead>
+                  <TableHead>سعر التخفيض (ج.م)</TableHead>
                   <TableHead>المخزون</TableHead>
                   <TableHead className="w-24 text-left">إجراءات</TableHead>
                 </TableRow>
@@ -399,17 +470,12 @@ export default function AdminProductDetailPage() {
                 {product.variants.map((v) => (
                   <TableRow key={v.id}>
                     <TableCell className="font-medium">{v.name}</TableCell>
-                    <TableCell>{v.sku}</TableCell>
                     <TableCell>
+                      <span className="mr-2 inline-block h-4 w-4 rounded-full border border-border shrink-0 align-middle" style={{ backgroundColor: variantSwatchHex(v) }} />
                       {v.colorName ?? "—"}
-                      {v.colorHex && (
-                        <span
-                          className="mr-2 inline-block h-4 w-4 rounded-full border border-border"
-                          style={{ backgroundColor: v.colorHex }}
-                        />
-                      )}
                     </TableCell>
-                    <TableCell>{(v.pricePiastres / 100).toFixed(0)}</TableCell>
+                    <TableCell>{v.basePricePiastres != null ? (v.basePricePiastres / 100).toFixed(2) : "—"}</TableCell>
+                    <TableCell>{(v.pricePiastres / 100).toFixed(2)}</TableCell>
                     <TableCell>{v.stockAvailable} (محجوز: {v.stockReserved})</TableCell>
                     <TableCell className="text-left">
                       <div className="flex items-center gap-1">
@@ -442,6 +508,99 @@ export default function AdminProductDetailPage() {
         </CardContent>
       </Card>
 
+      <Dialog open={addVariantOpen} onOpenChange={setAddVariantOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>إضافة متغير</DialogTitle>
+            <DialogDescription>اختر المقاس واللون؛ الأسعار تُنسخ من المنتج ويمكنك تعديلها.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>المقاس *</Label>
+              <div className="flex gap-2">
+                <Select
+                  value={addForm.size}
+                  onChange={(e) => setAddForm((f) => ({ ...f, size: e.target.value }))}
+                >
+                  <option value="">اختر المقاس</option>
+                  <option value="S">S</option>
+                  <option value="M">M</option>
+                  <option value="L">L</option>
+                  <option value="XL">XL</option>
+                  <option value="XXL">XXL</option>
+                  <option value="custom">آخر (أدخل يدوياً)</option>
+                </Select>
+                {addForm.size === "custom" && (
+                  <Input
+                    value={addForm.sizeCustom}
+                    onChange={(e) => setAddForm((f) => ({ ...f, sizeCustom: e.target.value }))}
+                    placeholder="المقاس"
+                  />
+                )}
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>اسم اللون *</Label>
+              <Input
+                value={addForm.colorName}
+                onChange={(e) => setAddForm((f) => ({ ...f, colorName: e.target.value }))}
+                placeholder="مثل: أسود، أبيض"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>كود اللون (اختياري)</Label>
+              <Input
+                type="text"
+                value={addForm.colorHex}
+                onChange={(e) => setAddForm((f) => ({ ...f, colorHex: e.target.value }))}
+                placeholder="#000000"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>السعر الأساسي (ج.م)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={addForm.originalEgp}
+                  onChange={(e) => setAddForm((f) => ({ ...f, originalEgp: e.target.value }))}
+                  placeholder={defaultOriginalEgp ? String(defaultOriginalEgp) : "من المنتج"}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>سعر التخفيض (ج.م) *</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={addForm.discountedEgp}
+                  onChange={(e) => setAddForm((f) => ({ ...f, discountedEgp: e.target.value }))}
+                  placeholder={defaultDiscountEgp ? String(defaultDiscountEgp) : "من المنتج"}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>الكمية المتاحة</Label>
+              <Input
+                type="number"
+                min={0}
+                value={addForm.stockAvailable}
+                onChange={(e) => setAddForm((f) => ({ ...f, stockAvailable: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">إلغاء</Button>
+            </DialogClose>
+            <Button onClick={addVariant} disabled={addVariantLoading}>
+              {addVariantLoading ? "جاري الإضافة…" : "إضافة"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {editingVariant && (
         <Dialog open={!!editingVariant} onOpenChange={(o) => !o && setEditingVariant(null)}>
           <DialogContent className="sm:max-w-md">
@@ -450,7 +609,7 @@ export default function AdminProductDetailPage() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label>المقاس / الاسم</Label>
+                <Label>المقاس</Label>
                 <Input
                   value={editForm.name}
                   onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
@@ -474,15 +633,27 @@ export default function AdminProductDetailPage() {
                   placeholder="#000000"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label>السعر (ج.م) *</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={editForm.priceEgp}
-                  onChange={(e) => setEditForm((f) => ({ ...f, priceEgp: e.target.value }))}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>السعر الأساسي (ج.م)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={editForm.originalEgp}
+                    onChange={(e) => setEditForm((f) => ({ ...f, originalEgp: e.target.value }))}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>سعر التخفيض (ج.م) *</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={editForm.priceEgp}
+                    onChange={(e) => setEditForm((f) => ({ ...f, priceEgp: e.target.value }))}
+                  />
+                </div>
               </div>
               <div className="grid gap-2">
                 <Label>الكمية المتاحة *</Label>
@@ -493,7 +664,7 @@ export default function AdminProductDetailPage() {
                   onChange={(e) => setEditForm((f) => ({ ...f, stockAvailable: e.target.value }))}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">SKU الحالي: {editingVariant.sku} (يُحدَّث تلقائياً عند تغيير الاسم)</p>
+              <p className="text-xs text-muted-foreground">SKU: {editingVariant.sku}</p>
             </div>
             <DialogFooter>
               <DialogClose asChild>

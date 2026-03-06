@@ -16,6 +16,8 @@ export type CartItemPayload = {
   productId: string;
   productName: string;
   productSlug: string;
+  /** When set, use for product URL so slug includes size+color (e.g. cotton-tshirt-m-aswak) */
+  variantSlug: string | null;
   imageUrl: string | null;
   variantName: string;
   sku: string;
@@ -92,6 +94,16 @@ export async function getCartPayload(cartId: string): Promise<CartPayload | null
 
   if (!cart) return null;
 
+  /** Item display: productSlug-size-colorName (e.g. test-M-اسود) */
+  function variantDisplayName(
+    productSlug: string,
+    size: string,
+    colorName: string | null | undefined
+  ): string {
+    const base = `${productSlug}-${size}`;
+    return colorName?.trim() ? `${base}-${colorName.trim()}` : base;
+  }
+
   const items: CartItemPayload[] = cart.items.map((item) => {
     const v = item.variant;
     const p = v.product;
@@ -103,8 +115,9 @@ export async function getCartPayload(cartId: string): Promise<CartPayload | null
       productId: p.id,
       productName: p.name,
       productSlug: p.slug,
+      variantSlug: v.slug ?? null,
       imageUrl: p.imageUrl,
-      variantName: v.name,
+      variantName: variantDisplayName(p.slug, v.name, v.colorName),
       sku: v.sku,
       priceEgp: piastresToEgp(v.pricePiastres),
       maxQty,

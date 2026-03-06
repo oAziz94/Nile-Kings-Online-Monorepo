@@ -51,7 +51,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         include: {
           variant: {
             include: {
-              product: { select: { name: true } },
+              product: { select: { name: true, slug: true } },
             },
           },
         },
@@ -63,15 +63,29 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     return { success: false, error: "Cart is empty", code: "EMPTY_CART" };
   }
 
-  const orderLines = cart.items.map((i) => ({
-    variantId: i.variant.id,
-    quantity: i.quantity,
-    productName: i.variant.product.name,
-    variantName: i.variant.name,
-    sku: i.variant.sku,
-    unitPricePiastres: i.variant.pricePiastres,
-    totalPiastres: i.quantity * i.variant.pricePiastres,
-  }));
+  /** Item display: productSlug-size-colorName (e.g. test-M-اسود) */
+  function variantDisplayName(
+    productSlug: string,
+    size: string,
+    colorName: string | null | undefined
+  ): string {
+    const base = `${productSlug}-${size}`;
+    return colorName?.trim() ? `${base}-${colorName.trim()}` : base;
+  }
+
+  const orderLines = cart.items.map((i) => {
+    const v = i.variant;
+    const p = v.product;
+    return {
+      variantId: v.id,
+      quantity: i.quantity,
+      productName: p.name,
+      variantName: variantDisplayName(p.slug, v.name, v.colorName),
+      sku: v.sku,
+      unitPricePiastres: v.pricePiastres,
+      totalPiastres: i.quantity * v.pricePiastres,
+    };
+  });
 
   const stockLines = orderLines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }));
   const reservationExpiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);

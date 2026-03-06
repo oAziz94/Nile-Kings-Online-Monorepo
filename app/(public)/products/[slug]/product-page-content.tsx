@@ -19,11 +19,40 @@ const PLACEHOLDER_IMAGE =
 type Variant = {
   id: string;
   sku: string;
+  slug?: string | null;
   name: string;
   priceEgp: number;
   stockAvailable: number;
   inStock: boolean;
+  colorHex?: string | null;
+  colorName?: string | null;
 };
+
+const SIZE_ORDER = ["S", "M", "L", "XL", "XXL"];
+
+function sizeSortIndex(name: string): number {
+  const i = SIZE_ORDER.indexOf(name.toUpperCase());
+  return i === -1 ? SIZE_ORDER.length : i;
+}
+
+function variantColorHex(v: Variant): string {
+  if (v.colorHex?.trim()) return v.colorHex.trim();
+  const name = (v.colorName ?? "").trim().toLowerCase();
+  const map: Record<string, string> = {
+    أسود: "#000000", أبيض: "#ffffff", أحمر: "#b71c1c", أزرق: "#0d47a1",
+    أخضر: "#1b5e20", أصفر: "#f9a825", برتقالي: "#e65100", رمادي: "#616161",
+    وردي: "#ad1457", بني: "#3e2723", بيج: "#d7ccc8", كحلي: "#0d47a1",
+    black: "#000000", white: "#ffffff", red: "#b71c1c", blue: "#0d47a1",
+    green: "#1b5e20", yellow: "#f9a825", grey: "#616161", gray: "#616161",
+    pink: "#ad1457", brown: "#3e2723", beige: "#d7ccc8", navy: "#0d47a1",
+    orange: "#e65100",
+  };
+  return map[name] ?? "#9e9e9e";
+}
+
+function colorKey(v: Variant): string {
+  return `${v.colorName ?? ""}|${v.colorHex ?? ""}`;
+}
 
 type Product = {
   id: string;
@@ -38,6 +67,7 @@ type Product = {
   originalPriceEgp?: number;
   discountPercent?: number;
   inStock: boolean;
+  initialVariantId?: string | null;
   variants: Variant[];
 };
 
@@ -61,17 +91,72 @@ const ARABIC_VALIDATION = {
 export function ProductPageContent({
   product,
   related,
+  initialVariantId = null,
 }: {
   product: Product;
   related: RelatedItem[];
+  initialVariantId?: string | null;
 }) {
   const { toast } = useToast();
   const { openDrawer, refreshCart } = useCart();
-  const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null);
-  const [colorId, setColorId] = useState<string | null>(null);
+  const initialVariant = initialVariantId ? product.variants.find((v) => v.id === initialVariantId) : null;
+  const [selectedSize, setSelectedSizeState] = useState<string | null>(initialVariant?.name ?? null);
+  const [selectedColorId, setSelectedColorId] = useState<string | null>(
+    initialVariant ? colorKey(initialVariant) : null
+  );
   const [adding, setAdding] = useState(false);
 
-  const selectedVariant = product.variants.find((v) => v.id === selectedSizeId);
+  const setSelectedSize = (size: string | null) => {
+    setSelectedSizeState(size);
+    setSelectedColorId(null);
+  };
+
+  // Always show full size list (smallest → largest, RTL). Disabled when no variant for that size.
+  const sizeOptions = SIZE_ORDER.map((name) => ({
+    id: name,
+    label: name,
+    disabled: !product.variants.some((v) => v.name === name && v.inStock),
+  }));
+
+  // Colors for the selected size only (squares row). When size changes, colors update.
+  const variantsForSelectedSize =
+    selectedSize === null
+      ? []
+      : product.variants.filter((v) => v.name === selectedSize);
+  const colorMapForSize = new Map<string, { name: string; hex: string }>();
+  variantsForSelectedSize.forEach((v) => {
+    const key = colorKey(v);
+    if (!colorMapForSize.has(key)) {
+      colorMapForSize.set(key, {
+        name: v.colorName?.trim() || v.colorHex || "—",
+        hex: variantColorHex(v),
+      });
+    }
+  });
+  const colorOptions =
+    selectedSize === null
+      ? []
+      : Array.from(colorMapForSize.entries()).map(([id, { name, hex }]) => ({
+          id,
+          name,
+          hex,
+          disabled: !variantsForSelectedSize.some(
+            (v) => colorKey(v) === id && v.inStock
+          ),
+        }));
+
+  const selectedVariant =
+    selectedSize === null
+      ? null
+      : colorOptions.length > 1
+        ? selectedColorId
+          ? product.variants.find(
+              (v) =>
+                v.name === selectedSize && colorKey(v) === selectedColorId
+            ) ?? null
+          : null
+        : variantsForSelectedSize[0] ?? null;
+  const selectedSizeId = selectedVariant?.id ?? null;
   const displayPrice = selectedVariant?.priceEgp ?? product.priceEgp;
   const displayOriginal = selectedVariant
     ? undefined
@@ -79,14 +164,6 @@ export function ProductPageContent({
   const displayDiscountPercent = selectedVariant
     ? undefined
     : product.discountPercent;
-
-  const sizeOptions = product.variants.map((v) => ({
-    id: v.id,
-    label: v.name,
-    disabled: !v.inStock,
-  }));
-
-  const colorOptions: { id: string; name: string; hex: string; disabled?: boolean }[] = [];
 
   const logView = useCallback(() => {
     fetch("/api/analytics/view", {
@@ -105,14 +182,14 @@ export function ProductPageContent({
   }, [logView]);
 
   const handleAddToCart = async () => {
-    if (!selectedSizeId) {
+    if (!selectedVariant) {
       toast({
         title: ARABIC_VALIDATION.selectSize,
         variant: "destructive",
       });
       return;
     }
-    const v = product.variants.find((x) => x.id === selectedSizeId);
+    const v = selectedVariant;
     if (v && !v.inStock) {
       toast({
         title: ARABIC_VALIDATION.outOfStock,
@@ -125,7 +202,7 @@ export function ProductPageContent({
       const res = await fetch("/api/cart/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ variantId: selectedSizeId, quantity: 1 }),
+        body: JSON.stringify({ variantId: v.id, quantity: 1 }),
       });
       const json = await res.json();
       if (res.ok) {
@@ -143,7 +220,7 @@ export function ProductPageContent({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          variantId: selectedSizeId,
+          variantId: v.id,
           quantity: 1,
           sessionId: typeof window !== "undefined" ? "session-" + Date.now() : undefined,
         }),
@@ -202,30 +279,35 @@ export function ProductPageContent({
             <p className="mt-4 text-muted-foreground">{product.description}</p>
           )}
 
-          <div className="mt-6">
+          <div className="mt-6" dir="rtl">
             <h3 className="mb-2 font-semibold text-foreground">المقاس</h3>
             <SizeChips
               options={sizeOptions}
-              value={selectedSizeId ?? undefined}
-              onSelect={setSelectedSizeId}
+              value={selectedSize ?? undefined}
+              onSelect={(id) => setSelectedSize(id)}
             />
-            {!selectedSizeId && product.variants.some((v) => v.inStock) && (
+            {!selectedVariant && product.variants.some((v) => v.inStock) && (
               <p className="mt-1 text-sm text-muted-foreground">
                 {ARABIC_VALIDATION.selectSize}
               </p>
             )}
           </div>
 
-          {colorOptions.length > 0 && (
-            <div className="mt-4">
-              <h3 className="mb-2 font-semibold text-foreground">اللون</h3>
+          <div className="mt-4">
+            <h3 className="mb-2 font-semibold text-foreground">اللون</h3>
+            {selectedSize === null ? (
+              <p className="text-sm text-muted-foreground">اختر المقاس أولاً لعرض الألوان المتاحة</p>
+            ) : colorOptions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">لا توجد ألوان لهذا المقاس</p>
+            ) : (
               <ColorSwatches
                 options={colorOptions}
-                value={colorId ?? undefined}
-                onSelect={setColorId}
+                value={selectedColorId ?? undefined}
+                onSelect={setSelectedColorId}
+                shape="square"
               />
-            </div>
-          )}
+            )}
+          </div>
 
           <div className="mt-4 flex items-center gap-2">
             <span

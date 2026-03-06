@@ -22,13 +22,12 @@ enum UserRole {
 }
 
 enum OrderStatus {
-  PENDING
-  CREATED   // order created with stock reserved; reservationExpiresAt set
-  CONFIRMED
-  PROCESSING
-  SHIPPED
-  DELIVERED
-  CANCELLED
+  CREATED   // قيد الانشاء — order created with stock reserved; reservationExpiresAt set
+  CONFIRMED // مؤكد
+  PROCESSING // قيد التجهيز
+  SHIPPED   // تم الشحن
+  DELIVERED // تم التسليم
+  CANCELLED // ملغي
 }
 
 enum PaymentStatus {
@@ -186,15 +185,17 @@ model Product {
 }
 
 model Variant {
-  id             String   @id @default(cuid())
-  productId      String
-  sku            String   @unique
-  name           String   // e.g. "S", "M", "L", "XL", "XXL" (size)
-  colorHex       String?  // optional color hex e.g. "#000000"
-  colorName      String?  // optional color name e.g. "أسود"
-  pricePiastres  Int      // unit price in piastres
-  stockAvailable Int      @default(0)
-  stockReserved  Int      @default(0)
+  id                  String   @id @default(cuid())
+  productId           String
+  sku                 String   @unique
+  slug                String?  @unique // productSlug_size_colorHexCode for URL (e.g. cotton-tshirt_m_000000)
+  name                String   // size e.g. "S", "M", "L", "XL", "XXL"
+  colorHex            String?  // optional color hex e.g. "#000000"
+  colorName           String?  // optional color name e.g. "أسود"
+  basePricePiastres   Int?     // original price; null = use product's
+  pricePiastres       Int      // selling/discounted price in piastres
+  stockAvailable      Int      @default(0)
+  stockReserved       Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -312,7 +313,7 @@ model ShippingRule {
 model Order {
   id                    String       @id @default(cuid())
   userId                String
-  status                OrderStatus  @default(PENDING)
+  status                OrderStatus  @default(CREATED)
   subtotalPiastres      Int
   discountPiastres      Int          @default(0)   // coupon discount
   seniorFreeValuePiastres Int        @default(0)   // senior buy-2-get-1-free value
