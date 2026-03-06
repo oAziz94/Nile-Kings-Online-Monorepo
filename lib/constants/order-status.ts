@@ -1,11 +1,10 @@
 /** Order status display labels (Arabic) */
 export const ORDER_STATUS_LABELS: Record<string, string> = {
-  PENDING: "قيد الانتظار",
-  CREATED: "تم الإنشاء",
+  CREATED: "قيد الانشاء",
   CONFIRMED: "مؤكد",
   PROCESSING: "قيد التجهيز",
   SHIPPED: "تم الشحن",
-  DELIVERED: "تم التوصيل",
+  DELIVERED: "تم التسليم",
   CANCELLED: "ملغي",
 };
 

@@ -10,6 +10,7 @@ export type CartItem = {
   productId: string;
   productName: string;
   productSlug: string;
+  variantSlug: string | null;
   imageUrl: string | null;
   variantName: string;
   sku: string;

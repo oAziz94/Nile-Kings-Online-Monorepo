@@ -22,6 +22,8 @@ export interface VariantPublic {
   priceEgp: number;
   stockAvailable: number;
   inStock: boolean;
+  colorHex?: string | null;
+  colorName?: string | null;
 }
 
 export interface ProductListItem {

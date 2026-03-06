@@ -88,7 +88,7 @@ export default function CartPage() {
                 className="flex gap-4 p-4 first:rounded-t-2xl last:rounded-b-2xl"
               >
                 <Link
-                  href={`/products/${item.productSlug}`}
+                  href={`/products/${item.variantSlug ?? item.productSlug}`}
                   className="relative h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-muted"
                 >
                   <Image
@@ -101,7 +101,7 @@ export default function CartPage() {
                 </Link>
                 <div className="min-w-0 flex-1">
                   <Link
-                    href={`/products/${item.productSlug}`}
+                    href={`/products/${item.variantSlug ?? item.productSlug}`}
                     className="text-lg font-semibold text-foreground hover:underline"
                   >
                     {item.productName}

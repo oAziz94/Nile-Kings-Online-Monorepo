@@ -18,8 +18,7 @@ import { Skeleton } from "@/components/shared/skeleton";
 import { ShoppingBag } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
-  PENDING: "قيد الانتظار",
-  CREATED: "تم الإنشاء",
+  CREATED: "قيد الانشاء",
   CONFIRMED: "مؤكد",
   PROCESSING: "قيد التجهيز",
   SHIPPED: "تم الشحن",
