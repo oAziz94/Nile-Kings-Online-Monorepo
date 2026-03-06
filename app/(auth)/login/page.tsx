@@ -91,7 +91,7 @@ function LoginContent() {
           </select>
           <Input
             type="tel"
-            placeholder="5xxxxxxxx"
+            placeholder="1xxxxxxxxx"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="rounded-2xl flex-1"
