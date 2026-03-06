@@ -12,6 +12,7 @@ import { ColorSwatches } from "@/components/shared/color-swatches";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ShoppingCart, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { discountPercentFromPrices } from "@/lib/catalog";
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&h=800&fit=crop";
@@ -159,12 +160,14 @@ export function ProductPageContent({
         : variantsForSelectedSize[0] ?? null;
   const selectedSizeId = selectedVariant?.id ?? null;
   const displayPrice = selectedVariant?.priceEgp ?? product.priceEgp;
-  const displayOriginal = selectedVariant
-    ? undefined
-    : product.originalPriceEgp;
-  const displayDiscountPercent = selectedVariant
-    ? undefined
-    : product.discountPercent;
+  const displayOriginal =
+    product.originalPriceEgp != null && product.originalPriceEgp > displayPrice
+      ? product.originalPriceEgp
+      : undefined;
+  const displayDiscountPercent =
+    displayOriginal != null
+      ? discountPercentFromPrices(displayOriginal, displayPrice)
+      : undefined;
 
   const logView = useCallback(() => {
     fetch("/api/analytics/view", {
