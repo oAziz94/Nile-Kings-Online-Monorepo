@@ -86,6 +86,7 @@ type RelatedItem = {
 
 const ARABIC_VALIDATION = {
   selectSize: "يرجى اختيار المقاس",
+  selectColor: "يجب اختيار اللون",
   outOfStock: "هذا المقاس غير متوفر حالياً",
   added: "تمت الإضافة إلى السلة",
 };
@@ -186,6 +187,20 @@ export function ProductPageContent({
   }, [logView]);
 
   const handleAddToCart = async () => {
+    if (selectedSize === null) {
+      toast({
+        title: ARABIC_VALIDATION.selectSize,
+        variant: "destructive",
+      });
+      return;
+    }
+    if (colorOptions.length > 1 && !selectedColorId) {
+      toast({
+        title: ARABIC_VALIDATION.selectColor,
+        variant: "destructive",
+      });
+      return;
+    }
     if (!selectedVariant) {
       toast({
         title: ARABIC_VALIDATION.selectSize,
@@ -211,7 +226,10 @@ export function ProductPageContent({
       const json = await res.json();
       if (res.ok) {
         await refreshCart();
-        toast({ title: ARABIC_VALIDATION.added });
+        const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+        if (!isMobile) {
+          toast({ title: ARABIC_VALIDATION.added });
+        }
         openDrawer();
       } else {
         toast({
@@ -295,7 +313,7 @@ export function ProductPageContent({
               value={selectedSize ?? undefined}
               onSelect={(id) => setSelectedSize(id)}
             />
-            {!selectedVariant && product.variants.some((v) => v.inStock) && (
+            {selectedSize === null && product.variants.some((v) => v.inStock) && (
               <p className="mt-1 text-sm text-muted-foreground">
                 {ARABIC_VALIDATION.selectSize}
               </p>
@@ -309,12 +327,19 @@ export function ProductPageContent({
             ) : colorOptions.length === 0 ? (
               <p className="text-sm text-muted-foreground">لا توجد ألوان لهذا المقاس</p>
             ) : (
-              <ColorSwatches
-                options={colorOptions}
-                value={selectedColorId ?? undefined}
-                onSelect={setSelectedColorId}
-                shape="square"
-              />
+              <>
+                <ColorSwatches
+                  options={colorOptions}
+                  value={selectedColorId ?? undefined}
+                  onSelect={setSelectedColorId}
+                  shape="square"
+                />
+                {colorOptions.length > 1 && !selectedColorId && (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {ARABIC_VALIDATION.selectColor}
+                  </p>
+                )}
+              </>
             )}
           </div>
 
@@ -327,11 +352,6 @@ export function ProductPageContent({
             >
               {product.inStock ? "متوفر" : "غير متوفر"}
             </span>
-            {selectedVariant && (
-              <span className="text-sm text-muted-foreground">
-                ({selectedVariant.stockAvailable} قطعة)
-              </span>
-            )}
           </div>
 
           <Button
