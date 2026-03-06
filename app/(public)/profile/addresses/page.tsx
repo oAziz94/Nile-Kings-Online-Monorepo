@@ -254,16 +254,6 @@ export default function ProfileAddressesPage() {
                 className="rounded-xl"
               />
             </div>
-            <div className="sm:col-span-2 flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isDefault"
-                checked={form.isDefault}
-                onChange={(e) => setForm((f) => ({ ...f, isDefault: e.target.checked }))}
-                className="h-4 w-4 rounded"
-              />
-              <label htmlFor="isDefault" className="text-sm text-foreground">استخدام كعنوان افتراضي</label>
-            </div>
             <div className="sm:col-span-2 flex gap-2">
               <Button type="submit" className="rounded-xl">{editingId ? "حفظ" : "إضافة"}</Button>
               <Button type="button" variant="outline" className="rounded-xl" onClick={closeForm}>إلغاء</Button>

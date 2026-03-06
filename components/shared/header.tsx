@@ -14,7 +14,7 @@ export function Header() {
   const router = useRouter();
   const { openDrawer, cart } = useCart();
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [user, setUser] = useState<{ name: string | null; phone: string } | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -27,8 +27,15 @@ export function Header() {
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
-      .then((res) => setLoggedIn(res.ok))
-      .catch(() => setLoggedIn(false));
+      .then(async (res) => {
+        if (!res.ok) {
+          setUser(null);
+          return;
+        }
+        const data = await res.json();
+        setUser({ name: data.data?.name ?? null, phone: data.data?.phone ?? "" });
+      })
+      .catch(() => setUser(null));
   }, []);
 
   useEffect(() => {
@@ -48,7 +55,7 @@ export function Header() {
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    setLoggedIn(false);
+    setUser(null);
     setProfileOpen(false);
     router.refresh();
   };
@@ -118,7 +125,7 @@ export function Header() {
               )}
             </div>
 
-            {loggedIn ? (
+            {user ? (
               <div className="relative z-[100]" ref={profileRef}>
                 <Button
                   variant="ghost"
@@ -138,7 +145,9 @@ export function Header() {
                     className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-border bg-card py-2 shadow-xl ring-1 ring-black/5 dark:ring-white/10 rtl:left-0 rtl:right-auto"
                     role="menu"
                   >
-                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">حسابي</div>
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                      {user.name?.trim() || user.phone || "حسابي"}
+                    </div>
                     <Link
                       href="/profile/orders"
                       className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted/80"
