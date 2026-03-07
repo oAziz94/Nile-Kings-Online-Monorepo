@@ -111,7 +111,14 @@ export function ProductPageContent({
 
   const setSelectedSize = (size: string | null) => {
     setSelectedSizeState(size);
-    setSelectedColorId(null);
+    if (size === null) {
+      setSelectedColorId(null);
+    } else {
+      const colorKeysForSize = new Set(
+        product.variants.filter((v) => v.name === size).map((v) => colorKey(v))
+      );
+      setSelectedColorId((prev) => (prev && colorKeysForSize.has(prev) ? prev : null));
+    }
   };
 
   // Always show full size list (smallest → largest, RTL). Disabled when no variant for that size.
@@ -121,37 +128,45 @@ export function ProductPageContent({
     disabled: !product.variants.some((v) => v.name === name && v.inStock),
   }));
 
-  // Colors for the selected size only (squares row). When size changes, colors update.
+  // Variants for the selected size (for selectedVariant and per-size disabled state).
   const variantsForSelectedSize =
     selectedSize === null
       ? []
       : product.variants.filter((v) => v.name === selectedSize);
-  const colorMapForSize = new Map<string, { name: string; hex: string }>();
-  variantsForSelectedSize.forEach((v) => {
+
+  // Colors from ALL variants so they are always shown (not only after picking a size).
+  const allColorMap = new Map<string, { name: string; hex: string }>();
+  product.variants.forEach((v) => {
     const key = colorKey(v);
-    if (!colorMapForSize.has(key)) {
-      colorMapForSize.set(key, {
+    if (!allColorMap.has(key)) {
+      allColorMap.set(key, {
         name: v.colorName?.trim() || v.colorHex || "—",
         hex: variantColorHex(v),
       });
     }
   });
-  const colorOptions =
+  const colorOptions = Array.from(allColorMap.entries()).map(([id, { name, hex }]) => ({
+    id,
+    name,
+    hex,
+    disabled:
+      selectedSize === null
+        ? !product.variants.some((v) => colorKey(v) === id && v.inStock)
+        : !variantsForSelectedSize.some((v) => colorKey(v) === id && v.inStock),
+  }));
+
+  // For validation and selectedVariant: need color only when size is selected and there are multiple colors for that size.
+  const colorOptionsForSelectedSize =
     selectedSize === null
       ? []
-      : Array.from(colorMapForSize.entries()).map(([id, { name, hex }]) => ({
-          id,
-          name,
-          hex,
-          disabled: !variantsForSelectedSize.some(
-            (v) => colorKey(v) === id && v.inStock
-          ),
-        }));
+      : colorOptions.filter((opt) =>
+          variantsForSelectedSize.some((v) => colorKey(v) === opt.id)
+        );
 
   const selectedVariant =
     selectedSize === null
       ? null
-      : colorOptions.length > 1
+      : colorOptionsForSelectedSize.length > 1
         ? selectedColorId
           ? product.variants.find(
               (v) =>
@@ -194,7 +209,7 @@ export function ProductPageContent({
       });
       return;
     }
-    if (colorOptions.length > 1 && !selectedColorId) {
+    if (colorOptionsForSelectedSize.length > 1 && !selectedColorId) {
       toast({
         title: ARABIC_VALIDATION.selectColor,
         variant: "destructive",
@@ -322,10 +337,8 @@ export function ProductPageContent({
 
           <div className="mt-4">
             <h3 className="mb-2 font-semibold text-foreground">اللون</h3>
-            {selectedSize === null ? (
-              <p className="text-sm text-muted-foreground">اختر المقاس أولاً لعرض الألوان المتاحة</p>
-            ) : colorOptions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">لا توجد ألوان لهذا المقاس</p>
+            {colorOptions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">لا توجد ألوان</p>
             ) : (
               <>
                 <ColorSwatches
@@ -334,7 +347,7 @@ export function ProductPageContent({
                   onSelect={setSelectedColorId}
                   shape="square"
                 />
-                {colorOptions.length > 1 && !selectedColorId && (
+                {selectedSize !== null && colorOptionsForSelectedSize.length > 1 && !selectedColorId && (
                   <p className="mt-1 text-sm text-muted-foreground">
                     {ARABIC_VALIDATION.selectColor}
                   </p>
