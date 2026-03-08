@@ -175,6 +175,14 @@ export function ProductPageContent({
           : null
         : variantsForSelectedSize[0] ?? null;
   const selectedSizeId = selectedVariant?.id ?? null;
+
+  // For the main image: when only color is selected (no size), still show that color's variant image
+  const displayVariantForImage =
+    selectedVariant ??
+    (selectedColorId
+      ? product.variants.find((v) => colorKey(v) === selectedColorId) ?? null
+      : null);
+
   const displayPrice = selectedVariant?.priceEgp ?? product.priceEgp;
   const displayOriginal =
     product.originalPriceEgp != null && product.originalPriceEgp > displayPrice
@@ -269,12 +277,12 @@ export function ProductPageContent({
     }
   };
 
-  // When a color variant is selected and has its own image, show it; otherwise product image
+  // When a color is selected (with or without size), show that variant's image; otherwise product image
   const mainImageUrl =
-    selectedVariant?.imageUrl?.trim() || product.imageUrl?.trim() || PLACEHOLDER_IMAGE;
+    displayVariantForImage?.imageUrl?.trim() || product.imageUrl?.trim() || PLACEHOLDER_IMAGE;
   const galleryImages = [mainImageUrl];
-  // Force Image to remount when variant (color) changes so the displayed image updates reliably
-  const imageKey = `${selectedSizeId ?? "product"}-${mainImageUrl}`;
+  // Force Image to remount when variant or color changes so the displayed image updates reliably
+  const imageKey = `${selectedSizeId ?? "product"}-${selectedColorId ?? "none"}-${mainImageUrl}`;
 
   return (
     <>
