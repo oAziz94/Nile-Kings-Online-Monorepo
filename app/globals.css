@@ -27,6 +27,9 @@
     --input: 40 10% 88%;
     --ring: 0 0% 11%;
     --radius: 1rem;
+    /* Site-wide hover: #CA9C26 gold */
+    --hover: 43 69% 48%;
+    --hover-foreground: 0 0% 100%;
   }
   * {
     @apply border-border;
@@ -36,5 +39,8 @@
   }
   body {
     @apply bg-background text-foreground font-cairo overflow-x-hidden;
+  }
+  a:hover {
+    color: hsl(var(--hover));
   }
 }

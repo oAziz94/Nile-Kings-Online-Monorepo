@@ -47,7 +47,7 @@ export function CartDrawer() {
   return (
     <>
       <div
-        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-sm"
         aria-hidden
         onClick={closeDrawer}
       />
@@ -55,7 +55,7 @@ export function CartDrawer() {
         role="dialog"
         aria-label="سلة التسوق"
         className={cn(
-          "fixed top-0 bottom-0 z-50 w-full max-w-md flex flex-col",
+          "fixed top-0 bottom-0 z-[110] w-full max-w-md flex flex-col",
           "bg-background border-border shadow-2xl",
           "rtl:right-0 rtl:left-auto ltr:left-0 ltr:right-auto",
           "animate-in slide-in-from-right duration-300"

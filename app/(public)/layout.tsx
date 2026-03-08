@@ -12,7 +12,7 @@ export default function PublicLayout({
     <CartProvider>
       <div className="flex min-h-screen flex-col">
         <Header />
-        <main className="flex-1 bg-background pt-[72px]">{children}</main>
+        <main className="flex-1 bg-background pt-[72px] md:pt-[84px]">{children}</main>
         <Footer />
       </div>
       <CartDrawer />
