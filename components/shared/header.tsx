@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
-  Facebook,
   ShoppingCart,
   User,
   Package,
@@ -18,7 +17,6 @@ import { useCart } from "@/contexts/cart-context";
 import { MenuDrawer } from "@/components/shared/menu-drawer";
 import { cn } from "@/lib/utils";
 
-const FACEBOOK_URL = process.env.NEXT_PUBLIC_FACEBOOK_URL ?? "";
 
 export function Header() {
   const router = useRouter();
@@ -68,7 +66,7 @@ export function Header() {
   return (
     <>
       <header
-        className="fixed top-0 left-0 right-0 z-[100] w-full bg-white border-b border-border/80"
+        className="fixed top-0 left-0 right-0 z-[100] w-full bg-[#F9FAF7] border-b border-border/80"
         role="banner"
       >
         {/* Layout direction LTR so left/center/right stay physical; RTL only affects text inside */}
@@ -154,21 +152,6 @@ className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-hover hover:text-ho
                   {cart.itemCount > 99 ? "99+" : cart.itemCount}
                 </span>
               )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-hover hover:text-hover-foreground md:h-11 md:w-11"
-              asChild
-            >
-              <a
-                href={FACEBOOK_URL || "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="فيسبوك"
-              >
-                <Facebook className="h-5 w-5" strokeWidth={iconStroke} />
-              </a>
             </Button>
           </div>
 
