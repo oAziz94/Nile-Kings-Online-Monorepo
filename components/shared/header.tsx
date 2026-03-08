@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
-  Facebook,
   ShoppingCart,
   User,
   Package,
@@ -17,8 +16,6 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/cart-context";
 import { MenuDrawer } from "@/components/shared/menu-drawer";
 import { cn } from "@/lib/utils";
-
-const FACEBOOK_URL = process.env.NEXT_PUBLIC_FACEBOOK_URL ?? "";
 
 export function Header() {
   const router = useRouter();
@@ -68,12 +65,13 @@ export function Header() {
   return (
     <>
       <header
-        className="fixed top-0 left-0 right-0 z-[100] w-full bg-white border-b border-border/80"
+        className="fixed top-0 left-0 right-0 z-[100] w-full border-b border-border/80"
+        style={{ backgroundColor: "#F9FAF7" }}
         role="banner"
       >
         {/* Layout direction LTR so left/center/right stay physical; RTL only affects text inside */}
         <div className="relative flex h-[72px] items-center justify-between gap-4 px-4 md:h-[84px] md:px-6" dir="ltr">
-          {/* Left: Account (leftmost), Cart, Facebook (rightmost) */}
+          {/* Left: Account (leftmost), Cart */}
           <div className="flex min-w-0 flex-1 items-center justify-start gap-2 sm:gap-3">
             {user ? (
               <div className="relative z-[100]" ref={profileRef}>
@@ -154,21 +152,6 @@ className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-hover hover:text-ho
                   {cart.itemCount > 99 ? "99+" : cart.itemCount}
                 </span>
               )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-hover hover:text-hover-foreground md:h-11 md:w-11"
-              asChild
-            >
-              <a
-                href={FACEBOOK_URL || "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="فيسبوك"
-              >
-                <Facebook className="h-5 w-5" strokeWidth={iconStroke} />
-              </a>
             </Button>
           </div>
 

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { X, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Search, ChevronDown, ChevronUp, Facebook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MENU_SECTIONS, type MenuSection } from "@/lib/menu-config";
@@ -163,6 +163,20 @@ export function MenuDrawer({ isOpen, onClose }: MenuDrawerProps) {
                 />
               ))}
             </nav>
+
+            <div className="mt-6 pt-4 border-t border-border/80">
+              <a
+                href={process.env.NEXT_PUBLIC_FACEBOOK_URL ?? "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onClose}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+                aria-label="تابعنا على فيسبوك"
+              >
+                <Facebook className="h-5 w-5 shrink-0" strokeWidth={1.5} />
+                تابعنا على فيسبوك
+              </a>
+            </div>
           </div>
         </div>
       </div>
