@@ -15,7 +15,7 @@ export function Hero() {
           src={HERO_IMAGE}
           alt="نايل كينجز — قطن مصري أصلي"
           fill
-          className="object-cover object-center"
+          className="object-cover object-[20%_center] md:object-center"
           sizes="100vw"
           priority
         />
