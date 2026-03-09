@@ -13,15 +13,7 @@ const CATEGORY_BANNERS = [
   { slug: "kids", labelAr: "أطفال", href: "/categories/kids", image: "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?w=800" },
 ] as const;
 
-type HomeData = {
-  categories: { id: string; name: string; slug: string; productCount: number }[];
-  trending: { id: string; name: string; slug: string; imageUrl: string | null; priceEgp: number; originalPriceEgp?: number; discountPercent?: number }[];
-  recommended: { id: string; name: string; slug: string; imageUrl: string | null; priceEgp: number; originalPriceEgp?: number; discountPercent?: number }[];
-  newArrivals: { id: string; name: string; slug: string; imageUrl: string | null; priceEgp: number; originalPriceEgp?: number; discountPercent?: number }[];
-  bestSellers: { id: string; name: string; slug: string; imageUrl: string | null; priceEgp: number; originalPriceEgp?: number; discountPercent?: number }[];
-} | null;
-
-function toCardProps(p: {
+type HomeProduct = {
   id: string;
   name: string;
   slug: string;
@@ -29,7 +21,18 @@ function toCardProps(p: {
   priceEgp: number;
   originalPriceEgp?: number;
   discountPercent?: number;
-}) {
+  colorVariants?: { id: string; colorHex: string | null; colorName: string | null; imageUrl: string | null }[];
+};
+
+type HomeData = {
+  categories: { id: string; name: string; slug: string; productCount: number }[];
+  trending: HomeProduct[];
+  recommended: HomeProduct[];
+  newArrivals: HomeProduct[];
+  bestSellers: HomeProduct[];
+} | null;
+
+function toCardProps(p: HomeProduct) {
   return {
     id: p.id,
     name: p.name,
@@ -38,6 +41,7 @@ function toCardProps(p: {
     price: p.priceEgp,
     originalPrice: p.originalPriceEgp,
     discountPercent: p.discountPercent,
+    colorVariants: p.colorVariants,
   };
 }
 

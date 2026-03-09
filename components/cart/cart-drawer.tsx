@@ -105,7 +105,7 @@ export function CartDrawer() {
                       {item.productName}
                     </Link>
                     <p className="text-sm text-muted-foreground">
-                      {item.variantName} · {item.sku}
+                      {item.variantName}
                     </p>
                     <Price amount={item.priceEgp} size="sm" className="mt-1" />
                     <div className="mt-2 flex items-center gap-2">

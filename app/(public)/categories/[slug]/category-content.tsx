@@ -20,6 +20,7 @@ type ProductItem = {
   originalPriceEgp?: number;
   discountPercent?: number;
   inStock: boolean;
+  colorVariants?: { id: string; colorHex: string | null; colorName: string | null; imageUrl: string | null }[];
 };
 
 type FilterOptions = {
@@ -241,6 +242,7 @@ export function CategoryContent({
                     price={p.priceEgp}
                     originalPrice={p.originalPriceEgp}
                     discountPercent={p.discountPercent}
+                    colorVariants={p.colorVariants}
                   />
                 ))}
               </div>

@@ -16,6 +16,7 @@ type ProductItem = {
   priceEgp: number;
   originalPriceEgp?: number;
   discountPercent?: number;
+  colorVariants?: { id: string; colorHex: string | null; colorName: string | null; imageUrl: string | null }[];
 };
 
 export function SearchContent({
@@ -112,6 +113,7 @@ export function SearchContent({
               price={p.priceEgp}
               originalPrice={p.originalPriceEgp}
               discountPercent={p.discountPercent}
+              colorVariants={p.colorVariants}
             />
           ))}
         </div>

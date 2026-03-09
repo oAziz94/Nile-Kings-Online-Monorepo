@@ -18,6 +18,7 @@ type ProductItem = {
   originalPriceEgp?: number;
   discountPercent?: number;
   inStock: boolean;
+  colorVariants?: { id: string; colorHex: string | null; colorName: string | null; imageUrl: string | null }[];
 };
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
@@ -113,6 +114,7 @@ export function ProductsContent() {
                 price={p.priceEgp}
                 originalPrice={p.originalPriceEgp}
                 discountPercent={p.discountPercent}
+                colorVariants={p.colorVariants}
               />
             ))}
           </div>

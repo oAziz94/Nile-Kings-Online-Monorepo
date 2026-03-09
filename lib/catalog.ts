@@ -26,6 +26,13 @@ export interface VariantPublic {
   colorName?: string | null;
 }
 
+export interface ColorVariantListItem {
+  id: string;
+  colorHex: string | null;
+  colorName: string | null;
+  imageUrl: string | null;
+}
+
 export interface ProductListItem {
   id: string;
   name: string;
@@ -37,6 +44,8 @@ export interface ProductListItem {
   categorySlug: string;
   categoryName: string;
   inStock: boolean;
+  /** Unique color variants for card swatches; image switches on hover. */
+  colorVariants?: ColorVariantListItem[];
 }
 
 /** When original > price, returns rounded discount percentage; otherwise undefined. */

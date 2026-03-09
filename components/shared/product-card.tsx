@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Price } from "./price";
 import { cn } from "@/lib/utils";
+import type { ColorVariantListItem } from "@/lib/catalog";
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&h=400&fit=crop";
@@ -16,6 +18,8 @@ export interface ProductCardProps {
   price: number;
   originalPrice?: number;
   discountPercent?: number;
+  /** Color variants for swatches; hovering a swatch switches the product image. */
+  colorVariants?: ColorVariantListItem[];
   className?: string;
 }
 
@@ -27,9 +31,13 @@ export function ProductCard({
   price,
   originalPrice,
   discountPercent,
+  colorVariants,
   className,
 }: ProductCardProps) {
+  const [hoveredImageUrl, setHoveredImageUrl] = useState<string | null>(null);
   const href = `/products/${slug}`;
+  const displayImage =
+    hoveredImageUrl ?? imageUrl ?? PLACEHOLDER_IMAGE;
 
   return (
     <Link
@@ -41,7 +49,7 @@ export function ProductCard({
     >
       <div className="relative aspect-square overflow-hidden bg-muted rounded-t-2xl">
         <Image
-          src={imageUrl || PLACEHOLDER_IMAGE}
+          src={displayImage}
           alt={name}
           fill
           className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -58,6 +66,31 @@ export function ProductCard({
           </span>
         )}
       </div>
+      {colorVariants != null && colorVariants.length > 0 && (
+        <div
+          className="flex flex-wrap gap-1.5 px-4 pt-3"
+          role="list"
+          aria-label="ألوان متاحة"
+        >
+          {colorVariants.map((c) => {
+            const hex = c.colorHex ?? "#e5e7eb";
+            const variantImage = c.imageUrl ?? imageUrl ?? PLACEHOLDER_IMAGE;
+            return (
+              <span
+                key={c.id}
+                role="listitem"
+                title={c.colorName ?? undefined}
+                className={cn(
+                  "h-5 w-5 shrink-0 rounded-md border-2 border-border transition-all hover:scale-110 hover:border-foreground/50"
+                )}
+                style={{ backgroundColor: hex }}
+                onMouseEnter={() => setHoveredImageUrl(variantImage)}
+                onMouseLeave={() => setHoveredImageUrl(null)}
+              />
+            );
+          })}
+        </div>
+      )}
       <div className="p-4">
         <h3 className="line-clamp-2 text-sm font-medium text-foreground underline-offset-2 decoration-burgundy transition-all group-hover:underline">
           {name}

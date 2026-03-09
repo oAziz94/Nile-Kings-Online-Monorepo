@@ -116,7 +116,7 @@ export async function getCartPayload(cartId: string): Promise<CartPayload | null
       productName: p.name,
       productSlug: p.slug,
       variantSlug: v.slug ?? null,
-      imageUrl: p.imageUrl,
+      imageUrl: v.imageUrl?.trim() || p.imageUrl,
       variantName: variantDisplayName(p.slug, v.name, v.colorName),
       sku: v.sku,
       priceEgp: piastresToEgp(v.pricePiastres),

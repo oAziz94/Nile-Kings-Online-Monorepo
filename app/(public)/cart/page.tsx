@@ -107,7 +107,7 @@ export default function CartPage() {
                     {item.productName}
                   </Link>
                   <p className="text-muted-foreground">
-                    {item.variantName} · {item.sku}
+                    {item.variantName}
                   </p>
                   <Price amount={item.priceEgp} size="md" className="mt-2" />
                   <div className="mt-4 flex items-center gap-3">

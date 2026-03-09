@@ -136,7 +136,16 @@ async function getRelated(slug: string, categoryId: string) {
     take: 4,
     include: {
       category: { select: { slug: true, name: true } },
-      variants: { select: { pricePiastres: true, stockAvailable: true } },
+      variants: {
+        select: {
+          id: true,
+          pricePiastres: true,
+          stockAvailable: true,
+          colorHex: true,
+          colorName: true,
+          imageUrl: true,
+        },
+      },
     },
   });
 
@@ -154,6 +163,19 @@ async function getRelated(slug: string, categoryId: string) {
     const discountPercent = originalPriceEgp != null && originalPriceEgp > priceEgp
       ? discountPercentFromPrices(originalPriceEgp, priceEgp)
       : undefined;
+    const seen = new Set<string>();
+    const colorVariants: { id: string; colorHex: string | null; colorName: string | null; imageUrl: string | null }[] = [];
+    for (const v of p.variants) {
+      const key = v.colorHex ?? "default";
+      if (seen.has(key)) continue;
+      seen.add(key);
+      colorVariants.push({
+        id: v.id,
+        colorHex: v.colorHex,
+        colorName: v.colorName,
+        imageUrl: v.imageUrl ?? p.imageUrl,
+      });
+    }
     return {
       id: p.id,
       name: p.name,
@@ -163,6 +185,7 @@ async function getRelated(slug: string, categoryId: string) {
       originalPriceEgp: originalPriceEgp && originalPriceEgp > priceEgp ? originalPriceEgp : undefined,
       discountPercent,
       inStock: p.variants.some((v) => v.stockAvailable > 0),
+      colorVariants: colorVariants.length > 0 ? colorVariants : undefined,
     };
   });
 }
