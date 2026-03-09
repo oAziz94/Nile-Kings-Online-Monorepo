@@ -66,7 +66,7 @@ export function Header() {
     <>
       <header
         className="fixed top-0 left-0 right-0 z-[100] w-full border-b border-border/80"
-        style={{ backgroundColor: "#F9FAF7" }}
+        style={{ backgroundColor: "#FEFEFE" }}
         role="banner"
       >
         {/* Layout direction LTR so left/center/right stay physical; RTL only affects text inside */}

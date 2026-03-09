@@ -7,7 +7,7 @@ const HERO_IMAGE = "/hero.png";
 export function Hero() {
   return (
     <section
-      className="relative flex min-h-[70vh] flex-col md:min-h-[75vh] md:flex-row"
+      className="relative flex min-h-[80vh] flex-col md:min-h-[88vh] md:flex-row"
       aria-label="الرئيسية"
     >
       {/* Full-width image behind everything */}
