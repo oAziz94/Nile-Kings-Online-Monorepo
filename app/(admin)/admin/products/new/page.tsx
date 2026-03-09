@@ -28,6 +28,7 @@ export default function NewProductPage() {
   const [weightGrams, setWeightGrams] = React.useState("");
   const [basePricePiastres, setBasePricePiastres] = React.useState("");
   const [discountPricePiastres, setDiscountPricePiastres] = React.useState("");
+  const [tagsInput, setTagsInput] = React.useState("");
   const [active, setActive] = React.useState(true);
 
   React.useEffect(() => {
@@ -61,6 +62,10 @@ export default function NewProductPage() {
           basePricePiastres: basePricePiastres === "" ? null : Math.round(parseFloat(basePricePiastres) * 100),
           discountPricePiastres: discountPricePiastres === "" ? null : Math.round(parseFloat(discountPricePiastres) * 100),
           active,
+          tags: tagsInput
+            .split(/\s*-\s*/)
+            .map((t) => t.trim())
+            .filter(Boolean),
         }),
       });
       const json = await res.json();
@@ -91,7 +96,7 @@ export default function NewProductPage() {
       <Card>
         <CardHeader>
           <CardTitle>بيانات المنتج</CardTitle>
-          <CardDescription>الاسم، الفئة، الصورة، الوزن والأسعار.</CardDescription>
+          <CardDescription>الاسم، الفئة، الصورة، الوزن، الوسوم والأسعار.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={submit} className="space-y-4">
@@ -162,6 +167,16 @@ export default function NewProductPage() {
                 onChange={(e) => setWeightGrams(e.target.value)}
                 placeholder="للشحن"
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="tags">الوسوم</Label>
+              <Input
+                id="tags"
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+                placeholder="وسوم مفصولة بشرطة، مثل: حريمي - دانتيل - قطني"
+              />
+              <p className="text-xs text-muted-foreground">الوسوم يمكن أن تحتوي مسافات. افصل بين الوسوم بشرطة (-).</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">

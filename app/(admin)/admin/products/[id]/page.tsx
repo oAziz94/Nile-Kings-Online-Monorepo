@@ -41,6 +41,7 @@ type Product = {
   weightGrams: number | null;
   basePricePiastres: number | null;
   discountPricePiastres: number | null;
+  tags: string[];
   category: { id: string; name: string; slug: string };
   variants: {
     id: string;
@@ -107,6 +108,7 @@ export default function AdminProductDetailPage() {
     stockAvailable: "",
   });
   const [savingVariant, setSavingVariant] = React.useState(false);
+  const [tagsInput, setTagsInput] = React.useState("");
 
   const defaultOriginalEgp = product ? (product.basePricePiastres != null ? product.basePricePiastres / 100 : "") : "";
   const defaultDiscountEgp = product ? (product.discountPricePiastres != null ? product.discountPricePiastres / 100 : "") : "";
@@ -119,7 +121,10 @@ export default function AdminProductDetailPage() {
       fetch("/api/admin/categories", { credentials: "include" }).then((r) => r.json()),
     ])
       .then(([prodJson, catJson]) => {
-        if (prodJson?.success && prodJson.data) setProduct(prodJson.data);
+        if (prodJson?.success && prodJson.data) {
+          setProduct(prodJson.data);
+          setTagsInput((prodJson.data.tags ?? []).join(" - "));
+        }
         if (catJson?.success && Array.isArray(catJson.data)) setCategories(catJson.data);
       })
       .catch(() => toast({ title: "فشل التحميل", variant: "destructive" }))
@@ -147,12 +152,17 @@ export default function AdminProductDetailPage() {
           basePricePiastres: product.basePricePiastres ?? undefined,
           discountPricePiastres: product.discountPricePiastres ?? undefined,
           active: product.active,
+          tags: tagsInput
+            .split(/\s*-\s*/)
+            .map((t) => t.trim())
+            .filter(Boolean),
         }),
       });
       const json = await res.json();
       const updated = json?.data;
       if (res.ok && updated) {
         setProduct(updated);
+        setTagsInput((updated.tags ?? []).join(" - "));
         toast({ title: "تم حفظ المنتج" });
       } else {
         toast({ title: json?.error?.message ?? "فشل الحفظ", variant: "destructive" });
@@ -337,7 +347,7 @@ export default function AdminProductDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle>بيانات المنتج</CardTitle>
-          <CardDescription>تعديل الاسم، الفئة، الصورة، الوزن والأسعار.</CardDescription>
+          <CardDescription>تعديل الاسم، الفئة، الصورة، الوزن، الوسوم والأسعار.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={saveProduct} className="space-y-4">
@@ -396,6 +406,15 @@ export default function AdminProductDetailPage() {
                   setProduct((p) => (p ? { ...p, weightGrams: e.target.value === "" ? null : parseInt(e.target.value, 10) || 0 } : p))
                 }
               />
+            </div>
+            <div className="grid gap-2">
+              <Label>الوسوم</Label>
+              <Input
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+                placeholder="وسوم مفصولة بشرطة، مثل: حريمي - دانتيل - قطني"
+              />
+              <p className="text-xs text-muted-foreground">الوسوم يمكن أن تحتوي مسافات. افصل بين الوسوم بشرطة (-).</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
