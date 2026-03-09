@@ -439,42 +439,6 @@ export default function AdminAnalyticsPage() {
         </CardContent>
       </Card>
 
-      {/* Senior promo report */}
-      <Card className="rounded-2xl border border-border shadow-subtle">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>تقرير عرض كبار السن</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => exportCsv("senior_promo")}>
-            CSV
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {data?.seniorPromo && data.seniorPromo.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>رقم الطلب</TableHead>
-                  <TableHead>الإجمالي (ج.م)</TableHead>
-                  <TableHead>قيمة المجاني (ج.م)</TableHead>
-                  <TableHead>التاريخ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.seniorPromo.map((r) => (
-                  <TableRow key={r.orderId}>
-                    <TableCell className="font-mono text-xs">{r.orderId.slice(-8)}</TableCell>
-                    <TableCell>{piastresToEgp(r.totalPiastres).toLocaleString("ar-EG")}</TableCell>
-                    <TableCell>{piastresToEgp(r.seniorFreeValuePiastres).toLocaleString("ar-EG")}</TableCell>
-                    <TableCell>{formatDate(r.createdAt)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-sm text-muted-foreground">لا توجد طلبات باستخدام عرض كبار السن.</p>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Provider + Payment in one row */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="rounded-2xl border border-border shadow-subtle">
