@@ -2,9 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { X, Search, ChevronDown, ChevronUp, Facebook } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Facebook } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { MENU_SECTIONS, type MenuSection } from "@/lib/menu-config";
 import { cn } from "@/lib/utils";
 
@@ -34,16 +33,16 @@ function MenuAccordionSection({
         id={`${id}-trigger`}
         onClick={onToggle}
         className={cn(
-          "flex w-full items-center justify-between gap-3 py-4 text-right font-medium text-foreground",
+          "flex w-full items-center justify-between gap-3 py-5 text-right text-base font-semibold text-foreground",
           "hover:text-foreground/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
         )}
       >
         <span>{section.labelAr}</span>
         <span className="shrink-0 text-muted-foreground" aria-hidden>
           {isExpanded ? (
-            <ChevronUp className="h-4 w-4" strokeWidth={1.5} />
+            <ChevronUp className="h-5 w-5" strokeWidth={1.5} />
           ) : (
-            <ChevronDown className="h-4 w-4" strokeWidth={1.5} />
+            <ChevronDown className="h-5 w-5" strokeWidth={1.5} />
           )}
         </span>
       </button>
@@ -64,7 +63,7 @@ function MenuAccordionSection({
                 <Link
                   href={item.href}
                   onClick={onClose}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors py-1.5 block"
+                  className="text-base text-muted-foreground hover:text-foreground transition-colors py-2 block"
                 >
                   {item.labelAr}
                 </Link>
@@ -123,35 +122,20 @@ export function MenuDrawer({ isOpen, onClose }: MenuDrawerProps) {
         dir="rtl"
       >
         <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border/80 px-5 py-4">
-          <h2 className="text-lg font-medium text-foreground">القائمة</h2>
+          <h2 className="text-xl font-semibold text-foreground">القائمة</h2>
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
             aria-label="إغلاق القائمة"
-            className="h-10 w-10 rounded-full text-muted-foreground hover:text-foreground"
+            className="h-11 w-11 rounded-full text-muted-foreground hover:text-foreground"
           >
-            <X className="h-5 w-5" strokeWidth={1.5} />
+            <X className="h-6 w-6" strokeWidth={1.5} />
           </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           <div className="px-5 py-4">
-            <form action="/search" method="get" className="mb-6">
-              <div className="relative">
-                <Search
-                  className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                  strokeWidth={1.5}
-                />
-                <Input
-                  type="search"
-                  name="q"
-                  placeholder="ابحث عن منتج..."
-                  className="h-11 rounded-xl border-border/80 bg-muted/30 pr-10 pl-4 text-sm"
-                />
-              </div>
-            </form>
-
             <nav aria-label="تصنيفات المتجر">
               {MENU_SECTIONS.map((section) => (
                 <MenuAccordionSection
@@ -170,7 +154,7 @@ export function MenuDrawer({ isOpen, onClose }: MenuDrawerProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={onClose}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+                className="flex items-center gap-2 text-base text-muted-foreground hover:text-foreground transition-colors py-2"
                 aria-label="تابعنا على فيسبوك"
               >
                 <Facebook className="h-5 w-5 shrink-0" strokeWidth={1.5} />

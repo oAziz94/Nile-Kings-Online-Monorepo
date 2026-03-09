@@ -391,7 +391,7 @@ export function ProductPageContent({
               {product.tags.map((tag) => (
                 <Link
                   key={tag}
-                  href={`/search?q=${encodeURIComponent(tag)}`}
+                  href="/products"
                   className="rounded-xl bg-muted px-3 py-1 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 >
                   {tag}

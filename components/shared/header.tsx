@@ -70,9 +70,9 @@ export function Header() {
         role="banner"
       >
         {/* Layout direction LTR so left/center/right stay physical; RTL only affects text inside */}
-        <div className="relative flex h-[72px] items-center justify-between gap-4 px-4 md:h-[84px] md:px-6" dir="ltr">
+        <div className="relative flex h-[80px] items-center justify-between gap-4 px-4 md:h-[92px] md:px-6" dir="ltr">
           {/* Left: Account (leftmost), Cart */}
-          <div className="flex min-w-0 flex-1 items-center justify-start gap-2 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center justify-start gap-3 sm:gap-4">
             {user ? (
               <div className="relative z-[100]" ref={profileRef}>
                 <Button
@@ -85,9 +85,9 @@ export function Header() {
                   aria-label="حسابي"
                   aria-expanded={profileOpen}
                   aria-haspopup="true"
-                  className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-hover hover:text-hover-foreground md:h-11 md:w-11"
+                  className="h-11 w-11 shrink-0 text-foreground/90 hover:bg-hover hover:text-foreground md:h-12 md:w-12"
                 >
-                  <User className="h-5 w-5" strokeWidth={iconStroke} />
+                  <User className="h-6 w-6" strokeWidth={iconStroke} />
                 </Button>
                 {profileOpen && (
                   <div
@@ -95,44 +95,44 @@ export function Header() {
                     role="menu"
                     dir="rtl"
                   >
-                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                    <div className="px-3 py-1.5 text-sm font-medium text-muted-foreground">
                       {user.name?.trim() || user.phone || "حسابي"}
                     </div>
                     <Link
                       href="/profile/orders"
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-hover hover:text-hover-foreground"
+                      className="flex items-center gap-2 px-4 py-2.5 text-base text-foreground hover:bg-hover hover:text-hover-foreground"
                       onClick={() => setProfileOpen(false)}
                       role="menuitem"
                     >
-                      <Package className="h-4 w-4 shrink-0" />
+                      <Package className="h-5 w-5 shrink-0" />
                       طلباتي
                     </Link>
                     <Link
                       href="/profile/addresses"
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-hover hover:text-hover-foreground"
+                      className="flex items-center gap-2 px-4 py-2.5 text-base text-foreground hover:bg-hover hover:text-hover-foreground"
                       onClick={() => setProfileOpen(false)}
                       role="menuitem"
                     >
-                      <MapPin className="h-4 w-4 shrink-0" />
+                      <MapPin className="h-5 w-5 shrink-0" />
                       عناويني
                     </Link>
                     <div className="my-1 border-t border-border" />
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-muted-foreground hover:bg-hover hover:text-hover-foreground text-right"
+                      className="flex w-full items-center gap-2 px-4 py-2.5 text-base text-muted-foreground hover:bg-hover hover:text-hover-foreground text-right"
                       role="menuitem"
                     >
-                      <LogOut className="h-4 w-4 shrink-0" />
+                      <LogOut className="h-5 w-5 shrink-0" />
                       تسجيل الخروج
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              <Button variant="ghost" size="icon" asChild className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-hover hover:text-hover-foreground md:h-11 md:w-11">
+              <Button variant="ghost" size="icon" asChild className="h-11 w-11 shrink-0 text-foreground/90 hover:bg-hover hover:text-foreground md:h-12 md:w-12">
                 <Link href="/login" aria-label="تسجيل الدخول">
-                  <User className="h-5 w-5" strokeWidth={iconStroke} />
+                  <User className="h-6 w-6" strokeWidth={iconStroke} />
                 </Link>
               </Button>
             )}
@@ -141,12 +141,12 @@ export function Header() {
               size="icon"
               onClick={openDrawer}
               aria-label="سلة التسوق"
-              className="relative h-10 w-10 shrink-0 text-muted-foreground hover:bg-hover hover:text-hover-foreground md:h-11 md:w-11"
+              className="relative h-11 w-11 shrink-0 text-foreground/90 hover:bg-hover hover:text-foreground md:h-12 md:w-12"
             >
-              <ShoppingCart className="h-5 w-5" strokeWidth={iconStroke} />
+              <ShoppingCart className="h-6 w-6" strokeWidth={iconStroke} />
               {cart && cart.itemCount > 0 && (
                 <span
-                  className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground"
+                  className="absolute top-1 right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground"
                   aria-hidden
                 >
                   {cart.itemCount > 99 ? "99+" : cart.itemCount}
@@ -165,9 +165,9 @@ export function Header() {
               <Image
                 src="/logo.png"
                 alt="نايل كينجز"
-                width={240}
-                height={72}
-                className="max-h-[56px] w-auto object-contain md:max-h-[68px]"
+                width={260}
+                height={80}
+                className="max-h-[60px] w-auto object-contain md:max-h-[76px]"
                 priority
               />
             </Link>
@@ -181,9 +181,9 @@ export function Header() {
               onClick={() => setMenuOpen(true)}
               aria-label="فتح القائمة"
               aria-expanded={menuOpen}
-              className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-hover hover:text-hover-foreground md:h-11 md:w-11"
+              className="h-11 w-11 shrink-0 text-foreground/90 hover:bg-hover hover:text-foreground md:h-12 md:w-12"
             >
-              <Menu className="h-5 w-5" strokeWidth={iconStroke} />
+              <Menu className="h-6 w-6" strokeWidth={iconStroke} />
             </Button>
           </div>
         </div>

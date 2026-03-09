@@ -29,7 +29,7 @@ export function Hero() {
       {/* Text block — mobile: bottom-centered; desktop: right 1/3 */}
       <div className="relative z-10 flex h-full min-h-[70vh] w-full flex-col items-center justify-center text-center md:min-h-[88vh] md:w-1/3 md:shrink-0 md:pe-6 md:ps-4 lg:pe-4">
         <div className="w-full px-6 py-2 md:px-0 md:py-0">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-gold md:mb-4 md:text-xs">
+          <p className="mb-1 text-base font-semibold uppercase tracking-widest text-gold md:mb-2 md:text-lg">
             المصري للمصري
           </p>
 
