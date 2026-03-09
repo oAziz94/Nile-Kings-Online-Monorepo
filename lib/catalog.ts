@@ -44,8 +44,10 @@ export interface ProductListItem {
   categorySlug: string;
   categoryName: string;
   inStock: boolean;
-  /** Unique color variants for card swatches; image switches on hover. */
+  /** Unique color variants for card swatches; image switches on hover. Omitted when one card per variant (section view). */
   colorVariants?: ColorVariantListItem[];
+  /** When set, card links to this variant (variant slug). Used when listing one product per color variant. */
+  variantSlug?: string | null;
 }
 
 /** When original > price, returns rounded discount percentage; otherwise undefined. */
@@ -68,6 +70,8 @@ export type SortOption =
 
 export interface ProductsQuery {
   categorySlug?: string;
+  /** Section tag (e.g. "اطقم"). When set, filter by product tags and return one item per color variant. */
+  section?: string;
   minPrice?: number;
   maxPrice?: number;
   sizes?: string[];

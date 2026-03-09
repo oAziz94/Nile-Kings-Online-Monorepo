@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 function parseQuery(req: NextRequest): ProductsQuery {
   const { searchParams } = new URL(req.url);
   const categorySlug = searchParams.get("category") ?? undefined;
+  const section = searchParams.get("section") ?? undefined;
   const minPrice = searchParams.get("minPrice");
   const maxPrice = searchParams.get("maxPrice");
   const sizes = searchParams.get("sizes");
@@ -20,6 +21,7 @@ function parseQuery(req: NextRequest): ProductsQuery {
 
   return {
     categorySlug,
+    section: section && section.trim() ? section.trim() : undefined,
     minPrice: minPrice ? Number(minPrice) : undefined,
     maxPrice: maxPrice ? Number(maxPrice) : undefined,
     sizes: sizes ? sizes.split(",").filter(Boolean) : undefined,
@@ -30,6 +32,20 @@ function parseQuery(req: NextRequest): ProductsQuery {
   };
 }
 
+type VariantRow = {
+  id: string;
+  slug: string | null;
+  pricePiastres: number;
+  stockAvailable: number;
+  colorHex: string | null;
+  colorName: string | null;
+  imageUrl: string | null;
+};
+
+function colorKey(v: VariantRow): string {
+  return `${v.colorName ?? ""}|${v.colorHex ?? ""}`;
+}
+
 function toListItem(p: {
   id: string;
   name: string;
@@ -38,14 +54,7 @@ function toListItem(p: {
   basePricePiastres: number | null;
   discountPricePiastres: number | null;
   category: { slug: string; name: string };
-  variants: {
-    id: string;
-    pricePiastres: number;
-    stockAvailable: number;
-    colorHex: string | null;
-    colorName: string | null;
-    imageUrl: string | null;
-  }[];
+  variants: VariantRow[];
 }): ProductListItem {
   const prices = p.variants.map((v) => v.pricePiastres);
   const minPrice = prices.length ? Math.min(...prices) : 0;
@@ -91,6 +100,46 @@ function toListItem(p: {
   };
 }
 
+/** One list item per color variant (first variant per color used for slug/image/price). */
+function toListItemsByVariant(p: {
+  id: string;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+  basePricePiastres: number | null;
+  category: { slug: string; name: string };
+  variants: VariantRow[];
+}): ProductListItem[] {
+  const byColor = new Map<string, VariantRow>();
+  for (const v of p.variants) {
+    const key = colorKey(v);
+    if (!byColor.has(key)) byColor.set(key, v);
+  }
+  const items: ProductListItem[] = [];
+  for (const v of byColor.values()) {
+    const priceEgp = piastresToEgp(v.pricePiastres);
+    const baseEgp = p.basePricePiastres != null ? piastresToEgp(p.basePricePiastres) : undefined;
+    const originalPriceEgp = baseEgp != null && baseEgp > priceEgp ? baseEgp : undefined;
+    const discountPercent = originalPriceEgp != null && originalPriceEgp > priceEgp
+      ? discountPercentFromPrices(originalPriceEgp, priceEgp)
+      : undefined;
+    items.push({
+      id: v.id,
+      name: p.name,
+      slug: p.slug,
+      imageUrl: v.imageUrl ?? p.imageUrl,
+      priceEgp,
+      ...(originalPriceEgp && originalPriceEgp > priceEgp && { originalPriceEgp }),
+      ...(discountPercent != null && { discountPercent }),
+      categorySlug: p.category.slug,
+      categoryName: p.category.name,
+      inStock: v.stockAvailable > 0,
+      variantSlug: v.slug,
+    });
+  }
+  return items;
+}
+
 export async function GET(req: NextRequest) {
   const q = parseQuery(req);
 
@@ -100,6 +149,10 @@ export async function GET(req: NextRequest) {
 
   if (q.categorySlug) {
     where.category = { slug: q.categorySlug };
+  }
+
+  if (q.section) {
+    where.tags = { has: q.section };
   }
 
   if (q.inStockOnly || q.sizes?.length) {
@@ -120,6 +173,16 @@ export async function GET(req: NextRequest) {
   const skip = hasPriceFilter ? 0 : q.offset;
   const take = hasPriceFilter ? 200 : q.limit;
 
+  const variantSelect = {
+    id: true,
+    slug: true,
+    pricePiastres: true,
+    stockAvailable: true,
+    colorHex: true,
+    colorName: true,
+    imageUrl: true,
+  } as const;
+
   const products = await prisma.product.findMany({
     where,
     orderBy,
@@ -127,20 +190,23 @@ export async function GET(req: NextRequest) {
     take,
     include: {
       category: { select: { slug: true, name: true } },
-      variants: {
-        select: {
-          id: true,
-          pricePiastres: true,
-          stockAvailable: true,
-          colorHex: true,
-          colorName: true,
-          imageUrl: true,
-        },
-      },
+      variants: { select: variantSelect },
     },
   });
 
-  let filtered = products.map(toListItem);
+  const byVariant = Boolean(q.section);
+  let filtered: ProductListItem[];
+
+  if (byVariant) {
+    filtered = products.flatMap((p) =>
+      toListItemsByVariant({
+        ...p,
+        variants: p.variants as VariantRow[],
+      })
+    );
+  } else {
+    filtered = products.map(toListItem);
+  }
 
   if (q.minPrice != null || q.maxPrice != null) {
     filtered = filtered.filter((p) => {

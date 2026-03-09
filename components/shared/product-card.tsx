@@ -20,6 +20,8 @@ export interface ProductCardProps {
   discountPercent?: number;
   /** Color variants for swatches; hovering a swatch switches the product image. */
   colorVariants?: ColorVariantListItem[];
+  /** When set (section view), link to this variant slug so the product page opens with that variant selected. */
+  variantSlug?: string | null;
   className?: string;
 }
 
@@ -32,10 +34,11 @@ export function ProductCard({
   originalPrice,
   discountPercent,
   colorVariants,
+  variantSlug,
   className,
 }: ProductCardProps) {
   const [hoveredImageUrl, setHoveredImageUrl] = useState<string | null>(null);
-  const href = `/products/${slug}`;
+  const href = variantSlug ? `/products/${variantSlug}` : `/products/${slug}`;
   const displayImage =
     hoveredImageUrl ?? imageUrl ?? PLACEHOLDER_IMAGE;
 

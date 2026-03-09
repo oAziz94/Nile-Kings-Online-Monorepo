@@ -5,6 +5,8 @@
 
 export type MenuSectionItem = {
   labelAr: string;
+  /** Optional section slug for URL (e.g. "اطقم"). When set, category page shows one card per color variant. */
+  sectionSlug?: string;
   href: string;
 };
 
@@ -23,10 +25,10 @@ export const MENU_SECTIONS: MenuSection[] = [
     slug: "men",
     children: [
       { labelAr: "الكل", href: "/categories/men" },
-      { labelAr: "تي شيرت", href: "/categories/men" },
-      { labelAr: "بيجامات", href: "/categories/men" },
-      { labelAr: "اطقم", href: "/categories/men" },
-      { labelAr: "ملابس داخلية", href: "/categories/men" },
+      { labelAr: "تي شيرت", sectionSlug: "تي شيرت", href: "/categories/men?section=تي%20شيرت" },
+      { labelAr: "بيجامات", sectionSlug: "بيجامات", href: "/categories/men?section=بيجامات" },
+      { labelAr: "اطقم", sectionSlug: "اطقم", href: "/categories/men?section=اطقم" },
+      { labelAr: "ملابس داخلية", sectionSlug: "ملابس داخلية", href: "/categories/men?section=ملابس%20داخلية" },
     ],
   },
   {
@@ -35,10 +37,10 @@ export const MENU_SECTIONS: MenuSection[] = [
     slug: "women",
     children: [
       { labelAr: "الكل", href: "/categories/women" },
-      { labelAr: "تي شيرت", href: "/categories/women" },
-      { labelAr: "بيجامات", href: "/categories/women" },
-      { labelAr: "اطقم", href: "/categories/women" },
-      { labelAr: "ملابس داخلية", href: "/categories/women" },
+      { labelAr: "تي شيرت", sectionSlug: "تي شيرت", href: "/categories/women?section=تي%20شيرت" },
+      { labelAr: "بيجامات", sectionSlug: "بيجامات", href: "/categories/women?section=بيجامات" },
+      { labelAr: "اطقم", sectionSlug: "اطقم", href: "/categories/women?section=اطقم" },
+      { labelAr: "ملابس داخلية", sectionSlug: "ملابس داخلية", href: "/categories/women?section=ملابس%20داخلية" },
     ],
   },
   {
@@ -47,10 +49,10 @@ export const MENU_SECTIONS: MenuSection[] = [
     slug: "kids",
     children: [
       { labelAr: "الكل", href: "/categories/kids" },
-      { labelAr: "تي شيرت", href: "/categories/kids" },
-      { labelAr: "بيجامات", href: "/categories/kids" },
-      { labelAr: "اطقم", href: "/categories/kids" },
-      { labelAr: "ملابس داخلية", href: "/categories/kids" },
+      { labelAr: "تي شيرت", sectionSlug: "تي شيرت", href: "/categories/kids?section=تي%20شيرت" },
+      { labelAr: "بيجامات", sectionSlug: "بيجامات", href: "/categories/kids?section=بيجامات" },
+      { labelAr: "اطقم", sectionSlug: "اطقم", href: "/categories/kids?section=اطقم" },
+      { labelAr: "ملابس داخلية", sectionSlug: "ملابس داخلية", href: "/categories/kids?section=ملابس%20داخلية" },
     ],
   },
 ];

@@ -21,6 +21,8 @@ type ProductItem = {
   discountPercent?: number;
   inStock: boolean;
   colorVariants?: { id: string; colorHex: string | null; colorName: string | null; imageUrl: string | null }[];
+  /** When set, link to this variant (variant slug) for one-card-per-variant section view. */
+  variantSlug?: string | null;
 };
 
 type FilterOptions = {
@@ -59,11 +61,13 @@ export function CategoryContent({
   const sizesParam = search.get("sizes") ?? "";
   const inStockParam = search.get("inStock") === "true";
   const sortParam = search.get("sort") ?? "newest";
+  const sectionParam = search.get("section") ?? "";
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     params.set("category", categorySlug);
+    if (sectionParam) params.set("section", sectionParam);
     if (minPriceParam) params.set("minPrice", minPriceParam);
     if (maxPriceParam) params.set("maxPrice", maxPriceParam);
     if (sizesParam) params.set("sizes", sizesParam);
@@ -81,7 +85,7 @@ export function CategoryContent({
       setTotal(0);
     }
     setLoading(false);
-  }, [categorySlug, minPriceParam, maxPriceParam, sizesParam, inStockParam, sortParam]);
+  }, [categorySlug, sectionParam, minPriceParam, maxPriceParam, sizesParam, inStockParam, sortParam]);
 
   useEffect(() => {
     fetchProducts();
@@ -243,6 +247,7 @@ export function CategoryContent({
                     originalPrice={p.originalPriceEgp}
                     discountPercent={p.discountPercent}
                     colorVariants={p.colorVariants}
+                    variantSlug={p.variantSlug}
                   />
                 ))}
               </div>
