@@ -1,9 +1,17 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ProductCard } from "@/components/shared/product-card";
 import { ProductGridSkeleton } from "@/components/shared/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SectionTitle } from "@/components/shared/section-title";
 import { Package, Shield, CircleCheck, Heart } from "lucide-react";
+
+/** Homepage category grid: Men & Kids (left), Women (right). Arabic labels. */
+const CATEGORY_BANNERS = [
+  { slug: "men", labelAr: "رجالي", href: "/categories/men", image: "https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?w=800" },
+  { slug: "women", labelAr: "حريمي", href: "/categories/women", image: "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800" },
+  { slug: "kids", labelAr: "أطفال", href: "/categories/kids", image: "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?w=800" },
+] as const;
 
 type HomeData = {
   categories: { id: string; name: string; slug: string; productCount: number }[];
@@ -55,11 +63,10 @@ export function HomeSections({ data }: { data: HomeData }) {
     return (
       <>
         <section className="py-6 md:py-8">
-          <SectionTitle title="تسوق حسب التصنيف" />
-          <div className="mx-auto grid max-w-4xl grid-cols-2 gap-4 md:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-muted" />
-            ))}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:grid-rows-2">
+            <div className="h-[200px] animate-pulse rounded-2xl bg-muted md:h-[240px] md:row-start-1" />
+            <div className="h-[200px] animate-pulse rounded-2xl bg-muted md:col-start-2 md:row-span-2 md:row-start-1" />
+            <div className="h-[200px] animate-pulse rounded-2xl bg-muted md:h-[240px] md:row-start-2" />
           </div>
         </section>
         <section className="py-6 md:py-8">
@@ -85,36 +92,65 @@ export function HomeSections({ data }: { data: HomeData }) {
     );
   }
 
-  const { categories, trending, recommended } = data;
-  const categoriesSlice = categories.slice(0, 4);
+  const { trending, recommended } = data;
 
   return (
     <>
-      {/* 1. Shop by Category — max 4 cards, centered grid */}
-      <section className="py-6 md:py-8">
-        <SectionTitle title="تسوق حسب التصنيف" subtitle="اختر التصنيف المناسب لك" />
-        {categoriesSlice.length === 0 ? (
-          <EmptyState
-            icon={<Package className="h-8 w-8" />}
-            title="لا توجد تصنيفات"
-            description="سيتم إضافة التصنيفات قريباً."
-          />
-        ) : (
-          <div className="mx-auto grid max-w-4xl grid-cols-2 gap-4 md:grid-cols-4">
-            {categoriesSlice.map((c) => (
-              <Link
-                key={c.id}
-                href={`/categories/${c.slug}`}
-                className="flex flex-col items-center justify-center rounded-2xl bg-card p-4 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
-              >
-                <span className="font-medium text-foreground">{c.name}</span>
-                <span className="mt-1 text-sm text-muted-foreground">
-                  {c.productCount} منتج
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
+      {/* 1. Shop by Category — premium visual grid: Men & Kids left, Women right */}
+      <section className="py-6 md:py-8" aria-label="تسوق حسب التصنيف">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:grid-rows-2 md:auto-rows-fr">
+          {/* Men — desktop: col 1 row 1; mobile: first */}
+          <Link
+            href={CATEGORY_BANNERS[0].href}
+            className="group relative min-h-[200px] overflow-hidden rounded-2xl bg-muted shadow-sm transition-shadow hover:shadow-md md:min-h-[240px] md:row-start-1"
+          >
+            <Image
+              src={CATEGORY_BANNERS[0].image}
+              alt={CATEGORY_BANNERS[0].labelAr}
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" aria-hidden />
+            <span className="absolute inset-0 flex items-center justify-center text-2xl font-semibold text-white drop-shadow-sm md:text-3xl">
+              {CATEGORY_BANNERS[0].labelAr}
+            </span>
+          </Link>
+          {/* Women — desktop: col 2, full height; mobile: second */}
+          <Link
+            href={CATEGORY_BANNERS[1].href}
+            className="group relative min-h-[200px] overflow-hidden rounded-2xl bg-muted shadow-sm transition-shadow hover:shadow-md md:col-start-2 md:row-span-2 md:row-start-1 md:min-h-0"
+          >
+            <Image
+              src={CATEGORY_BANNERS[1].image}
+              alt={CATEGORY_BANNERS[1].labelAr}
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" aria-hidden />
+            <span className="absolute inset-0 flex items-center justify-center text-2xl font-semibold text-white drop-shadow-sm md:text-3xl">
+              {CATEGORY_BANNERS[1].labelAr}
+            </span>
+          </Link>
+          {/* Kids — desktop: col 1 row 2; mobile: third */}
+          <Link
+            href={CATEGORY_BANNERS[2].href}
+            className="group relative min-h-[200px] overflow-hidden rounded-2xl bg-muted shadow-sm transition-shadow hover:shadow-md md:min-h-[240px] md:row-start-2"
+          >
+            <Image
+              src={CATEGORY_BANNERS[2].image}
+              alt={CATEGORY_BANNERS[2].labelAr}
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" aria-hidden />
+            <span className="absolute inset-0 flex items-center justify-center text-2xl font-semibold text-white drop-shadow-sm md:text-3xl">
+              {CATEGORY_BANNERS[2].labelAr}
+            </span>
+          </Link>
+        </div>
       </section>
 
       {/* 2. Best Sellers */}

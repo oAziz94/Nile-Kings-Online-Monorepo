@@ -1,16 +1,15 @@
-import Link from "next/link";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
 
+/** Hero: product / flat lay image (e.g. folded cotton, underwear on dark surface). Replace /hero.png with your asset. */
 const HERO_IMAGE = "/hero.png";
 
 export function Hero() {
   return (
     <section
-      className="relative flex min-h-[80vh] flex-col md:min-h-[88vh] md:flex-row"
+      className="relative flex min-h-[70vh] flex-col md:min-h-[85vh] md:flex-row"
       aria-label="الرئيسية"
     >
-      {/* Full-width image behind everything */}
+      {/* Product/flat lay hero — centered crop works at any aspect ratio */}
       <div className="absolute inset-0">
         <Image
           src={HERO_IMAGE}
@@ -38,14 +37,6 @@ export function Hero() {
           جودة وتصميم يناسبك. اكتشف تشكيلتنا من المنتجات المصنوعة من أفضل
           الخامات.
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Button asChild size="lg" className="rounded-2xl bg-gold text-foreground hover:bg-gold/90">
-            <Link href="/products">تسوق الآن</Link>
-          </Button>
-          <Button asChild variant="outline" size="lg" className="rounded-2xl border-gold text-gold hover:bg-gold/20">
-            <Link href="/categories">التصنيفات</Link>
-          </Button>
-        </div>
       </div>
     </section>
   );
