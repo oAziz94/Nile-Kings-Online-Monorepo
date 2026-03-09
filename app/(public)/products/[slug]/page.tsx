@@ -62,25 +62,25 @@ async function getProduct(slug: string) {
   const productRow = variantBySlug?.product
     ? variantBySlug.product
     : await prisma.product.findFirst({
-        where: { slug, active: true },
-        include: {
-          category: { select: { slug: true, name: true } },
-          variants: {
-            select: {
-              id: true,
-              sku: true,
-              slug: true,
-              name: true,
-              pricePiastres: true,
-              stockAvailable: true,
-              colorHex: true,
-              colorName: true,
-              imageUrl: true,
-            },
-            orderBy: { name: "asc" },
+      where: { slug, active: true },
+      include: {
+        category: { select: { slug: true, name: true } },
+        variants: {
+          select: {
+            id: true,
+            sku: true,
+            slug: true,
+            name: true,
+            pricePiastres: true,
+            stockAvailable: true,
+            colorHex: true,
+            colorName: true,
+            imageUrl: true,
           },
+          orderBy: { name: "asc" },
         },
-      });
+      },
+    });
   if (!productRow) return null;
   const product = productRow;
   const initialVariantId = variantBySlug?.id ?? null;

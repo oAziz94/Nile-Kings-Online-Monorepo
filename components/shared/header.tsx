@@ -85,9 +85,9 @@ export function Header() {
                   aria-label="حسابي"
                   aria-expanded={profileOpen}
                   aria-haspopup="true"
-className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-hover hover:text-hover-foreground md:h-11 md:w-11"
+                  className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-hover hover:text-hover-foreground md:h-11 md:w-11"
                 >
-                <User className="h-5 w-5" strokeWidth={iconStroke} />
+                  <User className="h-5 w-5" strokeWidth={iconStroke} />
                 </Button>
                 {profileOpen && (
                   <div

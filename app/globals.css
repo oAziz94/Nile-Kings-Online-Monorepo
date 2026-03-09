@@ -5,10 +5,14 @@
 @layer base {
   :root {
     /* Minimal Luxury: off-white, charcoal, burgundy */
-    --background: 40 20% 96%; /* #F5F3EF warm off-white */
-    --foreground: 0 0% 11%; /* #1C1C1C charcoal */
-    --burgundy: 352 56% 26%; /* #6B1E2B */
-    --gold: 43 74% 52%; /* #D4AF37 warm gold */
+    --background: 40 20% 96%;
+    /* #F5F3EF warm off-white */
+    --foreground: 0 0% 11%;
+    /* #1C1C1C charcoal */
+    --burgundy: 352 56% 26%;
+    /* #6B1E2B */
+    --gold: 43 74% 52%;
+    /* #D4AF37 warm gold */
     --card: 40 20% 99%;
     --card-foreground: 0 0% 11%;
     --popover: 40 20% 99%;
@@ -31,15 +35,19 @@
     --hover: 43 69% 48%;
     --hover-foreground: 0 0% 100%;
   }
+
   * {
     @apply border-border;
   }
+
   html {
     @apply antialiased overflow-x-hidden;
   }
+
   body {
     @apply bg-background text-foreground font-cairo overflow-x-hidden;
   }
+
   a:hover {
     color: hsl(var(--hover));
   }

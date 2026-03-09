@@ -157,9 +157,9 @@ export default function CheckoutPage() {
       ? address
       : selectedAddressId
         ? (() => {
-            const saved = savedAddresses.find((a) => a.id === selectedAddressId);
-            return saved ? savedToAddress(saved) : null;
-          })()
+          const saved = savedAddresses.find((a) => a.id === selectedAddressId);
+          return saved ? savedToAddress(saved) : null;
+        })()
         : null;
 
     if (!addr || !addr.governorate.trim() || !addr.street.trim() || !addr.phone.trim()) {

@@ -48,11 +48,14 @@ const include = {
   variants: { select: { pricePiastres: true, stockAvailable: true } },
 } as const;
 
+const BEST_SELLERS_LIMIT = 4;
+
 export async function getHomeData(): Promise<{
   categories: { id: string; name: string; slug: string; productCount: number }[];
   trending: ProductListItem[];
   recommended: ProductListItem[];
   newArrivals: ProductListItem[];
+  bestSellers: ProductListItem[];
 } | null> {
   try {
     const [categories, trendingRows, addToCartRows, newArrivals, allProducts] =
@@ -112,6 +115,19 @@ export async function getHomeData(): Promise<{
       .map((id) => productMap.get(id))
       .filter((p): p is ProductListItem => Boolean(p));
 
+    // Best sellers: max 4, prefer recommended (add-to-cart) then trending then newArrivals
+    const newArrivalsList = newArrivals.map(toListItem);
+    const fallbackRecommended = recommended.length ? recommended : newArrivalsList.slice(0, HOME_LIMIT);
+    const seenIds = new Set<string>();
+    const bestSellers: ProductListItem[] = [];
+    for (const p of [...fallbackRecommended, ...trending, ...newArrivalsList]) {
+      if (bestSellers.length >= BEST_SELLERS_LIMIT) break;
+      if (!seenIds.has(p.id)) {
+        seenIds.add(p.id);
+        bestSellers.push(p);
+      }
+    }
+
     return {
       categories: categories.map((c) => ({
         id: c.id,
@@ -120,8 +136,9 @@ export async function getHomeData(): Promise<{
         productCount: c._count.products,
       })),
       trending,
-      recommended: recommended.length ? recommended : newArrivals.map(toListItem).slice(0, HOME_LIMIT),
-      newArrivals: newArrivals.map(toListItem),
+      recommended: fallbackRecommended,
+      newArrivals: newArrivalsList,
+      bestSellers,
     };
   } catch {
     return null;

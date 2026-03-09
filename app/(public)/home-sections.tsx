@@ -18,6 +18,7 @@ type HomeData = {
   trending: { id: string; name: string; slug: string; imageUrl: string | null; priceEgp: number; originalPriceEgp?: number; discountPercent?: number }[];
   recommended: { id: string; name: string; slug: string; imageUrl: string | null; priceEgp: number; originalPriceEgp?: number; discountPercent?: number }[];
   newArrivals: { id: string; name: string; slug: string; imageUrl: string | null; priceEgp: number; originalPriceEgp?: number; discountPercent?: number }[];
+  bestSellers: { id: string; name: string; slug: string; imageUrl: string | null; priceEgp: number; originalPriceEgp?: number; discountPercent?: number }[];
 } | null;
 
 function toCardProps(p: {
@@ -70,7 +71,11 @@ export function HomeSections({ data }: { data: HomeData }) {
           </div>
         </section>
         <section className="py-6 md:py-8">
-          <SectionTitle title="الأكثر مبيعاً" />
+          <div className="mb-6 flex items-center justify-center gap-4">
+          <span className="h-0.5 max-w-12 flex-1 bg-foreground/40" aria-hidden />
+          <h2 className="text-2xl font-semibold text-foreground md:text-3xl" dir="rtl">الأكثر مبيعًا</h2>
+          <span className="h-0.5 max-w-12 flex-1 bg-foreground/40" aria-hidden />
+          </div>
           <ProductGridSkeleton count={4} />
         </section>
         <section className="bg-[#1a1a1a] py-12 md:py-16">
@@ -92,7 +97,8 @@ export function HomeSections({ data }: { data: HomeData }) {
     );
   }
 
-  const { trending, recommended } = data;
+  const { trending, recommended, bestSellers } = data;
+  const bestSellersSlice = bestSellers.slice(0, 4);
 
   return (
     <>
@@ -153,19 +159,29 @@ export function HomeSections({ data }: { data: HomeData }) {
         </div>
       </section>
 
-      {/* 2. Best Sellers */}
-      <section className="py-6 md:py-8">
-        <SectionTitle title="الأكثر مبيعاً" />
-        {trending.length === 0 ? (
+      {/* 2. Best Sellers — max 4, centered, premium */}
+      <section className="bg-background py-10 md:py-12" aria-label="الأكثر مبيعًا">
+        <div className="mb-8 flex items-center justify-center gap-4 px-4">
+          <span className="h-0.5 max-w-12 flex-1 bg-foreground/40" aria-hidden />
+          <h2 className="text-2xl font-semibold text-foreground md:text-3xl" dir="rtl">
+            الأكثر مبيعًا
+          </h2>
+          <span className="h-0.5 max-w-12 flex-1 bg-foreground/40" aria-hidden />
+        </div>
+        {bestSellersSlice.length === 0 ? (
           <EmptyState
             icon={<Package className="h-8 w-8" />}
             title="لا توجد منتجات بعد"
             description="تصفح المنتجات وستظهر هنا."
           />
         ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {trending.map((p) => (
-              <ProductCard key={p.id} {...toCardProps(p)} />
+          <div className="mx-auto grid max-w-5xl grid-cols-1 justify-items-center gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {bestSellersSlice.map((p) => (
+              <ProductCard
+                key={p.id}
+                className="w-full max-w-[280px]"
+                {...toCardProps(p)}
+              />
             ))}
           </div>
         )}
