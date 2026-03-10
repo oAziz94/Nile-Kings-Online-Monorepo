@@ -77,7 +77,7 @@ export function ProductCarousel({ children, className, autoplay = false }: Produ
       }
     };
 
-    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let intervalId: number | null = null;
     let rafId = 0;
     const timeoutId = window.setTimeout(() => {
       rafId = requestAnimationFrame(() => {
