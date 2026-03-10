@@ -7,7 +7,7 @@ const addressBodySchema = {
   label: (v: unknown) => v == null || typeof v === "string",
   governorate: (v: unknown) => typeof v === "string" && v.trim().length > 0,
   city: (v: unknown) => v == null || typeof v === "string",
-  area: (v: unknown) => v == null || typeof v === "string",
+  area: (v: unknown) => typeof v === "string" && v.trim().length > 0,
   street: (v: unknown) => typeof v === "string" && v.trim().length > 0,
   building: (v: unknown) => v == null || typeof v === "string",
   floor: (v: unknown) => v == null || typeof v === "string",
@@ -51,7 +51,8 @@ export async function POST(req: NextRequest) {
   }
 
   if (!addressBodySchema.governorate(body.governorate)) return apiBadRequest("المحافظة مطلوبة");
-  if (!addressBodySchema.street(body.street)) return apiBadRequest("الشارع مطلوب");
+  if (!addressBodySchema.area(body.area)) return apiBadRequest("المنطقة مطلوبة");
+  if (!addressBodySchema.street(body.street)) return apiBadRequest("العنوان بالتفصيل مطلوب");
   if (!addressBodySchema.phone(body.phone)) return apiBadRequest("رقم الهاتف مطلوب");
 
   const isDefault = addressBodySchema.isDefault(body.isDefault) ? !!body.isDefault : false;

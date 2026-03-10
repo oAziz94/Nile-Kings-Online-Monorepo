@@ -6,9 +6,8 @@ import { apiSuccess, apiBadRequest, apiUnauthorized } from "@/lib/api/response";
 const addressSchema = {
   governorate: (v: unknown) => typeof v === "string" && v.trim().length > 0,
   city: (v: unknown) => v == null || typeof v === "string",
-  area: (v: unknown) => v == null || typeof v === "string",
+  area: (v: unknown) => typeof v === "string" && v.trim().length > 0,
   street: (v: unknown) => typeof v === "string" && v.trim().length > 0,
-  building: (v: unknown) => v == null || typeof v === "string",
   floor: (v: unknown) => v == null || typeof v === "string",
   apartment: (v: unknown) => v == null || typeof v === "string",
   notes: (v: unknown) => v == null || typeof v === "string",
@@ -41,8 +40,11 @@ export async function POST(req: NextRequest) {
   if (!addressSchema.governorate(address.governorate)) {
     return apiBadRequest("المحافظة مطلوبة");
   }
+  if (!addressSchema.area(address.area)) {
+    return apiBadRequest("المنطقة مطلوبة");
+  }
   if (!addressSchema.street(address.street)) {
-    return apiBadRequest("الشارع مطلوب");
+    return apiBadRequest("العنوان بالتفصيل مطلوب");
   }
   if (!addressSchema.phone(address.phone)) {
     return apiBadRequest("رقم هاتف التوصيل مطلوب");
@@ -52,10 +54,9 @@ export async function POST(req: NextRequest) {
     userId: user.userId,
     address: {
       governorate: String(address.governorate).trim(),
-      city: address.city != null ? String(address.city) : null,
-      area: address.area != null ? String(address.area) : null,
+      city: address.city != null ? String(address.city).trim() : null,
+      area: String(address.area).trim(),
       street: String(address.street).trim(),
-      building: address.building != null ? String(address.building) : null,
       floor: address.floor != null ? String(address.floor) : null,
       apartment: address.apartment != null ? String(address.apartment) : null,
       notes: address.notes != null ? String(address.notes) : null,

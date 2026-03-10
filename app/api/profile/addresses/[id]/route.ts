@@ -50,13 +50,16 @@ export async function PATCH(
     });
   }
 
+  if (body.area !== undefined && !(typeof body.area === "string" && (body.area as string).trim().length > 0))
+    return apiBadRequest("المنطقة مطلوبة");
+
   const data: Record<string, unknown> = {};
   if (body.label !== undefined && addressBodySchema.label(body.label))
     data.label = (body.label as string)?.trim() || null;
   if (body.governorate !== undefined && addressBodySchema.governorate(body.governorate))
     data.governorate = String(body.governorate).trim();
   if (body.city !== undefined) data.city = body.city != null ? String(body.city).trim() || null : null;
-  if (body.area !== undefined) data.area = body.area != null ? String(body.area).trim() || null : null;
+  if (body.area !== undefined) data.area = String(body.area).trim() || null;
   if (body.street !== undefined && addressBodySchema.street(body.street))
     data.street = String(body.street).trim();
   if (body.building !== undefined) data.building = body.building != null ? String(body.building).trim() || null : null;

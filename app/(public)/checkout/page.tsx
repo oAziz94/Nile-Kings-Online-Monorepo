@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/cart-context";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { CHECKOUT_PAYMENT_OPTIONS } from "@/lib/checkout/types";
-import { MapPin, Truck, X } from "lucide-react";
+import { MapPin, CreditCard, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -60,7 +60,6 @@ const emptyAddress = {
   city: "",
   area: "",
   street: "",
-  building: "",
   floor: "",
   apartment: "",
   notes: "",
@@ -86,7 +85,6 @@ function addressToPayload(addr: typeof emptyAddress) {
     city: addr.city || null,
     area: addr.area || null,
     street: addr.street,
-    building: addr.building || null,
     floor: addr.floor || null,
     apartment: addr.apartment || null,
     notes: addr.notes || null,
@@ -101,7 +99,6 @@ function savedToAddress(s: SavedAddress): typeof emptyAddress {
     city: s.city ?? "",
     area: s.area ?? "",
     street: s.street,
-    building: s.building ?? "",
     floor: s.floor ?? "",
     apartment: s.apartment ?? "",
     notes: s.notes ?? "",
@@ -116,6 +113,7 @@ export default function CheckoutPage() {
 
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(true);
+  const [profilePhone, setProfilePhone] = useState<string>("");
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [useNewAddress, setUseNewAddress] = useState(false);
   const [address, setAddress] = useState(emptyAddress);
@@ -142,10 +140,14 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/auth/me")
-      .then((res) => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then(async (res) => {
         if (cancelled) return;
         if (res.status === 401) setIsGuest(true);
+        else if (res.ok) {
+          const data = await parseJsonResponse<{ success?: boolean; data?: { phone?: string } }>(res);
+          if (data?.data?.phone) setProfilePhone(data.data.phone);
+        }
         setAuthChecked(true);
       })
       .catch(() => setAuthChecked(true));
@@ -174,6 +176,13 @@ export default function CheckoutPage() {
       .finally(() => setAddressesLoading(false));
   }, [authChecked, isGuest]);
 
+  // Prefill delivery phone from profile when showing new-address form and phone is empty
+  useEffect(() => {
+    if (profilePhone && useNewAddress && !address.phone.trim()) {
+      setAddress((a) => ({ ...a, phone: profilePhone }));
+    }
+  }, [profilePhone, useNewAddress, address.phone]);
+
   // Fetch summary when delivery address or options change. Resolve address inside effect from current state so we never use stale data.
   useEffect(() => {
     if (!authChecked || isGuest) return;
@@ -187,7 +196,7 @@ export default function CheckoutPage() {
         })()
         : null;
 
-    if (!addr || !addr.governorate.trim() || !addr.street.trim() || !addr.phone.trim()) {
+    if (!addr || !addr.governorate.trim() || !addr.area.trim() || !addr.street.trim() || !addr.phone.trim()) {
       setSummary(null);
       return;
     }
@@ -267,8 +276,8 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     const addr = currentAddress;
-    if (!addr || !addr.governorate.trim() || !addr.street.trim() || !addr.phone.trim()) {
-      toast({ title: "اختر عنوان توصيل أو أكمل البيانات", variant: "destructive" });
+    if (!addr || !addr.governorate.trim() || !addr.area.trim() || !addr.street.trim() || !addr.phone.trim()) {
+      toast({ title: "اختر عنوان توصيل أو أكمل البيانات (المنطقة والعنوان بالتفصيل والهاتف)", variant: "destructive" });
       return;
     }
     if (!summary) {
@@ -288,7 +297,6 @@ export default function CheckoutPage() {
           city: addr.city?.trim() || null,
           area: addr.area?.trim() || null,
           street: addr.street.trim(),
-          building: addr.building?.trim() || null,
           floor: addr.floor?.trim() || null,
           apartment: addr.apartment?.trim() || null,
           notes: addr.notes?.trim() || null,
@@ -333,7 +341,6 @@ export default function CheckoutPage() {
           city: addr.city?.trim() || null,
           area: addr.area?.trim() || null,
           street: addr.street.trim(),
-          building: addr.building?.trim() || null,
           floor: addr.floor?.trim() || null,
           apartment: addr.apartment?.trim() || null,
           notes: addr.notes?.trim() || null,
@@ -471,6 +478,7 @@ export default function CheckoutPage() {
                   onClick={() => {
                     setUseNewAddress(true);
                     setSelectedAddressId(null);
+                    setAddress((a) => ({ ...a, phone: profilePhone || a.phone }));
                   }}
                 >
                   <MapPin className="h-4 w-4 ml-2" />
@@ -508,39 +516,6 @@ export default function CheckoutPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-foreground">المدينة</label>
-                    <Input
-                      value={address.city}
-                      onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
-                      className="rounded-xl"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-foreground">المنطقة</label>
-                    <Input
-                      value={address.area}
-                      onChange={(e) => setAddress((a) => ({ ...a, area: e.target.value }))}
-                      className="rounded-xl"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="mb-1 block text-sm font-medium text-foreground">الشارع *</label>
-                    <Input
-                      value={address.street}
-                      onChange={(e) => setAddress((a) => ({ ...a, street: e.target.value }))}
-                      required={useNewAddress}
-                      className="rounded-xl"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-foreground">المبنى</label>
-                    <Input
-                      value={address.building}
-                      onChange={(e) => setAddress((a) => ({ ...a, building: e.target.value }))}
-                      className="rounded-xl"
-                    />
-                  </div>
-                  <div>
                     <label className="mb-1 block text-sm font-medium text-foreground">هاتف التوصيل *</label>
                     <Input
                       type="tel"
@@ -548,6 +523,33 @@ export default function CheckoutPage() {
                       onChange={(e) => setAddress((a) => ({ ...a, phone: e.target.value }))}
                       required={useNewAddress}
                       dir="ltr"
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-foreground">المنطقة *</label>
+                    <Input
+                      value={address.area}
+                      onChange={(e) => setAddress((a) => ({ ...a, area: e.target.value }))}
+                      required={useNewAddress}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="mb-1 block text-sm font-medium text-foreground">العنوان بالتفصيل *</label>
+                    <Input
+                      value={address.street}
+                      onChange={(e) => setAddress((a) => ({ ...a, street: e.target.value }))}
+                      required={useNewAddress}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="mb-1 block text-sm font-medium text-foreground">ملاحظات (اختياري)</label>
+                    <Input
+                      value={address.notes}
+                      onChange={(e) => setAddress((a) => ({ ...a, notes: e.target.value }))}
+                      placeholder="أي ملاحظات للتوصيل"
                       className="rounded-xl"
                     />
                   </div>
@@ -578,13 +580,10 @@ export default function CheckoutPage() {
           {/* Payment - Phase 1: single carrier (Egypt Post), no carrier selection */}
           <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
             <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-              <Truck className="h-4 w-4 text-muted-foreground" />
-              الشحن والدفع
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+              طريقة الدفع
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">التوصيل عبر البريد المصري (وصلك)</p>
-            <div className="mt-4">
-              <p className="text-xs font-medium text-muted-foreground">طريقة الدفع</p>
-              <div className="mt-2 space-y-3">
+            <div className="mt-4 space-y-3">
                 {CHECKOUT_PAYMENT_OPTIONS.map((opt) => (
                   <label key={opt.value} className="flex cursor-pointer items-start gap-2">
                     <input
@@ -603,7 +602,6 @@ export default function CheckoutPage() {
                     </div>
                   </label>
                 ))}
-              </div>
             </div>
           </section>
         </div>
@@ -666,16 +664,8 @@ export default function CheckoutPage() {
                 )}
                 <div className="flex justify-between text-muted-foreground">
                   <span>رسوم الشحن</span>
-                  <Price amount={piastresToEgp(summary.shippingFee)} />
+                  <Price amount={piastresToEgp(summary.shippingFee + (paymentMethod === "COD" ? summary.codFee : 0))} />
                 </div>
-                {paymentMethod === "COD" ? (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>رسوم الاستلام</span>
-                    <Price amount={piastresToEgpDisplay(summary.codFee)} />
-                  </div>
-                ) : paymentMethod === "INSTAPAY_PREPAID" && (
-                  <p className="text-xs text-green-600">تم إلغاء رسوم الاستلام عند الدفع عبر InstaPay</p>
-                )}
                 {/* Promo code field: left section, exactly before final total */}
                 <div className="border-t border-border pt-3">
                   <label className="text-xs font-medium text-muted-foreground">الرقم التسلسلي للخصم</label>

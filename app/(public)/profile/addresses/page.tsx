@@ -29,7 +29,6 @@ const emptyForm = {
   city: "",
   area: "",
   street: "",
-  building: "",
   floor: "",
   apartment: "",
   notes: "",
@@ -41,9 +40,19 @@ export default function ProfileAddressesPage() {
   const { toast } = useToast();
   const [list, setList] = useState<SavedAddress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profilePhone, setProfilePhone] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.data?.phone) setProfilePhone(data.data.phone);
+      })
+      .catch(() => {});
+  }, []);
 
   const load = () => {
     fetch("/api/profile/addresses", { credentials: "include" })
@@ -61,7 +70,7 @@ export default function ProfileAddressesPage() {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, phone: profilePhone });
     setShowForm(true);
   };
 
@@ -73,7 +82,6 @@ export default function ProfileAddressesPage() {
       city: a.city ?? "",
       area: a.area ?? "",
       street: a.street,
-      building: a.building ?? "",
       floor: a.floor ?? "",
       apartment: a.apartment ?? "",
       notes: a.notes ?? "",
@@ -91,15 +99,14 @@ export default function ProfileAddressesPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.governorate.trim() || !form.street.trim() || !form.phone.trim()) {
-      toast({ title: "المحافظة والشارع والهاتف مطلوبة", variant: "destructive" });
+    if (!form.governorate.trim() || !form.area.trim() || !form.street.trim() || !form.phone.trim()) {
+      toast({ title: "المحافظة والمنطقة والعنوان بالتفصيل والهاتف مطلوبة", variant: "destructive" });
       return;
     }
     const body = {
       ...form,
-      city: form.city || null,
+      city: form.city?.trim() || null,
       area: form.area || null,
-      building: form.building || null,
       floor: form.floor || null,
       apartment: form.apartment || null,
       notes: form.notes || null,
@@ -211,39 +218,6 @@ export default function ProfileAddressesPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-foreground">المدينة</label>
-              <Input
-                value={form.city}
-                onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                className="rounded-xl"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-foreground">المنطقة</label>
-              <Input
-                value={form.area}
-                onChange={(e) => setForm((f) => ({ ...f, area: e.target.value }))}
-                className="rounded-xl"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-foreground">الشارع *</label>
-              <Input
-                value={form.street}
-                onChange={(e) => setForm((f) => ({ ...f, street: e.target.value }))}
-                required
-                className="rounded-xl"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-foreground">المبنى</label>
-              <Input
-                value={form.building}
-                onChange={(e) => setForm((f) => ({ ...f, building: e.target.value }))}
-                className="rounded-xl"
-              />
-            </div>
-            <div>
               <label className="mb-1 block text-sm font-medium text-foreground">هاتف التوصيل *</label>
               <Input
                 type="tel"
@@ -251,6 +225,33 @@ export default function ProfileAddressesPage() {
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                 required
                 dir="ltr"
+                className="rounded-xl"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-foreground">المنطقة *</label>
+              <Input
+                value={form.area}
+                onChange={(e) => setForm((f) => ({ ...f, area: e.target.value }))}
+                required
+                className="rounded-xl"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-foreground">العنوان بالتفصيل *</label>
+              <Input
+                value={form.street}
+                onChange={(e) => setForm((f) => ({ ...f, street: e.target.value }))}
+                required
+                className="rounded-xl"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-foreground">ملاحظات (اختياري)</label>
+              <Input
+                value={form.notes}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                placeholder="أي ملاحظات للتوصيل"
                 className="rounded-xl"
               />
             </div>
