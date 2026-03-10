@@ -5,7 +5,7 @@ interface SectionTitleProps {
   subtitle?: string;
   className?: string;
   /** Centered title with decorative horizontal lines on both sides (e.g. for collection sections). */
-  variant?: "default" | "withSideLines";
+  variant?: "default" | "withSideLines" | "large";
 }
 
 export function SectionTitle({ title, subtitle, className, variant = "default" }: SectionTitleProps) {
@@ -19,6 +19,19 @@ export function SectionTitle({ title, subtitle, className, variant = "default" }
         <span className="h-0.5 max-w-12 flex-1 bg-foreground/40" aria-hidden />
         {subtitle != null && (
           <p className="sr-only">{subtitle}</p>
+        )}
+      </div>
+    );
+  }
+  if (variant === "large") {
+    return (
+      <div className={cn("mb-8 text-center", className)}>
+        <h2 className="mb-3 text-4xl font-semibold text-foreground md:text-5xl">
+          {title}
+        </h2>
+        <div className="mx-auto h-0.5 w-20 bg-burgundy" aria-hidden />
+        {subtitle && (
+          <p className="mt-3 text-lg text-muted-foreground md:text-xl">{subtitle}</p>
         )}
       </div>
     );

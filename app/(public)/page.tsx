@@ -17,8 +17,10 @@ export default async function StorefrontPage() {
   return (
     <>
       <Hero />
-      <div className="max-w-[1400px] mx-auto px-6 py-6 md:py-8">
-        <HomeSections data={data} />
+      <div className="overflow-x-hidden">
+        <div className="max-w-[1400px] mx-auto px-6 py-6 md:py-8">
+          <HomeSections data={data} />
+        </div>
       </div>
     </>
   );

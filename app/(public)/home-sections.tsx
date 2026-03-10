@@ -98,11 +98,11 @@ export function HomeSections({ data }: { data: HomeData }) {
             </div>
           </section>
         ))}
-        <section className="py-6 md:py-8">
-          <SectionTitle title="لماذا ملوك النيل" subtitle="التميز في كل تفصيلة" />
-          <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-3">
+        <section className="py-12 md:py-16">
+          <SectionTitle title="لماذا ملوك النيل" subtitle="التميز في كل تفصيلة" variant="large" />
+          <div className="mx-auto grid max-w-6xl gap-6 px-4 md:grid-cols-3 md:gap-8">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 animate-pulse rounded-2xl bg-muted" />
+              <div key={i} className="h-44 animate-pulse rounded-2xl bg-muted md:h-52" />
             ))}
           </div>
         </section>
@@ -118,9 +118,11 @@ export function HomeSections({ data }: { data: HomeData }) {
 
   return (
     <>
-      {/* 1. Shop by Category — premium visual grid: Men & Kids left, Women right */}
-      <section className="py-6 md:py-8" aria-label="تسوق حسب التصنيف">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:grid-rows-2 md:auto-rows-fr">
+      {/* 1. Shop by Category — full width, premium visual grid */}
+      <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+        <section className="py-6 md:py-8" aria-label="تسوق حسب التصنيف">
+          <div className="mx-auto max-w-[1400px] px-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:grid-rows-2 md:auto-rows-fr">
           {/* Men — desktop: col 1 row 1; mobile: first */}
           <Link
             href={CATEGORY_BANNERS[0].href}
@@ -172,8 +174,10 @@ export function HomeSections({ data }: { data: HomeData }) {
               {CATEGORY_BANNERS[2].labelAr}
             </span>
           </Link>
-        </div>
-      </section>
+            </div>
+          </div>
+        </section>
+      </div>
 
       {/* 2. Best Sellers — max 4, centered, premium */}
       <section className="bg-background py-10 md:py-12" aria-label="الأكثر مبيعًا">
@@ -203,9 +207,10 @@ export function HomeSections({ data }: { data: HomeData }) {
         )}
       </section>
 
-      {/* قصة القطن المصري — story section with dark background */}
-      <section className="bg-[#1a1a1a] py-12 md:py-16">
-        <div className="mx-auto max-w-3xl px-4 text-center">
+      {/* قصة القطن المصري — full width, dark background */}
+      <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+        <section className="bg-[#1a1a1a] py-12 md:py-16">
+          <div className="mx-auto max-w-3xl px-6 text-center">
           <h2 className="text-3xl font-bold text-white md:text-4xl">
             قصة القطن المصري
           </h2>
@@ -213,8 +218,9 @@ export function HomeSections({ data }: { data: HomeData }) {
           <p className="mt-6 leading-relaxed text-[#d9d9d9] md:text-lg">
             منذ آلاف السنين، اشتهرت مصر بأجود أنواع القطن في العالم. قطننا المصري الأصيل يتميز بألياف طويلة وناعمة تمنحك راحة لا مثيل لها. نحن نختار بعناية فائقة أفضل المحاصيل لنقدم لك تجربة فاخرة تليق بملوك الراحة.
           </p>
-        </div>
-      </section>
+          </div>
+        </section>
+      </div>
 
       {/* Collection sections: 4 products like الأكثر مبيعاً, rotate automatically */}
       <CollectionCarouselSection title="كولكشن السيدات" viewAllHref="/categories/women">
@@ -229,20 +235,20 @@ export function HomeSections({ data }: { data: HomeData }) {
         <RotatingProductGrid products={menProducts} />
       </CollectionCarouselSection>
 
-      {/* 5. Why Nile Kings — 3 equal centered cards */}
-      <section className="py-6 md:py-8">
-        <SectionTitle title="لماذا ملوك النيل" subtitle="التميز في كل تفصيلة" />
-        <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-3">
+      {/* 5. Why Nile Kings — 3 equal centered cards, larger section */}
+      <section className="py-12 md:py-16">
+        <SectionTitle title="لماذا ملوك النيل" subtitle="التميز في كل تفصيلة" variant="large" />
+        <div className="mx-auto grid max-w-6xl gap-6 px-4 md:grid-cols-3 md:gap-8">
           {WHY_ITEMS.map(({ icon: Icon, title, description }) => (
             <div
               key={title}
-              className="flex flex-col items-center rounded-2xl bg-card p-6 text-center shadow-sm"
+              className="flex flex-col items-center rounded-2xl bg-card p-8 text-center shadow-sm md:p-10"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-burgundy/10 text-burgundy">
-                <Icon className="h-6 w-6" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-burgundy/10 text-burgundy md:h-20 md:w-20">
+                <Icon className="h-8 w-8 md:h-10 md:w-10" />
               </div>
-              <h3 className="mt-3 font-semibold text-foreground">{title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+              <h3 className="mt-4 text-xl font-semibold text-foreground md:text-2xl">{title}</h3>
+              <p className="mt-3 text-base leading-relaxed text-muted-foreground md:text-lg">{description}</p>
             </div>
           ))}
         </div>
