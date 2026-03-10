@@ -4,7 +4,10 @@ import { ProductCard } from "@/components/shared/product-card";
 import { ProductGridSkeleton } from "@/components/shared/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SectionTitle } from "@/components/shared/section-title";
+import { RotatingProductGrid } from "@/components/shared/rotating-product-grid";
+import { CollectionCarouselSection } from "@/components/shared/collection-carousel-section";
 import { Package, Shield, CircleCheck, Heart } from "lucide-react";
+import type { ProductListItem } from "@/lib/catalog";
 
 /** Homepage category grid: Men & Kids (left), Women (right). Arabic labels. */
 const CATEGORY_BANNERS = [
@@ -21,18 +24,14 @@ type HomeProduct = {
   priceEgp: number;
   originalPriceEgp?: number;
   discountPercent?: number;
+  inStock?: boolean;
   colorVariants?: { id: string; colorHex: string | null; colorName: string | null; imageUrl: string | null }[];
 };
 
-type HomeData = {
-  categories: { id: string; name: string; slug: string; productCount: number }[];
-  trending: HomeProduct[];
-  recommended: HomeProduct[];
-  newArrivals: HomeProduct[];
-  bestSellers: HomeProduct[];
-} | null;
+/** Home data shape from getHomeData(); collection products are ProductListItem[]. */
+type HomeData = Awaited<ReturnType<typeof import("@/lib/storefront-data").getHomeData>> | null;
 
-function toCardProps(p: HomeProduct) {
+function toCardProps(p: HomeProduct | ProductListItem) {
   return {
     id: p.id,
     name: p.name,
@@ -42,6 +41,7 @@ function toCardProps(p: HomeProduct) {
     originalPrice: p.originalPriceEgp,
     discountPercent: p.discountPercent,
     colorVariants: p.colorVariants,
+    inStock: p.inStock ?? true,
   };
 }
 
@@ -85,10 +85,19 @@ export function HomeSections({ data }: { data: HomeData }) {
         <section className="bg-[#1a1a1a] py-12 md:py-16">
           <div className="mx-auto h-32 max-w-3xl animate-pulse rounded-2xl bg-white/5" />
         </section>
-        <section className="py-6 md:py-8">
-          <SectionTitle title="قد يعجبك" />
-          <ProductGridSkeleton count={4} />
-        </section>
+        {[1, 2, 3].map((i) => (
+          <section key={i} className="py-10 md:py-12">
+            <div className="mb-6 flex items-center justify-center gap-4">
+              <span className="h-0.5 max-w-12 flex-1 bg-foreground/40" aria-hidden />
+              <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+              <span className="h-0.5 max-w-12 flex-1 bg-foreground/40" aria-hidden />
+            </div>
+            <ProductGridSkeleton count={4} />
+            <div className="mt-10 flex justify-center">
+              <div className="h-10 w-24 animate-pulse rounded-2xl bg-muted" />
+            </div>
+          </section>
+        ))}
         <section className="py-6 md:py-8">
           <SectionTitle title="لماذا ملوك النيل" subtitle="التميز في كل تفصيلة" />
           <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-3">
@@ -101,8 +110,11 @@ export function HomeSections({ data }: { data: HomeData }) {
     );
   }
 
-  const { trending, recommended, bestSellers } = data;
+  const { trending, bestSellers, collectionProducts } = data;
   const bestSellersSlice = bestSellers.slice(0, 4);
+  const womenProducts: ProductListItem[] = collectionProducts.women;
+  const kidsProducts: ProductListItem[] = collectionProducts.kids;
+  const menProducts: ProductListItem[] = collectionProducts.men;
 
   return (
     <>
@@ -204,23 +216,18 @@ export function HomeSections({ data }: { data: HomeData }) {
         </div>
       </section>
 
-      {/* قد يعجبك — recommended products */}
-      <section className="py-6 md:py-8">
-        <SectionTitle title="قد يعجبك" />
-        {recommended.length === 0 ? (
-          <EmptyState
-            icon={<Package className="h-8 w-8" />}
-            title="لا توجد توصيات بعد"
-            description="تصفح المنتجات لرؤية توصيات مخصصة لك."
-          />
-        ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {recommended.map((p) => (
-              <ProductCard key={p.id} {...toCardProps(p)} />
-            ))}
-          </div>
-        )}
-      </section>
+      {/* Collection sections: 4 products like الأكثر مبيعاً, rotate automatically */}
+      <CollectionCarouselSection title="كولكشن السيدات" viewAllHref="/categories/women">
+        <RotatingProductGrid products={womenProducts} />
+      </CollectionCarouselSection>
+
+      <CollectionCarouselSection title="كولكشن الأطفال" viewAllHref="/categories/kids">
+        <RotatingProductGrid products={kidsProducts} />
+      </CollectionCarouselSection>
+
+      <CollectionCarouselSection title="كولكشن الرجال" viewAllHref="/categories/men">
+        <RotatingProductGrid products={menProducts} />
+      </CollectionCarouselSection>
 
       {/* 5. Why Nile Kings — 3 equal centered cards */}
       <section className="py-6 md:py-8">

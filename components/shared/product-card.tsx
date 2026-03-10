@@ -22,6 +22,8 @@ export interface ProductCardProps {
   colorVariants?: ColorVariantListItem[];
   /** When set (section view), link to this variant slug so the product page opens with that variant selected. */
   variantSlug?: string | null;
+  /** When false, show a sold-out badge. Omitted or true = in stock. */
+  inStock?: boolean;
   className?: string;
 }
 
@@ -35,6 +37,7 @@ export function ProductCard({
   discountPercent,
   colorVariants,
   variantSlug,
+  inStock = true,
   className,
 }: ProductCardProps) {
   const [hoveredImageUrl, setHoveredImageUrl] = useState<string | null>(null);
@@ -66,6 +69,11 @@ export function ProductCard({
             )}
           >
             -{discountPercent}%
+          </span>
+        )}
+        {!inStock && (
+          <span className="absolute bottom-2 inset-x-2 rounded-lg bg-foreground/80 px-2 py-1.5 text-center text-xs font-medium text-white">
+            نفذ
           </span>
         )}
       </div>

@@ -80,6 +80,8 @@ const include = {
 } as const;
 
 const BEST_SELLERS_LIMIT = 4;
+/** Max products per collection carousel on homepage (women, kids, men). */
+const COLLECTION_CAROUSEL_LIMIT = 16;
 
 export async function getHomeData(): Promise<{
   categories: { id: string; name: string; slug: string; productCount: number }[];
@@ -87,9 +89,14 @@ export async function getHomeData(): Promise<{
   recommended: ProductListItem[];
   newArrivals: ProductListItem[];
   bestSellers: ProductListItem[];
+  collectionProducts: {
+    women: ProductListItem[];
+    kids: ProductListItem[];
+    men: ProductListItem[];
+  };
 } | null> {
   try {
-    const [categories, trendingRows, addToCartRows, newArrivals, allProducts] =
+    const [categories, trendingRows, addToCartRows, newArrivals, allProducts, womenProducts, kidsProducts, menProducts] =
       await Promise.all([
         prisma.category.findMany({
           orderBy: { sortOrder: "asc" },
@@ -116,6 +123,24 @@ export async function getHomeData(): Promise<{
         }),
         prisma.product.findMany({
           where: { active: true },
+          include,
+        }),
+        prisma.product.findMany({
+          where: { active: true, category: { slug: "women" } },
+          orderBy: { createdAt: "desc" },
+          take: COLLECTION_CAROUSEL_LIMIT,
+          include,
+        }),
+        prisma.product.findMany({
+          where: { active: true, category: { slug: "kids" } },
+          orderBy: { createdAt: "desc" },
+          take: COLLECTION_CAROUSEL_LIMIT,
+          include,
+        }),
+        prisma.product.findMany({
+          where: { active: true, category: { slug: "men" } },
+          orderBy: { createdAt: "desc" },
+          take: COLLECTION_CAROUSEL_LIMIT,
           include,
         }),
       ]);
@@ -159,6 +184,12 @@ export async function getHomeData(): Promise<{
       }
     }
 
+    const collectionProducts = {
+      women: womenProducts.map(toListItem),
+      kids: kidsProducts.map(toListItem),
+      men: menProducts.map(toListItem),
+    };
+
     return {
       categories: categories.map((c) => ({
         id: c.id,
@@ -170,6 +201,7 @@ export async function getHomeData(): Promise<{
       recommended: fallbackRecommended,
       newArrivals: newArrivalsList,
       bestSellers,
+      collectionProducts,
     };
   } catch {
     return null;
