@@ -124,7 +124,7 @@ export default function ProfileOrdersPage() {
                   </p>
                 )}
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {order.shippingProvider} · {order.paymentMethod === "COD" ? "الدفع عند الاستلام" : order.paymentMethod === "INSTAPAY_PREPAID" ? "الدفع عبر InstaPay" : "بطاقة"}
+                  {order.paymentMethod === "COD" ? "الدفع عند الاستلام" : order.paymentMethod === "INSTAPAY_PREPAID" ? "الدفع عبر InstaPay" : "بطاقة"}
                 </p>
               </div>
             </li>
