@@ -31,16 +31,17 @@ export function ProductsContent() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const sortFromUrl = search.get("sort") as SortOptionValue | null;
+  const sortFromUrlRaw = search.get("sort");
+  const sortFromUrl = sortFromUrlRaw as SortOptionValue | null;
   const sortParam = sortFromUrl ?? DEFAULT_SORT;
 
   // Sync URL to default sort when missing so dropdown shows "ابجديا، من الالف للياء" not fallback
   useEffect(() => {
-    if (sortFromUrl != null && sortFromUrl !== "") return;
+    if (sortFromUrlRaw != null && sortFromUrlRaw !== "") return;
     const next = new URLSearchParams(search.toString());
     next.set("sort", DEFAULT_SORT);
     router.replace(`/products?${next.toString()}`, { scroll: false });
-  }, [router, search, sortFromUrl]);
+  }, [router, search, sortFromUrlRaw]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
