@@ -362,7 +362,7 @@ export default function CheckoutPage() {
       if (res.ok && json?.success && json.data?.orderId) {
         setInstaPayModalOpen(false);
         setSuccessModalOpen(true);
-        await refreshCart();
+        // Do NOT refreshCart() here — it would clear cart and trigger empty-cart view before user clicks تم. Refresh after redirect in تم handler.
       } else {
         toast({ title: json?.error?.message ?? "فشل إنشاء الطلب", variant: "destructive" });
       }
@@ -374,6 +374,8 @@ export default function CheckoutPage() {
   };
 
   const isEmpty = !cart || cart.items.length === 0;
+  // When success modal is open (InstaPay order just placed), do NOT show empty-cart view — show main content so the modal is visible until user clicks تم
+  const showEmptyCartView = isEmpty && !successModalOpen;
 
   if (!authChecked) {
     return (
@@ -408,7 +410,7 @@ export default function CheckoutPage() {
     );
   }
 
-  if (isEmpty) {
+  if (showEmptyCartView) {
     return (
       <div className="container px-4 py-10">
         <div className="mx-auto max-w-md text-center">
@@ -832,10 +834,8 @@ export default function CheckoutPage() {
       {/* Success modal after InstaPay order — closes only when customer presses تم, then redirect to orders */}
       <Dialog
         open={successModalOpen}
-        onOpenChange={(open) => {
-          if (open) setSuccessModalOpen(true);
-          /* do not close on overlay/escape; only close via تم button */
-        }}
+        onOpenChange={(open) => setSuccessModalOpen(!!open)}
+        closeOnOverlayClick={false}
       >
         <DialogContent className="max-w-sm rounded-2xl text-right" dir="rtl">
           <DialogHeader>
@@ -850,6 +850,7 @@ export default function CheckoutPage() {
               className="rounded-xl w-full sm:w-auto"
               onClick={() => {
                 setSuccessModalOpen(false);
+                refreshCart(); // update cart (now empty) before leaving
                 router.push("/profile/orders");
                 router.refresh();
               }}

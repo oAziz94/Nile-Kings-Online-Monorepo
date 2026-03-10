@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 interface DialogContextValue {
   open: boolean;
   setOpen: (v: boolean) => void;
+  closeOnOverlayClick: boolean;
 }
 
 const DialogContext = React.createContext<DialogContextValue | null>(null);
@@ -13,10 +14,13 @@ const DialogContext = React.createContext<DialogContextValue | null>(null);
 const Dialog = ({
   open,
   onOpenChange,
+  closeOnOverlayClick = true,
   children,
 }: {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** When false, overlay and escape do not close; only explicit setOpen(false) / button close. Default true. */
+  closeOnOverlayClick?: boolean;
   children: React.ReactNode;
 }) => {
   const [internalOpen, setInternalOpen] = React.useState(false);
@@ -30,7 +34,7 @@ const Dialog = ({
     [isControlled, onOpenChange]
   );
   return (
-    <DialogContext.Provider value={{ open: isOpen, setOpen }}>
+    <DialogContext.Provider value={{ open: isOpen, setOpen, closeOnOverlayClick }}>
       {children}
     </DialogContext.Provider>
   );
@@ -86,7 +90,7 @@ const DialogOverlay = React.forwardRef<
         "fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         className
       )}
-      onClick={() => ctx?.setOpen(false)}
+      onClick={() => ctx?.closeOnOverlayClick !== false && ctx?.setOpen(false)}
       {...props}
     />
   );
