@@ -19,11 +19,13 @@ function toDetail(p: {
   variants: {
     id: string;
     sku: string;
+    slug: string | null;
     name: string;
     pricePiastres: number;
     stockAvailable: number;
     colorHex: string | null;
     colorName: string | null;
+    imageUrl: string | null;
   }[];
 }): ProductDetail {
   const prices = p.variants.map((v) => v.pricePiastres);
@@ -58,6 +60,8 @@ function toDetail(p: {
       id: v.id,
       sku: v.sku,
       name: v.name,
+      slug: v.slug,
+      imageUrl: v.imageUrl,
       priceEgp: piastresToEgp(v.pricePiastres),
       stockAvailable: v.stockAvailable,
       inStock: v.stockAvailable > 0,
@@ -81,11 +85,13 @@ export async function GET(
         select: {
           id: true,
           sku: true,
+          slug: true,
           name: true,
           pricePiastres: true,
           stockAvailable: true,
           colorHex: true,
           colorName: true,
+          imageUrl: true,
         },
         orderBy: { name: "asc" },
       },

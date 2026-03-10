@@ -24,6 +24,9 @@ export interface VariantPublic {
   inStock: boolean;
   colorHex?: string | null;
   colorName?: string | null;
+  /** Optional; used for product page and quick-shop modal variant links/images. */
+  slug?: string | null;
+  imageUrl?: string | null;
 }
 
 export interface ColorVariantListItem {
