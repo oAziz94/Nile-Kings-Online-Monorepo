@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Price } from "./price";
 import { QuickShopModal } from "./quick-shop-modal";
 import { cn } from "@/lib/utils";
+import { Eye, ShoppingCart } from "lucide-react";
 import type { ColorVariantListItem } from "@/lib/catalog";
 
 const PLACEHOLDER_IMAGE =
@@ -66,27 +67,31 @@ export function ProductCard({
           {/* Hover overlay: Quick View + Quick Shop */}
           <div
             className={cn(
-              "absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+              "absolute inset-0 flex flex-row items-center justify-center gap-3 bg-black/40 opacity-0 transition-opacity duration-200 group-hover:opacity-100",
               "rounded-t-2xl"
             )}
           >
             <Link
               href={href}
-              className="rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-foreground shadow-sm hover:bg-white/95 transition-colors"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-foreground shadow-sm hover:bg-white/95 transition-colors"
               onClick={(e) => e.stopPropagation()}
+              aria-label="نظرة سريعة"
+              title="نظرة سريعة"
             >
-              نظرة سريعة
+              <Eye className="h-5 w-5" />
             </Link>
             <button
               type="button"
-              className="rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-foreground shadow-sm hover:bg-white/95 transition-colors"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-foreground shadow-sm hover:bg-white/95 transition-colors"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 setQuickShopOpen(true);
               }}
+              aria-label="متجر سريع"
+              title="متجر سريع"
             >
-              متجر سريع
+              <ShoppingCart className="h-5 w-5" />
             </button>
           </div>
           {discountPercent != null && discountPercent > 0 && (
