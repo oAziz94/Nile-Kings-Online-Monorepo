@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useEffect, useCallback, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,9 @@ type SavedAddress = {
   isDefault: boolean;
 };
 
+const CART_PLACEHOLDER_IMAGE =
+  "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=200&h=200&fit=crop";
+
 const emptyAddress = {
   label: "",
   governorate: "",
@@ -54,6 +58,9 @@ const emptyAddress = {
   notes: "",
   phone: "",
 };
+
+/** Default minimum delivery fee (EGP) shown until address is filled and real shipping is calculated. */
+const DEFAULT_MIN_SHIPPING_EGP = 50;
 
 function piastresToEgp(p: number) {
   return Math.round(p / 100);
@@ -107,6 +114,8 @@ export default function CheckoutPage() {
 
   const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS[0]);
   const [couponCode, setCouponCode] = useState("");
+  /** Coupon code sent to API; only updated when user clicks Apply (طبق), so typing does not trigger recalc. */
+  const [appliedCouponCode, setAppliedCouponCode] = useState("");
   const [summary, setSummary] = useState<Summary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [placeLoading, setPlaceLoading] = useState(false);
@@ -179,7 +188,7 @@ export default function CheckoutPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         address: addressToPayload(addr),
-        couponCode: couponCode.trim() || null,
+        couponCode: appliedCouponCode.trim() || null,
         paymentMethod,
       }),
     })
@@ -215,7 +224,7 @@ export default function CheckoutPage() {
     selectedAddressId,
     useNewAddress,
     paymentMethod,
-    couponCode,
+    appliedCouponCode,
     address.governorate,
     address.street,
     address.phone,
@@ -271,7 +280,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           address: addressToPayload(addr),
           paymentMethod,
-          couponCode: couponCode.trim() || null,
+          couponCode: appliedCouponCode.trim() || null,
         }),
       });
       const json = await parseJsonResponse<{ success?: boolean; data?: { orderId?: string }; error?: { message?: string } }>(res);
@@ -530,48 +539,56 @@ export default function CheckoutPage() {
               </div>
             </div>
           </section>
-
-          <div className="rounded-2xl border border-border bg-card p-4">
-            <label className="text-xs font-medium text-muted-foreground">كود الخصم</label>
-            <div className="mt-2 flex gap-2">
-              <div className="relative flex-1">
-                <Input
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                  placeholder="اختياري"
-                  className="rounded-xl pe-9"
-                />
-                {(couponCode.trim() || summary?.appliedCouponCode) && (
-                  <button
-                    type="button"
-                    onClick={() => setCouponCode("")}
-                    className="absolute end-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    aria-label="إزالة كود الخصم"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-            {summary?.appliedCouponCode && (
-              <p className="mt-2 text-xs text-green-600">تم تطبيق: {summary.appliedCouponCode}</p>
-            )}
-            {couponCode.trim() && summary && !summary.appliedCouponCode && (
-              <p className="mt-2 text-xs text-destructive">كود الخصم غير صالح أو منتهي الصلاحية.</p>
-            )}
-          </div>
         </div>
 
         {/* Right: sticky order summary */}
         <div className="lg:col-span-2">
           <div className="sticky top-24 rounded-2xl border border-border bg-card p-5 sm:p-6">
             <h2 className="text-base font-semibold text-foreground">ملخص الطلب</h2>
+
+            {/* Cart snippet */}
+            {cart && cart.items.length > 0 && (
+              <ul className="mt-4 space-y-3 border-b border-border pb-4">
+                {cart.items.slice(0, 6).map((item) => (
+                  <li key={item.id} className="flex gap-3 text-sm">
+                    <Link
+                      href={`/products/${item.variantSlug ?? item.productSlug}`}
+                      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted"
+                    >
+                      <Image
+                        src={item.imageUrl || CART_PLACEHOLDER_IMAGE}
+                        alt={item.productName}
+                        fill
+                        className="object-cover"
+                        sizes="64px"
+                      />
+                      {item.quantity > 1 && (
+                        <span className="absolute bottom-0 start-0 flex h-5 min-w-5 items-center justify-center rounded-tl bg-foreground/80 px-1 text-xs font-medium text-background">
+                          {item.quantity}
+                        </span>
+                      )}
+                    </Link>
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        href={`/products/${item.variantSlug ?? item.productSlug}`}
+                        className="font-medium text-foreground line-clamp-2 hover:underline"
+                      >
+                        {item.productName}
+                      </Link>
+                      <p className="text-muted-foreground">{item.variantName}</p>
+                      <Price amount={item.priceEgp * item.quantity} size="sm" className="mt-0.5" />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
             {summaryLoading ? (
               <p className="mt-4 text-sm text-muted-foreground">جاري الحساب…</p>
             ) : summary ? (
               <div className="mt-4 space-y-2 text-sm">
                 <div className="flex justify-between text-muted-foreground">
-                  <span>المجموع الفرعي</span>
+                  <span>المجموع الفرعي {cart ? `${cart.itemCount} عناصر` : ""}</span>
                   <Price amount={piastresToEgp(summary.subtotal)} />
                 </div>
                 {summary.couponDiscount > 0 && (
@@ -590,13 +607,105 @@ export default function CheckoutPage() {
                     <Price amount={piastresToEgpDisplay(summary.codFee)} />
                   </div>
                 )}
+                {/* Promo code field: left section, exactly before final total */}
+                <div className="border-t border-border pt-3">
+                  <label className="text-xs font-medium text-muted-foreground">الرقم التسلسلي للخصم</label>
+                  <div className="mt-2 flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        placeholder="اختياري"
+                        className="rounded-xl pe-9"
+                      />
+                      {(couponCode.trim() || summary.appliedCouponCode) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCouponCode("");
+                            setAppliedCouponCode("");
+                          }}
+                          className="absolute end-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          aria-label="إزالة كود الخصم"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="rounded-xl shrink-0"
+                      onClick={() => setAppliedCouponCode(couponCode.trim())}
+                    >
+                      طبق
+                    </Button>
+                  </div>
+                  {summary.appliedCouponCode && (
+                    <p className="mt-2 text-xs text-green-600">تم تطبيق: {summary.appliedCouponCode}</p>
+                  )}
+                  {couponCode.trim() && !summary.appliedCouponCode && (
+                    <p className="mt-2 text-xs text-destructive">كود الخصم غير صالح أو منتهي الصلاحية.</p>
+                  )}
+                </div>
                 <div className="flex justify-between border-t border-border pt-3 text-base font-semibold text-foreground">
                   <span>الإجمالي</span>
                   <Price amount={piastresToEgp(summary.finalTotal)} size="lg" />
                 </div>
               </div>
             ) : (
-              <p className="mt-4 text-sm text-muted-foreground">اختر عنوان التوصيل لعرض الملخص.</p>
+              <div className="mt-4 space-y-2 text-sm">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>المجموع الفرعي {cart ? `${cart.itemCount} عناصر` : ""}</span>
+                  <Price amount={cart?.subtotalEgp ?? 0} />
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>الشحن</span>
+                  <span className="text-muted-foreground/80">
+                    <Price amount={DEFAULT_MIN_SHIPPING_EGP} /> (حد أدنى حتى إكمال العنوان)
+                  </span>
+                </div>
+                {/* Promo code: same position as when summary exists, exactly before final total */}
+                <div className="border-t border-border pt-3">
+                  <label className="text-xs font-medium text-muted-foreground">الرقم التسلسلي للخصم</label>
+                  <div className="mt-2 flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        placeholder="اختياري"
+                        className="rounded-xl pe-9"
+                      />
+                      {couponCode.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCouponCode("");
+                            setAppliedCouponCode("");
+                          }}
+                          className="absolute end-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          aria-label="إزالة كود الخصم"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="rounded-xl shrink-0"
+                      onClick={() => setAppliedCouponCode(couponCode.trim())}
+                    >
+                      طبق
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex justify-between border-t border-border pt-3 text-base font-semibold text-foreground">
+                  <span>الإجمالي</span>
+                  <Price amount={(cart?.subtotalEgp ?? 0) + DEFAULT_MIN_SHIPPING_EGP} size="lg" />
+                </div>
+                <p className="text-xs text-muted-foreground">اختر عنوان التوصيل لعرض الشحن والخصومات الفعلية.</p>
+              </div>
             )}
             <Button
               type="submit"
