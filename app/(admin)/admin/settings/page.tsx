@@ -16,7 +16,7 @@ type OtpRules = {
 };
 
 export default function AdminSettingsPage() {
-  const [codFeePiastres, setCodFeePiastres] = React.useState<number | "">("");
+  const [codFeePercent, setCodFeePercent] = React.useState<number | "">("");
   const [otpRules, setOtpRules] = React.useState<OtpRules | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [savingCod, setSavingCod] = React.useState(false);
@@ -30,7 +30,9 @@ export default function AdminSettingsPage() {
       fetch("/api/admin/settings/otp-rules", { credentials: "include" }).then((r) => r.json()),
     ])
       .then(([codRes, otpRes]) => {
-        if (codRes?.success && typeof codRes.data?.codFeePiastres === "number") setCodFeePiastres(codRes.data.codFeePiastres);
+        if (codRes?.success && codRes.data && typeof codRes.data.codFeePercent === "number") {
+          setCodFeePercent(codRes.data.codFeePercent);
+        }
         if (otpRes?.success && otpRes.data) {
           setOtpRules(otpRes.data);
           setOtpForm({
@@ -46,9 +48,9 @@ export default function AdminSettingsPage() {
 
   const saveCodFee = async (e: React.FormEvent) => {
     e.preventDefault();
-    const value = codFeePiastres === "" ? 0 : Number(codFeePiastres);
-    if (value < 0) {
-      toast({ title: "القيمة غير سالبة", variant: "destructive" });
+    const percentVal = codFeePercent === "" ? 0 : Number(codFeePercent);
+    if (percentVal < 0 || percentVal > 100) {
+      toast({ title: "النسبة يجب أن تكون بين 0 و 100", variant: "destructive" });
       return;
     }
     setSavingCod(true);
@@ -57,11 +59,11 @@ export default function AdminSettingsPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ codFeePiastres: value }),
+        body: JSON.stringify({ codFeePiastres: 0, codFeePercent: percentVal }),
       });
       const json = await res.json();
       if (res.ok && json?.success) {
-        setCodFeePiastres(json.data.codFeePiastres);
+        setCodFeePercent(json.data.codFeePercent);
         toast({ title: "تم حفظ رسوم الدفع عند الاستلام" });
       } else toast({ title: json?.error?.message ?? "فشل", variant: "destructive" });
     } catch {
@@ -121,18 +123,21 @@ export default function AdminSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>رسوم الدفع عند الاستلام (COD)</CardTitle>
-          <CardDescription>المبلغ بالبنسات (مثلاً 500 = 5 ج.م).</CardDescription>
+          <CardDescription>نسبة مئوية من (مجموع المنتجات + التوصيل − الخصم إن وُجد). مثال: 2 = 2٪ من هذا المجموع.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={saveCodFee} className="flex flex-wrap items-end gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="cod-fee">الرسوم (بنسة)</Label>
+              <Label htmlFor="cod-fee-percent">النسبة (٪)</Label>
               <Input
-                id="cod-fee"
+                id="cod-fee-percent"
                 type="number"
                 min={0}
-                value={codFeePiastres}
-                onChange={(e) => setCodFeePiastres(e.target.value === "" ? "" : parseInt(e.target.value, 10) || 0)}
+                max={100}
+                step={0.1}
+                placeholder="0"
+                value={codFeePercent}
+                onChange={(e) => setCodFeePercent(e.target.value === "" ? "" : parseFloat(e.target.value) || 0)}
               />
             </div>
             <Button type="submit" disabled={savingCod}>{savingCod ? "جاري…" : "حفظ"}</Button>

@@ -8,7 +8,7 @@ import { computePricing } from "@/lib/services/pricing";
 import { isSeniorPromoEnabled } from "@/lib/settings";
 import type { CheckoutAddress, CheckoutSummary } from "./types";
 import { DEFAULT_ITEM_WEIGHT_GRAMS } from "./types";
-import { getCodFeePiastres } from "@/lib/settings";
+import { getCodFeePercent } from "@/lib/settings";
 
 export type SummaryInput = {
   userId: string;
@@ -80,8 +80,13 @@ export async function buildCheckoutSummary(
 
   if (!shippingOption) return null;
 
-  const codFeePiastres = await getCodFeePiastres();
-  const codFee = input.paymentMethod === "COD" ? codFeePiastres : 0;
+  // COD base = items total (after discounts/promo) + delivery. Fee = admin % of that (no fixed fee).
+  const orderBeforeCodPiastres = pricing.totalPiastres + shippingOption.feePiastres;
+  const codFeePercent = await getCodFeePercent();
+  const codFee =
+    input.paymentMethod === "COD"
+      ? Math.round((orderBeforeCodPiastres * codFeePercent) / 100)
+      : 0;
   const finalTotal =
     pricing.totalPiastres + shippingOption.feePiastres + codFee;
 

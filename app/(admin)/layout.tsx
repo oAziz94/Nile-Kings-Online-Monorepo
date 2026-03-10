@@ -21,7 +21,6 @@ export default async function AdminLayout({
     { href: "/admin/analytics", label: "التحليلات" },
     { href: "/admin/products", label: "المنتجات" },
     { href: "/admin/categories", label: "الفئات" },
-    { href: "/admin/shipping", label: "قواعد الشحن" },
     { href: "/admin/coupons", label: "الكوبونات" },
     { href: "/admin/orders", label: "الطلبات" },
     { href: "/admin/settings", label: "الإعدادات" },

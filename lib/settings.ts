@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 export const SITE_SETTING_KEYS = {
   SENIOR_PROMO_ENABLED: "senior_promo_enabled",
   COD_FEE_PIASTRES: "cod_fee_piastres",
+  COD_FEE_PERCENT: "cod_fee_percent",
   OTP_EXPIRY_MINUTES: "otp_expiry_minutes",
   OTP_COOLDOWN_SECONDS: "otp_cooldown_seconds",
   OTP_MAX_VERIFY_ATTEMPTS: "otp_max_verify_attempts",
@@ -46,7 +47,7 @@ export async function setSeniorPromoEnabled(enabled: boolean): Promise<void> {
   await setSiteSetting(SITE_SETTING_KEYS.SENIOR_PROMO_ENABLED, enabled ? "true" : "false");
 }
 
-/** COD fee in piastres (admin-configurable). Default 0. */
+/** COD fee in piastres (admin-configurable, used when percent is 0). Default 0. */
 export async function getCodFeePiastres(): Promise<number> {
   const v = await getSiteSetting(SITE_SETTING_KEYS.COD_FEE_PIASTRES);
   if (v == null || v === "") return 0;
@@ -57,6 +58,19 @@ export async function getCodFeePiastres(): Promise<number> {
 export async function setCodFeePiastres(piastres: number): Promise<void> {
   const n = Math.max(0, Math.floor(piastres));
   await setSiteSetting(SITE_SETTING_KEYS.COD_FEE_PIASTRES, String(n));
+}
+
+/** COD fee as percentage of order (subtotal after discounts + shipping). If > 0, used instead of fixed piastres. Default 0. */
+export async function getCodFeePercent(): Promise<number> {
+  const v = await getSiteSetting(SITE_SETTING_KEYS.COD_FEE_PERCENT);
+  if (v == null || v === "") return 0;
+  const n = parseFloat(v);
+  return Number.isFinite(n) && n >= 0 && n <= 100 ? n : 0;
+}
+
+export async function setCodFeePercent(percent: number): Promise<void> {
+  const n = Math.max(0, Math.min(100, percent));
+  await setSiteSetting(SITE_SETTING_KEYS.COD_FEE_PERCENT, String(n));
 }
 
 export type OtpRules = {

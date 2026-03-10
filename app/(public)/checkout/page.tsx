@@ -58,6 +58,12 @@ const emptyAddress = {
 function piastresToEgp(p: number) {
   return Math.round(p / 100);
 }
+/** EGP for display when amount may be small (e.g. COD fee); avoids showing 0 for 1 piastre. */
+function piastresToEgpDisplay(p: number) {
+  if (p <= 0) return 0;
+  const egp = p / 100;
+  return egp < 1 && egp > 0 ? Number(egp.toFixed(2)) : Math.round(egp);
+}
 
 function addressToPayload(addr: typeof emptyAddress) {
   return {
@@ -604,7 +610,7 @@ export default function CheckoutPage() {
                 {summary.codFee > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>رسوم الاستلام</span>
-                    <Price amount={piastresToEgp(summary.codFee)} />
+                    <Price amount={piastresToEgpDisplay(summary.codFee)} />
                   </div>
                 )}
                 <div className="flex justify-between border-t border-border pt-3 text-base font-semibold text-foreground">
