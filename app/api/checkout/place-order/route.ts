@@ -3,7 +3,6 @@ import { placeOrder } from "@/lib/checkout/place-order";
 import { apiSuccess, apiBadRequest, apiUnauthorized } from "@/lib/api/response";
 import { withApiHandler } from "@/lib/api/with-api-handler";
 import { invalidateAnalyticsCache } from "@/lib/cache/analytics";
-import { SHIPPING_PROVIDERS } from "@/lib/services/shipping";
 import { PAYMENT_METHODS } from "@/lib/checkout/types";
 
 const addressSchema = {
@@ -22,7 +21,6 @@ async function postHandler(req: Request) {
 
   let body: {
     address?: Record<string, unknown>;
-    provider?: string;
     paymentMethod?: string;
     couponCode?: string | null;
   };
@@ -46,11 +44,6 @@ async function postHandler(req: Request) {
     return apiBadRequest("رقم هاتف التوصيل مطلوب");
   }
 
-  const provider = typeof body.provider === "string" ? body.provider.trim() : "";
-  if (!provider || !SHIPPING_PROVIDERS.includes(provider as "Turbo" | "Egypt Post")) {
-    return apiBadRequest("يجب اختيار شركة الشحن (Turbo أو Egypt Post)");
-  }
-
   const paymentMethod = body.paymentMethod;
   if (!paymentMethod || !PAYMENT_METHODS.includes(paymentMethod as "COD" | "PAYMOB")) {
     return apiBadRequest("طريقة الدفع مطلوبة (COD أو PAYMOB)");
@@ -69,7 +62,6 @@ async function postHandler(req: Request) {
       notes: address.notes != null ? String(address.notes) : null,
       phone: String(address.phone).trim(),
     },
-    provider,
     paymentMethod: paymentMethod as "COD" | "PAYMOB",
     couponCode: body.couponCode ?? null,
   });

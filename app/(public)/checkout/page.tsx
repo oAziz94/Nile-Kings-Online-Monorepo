@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Price } from "@/components/shared/price";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/cart-context";
-import { SHIPPING_PROVIDERS, GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
+import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { PAYMENT_METHODS } from "@/lib/checkout/types";
 import { MapPin, Truck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -105,7 +105,6 @@ export default function CheckoutPage() {
   const [useNewAddress, setUseNewAddress] = useState(false);
   const [address, setAddress] = useState(emptyAddress);
 
-  const [provider, setProvider] = useState<string>(SHIPPING_PROVIDERS[0]);
   const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS[0]);
   const [couponCode, setCouponCode] = useState("");
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -180,7 +179,6 @@ export default function CheckoutPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         address: addressToPayload(addr),
-        provider,
         couponCode: couponCode.trim() || null,
         paymentMethod,
       }),
@@ -216,7 +214,6 @@ export default function CheckoutPage() {
     isGuest,
     selectedAddressId,
     useNewAddress,
-    provider,
     paymentMethod,
     couponCode,
     address.governorate,
@@ -273,7 +270,6 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           address: addressToPayload(addr),
-          provider,
           paymentMethod,
           couponCode: couponCode.trim() || null,
         }),
@@ -508,48 +504,29 @@ export default function CheckoutPage() {
             )}
           </section>
 
-          {/* Shipping & Payment - compact */}
+          {/* Payment - Phase 1: single carrier (Egypt Post), no carrier selection */}
           <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
             <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
               <Truck className="h-4 w-4 text-muted-foreground" />
               الشحن والدفع
             </h2>
-            <div className="mt-4 flex flex-wrap gap-6">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">شركة الشحن</p>
-                <div className="mt-2 flex gap-3">
-                  {SHIPPING_PROVIDERS.map((p) => (
-                    <label key={p} className="flex cursor-pointer items-center gap-2">
-                      <input
-                        type="radio"
-                        name="provider"
-                        value={p}
-                        checked={provider === p}
-                        onChange={() => setProvider(p)}
-                        className="h-4 w-4"
-                      />
-                      <span className="text-sm">{p}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">طريقة الدفع</p>
-                <div className="mt-2 flex gap-3">
-                  {PAYMENT_METHODS.map((p) => (
-                    <label key={p} className="flex cursor-pointer items-center gap-2">
-                      <input
-                        type="radio"
-                        name="payment"
-                        value={p}
-                        checked={paymentMethod === p}
-                        onChange={() => setPaymentMethod(p)}
-                        className="h-4 w-4"
-                      />
-                      <span className="text-sm">{p === "COD" ? "الدفع عند الاستلام" : "بطاقة"}</span>
-                    </label>
-                  ))}
-                </div>
+            <p className="mt-2 text-sm text-muted-foreground">التوصيل عبر البريد المصري (وصلك)</p>
+            <div className="mt-4">
+              <p className="text-xs font-medium text-muted-foreground">طريقة الدفع</p>
+              <div className="mt-2 flex gap-3">
+                {PAYMENT_METHODS.map((p) => (
+                  <label key={p} className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value={p}
+                      checked={paymentMethod === p}
+                      onChange={() => setPaymentMethod(p)}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-sm">{p === "COD" ? "الدفع عند الاستلام" : "بطاقة"}</span>
+                  </label>
+                ))}
               </div>
             </div>
           </section>

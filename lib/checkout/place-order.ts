@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { reserveStockForOrder, commitReservation, InsufficientStockError } from "@/lib/services/stock";
 import { logOrderCreated, logOrderConfirmed } from "@/lib/audit/order-audit";
 import { buildCheckoutSummary } from "./summary";
+import { PHASE1_SHIPPING_PROVIDER_DISPLAY } from "@/lib/services/shipping";
 import type { CheckoutAddress } from "./types";
 
 const RESERVATION_MINUTES = 15;
@@ -13,7 +14,6 @@ const RESERVATION_MINUTES = 15;
 export type PlaceOrderInput = {
   userId: string;
   address: CheckoutAddress;
-  provider: string;
   paymentMethod: "COD" | "PAYMOB";
   couponCode?: string | null;
 };
@@ -35,13 +35,12 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const summary = await buildCheckoutSummary({
     userId: input.userId,
     address: input.address,
-    provider: input.provider,
     couponCode: input.couponCode,
     paymentMethod: input.paymentMethod,
   });
 
   if (!summary) {
-    return { success: false, error: "Cart is empty or no shipping rule for provider and address", code: "INVALID_CHECKOUT" };
+    return { success: false, error: "Cart is empty, a product is missing weight, or shipping cannot be calculated for this address", code: "INVALID_CHECKOUT" };
   }
 
   const cart = await prisma.cart.findFirst({
@@ -108,7 +107,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
           codFeePiastres: summary.codFee,
           totalPiastres: summary.finalTotal,
           shippingAddress: input.address as object,
-          shippingProvider: input.provider,
+          shippingProvider: PHASE1_SHIPPING_PROVIDER_DISPLAY,
           paymentMethod: input.paymentMethod,
           couponCode: summary.appliedCouponCode ?? undefined,
           reservationExpiresAt: immediateConfirm ? null : reservationExpiresAt,

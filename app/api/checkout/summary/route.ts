@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import { requireCustomer } from "@/lib/auth/session";
 import { buildCheckoutSummary } from "@/lib/checkout/summary";
 import { apiSuccess, apiBadRequest, apiUnauthorized } from "@/lib/api/response";
-import { SHIPPING_PROVIDERS } from "@/lib/services/shipping";
 
 const addressSchema = {
   governorate: (v: unknown) => typeof v === "string" && v.trim().length > 0,
@@ -26,7 +25,6 @@ export async function POST(req: NextRequest) {
 
   let body: {
     address?: Record<string, unknown>;
-    provider?: string;
     couponCode?: string | null;
     paymentMethod?: string;
   };
@@ -50,11 +48,6 @@ export async function POST(req: NextRequest) {
     return apiBadRequest("رقم هاتف التوصيل مطلوب");
   }
 
-  const provider = typeof body.provider === "string" ? body.provider.trim() : "";
-  if (!provider || !SHIPPING_PROVIDERS.includes(provider as "Turbo" | "Egypt Post")) {
-    return apiBadRequest("يجب اختيار شركة الشحن (Turbo أو Egypt Post)");
-  }
-
   const summary = await buildCheckoutSummary({
     userId: user.userId,
     address: {
@@ -68,13 +61,12 @@ export async function POST(req: NextRequest) {
       notes: address.notes != null ? String(address.notes) : null,
       phone: String(address.phone).trim(),
     },
-    provider,
     couponCode: body.couponCode ?? null,
     paymentMethod: body.paymentMethod === "COD" || body.paymentMethod === "PAYMOB" ? body.paymentMethod : undefined,
   });
 
   if (!summary) {
-    return apiBadRequest("السلة فارغة أو لا يوجد تسعير شحن للمنطقة المختارة");
+    return apiBadRequest("السلة فارغة، أو وزن أحد المنتجات غير محدد، أو لا يمكن حساب الشحن للمحافظة المختارة");
   }
 
   return apiSuccess(summary);

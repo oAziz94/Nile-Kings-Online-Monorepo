@@ -1,26 +1,25 @@
 /**
- * Checkout summary: cart + address + provider + coupon → subtotal, discounts, shipping, cod, finalTotal.
+ * Checkout summary: cart + address + coupon → subtotal, discounts, shipping (Egypt Post Phase 1), cod, finalTotal.
  */
 
 import { prisma } from "@/lib/db";
-import { getShippingFeeForProvider } from "@/lib/services/shipping";
+import { getPhase1ShippingFee, PHASE1_SHIPPING_PROVIDER_DISPLAY } from "@/lib/services/shipping";
 import { computePricing } from "@/lib/services/pricing";
 import { isSeniorPromoEnabled } from "@/lib/settings";
 import type { CheckoutAddress, CheckoutSummary } from "./types";
-import { DEFAULT_ITEM_WEIGHT_GRAMS } from "./types";
 import { getCodFeePercent } from "@/lib/settings";
 
 export type SummaryInput = {
   userId: string;
   address: CheckoutAddress;
-  provider: string;
   couponCode?: string | null;
   paymentMethod?: "COD" | "PAYMOB";
 };
 
 /**
  * Build checkout summary from user's cart. Requires auth (userId).
- * Returns null if cart empty or shipping rule not found for provider+address+weight.
+ * Phase 1: shipping is Egypt Post Wasalha only; no provider choice.
+ * Returns null if cart empty, any product has missing weight, or shipping cannot be calculated for address/zone.
  */
 export async function buildCheckoutSummary(
   input: SummaryInput
@@ -42,6 +41,14 @@ export async function buildCheckoutSummary(
 
   if (!cart || cart.items.length === 0) return null;
 
+  // Phase 1: if any product has missing weight, shipping cannot be calculated
+  let weightGrams = 0;
+  for (const i of cart.items) {
+    const w = i.variant.product?.weightGrams;
+    if (w == null || w < 0) return null;
+    weightGrams += i.quantity * w;
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: input.userId },
     select: { seniorVerified: true },
@@ -62,14 +69,7 @@ export async function buildCheckoutSummary(
     seniorPromoEnabled,
   });
 
-  const weightGrams = cart.items.reduce(
-    (sum, i) =>
-      sum +
-      i.quantity * (i.variant.product?.weightGrams ?? DEFAULT_ITEM_WEIGHT_GRAMS),
-    0
-  );
-  const shippingOption = await getShippingFeeForProvider(
-    input.provider,
+  const shippingOption = getPhase1ShippingFee(
     {
       governorate: input.address.governorate,
       city: input.address.city,
@@ -98,7 +98,7 @@ export async function buildCheckoutSummary(
     codFee,
     finalTotal,
     appliedCouponCode: pricing.appliedCouponCode,
-    shippingProvider: input.provider,
+    shippingProvider: PHASE1_SHIPPING_PROVIDER_DISPLAY,
     paymentMethod: input.paymentMethod,
   };
 }

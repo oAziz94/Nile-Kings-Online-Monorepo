@@ -322,7 +322,7 @@ model Order {
   codFeePiastres        Int          @default(0)
   totalPiastres         Int
   shippingAddress       Json         // governorate, city, area, street, building, floor, apartment, notes, phone
-  shippingProvider      String       // "Turbo" | "Egypt Post"
+  shippingProvider      String       // Phase 1: "Egypt Post" only
   paymentMethod         String       // "COD" | "PAYMOB"
   couponCode            String?
   reservationExpiresAt  DateTime?    // set when status = CREATED; stock reserved until this time
