@@ -323,7 +323,7 @@ model Order {
   totalPiastres         Int
   shippingAddress       Json         // governorate, city, area, street, building, floor, apartment, notes, phone
   shippingProvider      String       // Phase 1: "Egypt Post" only
-  paymentMethod         String       // "COD" | "PAYMOB"
+  paymentMethod         String       // "COD" | "PAYMOB" | "INSTAPAY_PREPAID"
   couponCode            String?
   reservationExpiresAt  DateTime?    // set when status = CREATED; stock reserved until this time
   cancellationReason   String?      // e.g. "expired" when reservation times out

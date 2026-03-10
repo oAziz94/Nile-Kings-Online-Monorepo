@@ -4,8 +4,14 @@
 
 import { SHIPPING_PROVIDERS } from "@/lib/services/shipping";
 
-export const PAYMENT_METHODS = ["COD", "PAYMOB"] as const;
+export const PAYMENT_METHODS = ["COD", "PAYMOB", "INSTAPAY_PREPAID"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+/** Checkout UI: only COD and InstaPay prepaid. */
+export const CHECKOUT_PAYMENT_OPTIONS = [
+  { value: "COD" as const, label: "الدفع عند الاستلام" },
+  { value: "INSTAPAY_PREPAID" as const, label: "الدفع عبر InstaPay" },
+] as const;
 
 export type CheckoutAddress = {
   governorate: string;

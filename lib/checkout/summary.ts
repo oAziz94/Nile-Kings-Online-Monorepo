@@ -13,7 +13,7 @@ export type SummaryInput = {
   userId: string;
   address: CheckoutAddress;
   couponCode?: string | null;
-  paymentMethod?: "COD" | "PAYMOB";
+  paymentMethod?: "COD" | "PAYMOB" | "INSTAPAY_PREPAID";
 };
 
 /**
@@ -80,7 +80,7 @@ export async function buildCheckoutSummary(
 
   if (!shippingOption) return null;
 
-  // COD base = items total (after discounts/promo) + delivery. Fee = admin % of that (no fixed fee).
+  // COD: رسوم الاستلام = % of (items + shipping). InstaPay prepaid: no رسوم الاستلام.
   const orderBeforeCodPiastres = pricing.totalPiastres + shippingOption.feePiastres;
   const codFeePercent = await getCodFeePercent();
   const codFee =

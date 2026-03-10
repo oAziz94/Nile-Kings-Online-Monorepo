@@ -14,7 +14,7 @@ const RESERVATION_MINUTES = 15;
 export type PlaceOrderInput = {
   userId: string;
   address: CheckoutAddress;
-  paymentMethod: "COD" | "PAYMOB";
+  paymentMethod: "COD" | "PAYMOB" | "INSTAPAY_PREPAID";
   couponCode?: string | null;
 };
 
@@ -27,7 +27,7 @@ export type PlaceOrderResult =
  * - Lock variant rows, ensure available >= qty, increase stockReserved
  * - Create Order (status CREATED) with reservationExpiresAt = now + 15m
  * - Create OrderItems
- * - If COD or PAYMOB dummy: commit reservation (stockAvailable -= qty, stockReserved -= qty), set CONFIRMED, record payment
+ * - If COD or PAYMOB dummy: commit reservation, set CONFIRMED, record payment. If INSTAPAY_PREPAID: order stays CREATED, payment PENDING.
  * - Record coupon usage if applied
  * - Clear user cart
  */
@@ -89,6 +89,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const stockLines = orderLines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }));
   const reservationExpiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
   const immediateConfirm = input.paymentMethod === "COD" || input.paymentMethod === "PAYMOB";
+  const isInstaPayPrepaid = input.paymentMethod === "INSTAPAY_PREPAID";
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -131,7 +132,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       await logOrderCreated(tx, order.id);
       if (immediateConfirm) await logOrderConfirmed(tx, order.id);
 
-      // 4) If COD or Paymob dummy: commit reservation and payment
+      // 4) If COD or Paymob: commit reservation and payment. If InstaPay prepaid: record PENDING attempt.
       if (immediateConfirm) {
         await commitReservation(tx, stockLines);
         await tx.paymentAttempt.create({
@@ -141,6 +142,16 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
             amountPiastres: summary.finalTotal,
             provider: input.paymentMethod,
             providerRef: input.paymentMethod === "PAYMOB" ? `dummy-${order.id}` : undefined,
+          },
+        });
+      } else if (isInstaPayPrepaid) {
+        await tx.paymentAttempt.create({
+          data: {
+            orderId: order.id,
+            status: "PENDING",
+            amountPiastres: summary.finalTotal,
+            provider: "INSTAPAY_PREPAID",
+            providerRef: undefined,
           },
         });
       }

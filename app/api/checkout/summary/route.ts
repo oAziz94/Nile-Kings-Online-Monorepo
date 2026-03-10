@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       phone: String(address.phone).trim(),
     },
     couponCode: body.couponCode ?? null,
-    paymentMethod: body.paymentMethod === "COD" || body.paymentMethod === "PAYMOB" ? body.paymentMethod : undefined,
+    paymentMethod: body.paymentMethod === "COD" || body.paymentMethod === "PAYMOB" || body.paymentMethod === "INSTAPAY_PREPAID" ? body.paymentMethod : undefined,
   });
 
   if (!summary) {

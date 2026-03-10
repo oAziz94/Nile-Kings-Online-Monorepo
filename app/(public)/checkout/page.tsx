@@ -11,8 +11,16 @@ import { Price } from "@/components/shared/price";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/cart-context";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
-import { PAYMENT_METHODS } from "@/lib/checkout/types";
+import { CHECKOUT_PAYMENT_OPTIONS } from "@/lib/checkout/types";
 import { MapPin, Truck, X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { parseJsonResponse } from "@/lib/api/parse-json";
 
@@ -112,7 +120,7 @@ export default function CheckoutPage() {
   const [useNewAddress, setUseNewAddress] = useState(false);
   const [address, setAddress] = useState(emptyAddress);
 
-  const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS[0]);
+  const [paymentMethod, setPaymentMethod] = useState<string>(CHECKOUT_PAYMENT_OPTIONS[0].value);
   const [couponCode, setCouponCode] = useState("");
   /** Coupon code sent to API; only updated when user clicks Apply (طبق), so typing does not trigger recalc. */
   const [appliedCouponCode, setAppliedCouponCode] = useState("");
@@ -121,6 +129,9 @@ export default function CheckoutPage() {
   const [placeLoading, setPlaceLoading] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
+  const [instaPayModalOpen, setInstaPayModalOpen] = useState(false);
+  const [instaPayConfirmLoading, setInstaPayConfirmLoading] = useState(false);
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
 
   // Resolve effective delivery address from saved selection or new-address form
   const currentAddress = useNewAddress
@@ -239,6 +250,20 @@ export default function CheckoutPage() {
     toast,
   ]);
 
+  const doPlaceOrder = async (addr: typeof emptyAddress) => {
+    const res = await fetch("/api/checkout/place-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        address: addressToPayload(addr),
+        paymentMethod,
+        couponCode: appliedCouponCode.trim() || null,
+      }),
+    });
+    const json = await parseJsonResponse<{ success?: boolean; data?: { orderId?: string }; error?: { message?: string } }>(res);
+    return { res, json };
+  };
+
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     const addr = currentAddress;
@@ -250,9 +275,12 @@ export default function CheckoutPage() {
       toast({ title: "انتظر تحميل الملخص أو تحقق من العنوان", variant: "destructive" });
       return;
     }
+    if (paymentMethod === "INSTAPAY_PREPAID") {
+      setInstaPayModalOpen(true);
+      return;
+    }
     setPlaceLoading(true);
     try {
-      // When using a new address, save it to the customer's addresses for future orders
       if (useNewAddress) {
         const saveBody = {
           label: addr.label?.trim() || null,
@@ -273,17 +301,7 @@ export default function CheckoutPage() {
           body: JSON.stringify(saveBody),
         });
       }
-
-      const res = await fetch("/api/checkout/place-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address: addressToPayload(addr),
-          paymentMethod,
-          couponCode: appliedCouponCode.trim() || null,
-        }),
-      });
-      const json = await parseJsonResponse<{ success?: boolean; data?: { orderId?: string }; error?: { message?: string } }>(res);
+      const { res, json } = await doPlaceOrder(addr);
       if (res.status === 401) {
         router.replace("/login?redirect=/checkout");
         return;
@@ -300,6 +318,50 @@ export default function CheckoutPage() {
       toast({ title: "خطأ في الاتصال أو في قراءة الرد", variant: "destructive" });
     } finally {
       setPlaceLoading(false);
+    }
+  };
+
+  const handleInstaPayConfirm = async () => {
+    const addr = currentAddress;
+    if (!addr || !summary) return;
+    setInstaPayConfirmLoading(true);
+    try {
+      if (useNewAddress) {
+        const saveBody = {
+          label: addr.label?.trim() || null,
+          governorate: addr.governorate.trim(),
+          city: addr.city?.trim() || null,
+          area: addr.area?.trim() || null,
+          street: addr.street.trim(),
+          building: addr.building?.trim() || null,
+          floor: addr.floor?.trim() || null,
+          apartment: addr.apartment?.trim() || null,
+          notes: addr.notes?.trim() || null,
+          phone: addr.phone.trim(),
+        };
+        await fetch("/api/profile/addresses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(saveBody),
+        });
+      }
+      const { res, json } = await doPlaceOrder(addr);
+      if (res.status === 401) {
+        router.replace("/login?redirect=/checkout");
+        return;
+      }
+      if (res.ok && json?.success && json.data?.orderId) {
+        setInstaPayModalOpen(false);
+        setSuccessModalOpen(true);
+        await refreshCart();
+      } else {
+        toast({ title: json?.error?.message ?? "فشل إنشاء الطلب", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ في الاتصال أو في قراءة الرد", variant: "destructive" });
+    } finally {
+      setInstaPayConfirmLoading(false);
     }
   };
 
@@ -522,18 +584,23 @@ export default function CheckoutPage() {
             <p className="mt-2 text-sm text-muted-foreground">التوصيل عبر البريد المصري (وصلك)</p>
             <div className="mt-4">
               <p className="text-xs font-medium text-muted-foreground">طريقة الدفع</p>
-              <div className="mt-2 flex gap-3">
-                {PAYMENT_METHODS.map((p) => (
-                  <label key={p} className="flex cursor-pointer items-center gap-2">
+              <div className="mt-2 space-y-3">
+                {CHECKOUT_PAYMENT_OPTIONS.map((opt) => (
+                  <label key={opt.value} className="flex cursor-pointer items-start gap-2">
                     <input
                       type="radio"
                       name="payment"
-                      value={p}
-                      checked={paymentMethod === p}
-                      onChange={() => setPaymentMethod(p)}
-                      className="h-4 w-4"
+                      value={opt.value}
+                      checked={paymentMethod === opt.value}
+                      onChange={() => setPaymentMethod(opt.value)}
+                      className="mt-1 h-4 w-4 shrink-0"
                     />
-                    <span className="text-sm">{p === "COD" ? "الدفع عند الاستلام" : "بطاقة"}</span>
+                    <div>
+                      <span className="text-sm font-medium">{opt.label}</span>
+                      {opt.value === "INSTAPAY_PREPAID" && (
+                        <p className="mt-0.5 text-xs text-green-600">شحن أقل عند الدفع عبر InstaPay</p>
+                      )}
+                    </div>
                   </label>
                 ))}
               </div>
@@ -599,8 +666,16 @@ export default function CheckoutPage() {
                 )}
                 <div className="flex justify-between text-muted-foreground">
                   <span>رسوم الشحن</span>
-                  <Price amount={piastresToEgp(summary.shippingFee + summary.codFee)} />
+                  <Price amount={piastresToEgp(summary.shippingFee)} />
                 </div>
+                {paymentMethod === "COD" ? (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>رسوم الاستلام</span>
+                    <Price amount={piastresToEgpDisplay(summary.codFee)} />
+                  </div>
+                ) : paymentMethod === "INSTAPAY_PREPAID" && (
+                  <p className="text-xs text-green-600">تم إلغاء رسوم الاستلام عند الدفع عبر InstaPay</p>
+                )}
                 {/* Promo code field: left section, exactly before final total */}
                 <div className="border-t border-border pt-3">
                   <label className="text-xs font-medium text-muted-foreground">الرقم التسلسلي للخصم</label>
@@ -715,6 +790,78 @@ export default function CheckoutPage() {
           </div>
         </div>
       </form>
+
+      {/* InstaPay payment instructions modal */}
+      <Dialog open={instaPayModalOpen} onOpenChange={setInstaPayModalOpen}>
+        <DialogContent className="max-w-sm rounded-2xl text-right" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>الدفع عبر InstaPay</DialogTitle>
+            <DialogDescription className="mt-2">
+              قم بتحويل قيمة الطلب عبر InstaPay لإتمام الطلب. شحن أقل عند الدفع عبر InstaPay — تم إلغاء رسوم الاستلام.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-2">
+            <img
+              src="/instapay-qr.jpeg"
+              alt="InstaPay QR"
+              className="h-48 w-48 object-contain rounded-lg border border-border bg-muted/30"
+            />
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground">omar947@instapay</p>
+              <p className="mt-1 text-xs text-muted-foreground">Powered by InstaPay</p>
+              {summary && (
+                <p className="mt-3 text-base font-semibold text-foreground">
+                  المبلغ: {piastresToEgp(summary.finalTotal).toLocaleString("ar-EG")} ج.م
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setInstaPayModalOpen(false)}
+              disabled={instaPayConfirmLoading}
+            >
+              إلغاء
+            </Button>
+            <Button
+              type="button"
+              className="rounded-xl"
+              onClick={handleInstaPayConfirm}
+              disabled={instaPayConfirmLoading}
+            >
+              {instaPayConfirmLoading ? "جاري إنشاء الطلب…" : "أتممت التحويل"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success modal after InstaPay order */}
+      <Dialog open={successModalOpen} onOpenChange={setSuccessModalOpen}>
+        <DialogContent className="max-w-sm rounded-2xl text-right" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>تم إرسال طلبك بنجاح</DialogTitle>
+            <DialogDescription className="mt-2">
+              سيصلك قريبًا رسالة أو اتصال على رقمك لتأكيد الطلب.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              className="rounded-xl w-full sm:w-auto"
+              onClick={() => {
+                setSuccessModalOpen(false);
+                router.push("/profile/orders");
+                router.refresh();
+              }}
+            >
+              حسنًا
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

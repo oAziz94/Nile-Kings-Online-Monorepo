@@ -45,8 +45,8 @@ async function postHandler(req: Request) {
   }
 
   const paymentMethod = body.paymentMethod;
-  if (!paymentMethod || !PAYMENT_METHODS.includes(paymentMethod as "COD" | "PAYMOB")) {
-    return apiBadRequest("طريقة الدفع مطلوبة (COD أو PAYMOB)");
+  if (!paymentMethod || !PAYMENT_METHODS.includes(paymentMethod as "COD" | "PAYMOB" | "INSTAPAY_PREPAID")) {
+    return apiBadRequest("طريقة الدفع مطلوبة (COD أو PAYMOB أو InstaPay)");
   }
 
   const result = await placeOrder({
@@ -62,7 +62,7 @@ async function postHandler(req: Request) {
       notes: address.notes != null ? String(address.notes) : null,
       phone: String(address.phone).trim(),
     },
-    paymentMethod: paymentMethod as "COD" | "PAYMOB",
+    paymentMethod: paymentMethod as "COD" | "PAYMOB" | "INSTAPAY_PREPAID",
     couponCode: body.couponCode ?? null,
   });
 
