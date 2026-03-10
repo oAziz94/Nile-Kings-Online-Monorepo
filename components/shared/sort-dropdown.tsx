@@ -17,7 +17,7 @@ export type SortOptionValue =
 export const SORT_OPTIONS: { value: SortOptionValue; label: string }[] = [
   { value: "featured", label: "فيتشر" },
   { value: "best_sales", label: "أفضل مبيعات" },
-  { value: "name_ar", label: "أبجديا، من الألف إلى الياء" },
+  { value: "name_ar", label: "ابجديا، من الالف للياء" },
   { value: "name_za", label: "أبجديا، Z-A" },
   { value: "price_asc", label: "السعر من الارخص للاعلى" },
   { value: "price_desc", label: "السعر الاعلى الى الادنى" },

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { piastresToEgp } from "@/lib/catalog";
+import { formatNumberEn } from "@/lib/format-en-numbers";
 
 type Kpis = {
   totalRevenuePiastres: number;
@@ -28,22 +29,22 @@ export default function AdminDashboardPage() {
     {
       label: "إجمالي المبيعات",
       value: kpis
-        ? `${piastresToEgp(kpis.totalRevenuePiastres).toLocaleString("ar-EG")} ج.م`
+        ? `${formatNumberEn(piastresToEgp(kpis.totalRevenuePiastres))} ج.م`
         : loading
           ? "…"
           : "—",
     },
     {
       label: "الطلبات",
-      value: kpis != null ? kpis.orderCount.toLocaleString("ar-EG") : loading ? "…" : "—",
+      value: kpis != null ? formatNumberEn(kpis.orderCount) : loading ? "…" : "—",
     },
     {
       label: "المنتجات",
-      value: kpis != null ? kpis.productCount.toLocaleString("ar-EG") : loading ? "…" : "—",
+      value: kpis != null ? formatNumberEn(kpis.productCount) : loading ? "…" : "—",
     },
     {
       label: "العملاء",
-      value: kpis != null ? kpis.customerCount.toLocaleString("ar-EG") : loading ? "…" : "—",
+      value: kpis != null ? formatNumberEn(kpis.customerCount) : loading ? "…" : "—",
     },
   ];
 

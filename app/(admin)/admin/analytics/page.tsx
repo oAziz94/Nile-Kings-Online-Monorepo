@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { piastresToEgp } from "@/lib/catalog";
+import { formatNumberEn, formatDateEn } from "@/lib/format-en-numbers";
 import {
   BarChart3,
   Download,
@@ -82,11 +83,7 @@ type AnalyticsData = {
 };
 
 function formatDate(d: string): string {
-  return new Date(d).toLocaleDateString("ar-EG", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return formatDateEn(d);
 }
 
 export default function AdminAnalyticsPage() {
@@ -184,7 +181,7 @@ export default function AdminAnalyticsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold text-foreground">
-              {kpis ? `${piastresToEgp(kpis.totalRevenuePiastres).toLocaleString("ar-EG")} ج.م` : "—"}
+              {kpis ? `${formatNumberEn(piastresToEgp(kpis.totalRevenuePiastres))} ج.م` : "—"}
             </p>
             {kpis && (
               <p className="mt-1 text-xs text-muted-foreground">
@@ -200,7 +197,7 @@ export default function AdminAnalyticsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold text-foreground">
-              {kpis ? kpis.orderCount.toLocaleString("ar-EG") : "—"}
+              {kpis ? formatNumberEn(kpis.orderCount) : "—"}
             </p>
           </CardContent>
         </Card>
@@ -211,7 +208,7 @@ export default function AdminAnalyticsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold text-foreground">
-              {kpis ? kpis.productCount.toLocaleString("ar-EG") : "—"}
+              {kpis ? formatNumberEn(kpis.productCount) : "—"}
             </p>
           </CardContent>
         </Card>
@@ -222,7 +219,7 @@ export default function AdminAnalyticsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold text-foreground">
-              {kpis ? kpis.customerCount.toLocaleString("ar-EG") : "—"}
+              {kpis ? formatNumberEn(kpis.customerCount) : "—"}
             </p>
           </CardContent>
         </Card>
@@ -254,7 +251,7 @@ export default function AdminAnalyticsPage() {
                   {data.revenue.map((r) => (
                     <TableRow key={r.period}>
                       <TableCell>{r.period}</TableCell>
-                      <TableCell>{piastresToEgp(r.revenuePiastres).toLocaleString("ar-EG")}</TableCell>
+                      <TableCell>{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
                       <TableCell>{r.orderCount}</TableCell>
                     </TableRow>
                   ))}
@@ -294,7 +291,7 @@ export default function AdminAnalyticsPage() {
                     <TableCell>{r.variantName}</TableCell>
                     <TableCell>{r.sku}</TableCell>
                     <TableCell>{r.quantitySold}</TableCell>
-                    <TableCell>{piastresToEgp(r.revenuePiastres).toLocaleString("ar-EG")}</TableCell>
+                    <TableCell>{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -334,7 +331,7 @@ export default function AdminAnalyticsPage() {
                     <TableCell>{r.variantName}</TableCell>
                     <TableCell>{r.sku}</TableCell>
                     <TableCell>{r.quantitySold}</TableCell>
-                    <TableCell>{piastresToEgp(r.revenuePiastres).toLocaleString("ar-EG")} ج.م</TableCell>
+                    <TableCell>{formatNumberEn(piastresToEgp(r.revenuePiastres))} ج.م</TableCell>
                     <TableCell>{r.stockAvailable}</TableCell>
                     <TableCell>{r.stockReserved}</TableCell>
                   </TableRow>
@@ -427,7 +424,7 @@ export default function AdminAnalyticsPage() {
                     <TableCell>{c.discountValue}</TableCell>
                     <TableCell>{c.uses}</TableCell>
                     <TableCell>{c.maxUses ?? "—"}</TableCell>
-                    <TableCell>{piastresToEgp(c.totalDiscountPiastres).toLocaleString("ar-EG")}</TableCell>
+                    <TableCell>{formatNumberEn(piastresToEgp(c.totalDiscountPiastres))}</TableCell>
                     <TableCell>{c.orderCount}</TableCell>
                   </TableRow>
                 ))}
@@ -466,7 +463,7 @@ export default function AdminAnalyticsPage() {
                     <TableRow key={r.provider}>
                       <TableCell>{r.provider}</TableCell>
                       <TableCell>{r.orderCount}</TableCell>
-                      <TableCell>{piastresToEgp(r.revenuePiastres).toLocaleString("ar-EG")}</TableCell>
+                      <TableCell>{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -501,7 +498,7 @@ export default function AdminAnalyticsPage() {
                     <TableRow key={r.paymentMethod}>
                       <TableCell>{r.paymentMethod}</TableCell>
                       <TableCell>{r.orderCount}</TableCell>
-                      <TableCell>{piastresToEgp(r.revenuePiastres).toLocaleString("ar-EG")}</TableCell>
+                      <TableCell>{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

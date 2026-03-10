@@ -24,7 +24,7 @@ type ProductItem = {
   variantSlug?: string | null;
 };
 
-const DEFAULT_SORT: SortOptionValue = "featured";
+const DEFAULT_SORT: SortOptionValue = "name_ar";
 
 export function CategoryContent({
   categorySlug,
@@ -41,8 +41,17 @@ export function CategoryContent({
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const sortParam = (search.get("sort") as SortOptionValue) ?? DEFAULT_SORT;
+  const sortFromUrl = search.get("sort") as SortOptionValue | null;
+  const sortParam = sortFromUrl ?? DEFAULT_SORT;
   const sectionParam = search.get("section") ?? "";
+
+  // Sync URL to default sort when missing so dropdown shows "ابجديا، من الالف للياء"
+  useEffect(() => {
+    if (sortFromUrl != null && sortFromUrl !== "") return;
+    const next = new URLSearchParams(search.toString());
+    next.set("sort", DEFAULT_SORT);
+    router.replace(`/categories/${categorySlug}?${next.toString()}`, { scroll: false });
+  }, [router, search, categorySlug, sortFromUrl]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);

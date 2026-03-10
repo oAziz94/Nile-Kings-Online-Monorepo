@@ -22,7 +22,7 @@ type ProductItem = {
   colorVariants?: { id: string; colorHex: string | null; colorName: string | null; imageUrl: string | null }[];
 };
 
-const DEFAULT_SORT: SortOptionValue = "featured";
+const DEFAULT_SORT: SortOptionValue = "name_ar";
 
 export function ProductsContent() {
   const router = useRouter();
@@ -31,7 +31,16 @@ export function ProductsContent() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const sortParam = (search.get("sort") as SortOptionValue) ?? DEFAULT_SORT;
+  const sortFromUrl = search.get("sort") as SortOptionValue | null;
+  const sortParam = sortFromUrl ?? DEFAULT_SORT;
+
+  // Sync URL to default sort when missing so dropdown shows "ابجديا، من الالف للياء" not fallback
+  useEffect(() => {
+    if (sortFromUrl != null && sortFromUrl !== "") return;
+    const next = new URLSearchParams(search.toString());
+    next.set("sort", DEFAULT_SORT);
+    router.replace(`/products?${next.toString()}`, { scroll: false });
+  }, [router, search, sortFromUrl]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -65,13 +74,14 @@ export function ProductsContent() {
   };
 
   return (
-    <>
-      {/* Top bar: sort centered, matching reference layout */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-foreground md:text-3xl">
-          كل المنتجات
-        </h1>
-        <div className="flex w-full flex-shrink-0 justify-center md:w-auto md:justify-end">
+    <div className="mx-auto max-w-6xl px-4 md:px-6 lg:px-8">
+      <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground md:text-3xl">
+            كل المنتجات
+          </h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <SortDropdown
             value={sortParam}
             onChange={(value) => updateSearch({ sort: value })}
@@ -79,41 +89,43 @@ export function ProductsContent() {
         </div>
       </div>
 
-      {loading ? (
-        <ProductGridSkeleton count={8} />
-      ) : products.length === 0 ? (
-        <EmptyState
-          icon={<Package className="h-8 w-8" />}
-          title="لا توجد منتجات"
-          description="لم يتم إضافة منتجات بعد."
-          action={
-            <Button variant="outline" asChild>
-              <Link href="/">العودة للرئيسية</Link>
-            </Button>
-          }
-        />
-      ) : (
-        <>
-          <p className="mb-4 text-sm text-muted-foreground">
-            {total.toLocaleString("en-US")} منتج
-          </p>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {products.map((p) => (
-              <ProductCard
-                key={p.id}
-                id={p.id}
-                name={p.name}
-                slug={p.slug}
-                imageUrl={p.imageUrl}
-                price={p.priceEgp}
-                originalPrice={p.originalPriceEgp}
-                discountPercent={p.discountPercent}
-                colorVariants={p.colorVariants}
-              />
-            ))}
-          </div>
-        </>
-      )}
-    </>
+      <div>
+        {loading ? (
+          <ProductGridSkeleton count={8} />
+        ) : products.length === 0 ? (
+          <EmptyState
+            icon={<Package className="h-8 w-8" />}
+            title="لا توجد منتجات"
+            description="لم يتم إضافة منتجات بعد."
+            action={
+              <Button variant="outline" asChild>
+                <Link href="/">العودة للرئيسية</Link>
+              </Button>
+            }
+          />
+        ) : (
+          <>
+            <p className="mb-4 text-sm text-muted-foreground">
+              {total.toLocaleString("en-US")} منتج
+            </p>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-3">
+              {products.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  id={p.id}
+                  name={p.name}
+                  slug={p.slug}
+                  imageUrl={p.imageUrl}
+                  price={p.priceEgp}
+                  originalPrice={p.originalPriceEgp}
+                  discountPercent={p.discountPercent}
+                  colorVariants={p.colorVariants}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
 import { ShoppingBag } from "lucide-react";
+import { formatDateEn } from "@/lib/format-en-numbers";
 
 const STATUS_LABELS: Record<string, string> = {
   CREATED: "قيد الانشاء",
@@ -89,7 +90,7 @@ export default function AdminOrdersPage() {
                     <TableCell>{o.user?.phone ?? "—"} {o.user?.name ? `(${o.user.name})` : ""}</TableCell>
                     <TableCell>{(o.totalPiastres / 100).toFixed(0)} ج.م</TableCell>
                     <TableCell><Badge variant="outline">{STATUS_LABELS[o.status] ?? o.status}</Badge></TableCell>
-                    <TableCell>{new Date(o.createdAt).toLocaleDateString("ar-EG")}</TableCell>
+                    <TableCell>{formatDateEn(o.createdAt)}</TableCell>
                     <TableCell className="text-left">
                       <Button variant="ghost" size="sm" asChild>
                         <Link href={`/admin/orders/${o.id}`}>تفاصيل</Link>

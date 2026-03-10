@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { parseJsonResponse } from "@/lib/api/parse-json";
+import { formatNumberEn } from "@/lib/format-en-numbers";
 
 type Summary = {
   subtotal: number;
@@ -801,7 +802,7 @@ export default function CheckoutPage() {
               <p className="mt-1 text-xs text-muted-foreground">Powered by InstaPay</p>
               {summary && (
                 <p className="mt-3 text-base font-semibold text-foreground">
-                  المبلغ: {piastresToEgp(summary.finalTotal).toLocaleString("ar-EG")} ج.م
+                  المبلغ: {formatNumberEn(piastresToEgp(summary.finalTotal))} ج.م
                 </p>
               )}
             </div>
@@ -828,8 +829,14 @@ export default function CheckoutPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Success modal after InstaPay order */}
-      <Dialog open={successModalOpen} onOpenChange={setSuccessModalOpen}>
+      {/* Success modal after InstaPay order — closes only when customer presses تم, then redirect to orders */}
+      <Dialog
+        open={successModalOpen}
+        onOpenChange={(open) => {
+          if (open) setSuccessModalOpen(true);
+          /* do not close on overlay/escape; only close via تم button */
+        }}
+      >
         <DialogContent className="max-w-sm rounded-2xl text-right" dir="rtl">
           <DialogHeader>
             <DialogTitle>تم إرسال طلبك بنجاح</DialogTitle>
@@ -847,7 +854,7 @@ export default function CheckoutPage() {
                 router.refresh();
               }}
             >
-              حسنًا
+              تم
             </Button>
           </DialogFooter>
         </DialogContent>

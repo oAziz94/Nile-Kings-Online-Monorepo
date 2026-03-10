@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { getOrderStatusLabel } from "@/lib/constants/order-status";
 import { parseJsonResponse } from "@/lib/api/parse-json";
 import { cn } from "@/lib/utils";
+import { formatDateEn } from "@/lib/format-en-numbers";
 
 type OrderItem = {
   id: string;
@@ -101,11 +102,7 @@ export default function ProfileOrdersPage() {
                 </div>
                 <div className="flex items-center gap-4 text-sm">
                   <span className="text-muted-foreground">
-                    {new Date(order.createdAt).toLocaleDateString("ar-EG", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
+                    {formatDateEn(order.createdAt)}
                   </span>
                   <Price amount={piastresToEgp(order.totalPiastres)} size="md" />
                 </div>
