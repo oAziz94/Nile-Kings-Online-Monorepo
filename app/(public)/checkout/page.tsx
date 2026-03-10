@@ -598,15 +598,9 @@ export default function CheckoutPage() {
                   </div>
                 )}
                 <div className="flex justify-between text-muted-foreground">
-                  <span>الشحن</span>
-                  <Price amount={piastresToEgp(summary.shippingFee)} />
+                  <span>رسوم الشحن</span>
+                  <Price amount={piastresToEgp(summary.shippingFee + summary.codFee)} />
                 </div>
-                {summary.codFee > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>رسوم الاستلام</span>
-                    <Price amount={piastresToEgpDisplay(summary.codFee)} />
-                  </div>
-                )}
                 {/* Promo code field: left section, exactly before final total */}
                 <div className="border-t border-border pt-3">
                   <label className="text-xs font-medium text-muted-foreground">الرقم التسلسلي للخصم</label>
