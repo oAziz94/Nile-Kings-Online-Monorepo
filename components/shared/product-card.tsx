@@ -64,11 +64,13 @@ export function ProductCard({
         {discountPercent != null && discountPercent > 0 && (
           <span
             className={cn(
-              "absolute top-2 right-2 rounded-lg bg-burgundy px-2 py-0.5 text-xs font-medium text-white",
-              "left-2 right-auto"
+              "absolute top-2 left-2 flex h-10 w-10 items-center justify-center rounded-full text-xs font-semibold text-white",
+              "bg-amber-500 shadow-sm ring-2 ring-amber-400/30",
+              "right-2 left-auto"
             )}
+            title={`خصم ${discountPercent}%`}
           >
-            -{discountPercent}%
+            {discountPercent}%-
           </span>
         )}
         {!inStock && (

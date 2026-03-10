@@ -63,10 +63,14 @@ export interface ProductDetail extends ProductListItem {
 }
 
 export type SortOption =
-  | "newest"
+  | "featured"
+  | "best_sales"
+  | "name_ar"
+  | "name_za"
   | "price_asc"
   | "price_desc"
-  | "name_ar";
+  | "date_asc"
+  | "date_desc";
 
 export interface ProductsQuery {
   categorySlug?: string;

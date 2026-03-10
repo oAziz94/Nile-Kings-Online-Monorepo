@@ -15,7 +15,7 @@ function parseQuery(req: NextRequest): ProductsQuery {
   const maxPrice = searchParams.get("maxPrice");
   const sizes = searchParams.get("sizes");
   const inStockOnly = searchParams.get("inStock") === "true";
-  const sort = (searchParams.get("sort") as ProductsQuery["sort"]) ?? "newest";
+  const sort = (searchParams.get("sort") as ProductsQuery["sort"]) ?? "featured";
   const limit = Math.min(Number(searchParams.get("limit")) || 24, 48);
   const offset = Number(searchParams.get("offset")) || 0;
 
@@ -164,10 +164,16 @@ export async function GET(req: NextRequest) {
     };
   }
 
-  const orderBy =
+  const orderBy: Prisma.ProductOrderByWithRelationInput | Prisma.ProductOrderByWithRelationInput[] =
     q.sort === "name_ar"
-      ? { name: "asc" as const }
-      : { createdAt: "desc" as const };
+      ? { name: "asc" }
+      : q.sort === "name_za"
+        ? { name: "desc" }
+        : q.sort === "date_asc"
+          ? { createdAt: "asc" }
+          : q.sort === "date_desc" || q.sort === "best_sales"
+            ? { createdAt: "desc" }
+            : [{ sortOrder: "desc" }, { createdAt: "desc" }];
 
   const hasPriceFilter = q.minPrice != null || q.maxPrice != null;
   const skip = hasPriceFilter ? 0 : q.offset;

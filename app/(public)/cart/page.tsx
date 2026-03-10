@@ -1,14 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { Price } from "@/components/shared/price";
+import { ProductCard } from "@/components/shared/product-card";
+import { ViewAllButton } from "@/components/shared/view-all-button";
 import { ShoppingBag, Minus, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import type { ProductListItem } from "@/lib/catalog";
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=200&h=200&fit=crop";
@@ -17,10 +20,22 @@ export default function CartPage() {
   const { cart, refreshCart } = useCart();
   const { toast } = useToast();
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<ProductListItem[]>([]);
 
   useEffect(() => {
     refreshCart();
   }, [refreshCart]);
+
+  useEffect(() => {
+    fetch("/api/products/recommendations")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json?.success && Array.isArray(json?.data?.products)) {
+          setRecommendations(json.data.products);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const updateQty = async (itemId: string, quantity: number) => {
     setUpdatingId(itemId);
@@ -182,6 +197,36 @@ export default function CartPage() {
             </Button>
           </div>
         </div>
+      )}
+
+      {recommendations.length > 0 && (
+        <section className="mt-12 border-t border-border pt-10 md:py-12" aria-label="قد يعجبك ايضا">
+          <div className="mb-8 flex items-center justify-center gap-4 px-4">
+            <span className="h-0.5 max-w-12 flex-1 bg-foreground/40" aria-hidden />
+            <h2 className="text-2xl font-semibold text-foreground md:text-3xl" dir="rtl">
+              قد يعجبك ايضا
+            </h2>
+            <span className="h-0.5 max-w-12 flex-1 bg-foreground/40" aria-hidden />
+          </div>
+          <div className="mx-auto grid max-w-5xl grid-cols-1 justify-items-center gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {recommendations.slice(0, 4).map((p) => (
+              <ProductCard
+                key={p.id}
+                className="w-full max-w-[280px]"
+                id={p.id}
+                name={p.name}
+                slug={p.slug}
+                imageUrl={p.imageUrl}
+                price={p.priceEgp}
+                originalPrice={p.originalPriceEgp}
+                discountPercent={p.discountPercent}
+                colorVariants={p.colorVariants}
+                inStock={p.inStock}
+              />
+            ))}
+          </div>
+          <ViewAllButton href="/categories" className="mt-10" />
+        </section>
       )}
     </div>
   );
