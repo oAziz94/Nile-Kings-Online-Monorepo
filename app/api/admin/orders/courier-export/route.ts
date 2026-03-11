@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
   const buffer = buildCourierXlsx(forExport);
   const filename = courierExportFilename(start);
 
-  return new Response(buffer, {
+  return new Response(new Uint8Array(buffer), {
     status: 200,
     headers: {
       "Content-Type":
