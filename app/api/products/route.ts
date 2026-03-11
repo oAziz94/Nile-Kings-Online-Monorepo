@@ -179,6 +179,10 @@ export async function GET(req: NextRequest) {
   const skip = hasPriceFilter ? 0 : q.offset;
   const take = hasPriceFilter ? 200 : q.limit;
 
+  const totalCount = hasPriceFilter
+    ? null
+    : await prisma.product.count({ where });
+
   const variantSelect = {
     id: true,
     slug: true,
@@ -228,5 +232,7 @@ export async function GET(req: NextRequest) {
   const start = hasPriceFilter ? (q.offset ?? 0) : 0;
   const end = start + (q.limit ?? 24);
   const paginated = filtered.slice(start, end);
-  return apiSuccess({ products: paginated, total: filtered.length });
+  const total =
+    hasPriceFilter ? filtered.length : (totalCount ?? paginated.length);
+  return apiSuccess({ products: paginated, total });
 }

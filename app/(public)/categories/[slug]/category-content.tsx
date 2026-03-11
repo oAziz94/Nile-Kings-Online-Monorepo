@@ -1,14 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/shared/product-card";
 import { ProductGridSkeleton } from "@/components/shared/skeleton";
+import { LoadingDots } from "@/components/shared/loading-dots";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { SortDropdown, type SortOptionValue } from "@/components/shared/sort-dropdown";
 import { Package } from "lucide-react";
+
+const PAGE_SIZE = 9;
 
 type ProductItem = {
   id: string;
@@ -40,6 +43,8 @@ export function CategoryContent({
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const sortFromUrlRaw = search.get("sort");
   const sortFromUrl = sortFromUrlRaw as SortOptionValue | null;
@@ -54,29 +59,58 @@ export function CategoryContent({
     router.replace(`/categories/${categorySlug}?${next.toString()}`, { scroll: false });
   }, [router, search, categorySlug, sortFromUrlRaw]);
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    params.set("category", categorySlug);
-    if (sectionParam) params.set("section", sectionParam);
-    if (sortParam) params.set("sort", sortParam);
-    params.set("limit", "24");
-
-    const res = await fetch(`/api/products?${params}`);
-    const json = await res.json();
-    if (json.success && json.data) {
-      setProducts(json.data.products);
-      setTotal(json.data.total);
-    } else {
-      setProducts([]);
-      setTotal(0);
-    }
-    setLoading(false);
-  }, [categorySlug, sectionParam, sortParam]);
+  const fetchPage = useCallback(
+    async (offset: number, append: boolean) => {
+      const params = new URLSearchParams();
+      params.set("category", categorySlug);
+      if (sectionParam) params.set("section", sectionParam);
+      if (sortParam) params.set("sort", sortParam);
+      params.set("limit", String(PAGE_SIZE));
+      params.set("offset", String(offset));
+      const res = await fetch(`/api/products?${params}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        if (append) {
+          setProducts((prev) => [...prev, ...(json.data.products ?? [])]);
+        } else {
+          setProducts(json.data.products ?? []);
+        }
+        setTotal(json.data.total ?? 0);
+      } else if (!append) {
+        setProducts([]);
+        setTotal(0);
+      }
+    },
+    [categorySlug, sectionParam, sortParam]
+  );
 
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    setLoading(true);
+    fetchPage(0, false).finally(() => setLoading(false));
+  }, [fetchPage]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (
+          !entry?.isIntersecting ||
+          loading ||
+          loadingMore ||
+          products.length >= total ||
+          total === 0
+        )
+          return;
+        setLoadingMore(true);
+        fetchPage(products.length, true).finally(() => setLoadingMore(false));
+      },
+      { rootMargin: "200px", threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loading, loadingMore, products.length, total, fetchPage]);
 
   const updateSearch = (updates: Record<string, string | undefined>) => {
     const next = new URLSearchParams(search.toString());
@@ -108,7 +142,9 @@ export function CategoryContent({
 
       <div>
           {loading ? (
-            <ProductGridSkeleton count={8} />
+            <div className="flex min-h-[200px] items-center justify-center py-12">
+              <LoadingDots className="scale-150" />
+            </div>
           ) : products.length === 0 ? (
             <EmptyState
               icon={<Package className="h-8 w-8" />}
@@ -141,6 +177,12 @@ export function CategoryContent({
                   />
                 ))}
               </div>
+              <div ref={sentinelRef} className="h-4" aria-hidden />
+              {loadingMore && (
+                <div className="mt-6 flex justify-center py-4">
+                  <LoadingDots className="scale-150" />
+                </div>
+              )}
             </>
           )}
       </div>

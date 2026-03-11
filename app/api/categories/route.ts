@@ -1,19 +1,33 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { apiSuccess } from "@/lib/api/response";
-import { piastresToEgp } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  const list = await prisma.category.findMany({
-    orderBy: { sortOrder: "asc" },
-    include: {
-      _count: { select: { products: { where: { active: true } } } },
-    },
-  });
+const DEFAULT_LIMIT = 24;
+const MAX_LIMIT = 48;
 
-  const data = list.map((c) => ({
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const limit = Math.min(
+    Number(searchParams.get("limit")) || DEFAULT_LIMIT,
+    MAX_LIMIT
+  );
+  const offset = Number(searchParams.get("offset")) || 0;
+
+  const [list, total] = await Promise.all([
+    prisma.category.findMany({
+      orderBy: { sortOrder: "asc" },
+      skip: offset,
+      take: limit,
+      include: {
+        _count: { select: { products: { where: { active: true } } } },
+      },
+    }),
+    prisma.category.count(),
+  ]);
+
+  const categories = list.map((c) => ({
     id: c.id,
     name: c.name,
     slug: c.slug,
@@ -21,5 +35,5 @@ export async function GET(req: NextRequest) {
     productCount: c._count.products,
   }));
 
-  return apiSuccess(data);
+  return apiSuccess({ categories, total });
 }

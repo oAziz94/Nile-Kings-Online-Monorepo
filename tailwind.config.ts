@@ -36,6 +36,15 @@ const config: Config = {
         subtle: "0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)",
         card: "0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)",
       },
+      keyframes: {
+        "loading-dots": {
+          "0%, 80%, 100%": { transform: "scale(0.6)", opacity: "0.5" },
+          "40%": { transform: "scale(1)", opacity: "1" },
+        },
+      },
+      animation: {
+        "loading-dots": "loading-dots 0.6s ease-in-out infinite both",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
