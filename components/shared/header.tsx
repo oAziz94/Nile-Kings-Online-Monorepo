@@ -70,9 +70,9 @@ export function Header() {
         role="banner"
       >
         {/* Layout direction LTR so left/center/right stay physical; RTL only affects text inside */}
-        <div className="relative flex h-[80px] items-center justify-between gap-4 px-4 md:h-[92px] md:px-6" dir="ltr">
+        <div className="relative flex h-[96px] items-center justify-between gap-0 px-2 md:h-[116px] md:px-3" dir="ltr">
           {/* Left: Account (leftmost), Cart */}
-          <div className="flex min-w-0 flex-1 items-center justify-start gap-3 sm:gap-4">
+          <div className="flex min-w-0 flex-1 items-center justify-start gap-0">
             {user ? (
               <div className="relative z-[100]" ref={profileRef}>
                 <Button
@@ -165,9 +165,9 @@ export function Header() {
               <Image
                 src="/logo.png"
                 alt="نايل كينجز"
-                width={260}
-                height={80}
-                className="max-h-[60px] w-auto object-contain md:max-h-[76px]"
+                width={380}
+                height={120}
+                className="max-h-[88px] w-auto object-contain md:max-h-[104px]"
                 priority
               />
             </Link>
