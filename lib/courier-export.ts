@@ -251,7 +251,7 @@ function orderToRowArray(order: OrderForCourierExport): (string | number)[] {
 }
 
 /** Build XLSX with template column order; only red columns + COD_Value filled. */
-export function buildCourierXlsx(orders: OrderForCourierExport): Buffer {
+export function buildCourierXlsx(orders: OrderForCourierExport[]): Buffer {
   const data: (string | number)[][] = [
     [...COURIER_EXPORT_HEADERS],
     ...orders.map(orderToRowArray),
