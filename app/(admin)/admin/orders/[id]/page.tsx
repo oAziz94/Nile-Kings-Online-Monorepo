@@ -19,11 +19,12 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
 
-const STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
+const STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
 const STATUS_LABELS: Record<string, string> = {
   CREATED: "قيد الانشاء",
   CONFIRMED: "مؤكد",
   PROCESSING: "قيد التجهيز",
+  READY_TO_SHIP: "جاهز للشحن",
   SHIPPED: "تم الشحن",
   DELIVERED: "تم التسليم",
   CANCELLED: "ملغي",

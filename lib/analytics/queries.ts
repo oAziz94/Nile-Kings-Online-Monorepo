@@ -1,14 +1,13 @@
 /**
  * Admin analytics queries.
- * Revenue and counts use CONFIRMED + PROCESSING + SHIPPED + DELIVERED only.
+ * Orders and revenue include any order status except CANCELLED.
  */
 
-import { type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import type { DateGranularity } from "./types";
-import { CONFIRMED_ORDER_STATUSES } from "./types";
 
-const CONFIRMED: OrderStatus[] = [...CONFIRMED_ORDER_STATUSES];
+/** Exclude cancelled orders from analytics (revenue and order counts). */
+const NOT_CANCELLED = { not: "CANCELLED" as const };
 
 function parseRange(from?: string | null, to?: string | null): { from: Date; to: Date } {
   const toDate = to ? new Date(to) : new Date();
@@ -30,14 +29,14 @@ export async function getKpis(from?: string | null, to?: string | null): Promise
   const [revenueRow, orderCount, productCount, customerCount] = await Promise.all([
     prisma.order.aggregate({
       where: {
-        status: { in: CONFIRMED },
+        status: NOT_CANCELLED,
         createdAt: { gte: fromDate, lte: toDate },
       },
       _sum: { totalPiastres: true },
     }),
     prisma.order.count({
       where: {
-        status: { in: CONFIRMED },
+        status: NOT_CANCELLED,
         createdAt: { gte: fromDate, lte: toDate },
       },
     }),
@@ -65,7 +64,7 @@ export async function getRevenueOverTime(
 
   const orders = await prisma.order.findMany({
     where: {
-      status: { in: CONFIRMED },
+      status: NOT_CANCELLED,
       createdAt: { gte: fromDate, lte: toDate },
     },
     select: { createdAt: true, totalPiastres: true },
@@ -118,7 +117,7 @@ export async function getBestSellers(
   const items = await prisma.orderItem.findMany({
     where: {
       order: {
-        status: { in: CONFIRMED },
+        status: NOT_CANCELLED,
         createdAt: { gte: fromDate, lte: toDate },
       },
     },
@@ -186,7 +185,7 @@ export async function getVariantPerformance(
   const itemRows = await prisma.orderItem.findMany({
     where: {
       order: {
-        status: { in: CONFIRMED },
+        status: NOT_CANCELLED,
         createdAt: { gte: fromDate, lte: toDate },
       },
     },
@@ -288,7 +287,7 @@ export async function getCouponPerformance(
   const discountByOrder = new Map<string, number>();
   const ordersInRange = await prisma.order.findMany({
     where: {
-      status: { in: CONFIRMED },
+      status: NOT_CANCELLED,
       createdAt: { gte: fromDate, lte: toDate },
       couponCode: { not: null },
     },
@@ -345,7 +344,7 @@ export async function getSeniorPromoReport(
 
   const orders = await prisma.order.findMany({
     where: {
-      status: { in: CONFIRMED },
+      status: NOT_CANCELLED,
       seniorFreeValuePiastres: { gt: 0 },
       createdAt: { gte: fromDate, lte: toDate },
     },
@@ -381,7 +380,7 @@ export async function getProviderPerformance(
 
   const orders = await prisma.order.findMany({
     where: {
-      status: { in: CONFIRMED },
+      status: NOT_CANCELLED,
       createdAt: { gte: fromDate, lte: toDate },
     },
     select: { shippingProvider: true, totalPiastres: true },
@@ -415,7 +414,7 @@ export async function getPaymentMethodBreakdown(
 
   const orders = await prisma.order.findMany({
     where: {
-      status: { in: CONFIRMED },
+      status: NOT_CANCELLED,
       createdAt: { gte: fromDate, lte: toDate },
     },
     select: { paymentMethod: true, totalPiastres: true },

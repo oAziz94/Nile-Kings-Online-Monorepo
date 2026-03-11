@@ -22,12 +22,13 @@ enum UserRole {
 }
 
 enum OrderStatus {
-  CREATED   // قيد الانشاء — order created with stock reserved; reservationExpiresAt set
-  CONFIRMED // مؤكد
-  PROCESSING // قيد التجهيز
-  SHIPPED   // تم الشحن
-  DELIVERED // تم التسليم
-  CANCELLED // ملغي
+  CREATED       // قيد الانشاء — order created with stock reserved; reservationExpiresAt set
+  CONFIRMED     // مؤكد
+  PROCESSING    // قيد التجهيز
+  READY_TO_SHIP // جاهز للشحن — ready for courier export
+  SHIPPED       // تم الشحن
+  DELIVERED     // تم التسليم
+  CANCELLED     // ملغي
 }
 
 enum PaymentStatus {
@@ -327,6 +328,7 @@ model Order {
   couponCode            String?
   reservationExpiresAt  DateTime?    // set when status = CREATED; stock reserved until this time
   cancellationReason   String?      // e.g. "expired" when reservation times out
+  exportedToCourierAt   DateTime?    // set when order is included in a courier export (prevents duplicate export)
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
 
@@ -339,6 +341,7 @@ model Order {
   @@index([createdAt])
   @@index([reservationExpiresAt])
   @@index([status, createdAt])
+  @@index([status, exportedToCourierAt, createdAt])
   @@index([paymentMethod])
   @@index([shippingProvider])
 }

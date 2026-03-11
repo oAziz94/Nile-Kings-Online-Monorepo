@@ -3,6 +3,7 @@ export const ORDER_STATUS_LABELS: Record<string, string> = {
   CREATED: "قيد الانشاء",
   CONFIRMED: "مؤكد",
   PROCESSING: "قيد التجهيز",
+  READY_TO_SHIP: "جاهز للشحن",
   SHIPPED: "تم الشحن",
   DELIVERED: "تم التسليم",
   CANCELLED: "ملغي",
