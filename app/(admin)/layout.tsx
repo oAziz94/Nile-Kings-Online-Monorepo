@@ -23,6 +23,7 @@ export default async function AdminLayout({
     { href: "/admin/categories", label: "الفئات" },
     { href: "/admin/coupons", label: "الكوبونات" },
     { href: "/admin/orders", label: "الطلبات" },
+    { href: "/admin/clients", label: "العملاء" },
     { href: "/admin/settings", label: "الإعدادات" },
   ];
 
