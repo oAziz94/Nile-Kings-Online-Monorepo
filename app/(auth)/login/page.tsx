@@ -73,6 +73,15 @@ function LoginContent() {
 
       <form onSubmit={handleLogin} className="mt-6 space-y-4">
         <div className="flex gap-2">
+          <Input
+            type="tel"
+            placeholder="1xxxxxxxxx"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="rounded-2xl flex-1"
+            dir="ltr"
+            autoComplete="tel-national"
+          />
           <select
             value={countryCode}
             onChange={(e) => setCountryCode(e.target.value)}
@@ -89,15 +98,6 @@ function LoginContent() {
               </option>
             ))}
           </select>
-          <Input
-            type="tel"
-            placeholder="1xxxxxxxxx"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="rounded-2xl flex-1"
-            dir="ltr"
-            autoComplete="tel-national"
-          />
         </div>
         <Input
           type="password"
