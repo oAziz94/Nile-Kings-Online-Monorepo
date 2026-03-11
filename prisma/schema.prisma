@@ -125,10 +125,12 @@ model OTPRequest {
   expiresAt   DateTime
   attempts    Int       @default(0)
   lockedUntil DateTime?
+  purpose     String?   @default("login") // "login" | "forgot_password"
   createdAt   DateTime  @default(now())
 
   @@index([phone])
   @@index([expiresAt])
+  @@index([phone, purpose])
 }
 
 model OtpAuditLog {

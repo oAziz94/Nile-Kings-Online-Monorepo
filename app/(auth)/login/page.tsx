@@ -107,6 +107,11 @@ function LoginContent() {
           className="rounded-2xl"
           autoComplete="current-password"
         />
+        <p className="text-sm text-muted-foreground -mt-2">
+          <Link href="/forgot-password" className="font-medium text-primary underline hover:no-underline">
+            نسيت كلمة المرور؟
+          </Link>
+        </p>
         <Button type="submit" className="w-full rounded-2xl" disabled={loading}>
           {loading ? "جاري تسجيل الدخول…" : "تسجيل الدخول"}
         </Button>

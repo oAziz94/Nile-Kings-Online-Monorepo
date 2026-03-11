@@ -60,10 +60,13 @@ export type RequestOtpResult =
   | { success: false; reason: "locked"; lockMinutes: number }
   | { success: false; reason: "twilio_error"; message: string };
 
+export type OtpPurpose = "login" | "forgot_password";
+
 /** Request OTP: rate limits, cooldown, lock check; send via Twilio; store hash in DB; set cooldown. */
 export async function requestOtp(
   phone: string,
-  ip: string | null
+  ip: string | null,
+  purpose: OtpPurpose = "login"
 ): Promise<RequestOtpResult> {
   const normalized = normalizePhone(phone);
   const rules = await getOtpRules();
@@ -107,11 +110,15 @@ export async function requestOtp(
   const code = generateOtp();
   const codeHash = hashOtp(code);
   const expiresAt = new Date(Date.now() + expiryMs);
+  const body =
+    purpose === "forgot_password"
+      ? `رمز استعادة كلمة المرور نايل كينجز: ${code}`
+      : `رمز التحقق نايل كينجز: ${code}`;
 
   try {
     const client = twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
     await client.messages.create({
-      body: `رمز التحقق نايل كينجز: ${code}`,
+      body,
       from: env.TWILIO_FROM,
       to: normalized,
     });
@@ -128,6 +135,7 @@ export async function requestOtp(
       codeHash,
       expiresAt,
       attempts: 0,
+      purpose,
     },
   });
 
@@ -175,7 +183,10 @@ export async function verifyOtp(
   }
 
   const record = await prisma.oTPRequest.findFirst({
-    where: { phone: normalized },
+    where: {
+      phone: normalized,
+      OR: [{ purpose: null }, { purpose: "login" }],
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -288,7 +299,10 @@ export async function verifyOtpForRegistration(
   }
 
   const record = await prisma.oTPRequest.findFirst({
-    where: { phone: normalized },
+    where: {
+      phone: normalized,
+      OR: [{ purpose: null }, { purpose: "login" }],
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -342,4 +356,92 @@ export async function verifyOtpForRegistration(
 
   await logOtpEvent(normalized, "verify_success", _ip, "ok");
   return { success: true, phone: normalized, role };
+}
+
+export type VerifyOtpForForgotPasswordResult =
+  | { success: true; resetToken: string }
+  | { success: false; reason: "locked"; lockMinutes: number }
+  | { success: false; reason: "invalid" }
+  | { success: false; reason: "expired" }
+  | { success: false; reason: "too_many_attempts"; lockMinutes: number };
+
+/** Verify OTP for forgot-password flow only (purpose = forgot_password). Returns reset token on success. */
+export async function verifyOtpForForgotPassword(
+  phone: string,
+  code: string,
+  _ip: string | null,
+  createResetToken: (phone: string) => Promise<string>
+): Promise<VerifyOtpForForgotPasswordResult> {
+  const normalized = normalizePhone(phone);
+  const rules = await getOtpRules();
+  const maxAttempts = rules.maxVerifyAttempts;
+  const lockMinutes = rules.lockMinutes;
+  const lockTtlSec = lockMinutes * 60;
+
+  const trimmed = code.replace(/\D/g, "").slice(0, 6);
+  if (trimmed.length !== 6) {
+    await logOtpEvent(normalized, "verify_fail", _ip, "invalid_format");
+    return { success: false, reason: "invalid" };
+  }
+
+  const lockRem = await getLockRemaining(normalized);
+  if (lockRem > 0) {
+    await logOtpEvent(normalized, "verify_fail", _ip, "locked");
+    return {
+      success: false,
+      reason: "locked",
+      lockMinutes: Math.ceil(lockRem / 60),
+    };
+  }
+
+  const record = await prisma.oTPRequest.findFirst({
+    where: { phone: normalized, purpose: "forgot_password" },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!record) {
+    await logOtpEvent(normalized, "verify_fail", _ip, "no_request");
+    return { success: false, reason: "invalid" };
+  }
+
+  if (record.lockedUntil && record.lockedUntil > new Date()) {
+    await logOtpEvent(normalized, "verify_fail", _ip, "locked");
+    return {
+      success: false,
+      reason: "locked",
+      lockMinutes: Math.ceil((record.lockedUntil.getTime() - Date.now()) / 60000),
+    };
+  }
+
+  if (record.expiresAt < new Date()) {
+    await logOtpEvent(normalized, "verify_fail", _ip, "expired");
+    return { success: false, reason: "expired" };
+  }
+
+  const attempts = await incrementVerifyAttempts(normalized, lockTtlSec);
+  if (attempts > maxAttempts) {
+    const lockedUntil = new Date(Date.now() + lockMinutes * 60 * 1000);
+    await prisma.oTPRequest.update({
+      where: { id: record.id },
+      data: { lockedUntil },
+    });
+    await setLock(normalized, lockTtlSec);
+    await logOtpEvent(normalized, "verify_fail", _ip, "too_many_attempts");
+    return {
+      success: false,
+      reason: "too_many_attempts",
+      lockMinutes,
+    };
+  }
+
+  const codeHash = hashOtp(trimmed);
+  if (codeHash !== record.codeHash) {
+    await logOtpEvent(normalized, "verify_fail", _ip, "invalid");
+    return { success: false, reason: "invalid" };
+  }
+
+  await clearVerifyAttempts(normalized);
+  const resetToken = await createResetToken(normalized);
+  await logOtpEvent(normalized, "verify_success", _ip, "forgot_password_ok");
+  return { success: true, resetToken };
 }
