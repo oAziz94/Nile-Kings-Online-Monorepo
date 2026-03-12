@@ -79,6 +79,8 @@ export interface ProductsQuery {
   categorySlug?: string;
   /** Section tag (e.g. "اطقم"). When set, filter by product tags and return one item per color variant. */
   section?: string;
+  /** When true, return one item per color variant (e.g. for كل المنتجات page). */
+  expandVariants?: boolean;
   minPrice?: number;
   maxPrice?: number;
   sizes?: string[];

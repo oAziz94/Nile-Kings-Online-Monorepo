@@ -11,6 +11,7 @@ function parseQuery(req: NextRequest): ProductsQuery {
   const { searchParams } = new URL(req.url);
   const categorySlug = searchParams.get("category") ?? undefined;
   const section = searchParams.get("section") ?? undefined;
+  const expandVariants = searchParams.get("expandVariants") === "true";
   const minPrice = searchParams.get("minPrice");
   const maxPrice = searchParams.get("maxPrice");
   const sizes = searchParams.get("sizes");
@@ -22,6 +23,7 @@ function parseQuery(req: NextRequest): ProductsQuery {
   return {
     categorySlug,
     section: section && section.trim() ? section.trim() : undefined,
+    expandVariants,
     minPrice: minPrice ? Number(minPrice) : undefined,
     maxPrice: maxPrice ? Number(maxPrice) : undefined,
     sizes: sizes ? sizes.split(",").filter(Boolean) : undefined,
@@ -176,8 +178,8 @@ export async function GET(req: NextRequest) {
             : [{ sortOrder: "desc" }, { createdAt: "desc" }];
 
   const hasPriceFilter = q.minPrice != null || q.maxPrice != null;
-  // Category view (الكل, الاكثر مبيعا, or tag section): show one card per color variant like the rest of the menus.
-  const byVariant = Boolean(q.categorySlug);
+  // Category view (الكل, الاكثر مبيعا, tag section) or كل المنتجات: show one card per color variant.
+  const byVariant = Boolean(q.categorySlug) || Boolean(q.expandVariants);
 
   // When listing by category we show one card per color variant. We fetch matching products
   // (up to a cap), expand to variant-level list, then paginate by variant index so the
