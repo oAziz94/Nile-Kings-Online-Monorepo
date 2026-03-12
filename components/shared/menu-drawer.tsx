@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { MENU_SECTIONS, type MenuSection } from "@/lib/menu-config";
 import { cn } from "@/lib/utils";
 
+async function fetchMenuSections(): Promise<MenuSection[]> {
+  const res = await fetch("/api/menu", { cache: "no-store" });
+  const json = await res.json();
+  if (json?.success && Array.isArray(json?.data?.sections)) return json.data.sections;
+  return MENU_SECTIONS;
+}
+
 type MenuDrawerProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -78,10 +85,22 @@ function MenuAccordionSection({
 
 export function MenuDrawer({ isOpen, onClose }: MenuDrawerProps) {
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
+  const [sections, setSections] = React.useState<MenuSection[]>(MENU_SECTIONS);
 
   const toggleSection = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    fetchMenuSections().then((data) => {
+      if (!cancelled) setSections(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   React.useEffect(() => {
     if (!isOpen) return;
@@ -137,7 +156,7 @@ export function MenuDrawer({ isOpen, onClose }: MenuDrawerProps) {
         <div className="flex-1 overflow-y-auto">
           <div className="px-5 py-4">
             <nav aria-label="تصنيفات المتجر">
-              {MENU_SECTIONS.map((section) => (
+              {sections.map((section) => (
                 <MenuAccordionSection
                   key={section.id}
                   section={section}
