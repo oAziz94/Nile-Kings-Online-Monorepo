@@ -23,6 +23,8 @@ type ProductItem = {
   discountPercent?: number;
   inStock: boolean;
   colorVariants?: { id: string; colorHex: string | null; colorName: string | null; imageUrl: string | null }[];
+  /** When set, link to this variant (variant slug) for one-card-per-variant view. */
+  variantSlug?: string | null;
 };
 
 const DEFAULT_SORT: SortOptionValue = "name_ar";
@@ -51,6 +53,7 @@ export function ProductsContent() {
   const fetchPage = useCallback(
     async (offset: number, append: boolean) => {
       const params = new URLSearchParams();
+      params.set("expandVariants", "true");
       params.set("sort", sortParam);
       params.set("limit", String(PAGE_SIZE));
       params.set("offset", String(offset));
@@ -148,7 +151,7 @@ export function ProductsContent() {
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-3">
               {products.map((p) => (
                 <ProductCard
-                  key={p.id}
+                  key={p.variantSlug ?? p.id}
                   id={p.id}
                   name={p.name}
                   slug={p.slug}
@@ -157,6 +160,8 @@ export function ProductsContent() {
                   originalPrice={p.originalPriceEgp}
                   discountPercent={p.discountPercent}
                   colorVariants={p.colorVariants}
+                  variantSlug={p.variantSlug}
+                  inStock={p.inStock}
                 />
               ))}
             </div>

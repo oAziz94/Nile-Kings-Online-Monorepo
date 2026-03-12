@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { X, ChevronDown, ChevronUp, Facebook } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Facebook, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MENU_SECTIONS, type MenuSection } from "@/lib/menu-config";
 import { cn } from "@/lib/utils";
@@ -167,7 +167,7 @@ export function MenuDrawer({ isOpen, onClose }: MenuDrawerProps) {
               ))}
             </nav>
 
-            <div className="mt-6 pt-4 border-t border-border/80">
+            <div className="mt-6 pt-4 border-t border-border/80 space-y-2">
               <a
                 href={process.env.NEXT_PUBLIC_FACEBOOK_URL ?? "#"}
                 target="_blank"
@@ -178,6 +178,21 @@ export function MenuDrawer({ isOpen, onClose }: MenuDrawerProps) {
               >
                 <Facebook className="h-5 w-5 shrink-0" strokeWidth={1.5} />
                 تابعنا على فيسبوك
+              </a>
+              <a
+                href={
+                  process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
+                    ? `https://wa.me/${(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/\D/g, "")}`
+                    : "#"
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onClose}
+                className="flex items-center gap-2 text-base text-muted-foreground hover:text-foreground transition-colors py-2"
+                aria-label="تواصل معنا على واتساب"
+              >
+                <MessageCircle className="h-5 w-5 shrink-0" strokeWidth={1.5} />
+                تواصل معنا على واتساب
               </a>
             </div>
           </div>
