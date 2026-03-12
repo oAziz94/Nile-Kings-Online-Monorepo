@@ -236,7 +236,7 @@ export async function GET(req: NextRequest) {
   else if (q.sort === "price_desc") filtered.sort((a, b) => b.priceEgp - a.priceEgp);
 
   // When byVariant, paginate the variant-level list; total is variant count so frontend can load all.
-  const start = hasPriceFilter ? (q.offset ?? 0) : byVariant ? q.offset : q.offset;
+  const start = hasPriceFilter ? (q.offset ?? 0) : (q.offset ?? 0);
   const end = start + (q.limit ?? 24);
   const paginated = filtered.slice(start, end);
   const total = hasPriceFilter
