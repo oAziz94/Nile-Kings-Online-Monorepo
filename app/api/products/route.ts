@@ -176,8 +176,15 @@ export async function GET(req: NextRequest) {
             : [{ sortOrder: "desc" }, { createdAt: "desc" }];
 
   const hasPriceFilter = q.minPrice != null || q.maxPrice != null;
-  const skip = hasPriceFilter ? 0 : q.offset;
-  const take = hasPriceFilter ? 200 : q.limit;
+  const byVariant = Boolean(q.section);
+
+  // When section (tag) is set we show one card per color variant. We must fetch all matching
+  // products (up to a cap), expand to variant-level list, then paginate by variant index so
+  // the frontend can load all variants. Otherwise limit/offset were applied to products and
+  // total was product count, so many variants never appeared.
+  const SECTION_VIEW_PRODUCT_CAP = 500;
+  const skip = hasPriceFilter ? 0 : byVariant ? 0 : q.offset;
+  const take = hasPriceFilter ? 200 : byVariant ? SECTION_VIEW_PRODUCT_CAP : q.limit;
 
   const totalCount = hasPriceFilter
     ? null
@@ -204,7 +211,6 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  const byVariant = Boolean(q.section);
   let filtered: ProductListItem[];
 
   if (byVariant) {
@@ -229,10 +235,14 @@ export async function GET(req: NextRequest) {
   if (q.sort === "price_asc") filtered.sort((a, b) => a.priceEgp - b.priceEgp);
   else if (q.sort === "price_desc") filtered.sort((a, b) => b.priceEgp - a.priceEgp);
 
-  const start = hasPriceFilter ? (q.offset ?? 0) : 0;
+  // When byVariant, paginate the variant-level list; total is variant count so frontend can load all.
+  const start = hasPriceFilter ? (q.offset ?? 0) : (q.offset ?? 0);
   const end = start + (q.limit ?? 24);
   const paginated = filtered.slice(start, end);
-  const total =
-    hasPriceFilter ? filtered.length : (totalCount ?? paginated.length);
+  const total = hasPriceFilter
+    ? filtered.length
+    : byVariant
+      ? filtered.length
+      : (totalCount ?? paginated.length);
   return apiSuccess({ products: paginated, total });
 }

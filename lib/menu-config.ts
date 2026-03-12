@@ -17,42 +17,33 @@ export type MenuSection = {
   children: MenuSectionItem[];
 };
 
-/** Fallback menu sections. Replace or merge with API categories (id/slug) when needed. */
+/** Fallback menu sections when GET /api/menu is unavailable. Order: كولكشن رجالي - كولكشن حريمي - كولكشن اطفال; inside each: الكل - الاكثر مبيعا (tags loaded from API). */
 export const MENU_SECTIONS: MenuSection[] = [
   {
     id: "men",
-    labelAr: "الرجال",
+    labelAr: "كولكشن رجالي",
     slug: "men",
     children: [
       { labelAr: "الكل", href: "/categories/men" },
-      { labelAr: "تي شيرت", sectionSlug: "تي شيرت", href: "/categories/men?section=تي%20شيرت" },
-      { labelAr: "بيجامات", sectionSlug: "بيجامات", href: "/categories/men?section=بيجامات" },
-      { labelAr: "اطقم", sectionSlug: "اطقم", href: "/categories/men?section=اطقم" },
-      { labelAr: "ملابس داخلية", sectionSlug: "ملابس داخلية", href: "/categories/men?section=ملابس%20داخلية" },
+      { labelAr: "الاكثر مبيعا", href: "/categories/men?sort=best_sales" },
     ],
   },
   {
     id: "women",
-    labelAr: "السيدات",
+    labelAr: "كولكشن حريمي",
     slug: "women",
     children: [
       { labelAr: "الكل", href: "/categories/women" },
-      { labelAr: "تي شيرت", sectionSlug: "تي شيرت", href: "/categories/women?section=تي%20شيرت" },
-      { labelAr: "بيجامات", sectionSlug: "بيجامات", href: "/categories/women?section=بيجامات" },
-      { labelAr: "اطقم", sectionSlug: "اطقم", href: "/categories/women?section=اطقم" },
-      { labelAr: "ملابس داخلية", sectionSlug: "ملابس داخلية", href: "/categories/women?section=ملابس%20داخلية" },
+      { labelAr: "الاكثر مبيعا", href: "/categories/women?sort=best_sales" },
     ],
   },
   {
     id: "kids",
-    labelAr: "الأطفال",
+    labelAr: "كولكشن اطفال",
     slug: "kids",
     children: [
       { labelAr: "الكل", href: "/categories/kids" },
-      { labelAr: "تي شيرت", sectionSlug: "تي شيرت", href: "/categories/kids?section=تي%20شيرت" },
-      { labelAr: "بيجامات", sectionSlug: "بيجامات", href: "/categories/kids?section=بيجامات" },
-      { labelAr: "اطقم", sectionSlug: "اطقم", href: "/categories/kids?section=اطقم" },
-      { labelAr: "ملابس داخلية", sectionSlug: "ملابس داخلية", href: "/categories/kids?section=ملابس%20داخلية" },
+      { labelAr: "الاكثر مبيعا", href: "/categories/kids?sort=best_sales" },
     ],
   },
 ];
