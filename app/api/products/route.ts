@@ -176,12 +176,13 @@ export async function GET(req: NextRequest) {
             : [{ sortOrder: "desc" }, { createdAt: "desc" }];
 
   const hasPriceFilter = q.minPrice != null || q.maxPrice != null;
-  const byVariant = Boolean(q.section);
+  // Category view (الكل, الاكثر مبيعا, or tag section): show one card per color variant like the rest of the menus.
+  const byVariant = Boolean(q.categorySlug);
 
-  // When section (tag) is set we show one card per color variant. We must fetch all matching
-  // products (up to a cap), expand to variant-level list, then paginate by variant index so
-  // the frontend can load all variants. Otherwise limit/offset were applied to products and
-  // total was product count, so many variants never appeared.
+  // When listing by category we show one card per color variant. We fetch matching products
+  // (up to a cap), expand to variant-level list, then paginate by variant index so the
+  // frontend can load all variants. Otherwise limit/offset would apply to products and
+  // many variants would never appear.
   const SECTION_VIEW_PRODUCT_CAP = 500;
   const skip = hasPriceFilter ? 0 : byVariant ? 0 : q.offset;
   const take = hasPriceFilter ? 200 : byVariant ? SECTION_VIEW_PRODUCT_CAP : q.limit;
