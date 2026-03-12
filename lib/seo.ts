@@ -7,10 +7,13 @@ import type { Metadata } from "next";
 const SITE_NAME = "نايل كينجز";
 const DEFAULT_DESCRIPTION = "متجر نايل كينجز أونلاين - تسوق من أفضل المنتجات مع توصيل لجميع المحافظات";
 
+const DEFAULT_APP_URL = "https://nilekingscotton.com";
+
 function appUrl(path = ""): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "https://nilekings.com";
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
+    DEFAULT_APP_URL;
   return path ? `${base.replace(/\/$/, "")}/${path.replace(/^\//, "")}` : base;
 }
 
