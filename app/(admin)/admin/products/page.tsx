@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import { Package, Plus } from "lucide-react";
+import { FileDown, Package, Plus } from "lucide-react";
 
 type Product = {
   id: string;
@@ -33,6 +33,7 @@ type Product = {
 export default function AdminProductsPage() {
   const [products, setProducts] = React.useState<Product[] | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [exporting, setExporting] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -57,16 +58,62 @@ export default function AdminProductsPage() {
   const list = products ?? [];
   const empty = list.length === 0;
 
+  async function handleExportExcel() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/admin/products/export-excel", { credentials: "include" });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast({
+          title: "فشل التصدير",
+          description: j?.error?.message ?? res.statusText,
+          variant: "destructive",
+        });
+        return;
+      }
+      const blob = await res.blob();
+      const filename =
+        res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ??
+        "catalog_products.xlsx";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "تم تصدير الكتالوج إلى Excel" });
+    } catch (e) {
+      toast({
+        title: "فشل التصدير",
+        description: e instanceof Error ? e.message : "خطأ غير متوقع",
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div dir="rtl" className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">المنتجات</h1>
-        <Button asChild>
-          <Link href="/admin/products/new">
-            <Plus className="h-4 w-4" />
-            إضافة منتج
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleExportExcel}
+            disabled={exporting || empty}
+          >
+            <FileDown className="h-4 w-4" />
+            تصدير إلى Excel
+          </Button>
+          <Button asChild>
+            <Link href="/admin/products/new">
+              <Plus className="h-4 w-4" />
+              إضافة منتج
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Card>

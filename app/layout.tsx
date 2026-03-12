@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Cairo } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { baseMetadata } from "@/lib/seo";
@@ -29,6 +30,7 @@ export default function RootLayout({
       <body className="min-h-screen font-cairo" suppressHydrationWarning>
         {children}
         <Toaster />
+        <Analytics />
         {/* Meta Pixel */}
         <Script
           id="meta-pixel"
