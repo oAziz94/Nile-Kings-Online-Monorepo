@@ -208,6 +208,19 @@ export function MenuDrawer({ isOpen, onClose }: MenuDrawerProps) {
                 خدمة عملاء
               </a>
             </div>
+
+            <div className="mt-6 pt-4 border-t border-border/80 flex flex-wrap gap-3">
+              <Button asChild variant="outline" size="sm" className="flex-1 min-w-[140px]">
+                <Link href="/register/agent" onClick={onClose}>
+                  تسجيل وكيل اونلاين
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="flex-1 min-w-[140px]">
+                <Link href="/register/distributor" onClick={onClose}>
+                  تسجيل موزع اونلاين
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
