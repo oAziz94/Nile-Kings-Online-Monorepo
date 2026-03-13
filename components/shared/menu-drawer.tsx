@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { X, ChevronDown, ChevronUp, Facebook, MessageCircle } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Facebook, MessageCircle, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MENU_SECTIONS, type MenuSection } from "@/lib/menu-config";
 import { cn } from "@/lib/utils";
@@ -193,6 +193,19 @@ export function MenuDrawer({ isOpen, onClose }: MenuDrawerProps) {
               >
                 <MessageCircle className="h-5 w-5 shrink-0" strokeWidth={1.5} />
                 تواصل معنا على واتساب
+              </a>
+              <a
+                href={
+                  process.env.NEXT_PUBLIC_CUSTOMER_SERVICE_PHONE
+                    ? `tel:${(process.env.NEXT_PUBLIC_CUSTOMER_SERVICE_PHONE ?? "").replace(/\D/g, "")}`
+                    : "#"
+                }
+                onClick={onClose}
+                className="flex items-center gap-2 text-base text-muted-foreground hover:text-foreground transition-colors py-2"
+                aria-label="خدمة عملاء - اتصل بنا"
+              >
+                <Phone className="h-5 w-5 shrink-0" strokeWidth={1.5} />
+                خدمة عملاء
               </a>
             </div>
           </div>
