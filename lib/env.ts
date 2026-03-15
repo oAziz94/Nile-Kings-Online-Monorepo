@@ -25,6 +25,11 @@ const envSchema = z.object({
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().min(1).optional(),
   PARTNER_NOTIFICATION_EMAIL: z.string().email().optional(),
+  // Meta WhatsApp Cloud API (governorate rerouting – optional; if unset, assignment still works but no notification sent)
+  WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
+  WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
+  WHATSAPP_API_URL: z.string().url().optional(), // default: https://graph.facebook.com/v18.0
+  WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().min(1).optional(), // for future use
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -53,6 +58,10 @@ function validateEnv(): Env {
     SMTP_PASS: process.env.SMTP_PASS,
     SMTP_FROM: process.env.SMTP_FROM,
     PARTNER_NOTIFICATION_EMAIL: process.env.PARTNER_NOTIFICATION_EMAIL,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_API_URL: process.env.WHATSAPP_API_URL,
+    WHATSAPP_BUSINESS_ACCOUNT_ID: process.env.WHATSAPP_BUSINESS_ACCOUNT_ID,
   });
 
   if (!parsed.success) {
