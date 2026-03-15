@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
 
   let imageData: string; // base64
   let contentType = "image/jpeg";
+  let folderOverride: string | undefined;
 
   const contentTypeHeader = req.headers.get("content-type") ?? "";
   if (contentTypeHeader.includes("application/json")) {
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
     if (!body || typeof body.image !== "string") return apiBadRequest("يجب إرسال image (base64)");
     imageData = body.image.replace(/^data:image\/\w+;base64,/, "");
     if (body.contentType) contentType = body.contentType;
+    if (body.folder === "proofs" || body.folder === "routed-proofs") folderOverride = "nile-kings/routed-proofs";
   } else if (contentTypeHeader.includes("multipart/form-data")) {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -46,11 +48,13 @@ export async function POST(req: NextRequest) {
     const buf = await file.arrayBuffer();
     imageData = Buffer.from(buf).toString("base64");
     if (file.type) contentType = file.type;
+    const f = formData.get("folder");
+    if (f === "proofs" || f === "routed-proofs") folderOverride = "nile-kings/routed-proofs";
   } else {
     return apiBadRequest("Content-Type: application/json أو multipart/form-data");
   }
 
-  const folder = "nile-kings/products";
+  const folder = folderOverride ?? "nile-kings/products";
   const timestamp = Math.floor(Date.now() / 1000);
   const crypto = await import("node:crypto");
   const toSign = `folder=${folder}&timestamp=${timestamp}`;
@@ -86,14 +90,14 @@ export async function POST(req: NextRequest) {
     return apiInternal("فشل رفع الصورة", { detail });
   }
 
-  let data: { secure_url?: string };
+  let data: { secure_url?: string; public_id?: string };
   try {
-    data = JSON.parse(bodyText) as { secure_url?: string };
+    data = JSON.parse(bodyText) as { secure_url?: string; public_id?: string };
   } catch {
     return apiInternal("لم يُرجع Cloudinary رابطاً", { detail: "Invalid response" });
   }
   const url = data.secure_url;
   if (!url) return apiInternal("لم يُرجع Cloudinary رابطاً");
 
-  return apiSuccess({ url });
+  return apiSuccess({ url, publicId: data.public_id ?? undefined });
 }

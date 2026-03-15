@@ -337,6 +337,7 @@ model Order {
   user           User             @relation(fields: [userId], references: [id], onDelete: Restrict)
   items          OrderItem[]
   paymentAttempts PaymentAttempt[]
+  routedOrder    RoutedOrder?
 
   @@index([userId])
   @@index([status])
@@ -493,10 +494,98 @@ model Partner {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  linkedAgent   Partner?   @relation("AgentDistributors", fields: [linkedAgentId], references: [id], onDelete: SetNull)
-  distributors Partner[]  @relation("AgentDistributors")
+  linkedAgent    Partner?   @relation("AgentDistributors", fields: [linkedAgentId], references: [id], onDelete: SetNull)
+  distributors   Partner[]  @relation("AgentDistributors")
+  rulePartners   ReroutingRulePartner[]
+  routedOrdersAsPartner RoutedOrder[] @relation("RoutedOrderPartner")
+  lastAssignedInRules   ReroutingRule[] @relation("ReroutingRuleLastPartner")
 
   @@index([partnerType])
   @@index([linkedAgentId])
   @@index([isActive])
+}
+
+// ---------------------------------------------------------------------------
+// Governorate rerouting (orders → partners by governorate + round-robin)
+// ---------------------------------------------------------------------------
+
+model ReroutingRule {
+  id                   String    @id @default(cuid())
+  governorate          String    @unique
+  isActive             Boolean   @default(true)
+  lastAssignedPartnerId String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  lastAssignedPartner Partner?  @relation("ReroutingRuleLastPartner", fields: [lastAssignedPartnerId], references: [id], onDelete: SetNull)
+  partners            ReroutingRulePartner[]
+  routedOrders        RoutedOrder[]
+
+  @@index([governorate])
+  @@index([isActive])
+}
+
+model ReroutingRulePartner {
+  id        String   @id @default(cuid())
+  ruleId    String
+  partnerId String
+  isActive  Boolean  @default(true)
+  priority  Int?     // lower = earlier in round-robin; null = use createdAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rule    ReroutingRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  partner Partner       @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleId, partnerId])
+  @@index([ruleId])
+  @@index([partnerId])
+}
+
+enum RoutedOrderStatus {
+  ASSIGNED
+  NOTIFIED
+  ACCEPTED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+  CANCELLED
+  UNROUTED
+}
+
+enum AssignmentMode {
+  AUTO
+  MANUAL
+}
+
+model RoutedOrder {
+  id                  String            @id @default(cuid())
+  orderId             String            @unique
+  governorate          String
+  ruleId              String?
+  partnerId            String?
+  assignmentSequence  Int               @default(0)
+  assignmentMode      AssignmentMode    @default(AUTO)
+  status              RoutedOrderStatus  @default(ASSIGNED)
+  notifiedAt          DateTime?
+  assignedAt          DateTime          @default(now())
+  acceptedAt          DateTime?
+  deliveredAt         DateTime?
+  proofImageUrl       String?
+  proofImagePublicId  String?
+  notes               String?
+  notificationError   String?           // When WhatsApp send failed (e.g. not configured or API error)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  rule    ReroutingRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  partner Partner? @relation("RoutedOrderPartner", fields: [partnerId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([governorate])
+  @@index([ruleId])
+  @@index([partnerId])
+  @@index([status])
+  @@index([createdAt])
 }

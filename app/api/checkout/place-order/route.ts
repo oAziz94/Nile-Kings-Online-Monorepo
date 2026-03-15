@@ -4,6 +4,7 @@ import { apiSuccess, apiBadRequest, apiUnauthorized } from "@/lib/api/response";
 import { withApiHandler } from "@/lib/api/with-api-handler";
 import { invalidateAnalyticsCache } from "@/lib/cache/analytics";
 import { PAYMENT_METHODS } from "@/lib/checkout/types";
+import { assignOrderToGovernorate } from "@/lib/rerouting/assign";
 
 const addressSchema = {
   governorate: (v: unknown) => typeof v === "string" && v.trim().length > 0,
@@ -71,6 +72,12 @@ async function postHandler(req: Request) {
 
   if (!result.success) {
     return apiBadRequest(result.error, { code: result.code });
+  }
+
+  try {
+    await assignOrderToGovernorate(result.orderId);
+  } catch (e) {
+    console.error("[place-order] Governorate rerouting failed:", e);
   }
 
   await invalidateAnalyticsCache();
