@@ -75,7 +75,7 @@ const TABS: { id: PartnerRegistrationType; label: string; icon: React.ReactNode 
   { id: "DISTRIBUTOR", label: "تسجيل موزع أونلاين", icon: <Truck className="h-4 w-4" /> },
 ];
 
-export default function PartnersPage() {
+function PartnersPageContent() {
   const searchParams = useSearchParams();
   const typeParam = searchParams.get("type");
   const initialTab: PartnerRegistrationType =
@@ -131,6 +131,53 @@ export default function PartnersPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function PartnersPageFallback() {
+  return (
+    <div className="min-h-screen bg-muted/20" dir="rtl">
+      <section className="border-b border-border bg-card">
+        <div className="max-w-[900px] mx-auto px-6 py-10 md:py-14 text-center">
+          <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+            NILE KINGS PARTNER'S
+          </p>
+          <h1 className="text-3xl font-bold text-foreground md:text-4xl">
+            شركاؤنا
+          </h1>
+          <p className="mt-3 text-base text-muted-foreground max-w-xl mx-auto">
+            أهلًا بك فى عالم شركاء ملوك النيل — اختر نوع التسجيل وأكمل البيانات وسنتواصل معك قريباً.
+          </p>
+        </div>
+      </section>
+      <div className="max-w-[900px] mx-auto px-6 py-8 md:py-12">
+        <div className="flex flex-wrap gap-2 mb-6">
+          {TABS.map((tab) => (
+            <Button key={tab.id} variant="outline" size="sm" className="gap-2" disabled>
+              {tab.icon}
+              {tab.label}
+            </Button>
+          ))}
+        </div>
+        <Card className="rounded-2xl border border-border shadow-sm overflow-hidden">
+          <CardHeader className="border-b border-border/80 bg-muted/30">
+            <CardTitle className="text-xl">{FORM_TITLES.AGENT.formTitle}</CardTitle>
+            <CardDescription>{FORM_TITLES.AGENT.sub}</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="h-[320px] animate-pulse rounded-lg bg-muted/50" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default function PartnersPage() {
+  return (
+    <React.Suspense fallback={<PartnersPageFallback />}>
+      <PartnersPageContent />
+    </React.Suspense>
   );
 }
 
