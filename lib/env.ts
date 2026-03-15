@@ -17,6 +17,14 @@ const envSchema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().min(1).optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
+  // Partner registration notifications (optional; if unset, requests are still saved but no email sent)
+  SMTP_HOST: z.string().min(1).optional(),
+  SMTP_PORT: z.string().min(1).optional(),
+  SMTP_SECURE: z.enum(["true", "false"]).optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().min(1).optional(),
+  PARTNER_NOTIFICATION_EMAIL: z.string().email().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -38,6 +46,13 @@ function validateEnv(): Env {
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_SECURE: process.env.SMTP_SECURE,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASS: process.env.SMTP_PASS,
+    SMTP_FROM: process.env.SMTP_FROM,
+    PARTNER_NOTIFICATION_EMAIL: process.env.PARTNER_NOTIFICATION_EMAIL,
   });
 
   if (!parsed.success) {

@@ -431,3 +431,72 @@ model AddToCartLog {
   @@index([variantId])
   @@index([createdAt])
 }
+
+// ---------------------------------------------------------------------------
+// Partner registration (agents & distributors)
+// ---------------------------------------------------------------------------
+
+enum PartnerRequestType {
+  AGENT
+  DISTRIBUTOR
+}
+
+enum PartnerRequestStatus {
+  PENDING
+  CONTACTED
+  APPROVED
+  REJECTED
+}
+
+enum PartnerType {
+  AGENT
+  DISTRIBUTOR
+}
+
+model PartnerRequest {
+  id           String               @id @default(cuid())
+  requestType  PartnerRequestType
+  name         String
+  governorate  String
+  phone        String
+  facebookUrl  String?
+  instagramUrl String?
+  tiktokUrl    String?
+  youtubeUrl   String?
+  websiteUrl   String?
+  otherUrl     String?
+  status       PartnerRequestStatus @default(PENDING)
+  notes        String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@index([requestType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Partner {
+  id            String      @id @default(cuid())
+  partnerType   PartnerType
+  name          String
+  governorate   String
+  phone         String
+  facebookUrl   String?
+  instagramUrl  String?
+  tiktokUrl     String?
+  youtubeUrl    String?
+  websiteUrl    String?
+  otherUrl      String?
+  linkedAgentId String?
+  isActive      Boolean     @default(true)
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  linkedAgent   Partner?   @relation("AgentDistributors", fields: [linkedAgentId], references: [id], onDelete: SetNull)
+  distributors Partner[]  @relation("AgentDistributors")
+
+  @@index([partnerType])
+  @@index([linkedAgentId])
+  @@index([isActive])
+}
