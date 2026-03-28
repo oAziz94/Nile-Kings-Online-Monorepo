@@ -2,6 +2,7 @@
  * Place order: transaction-safe reserve (stockReserved += qty), create Order CREATED, then commit for COD/Paymob.
  */
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { reserveStockForOrder, commitReservation, InsufficientStockError } from "@/lib/services/stock";
 import { logOrderCreated, logOrderConfirmed } from "@/lib/audit/order-audit";
@@ -10,6 +11,28 @@ import { PHASE1_SHIPPING_PROVIDER_DISPLAY } from "@/lib/services/shipping";
 import type { CheckoutAddress } from "./types";
 
 const RESERVATION_MINUTES = 15;
+
+/** Postgres `Int` columns — totals must fit or Prisma throws at persist time. */
+const INT32_MAX = 2_147_483_647;
+
+function totalsFitDbInt(summary: {
+  subtotal: number;
+  couponDiscount: number;
+  seniorFreeValue: number;
+  shippingFee: number;
+  codFee: number;
+  finalTotal: number;
+}): boolean {
+  const fields = [
+    summary.subtotal,
+    summary.couponDiscount,
+    summary.seniorFreeValue,
+    summary.shippingFee,
+    summary.codFee,
+    summary.finalTotal,
+  ];
+  return fields.every((n) => Number.isFinite(n) && n >= 0 && n <= INT32_MAX);
+}
 
 export type PlaceOrderInput = {
   userId: string;
@@ -62,6 +85,14 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     return { success: false, error: "Cart is empty", code: "EMPTY_CART" };
   }
 
+  if (!totalsFitDbInt(summary)) {
+    return {
+      success: false,
+      error: "قيمة الطلب تتجاوز الحد المسموح. قلّل الكميات أو قسّم الطلب.",
+      code: "ORDER_TOTAL_TOO_LARGE",
+    };
+  }
+
   /** Item display: productSlug-size-colorName (e.g. test-M-اسود) */
   function variantDisplayName(
     productSlug: string,
@@ -86,13 +117,32 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     };
   });
 
+  for (const line of orderLines) {
+    if (
+      line.quantity < 1 ||
+      !Number.isFinite(line.unitPricePiastres) ||
+      !Number.isFinite(line.totalPiastres) ||
+      line.unitPricePiastres < 0 ||
+      line.unitPricePiastres > INT32_MAX ||
+      line.totalPiastres < 0 ||
+      line.totalPiastres > INT32_MAX
+    ) {
+      return {
+        success: false,
+        error: "قيمة الطلب تتجاوز الحد المسموح. قلّل الكميات أو قسّم الطلب.",
+        code: "LINE_AMOUNT_TOO_LARGE",
+      };
+    }
+  }
+
   const stockLines = orderLines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }));
   const reservationExpiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
   const immediateConfirm = input.paymentMethod === "COD" || input.paymentMethod === "PAYMOB";
   const isInstaPayPrepaid = input.paymentMethod === "INSTAPAY_PREPAID";
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(
+      async (tx) => {
       // 1) Reserve stock (lock + increment stockReserved only)
       await reserveStockForOrder(tx, stockLines);
 
@@ -180,7 +230,13 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
       return { orderId: order.id, status: order.status };
-    });
+    },
+      {
+        // Default 5s is too tight for large carts (many stock updates per line).
+        maxWait: 15_000,
+        timeout: 60_000,
+      }
+    );
 
     return {
       success: true,
@@ -193,6 +249,22 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         success: false,
         error: `Insufficient stock for item`,
         code: "INSUFFICIENT_STOCK",
+      };
+    }
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      console.error("[placeOrder] Prisma error", e.code, e.meta, e.message);
+      if (e.code === "P2028" || e.code === "P2034") {
+        return {
+          success: false,
+          error:
+            "استغرقت معالجة الطلب وقتاً أطول من المتوقع (سلة كبيرة أو ازدحام). أعد المحاولة بعد لحظات.",
+          code: e.code === "P2034" ? "TRANSACTION_CONFLICT" : "TRANSACTION_TIMEOUT",
+        };
+      }
+      return {
+        success: false,
+        error: "تعذر إتمام الطلب. إذا تكرر ذلك، تواصل مع الدعم.",
+        code: "ORDER_PERSIST_FAILED",
       };
     }
     throw e;
