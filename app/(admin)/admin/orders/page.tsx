@@ -25,8 +25,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ShoppingBag, FileDown } from "lucide-react";
+import { AdminPaginationBar } from "@/components/admin/admin-pagination";
+import { ShoppingBag, FileDown, Search, Loader2 } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
+import { cn } from "@/lib/utils";
 
 const STATUS_LABELS: Record<string, string> = {
   CREATED: "قيد الانشاء",
@@ -65,23 +67,58 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = React.useState<Order[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+  const [fetching, setFetching] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [debouncedQ, setDebouncedQ] = React.useState("");
+  const [page, setPage] = React.useState(0);
+  const [pageSize, setPageSize] = React.useState(20);
   const [exportOpen, setExportOpen] = React.useState(false);
   const [exportDate, setExportDate] = React.useState(() => toYYYYMMDD(new Date()));
   const [exporting, setExporting] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
-    fetch("/api/admin/orders?limit=50", { credentials: "include" })
+    const t = setTimeout(() => setDebouncedQ(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedQ]);
+
+  React.useEffect(() => {
+    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [total, pageSize, page]);
+
+  React.useEffect(() => {
+    const ac = new AbortController();
+    setFetching(true);
+    const params = new URLSearchParams({
+      limit: String(pageSize),
+      offset: String(page * pageSize),
+    });
+    if (debouncedQ) params.set("q", debouncedQ);
+    fetch(`/api/admin/orders?${params}`, { credentials: "include", signal: ac.signal })
       .then((r) => r.json())
       .then((json: { success?: boolean; data?: { orders: Order[]; total: number } }) => {
+        if (ac.signal.aborted) return;
         if (json?.success && json.data) {
           setOrders(json.data.orders);
           setTotal(json.data.total);
         }
       })
-      .catch(() => toast({ title: "فشل تحميل الطلبات", variant: "destructive" }))
-      .finally(() => setLoading(false));
-  }, [toast]);
+      .catch(() => {
+        if (!ac.signal.aborted) toast({ title: "فشل تحميل الطلبات", variant: "destructive" });
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) {
+          setLoading(false);
+          setFetching(false);
+        }
+      });
+    return () => ac.abort();
+  }, [debouncedQ, page, pageSize, toast]);
 
   const handleExportCourier = React.useCallback(async () => {
     setExporting(true);
@@ -122,18 +159,28 @@ export default function AdminOrdersPage() {
     }
   }, [exportDate, toast]);
 
-  if (loading) return <Skeleton className="h-64 w-full rounded-2xl" />;
+  if (loading && orders.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
 
   return (
     <div dir="rtl" className="space-y-6">
       <h1 className="text-2xl font-bold">الطلبات</h1>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle>قائمة الطلبات</CardTitle>
             <CardDescription>عرض تفاصيل الطلب وتحديث الحالة من صفحة التفاصيل.</CardDescription>
           </div>
-          <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:max-w-md sm:flex-row sm:items-center sm:justify-end">
+            <div className="relative w-full sm:min-w-[240px]">
+              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="بحث برقم الطلب أو اسم العميل أو الهاتف…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pr-9"
+              />
+            </div>
+            <Dialog open={exportOpen} onOpenChange={setExportOpen}>
             <Button type="button" variant="outline" onClick={() => setExportOpen(true)}>
               <FileDown className="ml-2 h-4 w-4" />
               تصدير ملف الشحن
@@ -171,15 +218,24 @@ export default function AdminOrdersPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
-          {orders.length === 0 ? (
+          {fetching && orders.length > 0 && (
+            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              جاري التحديث…
+            </div>
+          )}
+          {orders.length === 0 && !fetching ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
               <ShoppingBag className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">لا توجد طلبات</p>
+              <p className="text-muted-foreground mb-2">
+                {debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات"}
+              </p>
             </div>
-          ) : (
-            <Table>
+          ) : orders.length > 0 ? (
+            <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
                   <TableHead>الرقم</TableHead>
@@ -209,9 +265,17 @@ export default function AdminOrdersPage() {
                 ))}
               </TableBody>
             </Table>
-          )}
-          {total > orders.length && (
-            <p className="text-sm text-muted-foreground mt-4">عرض {orders.length} من {total}</p>
+          ) : null}
+          {total > 0 && (
+            <AdminPaginationBar
+              className="mt-6"
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              disabled={fetching}
+            />
           )}
         </CardContent>
       </Card>

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/api/response";
@@ -19,10 +20,22 @@ export async function GET(req: NextRequest) {
     return apiBadRequest("partnerType مطلوب (AGENT أو DISTRIBUTOR)");
   }
 
+  const qRaw = (searchParams.get("q") ?? "").trim().slice(0, 100);
+  const q = qRaw.length > 0 ? qRaw : undefined;
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50", 10) || 50));
   const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0", 10) || 0);
 
-  const where = { partnerType };
+  const where: Prisma.PartnerWhereInput = {
+    partnerType,
+    ...(q
+      ? {
+          OR: [
+            { name: { contains: q, mode: Prisma.QueryMode.insensitive } },
+            { phone: { contains: q, mode: Prisma.QueryMode.insensitive } },
+          ],
+        }
+      : {}),
+  };
   const include =
     partnerType === "DISTRIBUTOR"
       ? { linkedAgent: { select: { id: true, name: true, phone: true } } }

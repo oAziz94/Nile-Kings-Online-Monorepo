@@ -15,9 +15,12 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Truck } from "lucide-react";
+import { AdminPaginationBar } from "@/components/admin/admin-pagination";
+import { Truck, Search, Loader2 } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
+import { cn } from "@/lib/utils";
 
 const ROUTED_STATUS_LABELS: Record<string, string> = {
   ASSIGNED: "مُعيَّن",
@@ -52,28 +55,57 @@ export default function AdminRoutedOrdersPage() {
   const [rows, setRows] = React.useState<RoutedOrderRow[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+  const [fetching, setFetching] = React.useState(false);
   const [statusFilter, setStatusFilter] = React.useState("");
+  const [search, setSearch] = React.useState("");
+  const [debouncedQ, setDebouncedQ] = React.useState("");
+  const [page, setPage] = React.useState(0);
+  const [pageSize, setPageSize] = React.useState(20);
   const { toast } = useToast();
 
-  const fetchList = React.useCallback(() => {
-    const params = new URLSearchParams({ limit: "50" });
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedQ, statusFilter]);
+
+  React.useEffect(() => {
+    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [total, pageSize, page]);
+
+  React.useEffect(() => {
+    const ac = new AbortController();
+    setFetching(true);
+    const params = new URLSearchParams({
+      limit: String(pageSize),
+      offset: String(page * pageSize),
+    });
     if (statusFilter) params.set("status", statusFilter);
-    fetch(`/api/admin/routed-orders?${params}`, { credentials: "include" })
+    if (debouncedQ) params.set("q", debouncedQ);
+    fetch(`/api/admin/routed-orders?${params}`, { credentials: "include", signal: ac.signal })
       .then((r) => r.json())
       .then((json: { success?: boolean; data?: { routedOrders: RoutedOrderRow[]; total: number } }) => {
+        if (ac.signal.aborted) return;
         if (json?.success && json.data) {
           setRows(json.data.routedOrders);
           setTotal(json.data.total);
         }
       })
-      .catch(() => toast({ title: "فشل تحميل الطلبات الموجهة", variant: "destructive" }))
-      .finally(() => setLoading(false));
-  }, [statusFilter, toast]);
-
-  React.useEffect(() => {
-    setLoading(true);
-    fetchList();
-  }, [fetchList]);
+      .catch(() => {
+        if (!ac.signal.aborted) toast({ title: "فشل تحميل الطلبات الموجهة", variant: "destructive" });
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) {
+          setLoading(false);
+          setFetching(false);
+        }
+      });
+    return () => ac.abort();
+  }, [debouncedQ, statusFilter, page, pageSize, toast]);
 
   if (loading && rows.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
 
@@ -81,13 +113,22 @@ export default function AdminRoutedOrdersPage() {
     <div dir="rtl" className="space-y-6">
       <h1 className="text-2xl font-bold">الطلبات الموجهة</h1>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardHeader className="flex flex-col gap-4 space-y-0 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <CardTitle>قائمة الطلبات الموجهة</CardTitle>
             <CardDescription>عرض الطلبات المُوجّهة للشركاء وتحديث الحالة وإثبات التسليم من صفحة التفاصيل.</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-40">
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:w-auto">
+            <div className="relative w-full min-w-[200px] sm:max-w-xs">
+              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="بحث برقم الطلب أو اسم العميل…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pr-9"
+              />
+            </div>
+            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-40">
               <option value="">كل الحالات</option>
               {Object.entries(ROUTED_STATUS_LABELS).map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>
@@ -96,13 +137,21 @@ export default function AdminRoutedOrdersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {rows.length === 0 ? (
+          {fetching && rows.length > 0 && (
+            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              جاري التحديث…
+            </div>
+          )}
+          {rows.length === 0 && !fetching ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
               <Truck className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">لا توجد طلبات موجهة</p>
+              <p className="text-muted-foreground mb-2">
+                {debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات موجهة"}
+              </p>
             </div>
-          ) : (
-            <Table>
+          ) : rows.length > 0 ? (
+            <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
                   <TableHead>رقم الطلب</TableHead>
@@ -138,9 +187,17 @@ export default function AdminRoutedOrdersPage() {
                 ))}
               </TableBody>
             </Table>
-          )}
-          {total > rows.length && (
-            <p className="text-sm text-muted-foreground mt-4">عرض {rows.length} من {total}</p>
+          ) : null}
+          {total > 0 && (
+            <AdminPaginationBar
+              className="mt-6"
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              disabled={fetching}
+            />
           )}
         </CardContent>
       </Card>

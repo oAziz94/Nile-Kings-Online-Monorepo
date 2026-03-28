@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -15,7 +16,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import { FileDown, Package, Plus } from "lucide-react";
+import { AdminPaginationBar } from "@/components/admin/admin-pagination";
+import { FileDown, Package, Plus, Search, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Product = {
   id: string;
@@ -31,22 +34,61 @@ type Product = {
 };
 
 export default function AdminProductsPage() {
-  const [products, setProducts] = React.useState<Product[] | null>(null);
+  const [products, setProducts] = React.useState<Product[]>([]);
+  const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+  const [fetching, setFetching] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [debouncedQ, setDebouncedQ] = React.useState("");
+  const [page, setPage] = React.useState(0);
+  const [pageSize, setPageSize] = React.useState(20);
   const [exporting, setExporting] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
-    fetch("/api/admin/products", { credentials: "include" })
-      .then((res) => res.json())
-      .then((json: { success?: boolean; data?: Product[] }) => {
-        if (json?.success && Array.isArray(json.data)) setProducts(json.data);
-      })
-      .catch(() => toast({ title: "فشل تحميل المنتجات", variant: "destructive" }))
-      .finally(() => setLoading(false));
-  }, [toast]);
+    const t = setTimeout(() => setDebouncedQ(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  if (loading) {
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedQ]);
+
+  React.useEffect(() => {
+    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [total, pageSize, page]);
+
+  React.useEffect(() => {
+    const ac = new AbortController();
+    setFetching(true);
+    const params = new URLSearchParams({
+      limit: String(pageSize),
+      offset: String(page * pageSize),
+    });
+    if (debouncedQ) params.set("q", debouncedQ);
+    fetch(`/api/admin/products?${params}`, { credentials: "include", signal: ac.signal })
+      .then((res) => res.json())
+      .then((json: { success?: boolean; data?: { products: Product[]; total: number } }) => {
+        if (ac.signal.aborted) return;
+        if (json?.success && json.data && Array.isArray(json.data.products)) {
+          setProducts(json.data.products);
+          setTotal(json.data.total);
+        }
+      })
+      .catch(() => {
+        if (!ac.signal.aborted) toast({ title: "فشل تحميل المنتجات", variant: "destructive" });
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) {
+          setLoading(false);
+          setFetching(false);
+        }
+      });
+    return () => ac.abort();
+  }, [debouncedQ, page, pageSize, toast]);
+
+  if (loading && products.length === 0) {
     return (
       <div dir="rtl" className="space-y-4">
         <Skeleton className="h-8 w-48" />
@@ -55,8 +97,8 @@ export default function AdminProductsPage() {
     );
   }
 
-  const list = products ?? [];
-  const empty = list.length === 0;
+  const list = products;
+  const empty = list.length === 0 && !fetching;
 
   async function handleExportExcel() {
     setExporting(true);
@@ -102,7 +144,7 @@ export default function AdminProductsPage() {
             type="button"
             variant="outline"
             onClick={handleExportExcel}
-            disabled={exporting || empty}
+            disabled={exporting}
           >
             <FileDown className="h-4 w-4" />
             تصدير إلى Excel
@@ -117,21 +159,40 @@ export default function AdminProductsPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>قائمة المنتجات</CardTitle>
-          <CardDescription>إدارة المنتجات والمتغيرات والأسعار.</CardDescription>
+        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle>قائمة المنتجات</CardTitle>
+            <CardDescription>إدارة المنتجات والمتغيرات والأسعار.</CardDescription>
+          </div>
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="بحث بالاسم أو الرابط (slug)…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pr-9"
+            />
+          </div>
         </CardHeader>
         <CardContent>
+          {fetching && list.length > 0 && (
+            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              جاري التحديث…
+            </div>
+          )}
           {empty ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
               <Package className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">لا توجد منتجات بعد</p>
+              <p className="text-muted-foreground mb-2">
+                {debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد منتجات بعد"}
+              </p>
               <Button asChild variant="outline">
                 <Link href="/admin/products/new">إضافة أول منتج</Link>
               </Button>
             </div>
           ) : (
-            <Table>
+            <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
                   <TableHead>الصورة</TableHead>
@@ -185,6 +246,17 @@ export default function AdminProductsPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {total > 0 && (
+            <AdminPaginationBar
+              className="mt-6"
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              disabled={fetching}
+            />
           )}
         </CardContent>
       </Card>

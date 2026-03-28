@@ -16,8 +16,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import { Users, Search } from "lucide-react";
+import { AdminPaginationBar } from "@/components/admin/admin-pagination";
+import { Users, Search, Loader2 } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
+import { cn } from "@/lib/utils";
 
 type Client = {
   id: string;
@@ -33,8 +35,11 @@ export default function AdminClientsPage() {
   const [clients, setClients] = React.useState<Client[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+  const [fetching, setFetching] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [debouncedQ, setDebouncedQ] = React.useState("");
+  const [page, setPage] = React.useState(0);
+  const [pageSize, setPageSize] = React.useState(20);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -43,19 +48,42 @@ export default function AdminClientsPage() {
   }, [search]);
 
   React.useEffect(() => {
-    const params = new URLSearchParams({ limit: "30" });
+    setPage(0);
+  }, [debouncedQ]);
+
+  React.useEffect(() => {
+    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [total, pageSize, page]);
+
+  React.useEffect(() => {
+    const ac = new AbortController();
+    setFetching(true);
+    const params = new URLSearchParams({
+      limit: String(pageSize),
+      offset: String(page * pageSize),
+    });
     if (debouncedQ) params.set("q", debouncedQ);
-    fetch(`/api/admin/clients?${params}`, { credentials: "include" })
+    fetch(`/api/admin/clients?${params}`, { credentials: "include", signal: ac.signal })
       .then((r) => r.json())
       .then((json: { success?: boolean; data?: { clients: Client[]; total: number } }) => {
+        if (ac.signal.aborted) return;
         if (json?.success && json.data) {
           setClients(json.data.clients);
           setTotal(json.data.total);
         }
       })
-      .catch(() => toast({ title: "فشل تحميل العملاء", variant: "destructive" }))
-      .finally(() => setLoading(false));
-  }, [debouncedQ, toast]);
+      .catch(() => {
+        if (!ac.signal.aborted) toast({ title: "فشل تحميل العملاء", variant: "destructive" });
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) {
+          setLoading(false);
+          setFetching(false);
+        }
+      });
+    return () => ac.abort();
+  }, [debouncedQ, page, pageSize, toast]);
 
   if (loading && clients.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
 
@@ -79,7 +107,13 @@ export default function AdminClientsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {clients.length === 0 ? (
+          {fetching && clients.length > 0 && (
+            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              جاري التحديث…
+            </div>
+          )}
+          {clients.length === 0 && !fetching ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
               <Users className="mb-4 h-12 w-12 text-muted-foreground" />
               <p className="mb-2 text-muted-foreground">
@@ -87,7 +121,7 @@ export default function AdminClientsPage() {
               </p>
             </div>
           ) : (
-            <Table>
+            <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
                   <TableHead>الهاتف</TableHead>
@@ -125,10 +159,16 @@ export default function AdminClientsPage() {
               </TableBody>
             </Table>
           )}
-          {total > clients.length && (
-            <p className="mt-4 text-sm text-muted-foreground">
-              عرض {clients.length} من {total}
-            </p>
+          {total > 0 && (
+            <AdminPaginationBar
+              className="mt-6"
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              disabled={fetching}
+            />
           )}
         </CardContent>
       </Card>

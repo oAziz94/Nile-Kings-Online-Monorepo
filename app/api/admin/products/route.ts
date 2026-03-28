@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
+import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/admin/slug";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiConflict } from "@/lib/api/response";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await requireAdmin();
   } catch (e: unknown) {
@@ -13,14 +14,36 @@ export async function GET() {
     if (err.status === 403) return apiForbidden("غير مصرح");
     throw e;
   }
-  const products = await prisma.product.findMany({
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-    include: {
-      category: { select: { id: true, name: true, slug: true } },
-      variants: { select: { id: true, sku: true, name: true, pricePiastres: true, stockAvailable: true, stockReserved: true, colorHex: true, colorName: true } },
-    },
-  });
-  return apiSuccess(products);
+  const { searchParams } = new URL(req.url);
+  const qRaw = (searchParams.get("q") ?? "").trim().slice(0, 100);
+  const q = qRaw.length > 0 ? qRaw : undefined;
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10) || 20));
+  const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0", 10) || 0);
+
+  const where: Prisma.ProductWhereInput = q
+    ? {
+        OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { slug: { contains: q, mode: "insensitive" } },
+        ],
+      }
+    : {};
+
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      take: limit,
+      skip: offset,
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+        variants: { select: { id: true, sku: true, name: true, pricePiastres: true, stockAvailable: true, stockReserved: true, colorHex: true, colorName: true } },
+      },
+    }),
+    prisma.product.count({ where }),
+  ]);
+
+  return apiSuccess({ products, total, limit, offset });
 }
 
 export async function POST(req: NextRequest) {

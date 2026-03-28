@@ -15,6 +15,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
+import { AdminPaginationBar } from "@/components/admin/admin-pagination";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +35,7 @@ import {
   X,
   MessageSquare,
   Loader2,
+  Search,
 } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
@@ -115,6 +118,11 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
   const [requests, setRequests] = React.useState<PartnerRequestRow[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+  const [fetching, setFetching] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [debouncedQ, setDebouncedQ] = React.useState("");
+  const [page, setPage] = React.useState(0);
+  const [pageSize, setPageSize] = React.useState(20);
   const [detailId, setDetailId] = React.useState<string | null>(null);
   const [detail, setDetail] = React.useState<PartnerRequestRow | null>(null);
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
@@ -123,9 +131,28 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
   const [agents, setAgents] = React.useState<{ id: string; name: string }[]>([]);
   const [convertAgentId, setConvertAgentId] = React.useState("");
 
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedQ]);
+
+  React.useEffect(() => {
+    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [total, pageSize, page]);
+
   const load = React.useCallback(() => {
-    setLoading(true);
-    fetch("/api/admin/partner-requests?limit=100", { credentials: "include" })
+    setFetching(true);
+    const params = new URLSearchParams({
+      limit: String(pageSize),
+      offset: String(page * pageSize),
+    });
+    if (debouncedQ) params.set("q", debouncedQ);
+    fetch(`/api/admin/partner-requests?${params}`, { credentials: "include" })
       .then((r) => r.json())
       .then((json: { success?: boolean; data?: { requests: PartnerRequestRow[]; total: number } }) => {
         if (json?.success && json.data) {
@@ -134,8 +161,11 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
         }
       })
       .catch(() => toast({ title: "فشل تحميل الطلبات", variant: "destructive" }))
-      .finally(() => setLoading(false));
-  }, [toast]);
+      .finally(() => {
+        setLoading(false);
+        setFetching(false);
+      });
+  }, [toast, debouncedQ, page, pageSize]);
 
   React.useEffect(() => {
     load();
@@ -227,18 +257,35 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle>طلبات شراكة</CardTitle>
-          <CardDescription>عرض وإدارة طلبات التسجيل كوكيل أو موزع.</CardDescription>
+        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle>طلبات شراكة</CardTitle>
+            <CardDescription>عرض وإدارة طلبات التسجيل كوكيل أو موزع.</CardDescription>
+          </div>
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="بحث بالاسم أو الهاتف أو المحافظة…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pr-9"
+            />
+          </div>
         </CardHeader>
         <CardContent>
-          {requests.length === 0 ? (
+          {fetching && requests.length > 0 && (
+            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              جاري التحديث…
+            </div>
+          )}
+          {requests.length === 0 && !fetching ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
               <ClipboardList className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-muted-foreground">لا توجد طلبات شراكة</p>
+              <p className="text-muted-foreground">{debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات شراكة"}</p>
             </div>
           ) : (
-            <Table>
+            <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
                   <TableHead>النوع</TableHead>
@@ -295,8 +342,16 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
               </TableBody>
             </Table>
           )}
-          {total > requests.length && (
-            <p className="mt-4 text-sm text-muted-foreground">عرض {requests.length} من {total}</p>
+          {total > 0 && (
+            <AdminPaginationBar
+              className="mt-6"
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              disabled={fetching}
+            />
           )}
         </CardContent>
       </Card>
@@ -429,12 +484,37 @@ function AgentsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
   const [partners, setPartners] = React.useState<(PartnerRow & { _count?: { distributors: number } })[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+  const [fetching, setFetching] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [debouncedQ, setDebouncedQ] = React.useState("");
+  const [page, setPage] = React.useState(0);
+  const [pageSize, setPageSize] = React.useState(20);
   const [detailId, setDetailId] = React.useState<string | null>(null);
   const [detail, setDetail] = React.useState<PartnerRow | null>(null);
 
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedQ]);
+
+  React.useEffect(() => {
+    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [total, pageSize, page]);
+
   const load = React.useCallback(() => {
-    setLoading(true);
-    fetch("/api/admin/partners?partnerType=AGENT&limit=100", {
+    setFetching(true);
+    const params = new URLSearchParams({
+      partnerType: "AGENT",
+      limit: String(pageSize),
+      offset: String(page * pageSize),
+    });
+    if (debouncedQ) params.set("q", debouncedQ);
+    fetch(`/api/admin/partners?${params}`, {
       credentials: "include",
       cache: "no-store",
       headers: { "Cache-Control": "no-cache" },
@@ -447,8 +527,11 @@ function AgentsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
         }
       })
       .catch(() => toast({ title: "فشل تحميل الوكلاء", variant: "destructive" }))
-      .finally(() => setLoading(false));
-  }, [toast]);
+      .finally(() => {
+        setLoading(false);
+        setFetching(false);
+      });
+  }, [toast, debouncedQ, page, pageSize]);
 
   React.useEffect(() => load(), [load]);
   React.useEffect(() => {
@@ -473,18 +556,35 @@ function AgentsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle>وكلاء</CardTitle>
-          <CardDescription>قائمة الوكلاء وعدد الموزعين المرتبطين.</CardDescription>
+        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle>وكلاء</CardTitle>
+            <CardDescription>قائمة الوكلاء وعدد الموزعين المرتبطين.</CardDescription>
+          </div>
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="بحث بالاسم أو الهاتف…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pr-9"
+            />
+          </div>
         </CardHeader>
         <CardContent>
-          {partners.length === 0 ? (
+          {fetching && partners.length > 0 && (
+            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              جاري التحديث…
+            </div>
+          )}
+          {partners.length === 0 && !fetching ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
               <Users className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-muted-foreground">لا يوجد وكلاء</p>
+              <p className="text-muted-foreground">{debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد وكلاء"}</p>
             </div>
           ) : (
-            <Table>
+            <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
                   <TableHead>الاسم</TableHead>
@@ -513,7 +613,17 @@ function AgentsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
               </TableBody>
             </Table>
           )}
-          {total > partners.length && <p className="mt-4 text-sm text-muted-foreground">عرض {partners.length} من {total}</p>}
+          {total > 0 && (
+            <AdminPaginationBar
+              className="mt-6"
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              disabled={fetching}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -548,12 +658,37 @@ function DistributorsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"
   const [partners, setPartners] = React.useState<PartnerRow[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+  const [fetching, setFetching] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [debouncedQ, setDebouncedQ] = React.useState("");
+  const [page, setPage] = React.useState(0);
+  const [pageSize, setPageSize] = React.useState(20);
   const [detailId, setDetailId] = React.useState<string | null>(null);
   const [detail, setDetail] = React.useState<PartnerRow | null>(null);
 
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedQ]);
+
+  React.useEffect(() => {
+    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [total, pageSize, page]);
+
   const load = React.useCallback(() => {
-    setLoading(true);
-    fetch("/api/admin/partners?partnerType=DISTRIBUTOR&limit=100", {
+    setFetching(true);
+    const params = new URLSearchParams({
+      partnerType: "DISTRIBUTOR",
+      limit: String(pageSize),
+      offset: String(page * pageSize),
+    });
+    if (debouncedQ) params.set("q", debouncedQ);
+    fetch(`/api/admin/partners?${params}`, {
       credentials: "include",
       cache: "no-store",
       headers: { "Cache-Control": "no-cache" },
@@ -566,8 +701,11 @@ function DistributorsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"
         }
       })
       .catch(() => toast({ title: "فشل تحميل الموزعين", variant: "destructive" }))
-      .finally(() => setLoading(false));
-  }, [toast]);
+      .finally(() => {
+        setLoading(false);
+        setFetching(false);
+      });
+  }, [toast, debouncedQ, page, pageSize]);
 
   React.useEffect(() => load(), [load]);
   React.useEffect(() => {
@@ -592,18 +730,35 @@ function DistributorsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle>موزعين</CardTitle>
-          <CardDescription>قائمة الموزعين والوكيل المرتبط بكل موزع.</CardDescription>
+        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle>موزعين</CardTitle>
+            <CardDescription>قائمة الموزعين والوكيل المرتبط بكل موزع.</CardDescription>
+          </div>
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="بحث بالاسم أو الهاتف…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pr-9"
+            />
+          </div>
         </CardHeader>
         <CardContent>
-          {partners.length === 0 ? (
+          {fetching && partners.length > 0 && (
+            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              جاري التحديث…
+            </div>
+          )}
+          {partners.length === 0 && !fetching ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
               <Truck className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-muted-foreground">لا يوجد موزعين</p>
+              <p className="text-muted-foreground">{debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد موزعين"}</p>
             </div>
           ) : (
-            <Table>
+            <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
                   <TableHead>الاسم</TableHead>
@@ -632,7 +787,17 @@ function DistributorsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"
               </TableBody>
             </Table>
           )}
-          {total > partners.length && <p className="mt-4 text-sm text-muted-foreground">عرض {partners.length} من {total}</p>}
+          {total > 0 && (
+            <AdminPaginationBar
+              className="mt-6"
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              disabled={fetching}
+            />
+          )}
         </CardContent>
       </Card>
 

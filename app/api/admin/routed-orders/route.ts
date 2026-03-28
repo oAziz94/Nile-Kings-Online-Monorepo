@@ -1,7 +1,19 @@
 import { NextRequest } from "next/server";
+import { Prisma, RoutedOrderStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiUnauthorized, apiForbidden } from "@/lib/api/response";
+
+const ROUTED_STATUSES: RoutedOrderStatus[] = [
+  "ASSIGNED",
+  "NOTIFIED",
+  "ACCEPTED",
+  "OUT_FOR_DELIVERY",
+  "DELIVERED",
+  "FAILED",
+  "CANCELLED",
+  "UNROUTED",
+];
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,13 +26,30 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status") ?? undefined;
+  const statusParam = searchParams.get("status") ?? undefined;
+  const status =
+    statusParam && ROUTED_STATUSES.includes(statusParam as RoutedOrderStatus)
+      ? (statusParam as RoutedOrderStatus)
+      : undefined;
+  const qRaw = (searchParams.get("q") ?? "").trim().slice(0, 100);
+  const q = qRaw.length > 0 ? qRaw : undefined;
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50", 10) || 50));
   const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0", 10) || 0);
 
-  const where = status
-    ? { status: status as "ASSIGNED" | "NOTIFIED" | "ACCEPTED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "FAILED" | "CANCELLED" | "UNROUTED" }
-    : {};
+  const searchWhere: Prisma.RoutedOrderWhereInput | undefined = q
+    ? {
+        OR: [
+          { orderId: { contains: q, mode: "insensitive" } },
+          { order: { user: { name: { contains: q, mode: "insensitive" } } } },
+          { order: { user: { phone: { contains: q, mode: "insensitive" } } } },
+        ],
+      }
+    : undefined;
+
+  const where: Prisma.RoutedOrderWhereInput = {
+    ...(status ? { status } : {}),
+    ...(searchWhere ?? {}),
+  };
 
   const [routedOrders, total] = await Promise.all([
     prisma.routedOrder.findMany({

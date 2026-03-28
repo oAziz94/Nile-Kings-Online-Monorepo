@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
+import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiConflict } from "@/lib/api/response";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await requireAdmin();
   } catch (e: unknown) {
@@ -12,10 +13,25 @@ export async function GET() {
     if (err.status === 403) return apiForbidden("غير مصرح");
     throw e;
   }
-  const coupons = await prisma.coupon.findMany({
-    orderBy: [{ createdAt: "desc" }],
-  });
-  return apiSuccess(coupons);
+  const { searchParams } = new URL(req.url);
+  const qRaw = (searchParams.get("q") ?? "").trim().slice(0, 100);
+  const q = qRaw.length > 0 ? qRaw : undefined;
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10) || 20));
+  const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0", 10) || 0);
+
+  const where: Prisma.CouponWhereInput = q ? { code: { contains: q, mode: "insensitive" } } : {};
+
+  const [coupons, total] = await Promise.all([
+    prisma.coupon.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }],
+      take: limit,
+      skip: offset,
+    }),
+    prisma.coupon.count({ where }),
+  ]);
+
+  return apiSuccess({ coupons, total, limit, offset });
 }
 
 export async function POST(req: NextRequest) {
