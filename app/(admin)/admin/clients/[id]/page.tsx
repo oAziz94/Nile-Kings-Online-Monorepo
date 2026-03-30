@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -16,10 +17,12 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import { User, MapPin, Package } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { User, MapPin, Package, Loader2, Pencil } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatNumberEn } from "@/lib/format-en-numbers";
+import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 
 const STATUS_LABELS: Record<string, string> = {
   CREATED: "قيد الانشاء",
@@ -67,14 +70,27 @@ type ClientProfile = {
   _count: { orders: number };
 };
 
+type AddressForm = {
+  label: string;
+  governorate: string;
+  area: string;
+  street: string;
+  notes: string;
+  phone: string;
+  isDefault: boolean;
+};
+
 export default function AdminClientProfilePage() {
   const params = useParams();
   const id = params.id as string;
   const { toast } = useToast();
   const [client, setClient] = React.useState<ClientProfile | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [editingAddressId, setEditingAddressId] = React.useState<string | null>(null);
+  const [addressForm, setAddressForm] = React.useState<AddressForm | null>(null);
+  const [savingAddress, setSavingAddress] = React.useState(false);
 
-  React.useEffect(() => {
+  const loadClient = React.useCallback(() => {
     if (!id) return;
     fetch(`/api/admin/clients/${id}`, { credentials: "include" })
       .then((r) => r.json())
@@ -84,6 +100,65 @@ export default function AdminClientProfilePage() {
       .catch(() => toast({ title: "فشل تحميل ملف العميل", variant: "destructive" }))
       .finally(() => setLoading(false));
   }, [id, toast]);
+
+  React.useEffect(() => {
+    loadClient();
+  }, [loadClient]);
+
+  const openAddressEditor = (addr: SavedAddress) => {
+    setEditingAddressId(addr.id);
+    setAddressForm({
+      label: addr.label ?? "",
+      governorate: addr.governorate ?? "",
+      area: addr.area ?? "",
+      street: addr.street ?? "",
+      notes: addr.notes ?? "",
+      phone: addr.phone ?? "",
+      isDefault: addr.isDefault,
+    });
+  };
+
+  const closeAddressEditor = () => {
+    setEditingAddressId(null);
+    setAddressForm(null);
+    setSavingAddress(false);
+  };
+
+  const saveAddress = () => {
+    if (!editingAddressId || !addressForm) return;
+    if (!addressForm.governorate.trim() || !addressForm.area.trim() || !addressForm.street.trim() || !addressForm.phone.trim()) {
+      toast({ title: "المحافظة والمنطقة والعنوان ورقم الهاتف مطلوبة", variant: "destructive" });
+      return;
+    }
+
+    setSavingAddress(true);
+    fetch(`/api/admin/clients/${id}/addresses/${editingAddressId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        label: addressForm.label.trim() || null,
+        governorate: addressForm.governorate.trim(),
+        area: addressForm.area.trim(),
+        street: addressForm.street.trim(),
+        notes: addressForm.notes.trim() || null,
+        phone: addressForm.phone.trim(),
+        isDefault: addressForm.isDefault,
+      }),
+    })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.success) {
+          toast({ title: "تم تحديث العنوان" });
+          closeAddressEditor();
+          loadClient();
+        } else {
+          toast({ title: json?.error?.message ?? "فشل تحديث العنوان", variant: "destructive" });
+        }
+      })
+      .catch(() => toast({ title: "فشل تحديث العنوان", variant: "destructive" }))
+      .finally(() => setSavingAddress(false));
+  };
 
   if (loading || !client) return <Skeleton className="h-96 w-full rounded-2xl" />;
 
@@ -165,6 +240,12 @@ export default function AdminClientProfilePage() {
                   {addr.notes && (
                     <p className="mt-0.5 text-muted-foreground">ملاحظات: {addr.notes}</p>
                   )}
+                  <div className="mt-3">
+                    <Button variant="outline" size="sm" onClick={() => openAddressEditor(addr)}>
+                      <Pencil className="ml-1 h-4 w-4" />
+                      تعديل العنوان
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -221,6 +302,92 @@ export default function AdminClientProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editingAddressId} onOpenChange={(open) => !open && closeAddressEditor()}>
+        <DialogContent className="max-w-2xl" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>تعديل عنوان محفوظ</DialogTitle>
+          </DialogHeader>
+          {addressForm && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium">وصف العنوان</label>
+                <Input
+                  value={addressForm.label}
+                  onChange={(e) => setAddressForm((s) => (s ? { ...s, label: e.target.value } : s))}
+                  placeholder="المنزل / العمل"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">المحافظة *</label>
+                <select
+                  value={addressForm.governorate}
+                  onChange={(e) => setAddressForm((s) => (s ? { ...s, governorate: e.target.value } : s))}
+                  className="flex h-10 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm"
+                  required
+                  dir="rtl"
+                >
+                  <option value="">اختر المحافظة</option>
+                  {GOVERNORATE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">المنطقة *</label>
+                <Input
+                  value={addressForm.area}
+                  onChange={(e) => setAddressForm((s) => (s ? { ...s, area: e.target.value } : s))}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-sm font-medium">العنوان بالتفصيل *</label>
+                <Input
+                  value={addressForm.street}
+                  onChange={(e) => setAddressForm((s) => (s ? { ...s, street: e.target.value } : s))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">هاتف التوصيل *</label>
+                <Input
+                  type="tel"
+                  value={addressForm.phone}
+                  onChange={(e) => setAddressForm((s) => (s ? { ...s, phone: e.target.value } : s))}
+                  dir="ltr"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-sm font-medium">ملاحظات (اختياري)</label>
+                <Input
+                  value={addressForm.notes}
+                  onChange={(e) => setAddressForm((s) => (s ? { ...s, notes: e.target.value } : s))}
+                  placeholder="أي ملاحظات للتوصيل"
+                />
+              </div>
+              <label className="sm:col-span-2 flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={addressForm.isDefault}
+                  onChange={(e) => setAddressForm((s) => (s ? { ...s, isDefault: e.target.checked } : s))}
+                  className="rounded border-input"
+                />
+                اجعل هذا العنوان افتراضي
+              </label>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={closeAddressEditor} disabled={savingAddress}>
+              إلغاء
+            </Button>
+            <Button onClick={saveAddress} disabled={savingAddress || !addressForm}>
+              {savingAddress ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : null}
+              حفظ التغييرات
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
