@@ -99,6 +99,16 @@ export function Header() {
                       {user.name?.trim() || user.phone || "حسابي"}
                     </div>
                     <Link
+                      href="/profile/account"
+                      className="flex items-center gap-2 px-4 py-2.5 text-base text-foreground hover:bg-hover hover:text-hover-foreground"
+                      onClick={() => setProfileOpen(false)}
+                      role="menuitem"
+                    >
+                      <User className="h-5 w-5 shrink-0" />
+                      حسابي
+                    </Link>
+                    <div className="my-1 border-t border-border" />
+                    <Link
                       href="/profile/orders"
                       className="flex items-center gap-2 px-4 py-2.5 text-base text-foreground hover:bg-hover hover:text-hover-foreground"
                       onClick={() => setProfileOpen(false)}
