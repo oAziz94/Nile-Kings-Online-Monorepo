@@ -3,12 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Package, MapPin } from "lucide-react";
+import { Package, MapPin, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
   { href: "/profile/orders", label: "طلباتي", icon: Package },
   { href: "/profile/addresses", label: "عناويني", icon: MapPin },
+  { href: "/profile/account", label: "حسابي", icon: User },
 ];
 
 export function ProfileNav() {
