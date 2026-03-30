@@ -13,6 +13,11 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight, ShoppingCart, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { discountPercentFromPrices } from "@/lib/catalog";
+import {
+  getDisplaySizeLabel,
+  isKidsCategory,
+  normalizeSizeName,
+} from "@/lib/size-display";
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&h=800&fit=crop";
@@ -30,7 +35,7 @@ type Variant = {
   imageUrl?: string | null;
 };
 
-const SIZE_ORDER = ["S", "M", "L", "XL", "XXL"];
+const SIZE_ORDER = ["S", "M", "L", "XL", "XXL", "XXXL"];
 
 function sizeSortIndex(name: string): number {
   const i = SIZE_ORDER.indexOf(name.toUpperCase());
@@ -103,8 +108,11 @@ export function ProductPageContent({
 }) {
   const { toast } = useToast();
   const { openDrawer, refreshCart } = useCart();
+  const forKids = isKidsCategory(product.categorySlug);
   const initialVariant = initialVariantId ? product.variants.find((v) => v.id === initialVariantId) : null;
-  const [selectedSize, setSelectedSizeState] = useState<string | null>(initialVariant?.name ?? null);
+  const [selectedSize, setSelectedSizeState] = useState<string | null>(
+    initialVariant ? normalizeSizeName(initialVariant.name) : null
+  );
   const [selectedColorId, setSelectedColorId] = useState<string | null>(
     initialVariant ? colorKey(initialVariant) : null
   );
@@ -116,7 +124,9 @@ export function ProductPageContent({
       setSelectedColorId(null);
     } else {
       const colorKeysForSize = new Set(
-        product.variants.filter((v) => v.name === size).map((v) => colorKey(v))
+        product.variants
+          .filter((v) => normalizeSizeName(v.name) === size)
+          .map((v) => colorKey(v))
       );
       setSelectedColorId((prev) => (prev && colorKeysForSize.has(prev) ? prev : null));
     }
@@ -125,15 +135,19 @@ export function ProductPageContent({
   // Always show full size list (smallest → largest, RTL). Disabled when no variant for that size.
   const sizeOptions = SIZE_ORDER.map((name) => ({
     id: name,
-    label: name,
-    disabled: !product.variants.some((v) => v.name === name && v.inStock),
+    label: getDisplaySizeLabel(name, forKids),
+    disabled: !product.variants.some(
+      (v) => normalizeSizeName(v.name) === name && v.inStock
+    ),
   }));
 
   // Variants for the selected size (for selectedVariant and per-size disabled state).
   const variantsForSelectedSize =
     selectedSize === null
       ? []
-      : product.variants.filter((v) => v.name === selectedSize);
+      : product.variants.filter(
+          (v) => normalizeSizeName(v.name) === selectedSize
+        );
 
   // Colors from ALL variants so they are always shown (not only after picking a size).
   const allColorMap = new Map<string, { name: string; hex: string }>();
@@ -171,7 +185,8 @@ export function ProductPageContent({
         ? selectedColorId
           ? product.variants.find(
               (v) =>
-                v.name === selectedSize && colorKey(v) === selectedColorId
+                normalizeSizeName(v.name) === selectedSize &&
+                colorKey(v) === selectedColorId
             ) ?? null
           : null
         : variantsForSelectedSize[0] ?? null;

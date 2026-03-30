@@ -20,11 +20,16 @@ import { ShoppingCart, X, ExternalLink, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { discountPercentFromPrices } from "@/lib/catalog";
 import type { ProductDetail, VariantPublic } from "@/lib/catalog";
+import {
+  getDisplaySizeLabel,
+  isKidsCategory,
+  normalizeSizeName,
+} from "@/lib/size-display";
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&h=800&fit=crop";
 
-const SIZE_ORDER = ["S", "M", "L", "XL", "XXL", "3XL"];
+const SIZE_ORDER = ["S", "M", "L", "XL", "XXL", "XXXL"];
 
 function variantColorHex(v: VariantPublic): string {
   if (v.colorHex?.trim()) return v.colorHex.trim();
@@ -78,6 +83,7 @@ export function QuickShopModal({
   const [selectedSize, setSelectedSizeState] = useState<string | null>(null);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const forKids = isKidsCategory(product?.categorySlug);
 
   const setSelectedSize = useCallback((size: string | null) => {
     setSelectedSizeState(size);
@@ -85,7 +91,9 @@ export function QuickShopModal({
       setSelectedColorId(null);
     } else if (product) {
       const colorKeysForSize = new Set(
-        product.variants.filter((v) => v.name === size).map((v) => colorKey(v))
+        product.variants
+          .filter((v) => normalizeSizeName(v.name) === size)
+          .map((v) => colorKey(v))
       );
       setSelectedColorId((prev) => (prev && colorKeysForSize.has(prev) ? prev : null));
     }
@@ -120,16 +128,20 @@ export function QuickShopModal({
     product?.variants == null
       ? []
       : SIZE_ORDER.filter((name) =>
-          product.variants.some((v) => v.name.toUpperCase() === name)
+          product.variants.some((v) => normalizeSizeName(v.name) === name)
         ).map((name) => ({
           id: name,
-          label: name,
-          disabled: !product.variants.some((v) => v.name === name && v.inStock),
+          label: getDisplaySizeLabel(name, forKids),
+          disabled: !product.variants.some(
+            (v) => normalizeSizeName(v.name) === name && v.inStock
+          ),
         }));
 
   const variantsForSelectedSize =
     product && selectedSize
-      ? product.variants.filter((v) => v.name === selectedSize)
+      ? product.variants.filter(
+          (v) => normalizeSizeName(v.name) === selectedSize
+        )
       : [];
 
   const allColorMap = new Map<string, { name: string; hex: string }>();
@@ -165,7 +177,9 @@ export function QuickShopModal({
       : colorOptionsForSelectedSize.length > 1
         ? selectedColorId
           ? product?.variants.find(
-              (v) => v.name === selectedSize && colorKey(v) === selectedColorId
+              (v) =>
+                normalizeSizeName(v.name) === selectedSize &&
+                colorKey(v) === selectedColorId
             ) ?? null
           : null
         : variantsForSelectedSize[0] ?? null;
