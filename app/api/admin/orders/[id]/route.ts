@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
@@ -77,15 +78,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     return apiBadRequest("يجب إرسال userId مع savedAddressId");
   }
 
-  const data: {
-    status?: (typeof ORDER_STATUSES)[number];
-    userId?: string;
-    shippingAddress?: Record<string, unknown>;
-    shippingProvider?: string;
-    shippingPiastres?: number;
-    codFeePiastres?: number;
-    totalPiastres?: number;
-  } = {};
+  const data: Prisma.OrderUpdateInput = {};
   if (nextStatus) data.status = nextStatus as (typeof ORDER_STATUSES)[number];
 
   if (nextUserId) {
@@ -153,7 +146,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       data.totalPiastres = beforeCod + codFee;
     }
 
-    data.userId = nextUserId;
+    data.user = { connect: { id: nextUserId } };
   }
 
   const order = await prisma.order.update({
