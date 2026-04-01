@@ -44,7 +44,7 @@ type Order = {
   createdAt: string;
   shippingAddress: Record<string, unknown>;
   user: { id: string; phone: string; name: string | null };
-  items: { productName: string; variantName: string; quantity: number; unitPricePiastres: number; totalPiastres: number }[];
+  items: { variantId: string; productName: string; variantName: string; quantity: number; unitPricePiastres: number; totalPiastres: number; imageUrl: string | null }[];
 };
 
 type SavedAddress = {
@@ -71,6 +71,19 @@ type ClientSummary = {
 type ClientDetails = ClientSummary & {
   savedAddresses: SavedAddress[];
 };
+type EditableItem = {
+  variantId: string;
+  productName: string;
+  variantName: string;
+  unitPricePiastres: number;
+  quantity: number;
+  imageUrl: string | null;
+};
+type ProductVariantOption = {
+  id: string;
+  label: string;
+  pricePiastres: number;
+};
 
 export default function AdminOrderDetailPage() {
   const params = useParams();
@@ -89,6 +102,12 @@ export default function AdminOrderDetailPage() {
   const [selectedClientId, setSelectedClientId] = React.useState("");
   const [selectedAddressId, setSelectedAddressId] = React.useState("");
   const [selectedClient, setSelectedClient] = React.useState<ClientDetails | null>(null);
+  const [editableItems, setEditableItems] = React.useState<EditableItem[]>([]);
+  const [savingItems, setSavingItems] = React.useState(false);
+  const [variantSearch, setVariantSearch] = React.useState("");
+  const [variantOptions, setVariantOptions] = React.useState<ProductVariantOption[]>([]);
+  const [selectedVariantId, setSelectedVariantId] = React.useState("");
+  const [newItemQty, setNewItemQty] = React.useState(1);
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedClientSearch(clientSearch.trim()), 350);
@@ -102,6 +121,16 @@ export default function AdminOrderDetailPage() {
       .then((json: { success?: boolean; data?: Order }) => {
         if (json?.success && json.data) {
           setOrder(json.data);
+          setEditableItems(
+            json.data.items.map((item) => ({
+              variantId: item.variantId,
+              productName: item.productName,
+              variantName: item.variantName,
+              unitPricePiastres: item.unitPricePiastres,
+              quantity: item.quantity,
+              imageUrl: item.imageUrl,
+            }))
+          );
           setStatus(json.data.status);
           setSelectedClientId(json.data.user.id);
           setClientOptions((prev) =>
@@ -114,6 +143,40 @@ export default function AdminOrderDetailPage() {
       .catch(() => toast({ title: "فشل تحميل الطلب", variant: "destructive" }))
       .finally(() => setLoading(false));
   }, [id, toast]);
+
+  React.useEffect(() => {
+    const ac = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ limit: "20", offset: "0" });
+        if (variantSearch.trim()) params.set("q", variantSearch.trim());
+        const res = await fetch(`/api/admin/products?${params.toString()}`, {
+          credentials: "include",
+          signal: ac.signal,
+        });
+        const json = await res.json();
+        if (!res.ok || !json?.success) {
+          if (!ac.signal.aborted) setVariantOptions([]);
+          return;
+        }
+        const options: ProductVariantOption[] = (json.data?.products ?? []).flatMap(
+          (p: { name: string; variants?: { id: string; name: string; colorName: string | null; pricePiastres: number }[] }) =>
+            (p.variants ?? []).map((v) => ({
+              id: v.id,
+              label: `${p.name} - ${v.name}${v.colorName ? ` - ${v.colorName}` : ""}`,
+              pricePiastres: v.pricePiastres,
+            }))
+        );
+        if (!ac.signal.aborted) setVariantOptions(options);
+      } catch {
+        if (!ac.signal.aborted) setVariantOptions([]);
+      }
+    }, 300);
+    return () => {
+      ac.abort();
+      clearTimeout(t);
+    };
+  }, [variantSearch]);
 
   React.useEffect(() => {
     const ac = new AbortController();
@@ -223,6 +286,89 @@ export default function AdminOrderDetailPage() {
       toast({ title: "خطأ في الاتصال", variant: "destructive" });
     } finally {
       setLinking(false);
+    }
+  };
+
+  const changeItemQty = (variantId: string, nextQty: number) => {
+    setEditableItems((prev) =>
+      prev.map((item) =>
+        item.variantId === variantId
+          ? { ...item, quantity: Number.isFinite(nextQty) ? Math.max(1, Math.trunc(nextQty)) : 1 }
+          : item
+      )
+    );
+  };
+
+  const removeItem = (variantId: string) => {
+    setEditableItems((prev) => prev.filter((item) => item.variantId !== variantId));
+  };
+
+  const addSelectedVariant = () => {
+    if (!selectedVariantId) return;
+    const option = variantOptions.find((o) => o.id === selectedVariantId);
+    if (!option) return;
+    setEditableItems((prev) => {
+      const existing = prev.find((i) => i.variantId === option.id);
+      if (existing) {
+        return prev.map((i) =>
+          i.variantId === option.id ? { ...i, quantity: i.quantity + Math.max(1, Math.trunc(newItemQty || 1)) } : i
+        );
+      }
+      return [
+        ...prev,
+        {
+          variantId: option.id,
+          productName: option.label.split(" - ")[0],
+          variantName: option.label.replace(`${option.label.split(" - ")[0]} - `, ""),
+          unitPricePiastres: option.pricePiastres,
+          quantity: Math.max(1, Math.trunc(newItemQty || 1)),
+          imageUrl: null,
+        },
+      ];
+    });
+    setSelectedVariantId("");
+    setNewItemQty(1);
+  };
+
+  const saveItems = async () => {
+    if (editableItems.length === 0) {
+      toast({ title: "لا يمكن حفظ طلب بدون بنود", variant: "destructive" });
+      return;
+    }
+    setSavingItems(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          items: editableItems.map((item) => ({
+            variantId: item.variantId,
+            quantity: Math.max(1, Math.trunc(item.quantity)),
+          })),
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json?.success) {
+        setOrder(json.data);
+        setEditableItems(
+          json.data.items.map((item: Order["items"][number]) => ({
+            variantId: item.variantId,
+            productName: item.productName,
+            variantName: item.variantName,
+            unitPricePiastres: item.unitPricePiastres,
+            quantity: item.quantity,
+            imageUrl: item.imageUrl,
+          }))
+        );
+        toast({ title: "تم تحديث بنود الطلب وإعادة حساب الإجمالي والشحن" });
+      } else {
+        toast({ title: json?.error?.message ?? "فشل تحديث البنود", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setSavingItems(false);
     }
   };
 
@@ -353,19 +499,76 @@ export default function AdminOrderDetailPage() {
                 <TableHead>الكمية</TableHead>
                 <TableHead>السعر الوحدة</TableHead>
                 <TableHead>الإجمالي</TableHead>
+                <TableHead>إجراء</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {order.items.map((item, i) => (
-                <TableRow key={i}>
-                  <TableCell>{item.productName} – {item.variantName}</TableCell>
-                  <TableCell>{item.quantity}</TableCell>
+              {editableItems.map((item) => (
+                <TableRow key={item.variantId}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.productName}
+                          className="h-12 w-12 rounded-md border object-cover"
+                        />
+                      ) : (
+                        <div className="h-12 w-12 rounded-md border bg-muted" />
+                      )}
+                      <span>{item.productName} – {item.variantName}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) => changeItemQty(item.variantId, Number(e.target.value))}
+                      className="h-9 w-24 rounded-xl border border-input bg-background px-3 text-sm"
+                    />
+                  </TableCell>
                   <TableCell>{(item.unitPricePiastres / 100).toFixed(0)} ج.م</TableCell>
-                  <TableCell>{(item.totalPiastres / 100).toFixed(0)} ج.م</TableCell>
+                  <TableCell>{((item.quantity * item.unitPricePiastres) / 100).toFixed(0)} ج.م</TableCell>
+                  <TableCell>
+                    <Button variant="destructive" size="sm" onClick={() => removeItem(item.variantId)}>
+                      حذف
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+          <div className="mt-4 space-y-2 rounded-2xl border p-3">
+            <Label>إضافة بند</Label>
+            <input
+              className="flex h-10 w-full rounded-2xl border border-input bg-background px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              placeholder="ابحث عن منتج"
+              value={variantSearch}
+              onChange={(e) => setVariantSearch(e.target.value)}
+            />
+            <div className="flex flex-wrap items-end gap-2">
+              <Select value={selectedVariantId} onChange={(e) => setSelectedVariantId(e.target.value)} className="min-w-64">
+                <option value="">اختر متغيرًا</option>
+                {variantOptions.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.label} - {(v.pricePiastres / 100).toFixed(0)} ج.م
+                  </option>
+                ))}
+              </Select>
+              <input
+                type="number"
+                min={1}
+                value={newItemQty}
+                onChange={(e) => setNewItemQty(Math.max(1, Number(e.target.value) || 1))}
+                className="h-10 w-24 rounded-xl border border-input bg-background px-3 text-sm"
+              />
+              <Button onClick={addSelectedVariant} disabled={!selectedVariantId}>إضافة</Button>
+            </div>
+          </div>
+          <Button className="mt-4" onClick={saveItems} disabled={savingItems || editableItems.length === 0}>
+            {savingItems ? "جاري…" : "حفظ البنود وإعادة الحساب"}
+          </Button>
           <div className="mt-4 flex flex-col gap-1 text-sm">
             <p>المجموع الفرعي: {(order.subtotalPiastres / 100).toFixed(0)} ج.م</p>
             {order.discountPiastres > 0 && <p>الخصم: {(order.discountPiastres / 100).toFixed(0)} ج.م {order.couponCode && `(${order.couponCode})`}</p>}

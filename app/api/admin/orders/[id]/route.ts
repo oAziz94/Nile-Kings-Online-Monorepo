@@ -5,10 +5,15 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { getPhase1ShippingFee, PHASE1_SHIPPING_PROVIDER_DISPLAY } from "@/lib/services/shipping";
 import { getCodFeePercent } from "@/lib/settings";
+import { computePricing } from "@/lib/services/pricing";
+import { isSeniorPromoEnabled } from "@/lib/settings";
 
 const ORDER_STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
 
 type Params = Promise<{ id: string }>;
+const INT32_MAX = 2_147_483_647;
+
+type IncomingItem = { variantId: string; quantity: number };
 
 export async function GET(_req: NextRequest, { params }: { params: Params }) {
   try {
@@ -24,11 +29,27 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
     where: { id },
     include: {
       user: { select: { id: true, phone: true, name: true } },
-      items: true,
+      items: {
+        include: {
+          variant: {
+            select: {
+              imageUrl: true,
+              product: { select: { imageUrl: true } },
+            },
+          },
+        },
+      },
     },
   });
   if (!order) return apiNotFound("الطلب غير موجود");
-  return apiSuccess(order);
+  return apiSuccess({
+    ...order,
+    items: order.items.map((item) => ({
+      ...item,
+      imageUrl: item.variant.imageUrl ?? item.variant.product.imageUrl ?? null,
+      variant: undefined,
+    })),
+  });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
@@ -57,7 +78,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   });
   if (!existing) return apiNotFound("الطلب غير موجود");
 
-  let body: { status?: string; userId?: string; savedAddressId?: string };
+  let body: { status?: string; userId?: string; savedAddressId?: string; items?: IncomingItem[] };
   try {
     body = await req.json();
   } catch {
@@ -67,8 +88,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   const nextUserId = typeof body.userId === "string" ? body.userId.trim() : undefined;
   const nextSavedAddressId =
     typeof body.savedAddressId === "string" ? body.savedAddressId.trim() : undefined;
+  const nextItems =
+    Array.isArray(body.items) && body.items.length > 0
+      ? body.items
+      : undefined;
 
-  if (!nextStatus && !nextUserId && !nextSavedAddressId) {
+  if (!nextStatus && !nextUserId && !nextSavedAddressId && !nextItems) {
     return apiBadRequest("لا توجد حقول للتحديث");
   }
   if (nextStatus && !ORDER_STATUSES.includes(nextStatus as (typeof ORDER_STATUSES)[number])) {
@@ -77,9 +102,114 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   if (nextSavedAddressId && !nextUserId) {
     return apiBadRequest("يجب إرسال userId مع savedAddressId");
   }
+  if (Array.isArray(body.items) && body.items.length === 0) {
+    return apiBadRequest("يجب أن يحتوي الطلب على بند واحد على الأقل");
+  }
 
   const data: Prisma.OrderUpdateInput = {};
+  let nextItemsWeightGrams: number | undefined;
+  let nextItemsAfterDiscounts: number | undefined;
   if (nextStatus) data.status = nextStatus as (typeof ORDER_STATUSES)[number];
+
+  if (nextItems) {
+    const normalized = new Map<string, number>();
+    for (const raw of nextItems) {
+      const variantId = typeof raw?.variantId === "string" ? raw.variantId.trim() : "";
+      const quantity = typeof raw?.quantity === "number" ? Math.trunc(raw.quantity) : NaN;
+      if (!variantId || !Number.isFinite(quantity) || quantity < 1) {
+        return apiBadRequest("الكمية أو المتغير غير صالح");
+      }
+      normalized.set(variantId, (normalized.get(variantId) ?? 0) + quantity);
+    }
+    const lines = Array.from(normalized.entries()).map(([variantId, quantity]) => ({ variantId, quantity }));
+    const variantIds = lines.map((l) => l.variantId);
+    const variants = await prisma.variant.findMany({
+      where: { id: { in: variantIds } },
+      include: { product: { select: { name: true, slug: true, weightGrams: true } } },
+    });
+    if (variants.length !== variantIds.length) {
+      return apiBadRequest("بعض المتغيرات غير موجودة");
+    }
+    const byId = new Map(variants.map((v) => [v.id, v]));
+
+    let weightGrams = 0;
+    const pricedLines: { variantId: string; quantity: number; unitPricePiastres: number }[] = [];
+    for (const line of lines) {
+      const variant = byId.get(line.variantId);
+      if (!variant) return apiBadRequest("بعض المتغيرات غير موجودة");
+      const w = variant.product.weightGrams;
+      if (w == null || w < 0) {
+        return apiBadRequest("لا يمكن إعادة حساب الشحن: وزن بعض المنتجات غير متوفر");
+      }
+      weightGrams += line.quantity * w;
+      pricedLines.push({
+        variantId: line.variantId,
+        quantity: line.quantity,
+        unitPricePiastres: variant.pricePiastres,
+      });
+    }
+
+    const userIdForPricing = nextUserId ?? existing.userId;
+    const user = await prisma.user.findUnique({
+      where: { id: userIdForPricing },
+      select: { seniorVerified: true },
+    });
+    const seniorPromoEnabled = await isSeniorPromoEnabled();
+    const pricing = await computePricing({
+      lines: pricedLines,
+      couponCode: existing.couponCode ?? null,
+      seniorVerified: user?.seniorVerified ?? false,
+      seniorPromoEnabled,
+    });
+    const shippingAddress = (data.shippingAddress as Prisma.InputJsonValue | undefined) ?? existing.shippingAddress;
+    const address = shippingAddress as { governorate?: string; city?: string | null; area?: string | null };
+    if (!address?.governorate) {
+      return apiBadRequest("لا يمكن حساب الشحن: عنوان الشحن غير صالح");
+    }
+    const shippingOption = getPhase1ShippingFee(
+      { governorate: address.governorate, city: address.city ?? null, area: address.area ?? null },
+      weightGrams
+    );
+    if (!shippingOption) {
+      return apiBadRequest("لا يمكن حساب الشحن لهذا العنوان");
+    }
+
+    const beforeCod = pricing.totalPiastres + shippingOption.feePiastres;
+    const codFeePercent = await getCodFeePercent();
+    const codFee = existing.paymentMethod === "COD" ? Math.round((beforeCod * codFeePercent) / 100) : 0;
+    const finalTotal = beforeCod + codFee;
+    if ([pricing.subtotalPiastres, pricing.couponDiscountPiastres, pricing.seniorDiscountPiastres, shippingOption.feePiastres, codFee, finalTotal].some((n) => n < 0 || n > INT32_MAX)) {
+      return apiBadRequest("قيمة الطلب تتجاوز الحد المسموح");
+    }
+
+    data.subtotalPiastres = pricing.subtotalPiastres;
+    data.discountPiastres = pricing.couponDiscountPiastres;
+    data.seniorFreeValuePiastres = pricing.seniorDiscountPiastres;
+    data.shippingProvider = PHASE1_SHIPPING_PROVIDER_DISPLAY;
+    data.shippingPiastres = shippingOption.feePiastres;
+    data.codFeePiastres = codFee;
+    data.totalPiastres = finalTotal;
+    data.couponCode = pricing.appliedCouponCode ?? null;
+    nextItemsWeightGrams = weightGrams;
+    nextItemsAfterDiscounts = pricing.totalPiastres;
+    data.items = {
+      deleteMany: {},
+      create: lines.map((line) => {
+        const variant = byId.get(line.variantId)!;
+        const color = variant.colorName?.trim();
+        const variantName = color ? `${variant.product.slug}-${variant.name}-${color}` : `${variant.product.slug}-${variant.name}`;
+        return {
+          variantId: line.variantId,
+          productName: variant.product.name,
+          variantName,
+          sku: variant.sku,
+          quantity: line.quantity,
+          unitPricePiastres: variant.pricePiastres,
+          totalPiastres: line.quantity * variant.pricePiastres,
+        };
+      }),
+    };
+  }
 
   if (nextUserId) {
     const user = await prisma.user.findFirst({
@@ -109,12 +239,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       };
 
       let weightGrams = 0;
-      for (const item of existing.items) {
-        const w = item.variant.product.weightGrams;
-        if (w == null || w < 0) {
-          return apiBadRequest("لا يمكن إعادة حساب الشحن: وزن بعض المنتجات غير متوفر");
+      if (typeof nextItemsWeightGrams === "number") {
+        weightGrams = nextItemsWeightGrams;
+      } else {
+        for (const item of existing.items) {
+          const w = item.variant.product.weightGrams;
+          if (w == null || w < 0) {
+            return apiBadRequest("لا يمكن إعادة حساب الشحن: وزن بعض المنتجات غير متوفر");
+          }
+          weightGrams += item.quantity * w;
         }
-        weightGrams += item.quantity * w;
       }
 
       const shippingOption = getPhase1ShippingFee(
@@ -129,10 +263,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
         return apiBadRequest("لا يمكن حساب الشحن لهذا العنوان");
       }
 
-      const itemsAfterDiscounts = Math.max(
-        0,
-        existing.subtotalPiastres - existing.discountPiastres - existing.seniorFreeValuePiastres
-      );
+      const itemsAfterDiscounts =
+        typeof nextItemsAfterDiscounts === "number"
+          ? nextItemsAfterDiscounts
+          : Math.max(0, existing.subtotalPiastres - existing.discountPiastres - existing.seniorFreeValuePiastres);
       const beforeCod = itemsAfterDiscounts + shippingOption.feePiastres;
       const codFeePercent = await getCodFeePercent();
       const codFee =
@@ -154,8 +288,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     data,
     include: {
       user: { select: { id: true, phone: true, name: true } },
-      items: true,
+      items: {
+        include: {
+          variant: {
+            select: {
+              imageUrl: true,
+              product: { select: { imageUrl: true } },
+            },
+          },
+        },
+      },
     },
   });
-  return apiSuccess(order);
+  return apiSuccess({
+    ...order,
+    items: order.items.map((item) => ({
+      ...item,
+      imageUrl: item.variant.imageUrl ?? item.variant.product.imageUrl ?? null,
+      variant: undefined,
+    })),
+  });
 }
