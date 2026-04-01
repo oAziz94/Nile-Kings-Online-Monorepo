@@ -7,23 +7,7 @@ import {
   courierExportFilename,
   type OrderForCourierExport,
 } from "@/lib/courier-export";
-
-/** Parse YYYY-MM-DD and return start (00:00:00.000) and end (23:59:59.999) of that day in UTC. */
-function parseDateRange(dateStr: string): { start: Date; end: Date } | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
-  if (!match) return null;
-  const [, y, m, d] = match;
-  const year = parseInt(y!, 10);
-  const month = parseInt(m!, 10) - 1;
-  const day = parseInt(d!, 10);
-  if (month < 0 || month > 11 || day < 1 || day > 31) return null;
-  const start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
-  const end = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-  return { start, end };
-}
-
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
     await requireAdmin();
   } catch (e: unknown) {
@@ -33,20 +17,19 @@ export async function GET(req: NextRequest) {
     throw e;
   }
 
-  const { searchParams } = new URL(req.url);
-  const dateStr = searchParams.get("date") ?? "";
-  const range = parseDateRange(dateStr);
-  if (!range) {
-    return apiBadRequest("المعامل date مطلوب بصيغة YYYY-MM-DD");
-  }
+  const body = await req.json().catch(() => null);
+  const orderIds: string[] = Array.isArray(body?.orderIds)
+    ? body.orderIds.filter((id: unknown): id is string => typeof id === "string" && id.trim().length > 0)
+    : [];
 
-  const { start, end } = range;
+  if (orderIds.length === 0) {
+    return apiBadRequest("يجب اختيار طلب واحد على الأقل للتصدير");
+  }
 
   const orders = await prisma.order.findMany({
     where: {
+      id: { in: orderIds },
       status: "READY_TO_SHIP",
-      exportedToCourierAt: null,
-      createdAt: { gte: start, lte: end },
     },
     orderBy: { createdAt: "asc" },
     include: {
@@ -62,11 +45,11 @@ export async function GET(req: NextRequest) {
   });
 
   const now = new Date();
-  const orderIds = orders.map((o) => o.id);
+  const exportedOrderIds = orders.map((o) => o.id);
 
-  if (orderIds.length > 0) {
+  if (exportedOrderIds.length > 0) {
     await prisma.order.updateMany({
-      where: { id: { in: orderIds } },
+      where: { id: { in: exportedOrderIds } },
       data: { exportedToCourierAt: now },
     });
   }
@@ -86,7 +69,7 @@ export async function GET(req: NextRequest) {
   }));
 
   const buffer = buildCourierXlsx(forExport);
-  const filename = courierExportFilename(start);
+  const filename = courierExportFilename(now);
 
   return new Response(new Uint8Array(buffer), {
     status: 200,

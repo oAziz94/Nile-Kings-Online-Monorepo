@@ -15,16 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { AdminPaginationBar } from "@/components/admin/admin-pagination";
 import { ShoppingBag, FileDown, Search, Loader2 } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
@@ -38,6 +29,16 @@ const STATUS_LABELS: Record<string, string> = {
   SHIPPED: "تم الشحن",
   DELIVERED: "تم التسليم",
   CANCELLED: "ملغي",
+};
+
+const STATUS_BADGE_CLASSES: Record<string, string> = {
+  CREATED: "border-slate-300 bg-slate-100 text-slate-700",
+  CONFIRMED: "border-blue-300 bg-blue-100 text-blue-700",
+  PROCESSING: "border-amber-300 bg-amber-100 text-amber-700",
+  READY_TO_SHIP: "border-violet-300 bg-violet-100 text-violet-700",
+  SHIPPED: "border-cyan-300 bg-cyan-100 text-cyan-700",
+  DELIVERED: "border-emerald-300 bg-emerald-100 text-emerald-700",
+  CANCELLED: "border-rose-300 bg-rose-100 text-rose-700",
 };
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -56,13 +57,6 @@ type Order = {
   items: { quantity: number; productName: string }[];
 };
 
-function toYYYYMMDD(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
 export default function AdminOrdersPage() {
   const [orders, setOrders] = React.useState<Order[]>([]);
   const [total, setTotal] = React.useState(0);
@@ -72,8 +66,7 @@ export default function AdminOrdersPage() {
   const [debouncedQ, setDebouncedQ] = React.useState("");
   const [page, setPage] = React.useState(0);
   const [pageSize, setPageSize] = React.useState(20);
-  const [exportOpen, setExportOpen] = React.useState(false);
-  const [exportDate, setExportDate] = React.useState(() => toYYYYMMDD(new Date()));
+  const [selectedOrderIds, setSelectedOrderIds] = React.useState<string[]>([]);
   const [exporting, setExporting] = React.useState(false);
   const { toast } = useToast();
 
@@ -85,6 +78,10 @@ export default function AdminOrdersPage() {
   React.useEffect(() => {
     setPage(0);
   }, [debouncedQ]);
+
+  React.useEffect(() => {
+    setSelectedOrderIds([]);
+  }, [debouncedQ, page, pageSize]);
 
   React.useEffect(() => {
     const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
@@ -121,12 +118,22 @@ export default function AdminOrdersPage() {
   }, [debouncedQ, page, pageSize, toast]);
 
   const handleExportCourier = React.useCallback(async () => {
+    if (selectedOrderIds.length === 0) {
+      toast({
+        title: "اختر طلبات للتصدير",
+        description: "حدد طلبًا واحدًا على الأقل.",
+        variant: "destructive",
+      });
+      return;
+    }
     setExporting(true);
     try {
-      const res = await fetch(
-        `/api/admin/orders/courier-export?date=${encodeURIComponent(exportDate)}`,
-        { credentials: "include" }
-      );
+      const res = await fetch(`/api/admin/orders/courier-export`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderIds: selectedOrderIds }),
+      });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         toast({
@@ -139,7 +146,7 @@ export default function AdminOrdersPage() {
       const blob = await res.blob();
       const filename =
         res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ??
-        `shipments_${exportDate.replace(/-/g, "_")}.xlsx`;
+        `shipments.xlsx`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -147,7 +154,7 @@ export default function AdminOrdersPage() {
       a.click();
       URL.revokeObjectURL(url);
       toast({ title: "تم تصدير ملف الشحن" });
-      setExportOpen(false);
+      setSelectedOrderIds([]);
     } catch (e) {
       toast({
         title: "فشل التصدير",
@@ -157,7 +164,15 @@ export default function AdminOrdersPage() {
     } finally {
       setExporting(false);
     }
-  }, [exportDate, toast]);
+  }, [selectedOrderIds, toast]);
+
+  const selectedSet = React.useMemo(() => new Set(selectedOrderIds), [selectedOrderIds]);
+  const readyOrdersOnPage = React.useMemo(
+    () => orders.filter((o) => o.status === "READY_TO_SHIP"),
+    [orders]
+  );
+  const allSelectedOnPage =
+    readyOrdersOnPage.length > 0 && readyOrdersOnPage.every((o) => selectedSet.has(o.id));
 
   if (loading && orders.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
 
@@ -180,44 +195,15 @@ export default function AdminOrdersPage() {
                 className="pr-9"
               />
             </div>
-            <Dialog open={exportOpen} onOpenChange={setExportOpen}>
-            <Button type="button" variant="outline" onClick={() => setExportOpen(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportCourier}
+              disabled={exporting || selectedOrderIds.length === 0}
+            >
               <FileDown className="ml-2 h-4 w-4" />
-              تصدير ملف الشحن
+              {exporting ? "جاري التصدير…" : `تصدير ملف الشحن (${selectedOrderIds.length})`}
             </Button>
-            <DialogContent onClose={() => setExportOpen(false)}>
-              <DialogHeader>
-                <DialogTitle>تصدير ملف الشحن</DialogTitle>
-                <DialogDescription>
-                  اختر تاريخ الشحن. سيتم تصدير الطلبات ذات الحالة «جاهز للشحن» والتي لم تُصدَر من قبل في هذا التاريخ.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="export-date">تاريخ التصدير</Label>
-                  <Input
-                    id="export-date"
-                    type="date"
-                    value={exportDate}
-                    onChange={(e) => setExportDate(e.target.value)}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setExportOpen(false)}
-                  disabled={exporting}
-                >
-                  إلغاء
-                </Button>
-                <Button type="button" onClick={handleExportCourier} disabled={exporting}>
-                  {exporting ? "جاري التصدير…" : "تحميل XLSX"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
           </div>
         </CardHeader>
         <CardContent>
@@ -238,6 +224,26 @@ export default function AdminOrdersPage() {
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <input
+                      type="checkbox"
+                      checked={allSelectedOnPage}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const merged = new Set(selectedOrderIds);
+                          orders.forEach((o) => {
+                            if (o.status === "READY_TO_SHIP") merged.add(o.id);
+                          });
+                          setSelectedOrderIds(Array.from(merged));
+                          return;
+                        }
+                        const pageIds = new Set(orders.map((o) => o.id));
+                        setSelectedOrderIds((prev) => prev.filter((id) => !pageIds.has(id)));
+                      }}
+                      aria-label="تحديد كل الطلبات الجاهزة للشحن"
+                      disabled={readyOrdersOnPage.length === 0}
+                    />
+                  </TableHead>
                   <TableHead>الرقم</TableHead>
                   <TableHead>العميل</TableHead>
                   <TableHead>الإجمالي</TableHead>
@@ -250,11 +256,33 @@ export default function AdminOrdersPage() {
               <TableBody>
                 {orders.map((o) => (
                   <TableRow key={o.id}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedSet.has(o.id)}
+                        disabled={o.status !== "READY_TO_SHIP"}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedOrderIds((prev) => (prev.includes(o.id) ? prev : [...prev, o.id]));
+                            return;
+                          }
+                          setSelectedOrderIds((prev) => prev.filter((id) => id !== o.id));
+                        }}
+                        aria-label={`تحديد الطلب ${o.id.slice(0, 8)} للتصدير`}
+                      />
+                    </TableCell>
                     <TableCell className="font-mono text-sm">{o.id.slice(0, 8)}</TableCell>
                     <TableCell>{o.user?.phone ?? "—"} {o.user?.name ? `(${o.user.name})` : ""}</TableCell>
                     <TableCell>{(o.totalPiastres / 100).toFixed(0)} ج.م</TableCell>
                     <TableCell>{PAYMENT_LABELS[o.paymentMethod] ?? o.paymentMethod ?? "—"}</TableCell>
-                    <TableCell><Badge variant="outline">{STATUS_LABELS[o.status] ?? o.status}</Badge></TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={cn(STATUS_BADGE_CLASSES[o.status] ?? "border-muted")}
+                      >
+                        {STATUS_LABELS[o.status] ?? o.status}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{formatDateEn(o.createdAt)}</TableCell>
                     <TableCell className="text-left">
                       <Button variant="ghost" size="sm" asChild>
