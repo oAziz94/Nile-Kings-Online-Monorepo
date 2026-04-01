@@ -23,6 +23,8 @@ const envSchema = z.object({
   SMTP_SECURE: z.enum(["true", "false"]).optional(),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
+  SMTP_EMAIL: z.string().email().optional(),
+  SMTP_FROM_NAME: z.string().min(1).optional(),
   SMTP_FROM: z.string().min(1).optional(),
   PARTNER_NOTIFICATION_EMAIL: z.string().email().optional(),
   // Meta WhatsApp Cloud API (governorate rerouting – optional; if unset, assignment still works but no notification sent)
@@ -56,6 +58,8 @@ function validateEnv(): Env {
     SMTP_SECURE: process.env.SMTP_SECURE,
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASS: process.env.SMTP_PASS,
+    SMTP_EMAIL: process.env.SMTP_EMAIL,
+    SMTP_FROM_NAME: process.env.SMTP_FROM_NAME,
     SMTP_FROM: process.env.SMTP_FROM,
     PARTNER_NOTIFICATION_EMAIL: process.env.PARTNER_NOTIFICATION_EMAIL,
     WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,

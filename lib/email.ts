@@ -64,9 +64,13 @@ export async function sendPartnerRequestNotification(
           ? { user: env.SMTP_USER, pass: env.SMTP_PASS }
           : undefined,
     });
-    const from = env.SMTP_FROM ?? `noreply@${host.split(".")[0] ?? "nilekings"}.com`;
+    const fromAddress = env.SMTP_EMAIL ?? env.SMTP_FROM ?? `noreply@${host.split(".")[0] ?? "nilekings"}.com`;
+    const fromName = env.SMTP_FROM_NAME ?? "Nile Kings Cotton";
     await transporter.sendMail({
-      from,
+      from: {
+        name: fromName,
+        address: fromAddress,
+      },
       to: TO_EMAIL,
       subject,
       text,

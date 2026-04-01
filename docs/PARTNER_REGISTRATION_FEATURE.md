@@ -36,7 +36,9 @@ All of these are **optional**. If SMTP is not set, requests are still saved to t
 | `SMTP_SECURE` | `"true"` or `"false"` for TLS. |
 | `SMTP_USER` | SMTP username (if auth required). |
 | `SMTP_PASS` | SMTP password (if auth required). |
-| `SMTP_FROM` | Sender email address. |
+| `SMTP_EMAIL` | Sender email address (recommended). |
+| `SMTP_FROM_NAME` | Sender display name (default: `Nile Kings Cotton`). |
+| `SMTP_FROM` | Legacy fallback sender value (supported for backward compatibility). |
 | `PARTNER_NOTIFICATION_EMAIL` | Recipient for new partner request notifications. Default fallback in code: `info@nilekingscotton.com`. |
 
 Example (e.g. in `.env`):
@@ -48,7 +50,8 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=
 SMTP_PASS=
-SMTP_FROM=noreply@nilekingscotton.com
+SMTP_EMAIL=noreply@nilekingscotton.com
+SMTP_FROM_NAME=Nile Kings Cotton
 PARTNER_NOTIFICATION_EMAIL=info@nilekingscotton.com
 ```
 
