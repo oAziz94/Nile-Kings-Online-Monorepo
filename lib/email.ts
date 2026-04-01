@@ -44,6 +44,7 @@ export async function sendPartnerRequestNotification(
   const host = env.SMTP_HOST;
   const port = env.SMTP_PORT;
   if (!host?.trim() || !port?.trim()) {
+    console.warn("[email] skipped: SMTP_HOST or SMTP_PORT is not configured");
     return { sent: false };
   }
 
@@ -55,6 +56,17 @@ export async function sendPartnerRequestNotification(
 
   try {
     const secure = env.SMTP_SECURE === "true";
+    const fromAddress = env.SMTP_EMAIL ?? env.SMTP_FROM ?? `noreply@${host.split(".")[0] ?? "nilekings"}.com`;
+    const fromName = env.SMTP_FROM_NAME ?? "Nile Kings Cotton";
+    console.info("[email] sending partner request notification", {
+      host: host.trim(),
+      port: parseInt(port, 10) || 587,
+      secure,
+      hasAuth: Boolean(env.SMTP_USER && env.SMTP_PASS),
+      fromAddress,
+      to: TO_EMAIL,
+    });
+
     const transporter = nodemailer.createTransport({
       host: host.trim(),
       port: parseInt(port, 10) || 587,
@@ -64,9 +76,7 @@ export async function sendPartnerRequestNotification(
           ? { user: env.SMTP_USER, pass: env.SMTP_PASS }
           : undefined,
     });
-    const fromAddress = env.SMTP_EMAIL ?? env.SMTP_FROM ?? `noreply@${host.split(".")[0] ?? "nilekings"}.com`;
-    const fromName = env.SMTP_FROM_NAME ?? "Nile Kings Cotton";
-    await transporter.sendMail({
+    const result = await transporter.sendMail({
       from: {
         name: fromName,
         address: fromAddress,
@@ -74,6 +84,11 @@ export async function sendPartnerRequestNotification(
       to: TO_EMAIL,
       subject,
       text,
+    });
+    console.info("[email] sent partner request notification", {
+      messageId: result.messageId,
+      accepted: result.accepted,
+      rejected: result.rejected,
     });
     return { sent: true };
   } catch (err) {

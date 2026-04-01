@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await sendPartnerRequestNotification({
+    const emailResult = await sendPartnerRequestNotification({
       requestType: data.requestType,
       name: data.name,
       governorate: data.governorate,
@@ -52,6 +52,11 @@ export async function POST(req: NextRequest) {
       websiteUrl: data.websiteUrl,
       otherUrl: data.otherUrl,
     });
+    if (!emailResult.sent) {
+      console.warn("[partner-requests] notification email not sent", {
+        reason: emailResult.error ?? "smtp_not_configured_or_skipped",
+      });
+    }
 
     return apiSuccess({ id: request.id }, "تم استلام طلبك بنجاح، سنتواصل معك قريباً");
   } catch (e) {
