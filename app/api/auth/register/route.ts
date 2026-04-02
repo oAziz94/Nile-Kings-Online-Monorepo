@@ -45,11 +45,6 @@ export async function POST(req: NextRequest) {
     return apiBadRequest("هذا الرقم مسجّل مسبقاً. استخدم تسجيل الدخول.");
   }
 
-  const admin = await prisma.adminPhone.findUnique({
-    where: { phone: normalizedPhone },
-  });
-  const role = admin ? "ADMIN" : "CUSTOMER";
-
   const passwordHash = await hashPassword(password);
 
   const user = await prisma.user.create({
@@ -58,7 +53,7 @@ export async function POST(req: NextRequest) {
       passwordHash,
       name,
       email,
-      role,
+      role: "CUSTOMER",
     },
   });
 

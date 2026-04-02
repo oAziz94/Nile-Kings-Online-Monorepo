@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { User, MapPin, Package, Loader2, Pencil } from "lucide-react";
+import { User, MapPin, Package, Loader2, Pencil, ShieldPlus } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatNumberEn } from "@/lib/format-en-numbers";
@@ -62,6 +62,7 @@ type ClientProfile = {
   phone: string;
   name: string | null;
   email: string | null;
+  role: "CUSTOMER" | "ADMIN";
   seniorVerified: boolean;
   createdAt: string;
   updatedAt: string;
@@ -89,6 +90,8 @@ export default function AdminClientProfilePage() {
   const [editingAddressId, setEditingAddressId] = React.useState<string | null>(null);
   const [addressForm, setAddressForm] = React.useState<AddressForm | null>(null);
   const [savingAddress, setSavingAddress] = React.useState(false);
+  const [grantAdminOpen, setGrantAdminOpen] = React.useState(false);
+  const [grantingAdmin, setGrantingAdmin] = React.useState(false);
 
   const loadClient = React.useCallback(() => {
     if (!id) return;
@@ -97,7 +100,7 @@ export default function AdminClientProfilePage() {
       .then((json: { success?: boolean; data?: ClientProfile }) => {
         if (json?.success && json.data) setClient(json.data);
       })
-      .catch(() => toast({ title: "فشل تحميل ملف العميل", variant: "destructive" }))
+      .catch(() => toast({ title: "فشل تحميل الملف", variant: "destructive" }))
       .finally(() => setLoading(false));
   }, [id, toast]);
 
@@ -160,17 +163,44 @@ export default function AdminClientProfilePage() {
       .finally(() => setSavingAddress(false));
   };
 
+  const grantAdmin = () => {
+    setGrantingAdmin(true);
+    fetch(`/api/admin/clients/${id}/grant-admin`, {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.success) {
+          toast({
+            title: json.data?.alreadyAdmin ? "المستخدم مسؤول بالفعل" : "تم منح صلاحية المسؤول",
+            description: json.data?.alreadyAdmin
+              ? undefined
+              : "سيحصل على لوحة التحكم بعد تسجيل الدخول مرة أخرى.",
+          });
+          setGrantAdminOpen(false);
+          if (!json.data?.alreadyAdmin) {
+            window.location.href = "/admin/clients";
+          }
+        } else {
+          toast({ title: json?.error?.message ?? "فشلت العملية", variant: "destructive" });
+        }
+      })
+      .catch(() => toast({ title: "فشلت العملية", variant: "destructive" }))
+      .finally(() => setGrantingAdmin(false));
+  };
+
   if (loading || !client) return <Skeleton className="h-96 w-full rounded-2xl" />;
 
-  const displayName = client.name?.trim() || client.phone || "عميل";
+  const displayName = client.name?.trim() || client.phone || "مستخدم";
 
   return (
     <div dir="rtl" className="space-y-6">
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/admin/clients">← العملاء</Link>
+          <Link href="/admin/clients">← القائمة</Link>
         </Button>
-        <h1 className="text-2xl font-bold">ملف العميل</h1>
+        <h1 className="text-2xl font-bold">ملف المستخدم</h1>
       </div>
 
       <Card>
@@ -191,6 +221,9 @@ export default function AdminClientProfilePage() {
                 كبار سن
               </Badge>
             )}
+            {client.role === "ADMIN" && (
+              <Badge className="mr-2">مسؤول</Badge>
+            )}
           </p>
           {client.email && (
             <p>
@@ -200,6 +233,14 @@ export default function AdminClientProfilePage() {
           <p className="text-sm text-muted-foreground">
             تاريخ التسجيل: {formatDateEn(client.createdAt)}
           </p>
+          {client.role === "CUSTOMER" && (
+            <div className="pt-4">
+              <Button variant="outline" onClick={() => setGrantAdminOpen(true)}>
+                <ShieldPlus className="ml-2 h-4 w-4" />
+                جعل مسؤولاً
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -302,6 +343,27 @@ export default function AdminClientProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={grantAdminOpen} onOpenChange={(open) => !open && !grantingAdmin && setGrantAdminOpen(false)}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>منح صلاحية مسؤول</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            سيتمكن هذا المستخدم من الدخول إلى لوحة التحكم بنفس رقم الهاتف بعد تسجيل الدخول مرة أخرى (رمز
+            التحقق أو كلمة المرور).
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGrantAdminOpen(false)} disabled={grantingAdmin}>
+              إلغاء
+            </Button>
+            <Button onClick={grantAdmin} disabled={grantingAdmin}>
+              {grantingAdmin ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : null}
+              تأكيد
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editingAddressId} onOpenChange={(open) => !open && closeAddressEditor()}>
         <DialogContent className="max-w-2xl" dir="rtl">

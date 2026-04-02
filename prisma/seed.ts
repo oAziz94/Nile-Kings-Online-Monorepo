@@ -5,11 +5,11 @@ const prisma = new PrismaClient();
 const SIZE_NAMES = ["S", "M", "L", "XL", "XXL"] as const;
 
 async function main() {
-  // Seed admin phone(s)
-  await prisma.adminPhone.upsert({
+  // Dev seed: ensure sample admin user exists (role only; no separate allowlist table)
+  await prisma.user.upsert({
     where: { phone: "+201000000001" },
-    create: { phone: "+201000000001" },
-    update: {},
+    create: { phone: "+201000000001", role: "ADMIN" },
+    update: { role: "ADMIN" },
   });
 
   // Seed sample categories and products with S–XXL variants
@@ -64,7 +64,7 @@ async function main() {
     }
   }
 
-  console.log("Seed completed: admin phone(s), categories, products (S–XXL variants).");
+  console.log("Seed completed: sample admin user, categories, products (S–XXL variants).");
 }
 
 main()

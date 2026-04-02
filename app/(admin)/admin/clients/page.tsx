@@ -26,6 +26,7 @@ type Client = {
   phone: string;
   name: string | null;
   email: string | null;
+  role: "CUSTOMER" | "ADMIN";
   seniorVerified: boolean;
   createdAt: string;
   _count: { orders: number; savedAddresses: number };
@@ -74,7 +75,7 @@ export default function AdminClientsPage() {
         }
       })
       .catch(() => {
-        if (!ac.signal.aborted) toast({ title: "فشل تحميل العملاء", variant: "destructive" });
+        if (!ac.signal.aborted) toast({ title: "فشل تحميل القائمة", variant: "destructive" });
       })
       .finally(() => {
         if (!ac.signal.aborted) {
@@ -89,12 +90,14 @@ export default function AdminClientsPage() {
 
   return (
     <div dir="rtl" className="space-y-6">
-      <h1 className="text-2xl font-bold">العملاء</h1>
+      <h1 className="text-2xl font-bold">العملاء والمسؤولون</h1>
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 space-y-0">
           <div>
-            <CardTitle>قائمة العملاء</CardTitle>
-            <CardDescription>عرض العملاء وملفاتهم الشخصية (الاسم، الهاتف، العناوين، الطلبات).</CardDescription>
+            <CardTitle>قائمة المستخدمين</CardTitle>
+            <CardDescription>
+              العملاء والمسؤولون: البحث بالهاتف أو الاسم أو البريد، وعرض الملفات والطلبات.
+            </CardDescription>
           </div>
           <div className="relative w-64">
             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -117,7 +120,7 @@ export default function AdminClientsPage() {
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
               <Users className="mb-4 h-12 w-12 text-muted-foreground" />
               <p className="mb-2 text-muted-foreground">
-                {debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد عملاء"}
+                {debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد مستخدمون"}
               </p>
             </div>
           ) : (
@@ -126,6 +129,7 @@ export default function AdminClientsPage() {
                 <TableRow>
                   <TableHead>الهاتف</TableHead>
                   <TableHead>الاسم</TableHead>
+                  <TableHead>النوع</TableHead>
                   <TableHead>البريد</TableHead>
                   <TableHead>العناوين</TableHead>
                   <TableHead>الطلبات</TableHead>
@@ -143,6 +147,13 @@ export default function AdminClientsPage() {
                         <Badge variant="secondary" className="mr-1 text-xs">
                           كبار سن
                         </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {c.role === "ADMIN" ? (
+                        <Badge variant="default">مسؤول</Badge>
+                      ) : (
+                        <Badge variant="outline">عميل</Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>

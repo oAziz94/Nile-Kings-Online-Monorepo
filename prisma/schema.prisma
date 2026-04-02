@@ -110,14 +110,6 @@ model SavedAddress {
   @@index([userId])
 }
 
-model AdminPhone {
-  id        String   @id @default(cuid())
-  phone     String   @unique
-  createdAt DateTime @default(now())
-
-  @@index([phone])
-}
-
 model OTPRequest {
   id          String    @id @default(cuid())
   phone       String

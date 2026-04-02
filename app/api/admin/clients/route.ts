@@ -19,13 +19,13 @@ export async function GET(req: NextRequest) {
   const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0", 10) || 0);
 
   const where: {
-    role: "CUSTOMER";
+    role: { in: ("CUSTOMER" | "ADMIN")[] };
     OR?: Array<{
       phone?: { contains: string; mode: "insensitive" };
       name?: { contains: string; mode: "insensitive" };
       email?: { contains: string; mode: "insensitive" };
     }>;
-  } = { role: "CUSTOMER" };
+  } = { role: { in: ["CUSTOMER", "ADMIN"] } };
   if (q) {
     where.OR = [
       { phone: { contains: q, mode: "insensitive" } },
@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
         phone: true,
         name: true,
         email: true,
+        role: true,
         seniorVerified: true,
         createdAt: true,
         _count: { select: { orders: true, savedAddresses: true } },

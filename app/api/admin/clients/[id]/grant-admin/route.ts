@@ -5,7 +5,10 @@ import { apiSuccess, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/ap
 
 type Params = Promise<{ id: string }>;
 
-export async function GET(_req: NextRequest, { params }: { params: Params }) {
+/**
+ * POST — set User.role to ADMIN.
+ */
+export async function POST(_req: NextRequest, { params }: { params: Params }) {
   try {
     await requireAdmin();
   } catch (e: unknown) {
@@ -18,31 +21,19 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
   const { id } = await params;
   const user = await prisma.user.findUnique({
     where: { id },
-    select: {
-      id: true,
-      phone: true,
-      name: true,
-      email: true,
-      role: true,
-      seniorVerified: true,
-      createdAt: true,
-      updatedAt: true,
-      savedAddresses: true,
-      orders: {
-        orderBy: { createdAt: "desc" },
-        take: 50,
-        select: {
-          id: true,
-          status: true,
-          totalPiastres: true,
-          paymentMethod: true,
-          createdAt: true,
-        },
-      },
-      _count: { select: { orders: true } },
-    },
+    select: { id: true, phone: true, role: true },
   });
 
   if (!user) return apiNotFound("المستخدم غير موجود");
-  return apiSuccess(user);
+
+  if (user.role === "ADMIN") {
+    return apiSuccess({ userId: user.id, alreadyAdmin: true as const });
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { role: "ADMIN" },
+  });
+
+  return apiSuccess({ userId: user.id, alreadyAdmin: false as const });
 }

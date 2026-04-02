@@ -15,7 +15,7 @@ export async function GET() {
   }
   const dbUser = await prisma.user.findUnique({
     where: { id: user.userId },
-    select: { name: true },
+    select: { name: true, role: true },
   });
   let senior = { seniorVerified: false as boolean, nationalIdLast4: null as string | null };
   try {
@@ -27,7 +27,7 @@ export async function GET() {
     userId: user.userId,
     phone: user.phone,
     name: dbUser?.name ?? null,
-    role: user.role,
+    role: dbUser?.role ?? user.role,
     seniorVerified: senior.seniorVerified,
     nationalIdLast4: senior.nationalIdLast4,
   });

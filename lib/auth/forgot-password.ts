@@ -54,24 +54,20 @@ export type RequestPasswordResetResult =
   | { success: false; reason: "locked"; lockMinutes: number }
   | { success: false; reason: "twilio_error"; message: string };
 
-/** Request OTP for forgot password. Blocks admin numbers; requires existing user with password. */
+/** Request OTP for forgot password. Blocks users with role ADMIN; requires existing user with password. */
 export async function requestPasswordResetOtp(
   phone: string,
   ip: string | null
 ): Promise<RequestPasswordResetResult> {
   const normalized = normalizePhone(phone);
 
-  const admin = await prisma.adminPhone.findUnique({
-    where: { phone: normalized },
-  });
-  if (admin) {
-    return { success: false, reason: "admin_phone" };
-  }
-
   const user = await prisma.user.findUnique({
     where: { phone: normalized },
-    select: { id: true, passwordHash: true },
+    select: { id: true, passwordHash: true, role: true },
   });
+  if (user?.role === "ADMIN") {
+    return { success: false, reason: "admin_phone" };
+  }
   if (!user || !user.passwordHash) {
     return { success: false, reason: "no_account" };
   }

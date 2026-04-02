@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { getCurrentUser, userHasAdminAccess } from "@/lib/auth/session";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({
   children,
@@ -10,11 +11,7 @@ export default async function AdminLayout({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?from=/admin");
-  if (user.role !== "ADMIN") redirect("/");
-  const admin = await prisma.adminPhone.findUnique({
-    where: { phone: user.phone },
-  });
-  if (!admin) redirect("/");
+  if (!(await userHasAdminAccess(user))) redirect("/");
 
   const nav = [
     { href: "/admin", label: "لوحة التحكم" },
@@ -25,7 +22,7 @@ export default async function AdminLayout({
     { href: "/admin/orders", label: "الطلبات" },
     { href: "/admin/rerouting-rules", label: "قواعد التوجيه" },
     { href: "/admin/routed-orders", label: "الطلبات الموجهة" },
-    { href: "/admin/clients", label: "العملاء" },
+    { href: "/admin/clients", label: "العملاء والمسؤولون" },
     { href: "/admin/partners", label: "شركاؤنا" },
     { href: "/admin/settings", label: "الإعدادات" },
   ];

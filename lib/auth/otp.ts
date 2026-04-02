@@ -233,11 +233,6 @@ export async function verifyOtp(
 
   await clearVerifyAttempts(normalized);
 
-  const admin = await prisma.adminPhone.findUnique({
-    where: { phone: normalized },
-  });
-  const role = admin ? "ADMIN" : "CUSTOMER";
-
   let user = await prisma.user.findUnique({
     where: { phone: normalized },
   });
@@ -245,13 +240,8 @@ export async function verifyOtp(
     user = await prisma.user.create({
       data: {
         phone: normalized,
-        role: admin ? "ADMIN" : "CUSTOMER",
+        role: "CUSTOMER",
       },
-    });
-  } else if (admin && user.role !== "ADMIN") {
-    user = await prisma.user.update({
-      where: { id: user.id },
-      data: { role: "ADMIN" },
     });
   }
 
@@ -349,10 +339,11 @@ export async function verifyOtpForRegistration(
 
   await clearVerifyAttempts(normalized);
 
-  const admin = await prisma.adminPhone.findUnique({
+  const existing = await prisma.user.findUnique({
     where: { phone: normalized },
+    select: { role: true },
   });
-  const role = admin ? "ADMIN" : "CUSTOMER";
+  const role = (existing?.role ?? "CUSTOMER") as "CUSTOMER" | "ADMIN";
 
   await logOtpEvent(normalized, "verify_success", _ip, "ok");
   return { success: true, phone: normalized, role };
