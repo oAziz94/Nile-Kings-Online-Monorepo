@@ -31,6 +31,9 @@ All of these are **optional**. If SMTP is not set, requests are still saved to t
 
 | Variable | Description |
 |----------|-------------|
+| `RESEND_API_KEY` | Resend API key (recommended provider on Vercel). |
+| `RESEND_FROM_EMAIL` | Verified sender email in Resend (e.g. `sales@nilekingscotton.com`). |
+| `RESEND_FROM_NAME` | Sender display name for Resend (default: `Nile Kings Cotton`). |
 | `SMTP_HOST` | SMTP server host (e.g. `smtp.gmail.com`). |
 | `SMTP_PORT` | SMTP port (e.g. `587`). |
 | `SMTP_SECURE` | `"true"` or `"false"` for TLS. |
@@ -44,7 +47,12 @@ All of these are **optional**. If SMTP is not set, requests are still saved to t
 Example (e.g. in `.env`):
 
 ```env
-# Partner registration email (optional)
+# Partner registration email via Resend (recommended)
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=sales@nilekingscotton.com
+RESEND_FROM_NAME=Nile Kings Cotton
+
+# Optional SMTP fallback (used only when RESEND_* is not configured)
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
 SMTP_SECURE=false

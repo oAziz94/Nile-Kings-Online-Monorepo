@@ -1,9 +1,11 @@
 /**
  * Partner request email notifications.
- * Uses optional SMTP env vars; if not set, no email is sent (request is still saved to DB).
+ * Uses Resend when configured, otherwise falls back to optional SMTP.
+ * If neither provider is configured, no email is sent (request is still saved to DB).
  */
 
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { env } from "@/lib/env";
 
 export type PartnerRequestPayload = {
@@ -41,18 +43,49 @@ function buildTextBody(p: PartnerRequestPayload): string {
 export async function sendPartnerRequestNotification(
   payload: PartnerRequestPayload
 ): Promise<{ sent: boolean; error?: string }> {
-  const host = env.SMTP_HOST;
-  const port = env.SMTP_PORT;
-  if (!host?.trim() || !port?.trim()) {
-    console.warn("[email] skipped: SMTP_HOST or SMTP_PORT is not configured");
-    return { sent: false };
-  }
-
   const subject =
     payload.requestType === "AGENT"
       ? "طلب تسجيل وكيل أونلاين جديد - Nile Kings"
       : "طلب تسجيل موزع أونلاين جديد - Nile Kings";
   const text = buildTextBody(payload);
+
+  const resendApiKey = env.RESEND_API_KEY?.trim();
+  const resendFromEmail = env.RESEND_FROM_EMAIL?.trim();
+  const resendFromName = env.RESEND_FROM_NAME?.trim() || "Nile Kings Cotton";
+
+  if (resendApiKey && resendFromEmail) {
+    try {
+      console.info("[email] sending partner request notification via resend", {
+        from: `${resendFromName} <${resendFromEmail}>`,
+        to: TO_EMAIL,
+      });
+      const resend = new Resend(resendApiKey);
+      const result = await resend.emails.send({
+        from: `${resendFromName} <${resendFromEmail}>`,
+        to: TO_EMAIL,
+        subject,
+        text,
+      });
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+      console.info("[email] sent partner request notification via resend", {
+        id: result.data?.id,
+      });
+      return { sent: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[email] resend sendPartnerRequestNotification failed:", message);
+      return { sent: false, error: message };
+    }
+  }
+
+  const host = env.SMTP_HOST;
+  const port = env.SMTP_PORT;
+  if (!host?.trim() || !port?.trim()) {
+    console.warn("[email] skipped: RESEND not configured and SMTP_HOST or SMTP_PORT is not configured");
+    return { sent: false };
+  }
 
   try {
     const secure = env.SMTP_SECURE === "true";
