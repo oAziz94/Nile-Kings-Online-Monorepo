@@ -12,11 +12,20 @@ const DEFAULT_APP_URL = "https://nilekingscotton.com";
 /** Used for Open Graph / Twitter when a page has no specific image (e.g. homepage). Prefer a 1200×630 asset as `public/opengraph.png` and point this path there for best Facebook cropping. */
 const DEFAULT_OG_IMAGE_PATH = "/hero.png";
 
+/**
+ * Canonical site origin for metadata, canonical URLs, and resolving relative OG image paths.
+ * Avoids VERCEL_URL on production (deployment *.vercel.app URLs break Facebook's og:image fetch / Content-Type).
+ */
+function siteOrigin(): string {
+  const explicit = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  if (explicit) return explicit;
+  if (process.env.VERCEL_ENV === "production") return DEFAULT_APP_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return DEFAULT_APP_URL;
+}
+
 function appUrl(path = ""): string {
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
-    DEFAULT_APP_URL;
+  const base = siteOrigin();
   return path ? `${base.replace(/\/$/, "")}/${path.replace(/^\//, "")}` : base;
 }
 
@@ -62,7 +71,8 @@ export function pageMetadata({
       : (() => {
           const raw = imageUrl?.trim();
           if (raw) return raw.startsWith("http") ? raw : appUrl(raw);
-          return appUrl(DEFAULT_OG_IMAGE_PATH);
+          // Relative path: Next resolves against metadataBase (same origin as siteOrigin)
+          return DEFAULT_OG_IMAGE_PATH;
         })();
   return {
     title,
