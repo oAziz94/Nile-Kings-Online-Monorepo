@@ -2,6 +2,7 @@ import { Header } from "@/components/shared/header";
 import { Footer } from "@/components/shared/footer";
 import { CartProvider } from "@/contexts/cart-context";
 import { CartDrawer } from "@/components/cart/cart-drawer";
+import { CouponPromoDialog } from "@/components/promotions/coupon-promo-dialog";
 
 export default function PublicLayout({
   children,
@@ -16,6 +17,7 @@ export default function PublicLayout({
         <Footer />
       </div>
       <CartDrawer />
+      <CouponPromoDialog />
     </CartProvider>
   );
 }

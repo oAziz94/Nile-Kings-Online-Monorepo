@@ -73,26 +73,26 @@ describe("calculateExtraWeightCharge", () => {
     expect(calculateExtraWeightCharge(2)).toBe(0);
   });
 
-  it("charges 6 EGP per additional kg (ceiling)", () => {
-    expect(calculateExtraWeightCharge(2.1)).toBe(6);
-    expect(calculateExtraWeightCharge(3)).toBe(6);
-    expect(calculateExtraWeightCharge(3.1)).toBe(12);
-    expect(calculateExtraWeightCharge(4)).toBe(12);
-    expect(calculateExtraWeightCharge(5)).toBe(18);
+  it("charges 7 EGP per additional kg (ceiling)", () => {
+    expect(calculateExtraWeightCharge(2.1)).toBe(7);
+    expect(calculateExtraWeightCharge(3)).toBe(7);
+    expect(calculateExtraWeightCharge(3.1)).toBe(14);
+    expect(calculateExtraWeightCharge(4)).toBe(14);
+    expect(calculateExtraWeightCharge(5)).toBe(21);
   });
 });
 
 describe("calculateMargin", () => {
   it("uses 10% of (base + extra weight) when >= 5 EGP", () => {
-    expect(calculateMargin(50, 0)).toBe(5); // 50 * 0.1 = 5
+    expect(calculateMargin(55, 0)).toBe(5.5); // 55 * 0.1 = 5.5
     expect(calculateMargin(60, 0)).toBe(6);
-    expect(calculateMargin(50, 6)).toBeCloseTo(5.6, 10);
+    expect(calculateMargin(55, 7)).toBeCloseTo(6.2, 10);
   });
 
   it("uses minimum 5 EGP when 10% is below 5", () => {
     expect(calculateMargin(30, 0)).toBe(5); // 30 * 0.1 = 3, floor 5
     expect(calculateMargin(40, 0)).toBe(5);
-    expect(calculateMargin(50, 0)).toBe(5);
+    expect(calculateMargin(49, 0)).toBe(5); // 4.9 < 5
   });
 });
 
@@ -105,16 +105,16 @@ describe("calculateShippingPhase1ByZone", () => {
     }
   });
 
-  it("calculates CAIRO_METRO to CAIRO_METRO for 2 kg: base 50 + insurance 0.5 + margin 5, then VAT 14%", () => {
+  it("calculates CAIRO_METRO to CAIRO_METRO for 2 kg: base 55 + insurance 0.5 + margin 5.5, then VAT 14%", () => {
     const result = calculateShippingPhase1ByZone(2, "CAIRO_METRO");
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.breakdown.baseShippingEGP).toBe(CAIRO_ORIGIN_PRICE_TABLE.CAIRO_METRO);
-      expect(result.breakdown.baseShippingEGP).toBe(50);
+      expect(result.breakdown.baseShippingEGP).toBe(55);
       expect(result.breakdown.extraWeightChargeEGP).toBe(0);
       expect(result.breakdown.insuranceFeeEGP).toBe(INSURANCE_FEE_EGP);
-      expect(result.breakdown.marginAmountEGP).toBe(5);
-      const subtotal = 50 + 0 + 0.5 + 5;
+      expect(result.breakdown.marginAmountEGP).toBe(5.5);
+      const subtotal = 55 + 0 + 0.5 + 5.5;
       expect(result.breakdown.subtotalBeforeVatEGP).toBe(subtotal);
       expect(result.breakdown.vatAmountEGP).toBeCloseTo(subtotal * VAT_RATE, 2);
       expect(result.breakdown.finalShippingEGP).toBeCloseTo(subtotal * (1 + VAT_RATE), 2);
@@ -122,16 +122,17 @@ describe("calculateShippingPhase1ByZone", () => {
     }
   });
 
-  it("calculates REMOTE for 5 kg: base 100 + 18 extra + 0.5 insurance + margin, then VAT", () => {
+  it("calculates REMOTE for 5 kg: base 110 + 21 extra + 0.5 insurance + margin, then VAT", () => {
     const result = calculateShippingPhase1ByZone(5, "REMOTE");
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.breakdown.baseShippingEGP).toBe(100);
-      expect(result.breakdown.extraWeightChargeEGP).toBe(18); // ceil(5-2)*6 = 18
+      expect(result.breakdown.baseShippingEGP).toBe(110);
+      expect(result.breakdown.extraWeightChargeEGP).toBe(21); // ceil(5-2)*7 = 21
       expect(result.breakdown.insuranceFeeEGP).toBe(0.5);
-      expect(result.breakdown.marginAmountEGP).toBe(Math.max((100 + 18) * 0.1, MARGIN_FLOOR_EGP));
-      expect(result.breakdown.marginAmountEGP).toBe(11.8);
-      const subtotal = 100 + 18 + 0.5 + 11.8;
+      expect(result.breakdown.marginAmountEGP).toBe(Math.max((110 + 21) * 0.1, MARGIN_FLOOR_EGP));
+      expect(result.breakdown.marginAmountEGP).toBeCloseTo(13.1, 10);
+      const subtotal =
+        110 + 21 + 0.5 + result.breakdown.marginAmountEGP;
       expect(result.breakdown.subtotalBeforeVatEGP).toBeCloseTo(subtotal, 2);
       expect(result.breakdown.feePiastres).toBeGreaterThan(0);
     }

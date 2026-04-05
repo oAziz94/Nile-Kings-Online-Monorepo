@@ -35,13 +35,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
 
   let body: {
     code?: string;
-    discountType?: "PERCENT" | "FIXED";
+    discountType?: "PERCENT" | "FIXED" | "BOGO_QTY";
     discountValue?: number;
     minOrderPiastres?: number | null;
     maxUses?: number | null;
     validFrom?: string;
     validUntil?: string | null;
     active?: boolean;
+    bogoPayQuantity?: number | null;
+    bogoFreeQuantity?: number | null;
+    bogoSameVariantOnly?: boolean;
+    showPromotionPopup?: boolean;
+    promotionPopupMessage?: string | null;
   };
   try {
     body = await req.json();
@@ -55,23 +60,63 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     const conflict = await prisma.coupon.findFirst({ where: { code, id: { not: id } } });
     if (conflict) return apiConflict("كود الكوبون مستخدم مسبقاً");
   }
-  if (body.discountType !== undefined && !["PERCENT", "FIXED"].includes(body.discountType))
-    return apiBadRequest("discountType يجب أن يكون PERCENT أو FIXED");
+  if (body.discountType !== undefined && !["PERCENT", "FIXED", "BOGO_QTY"].includes(body.discountType))
+    return apiBadRequest("discountType يجب أن يكون PERCENT أو FIXED أو BOGO_QTY");
+
+  const nextType = body.discountType ?? existing.discountType;
   if (body.discountValue !== undefined) {
-    const type = body.discountType ?? existing.discountType;
-    if (type === "PERCENT" && (body.discountValue < 1 || body.discountValue > 100))
+    if (nextType === "PERCENT" && (body.discountValue < 1 || body.discountValue > 100))
       return apiBadRequest("discountValue للنسبة المئوية بين 1 و 100");
-    if (type === "FIXED" && body.discountValue < 0) return apiBadRequest("discountValue للقيمة الثابتة غير سالب");
+    if (nextType === "FIXED" && body.discountValue < 0) return apiBadRequest("discountValue للقيمة الثابتة غير سالب");
   }
+
+  if (body.bogoPayQuantity !== undefined && body.bogoPayQuantity !== null) {
+    const pay = Math.trunc(body.bogoPayQuantity);
+    if (pay < 1 || pay > 999) return apiBadRequest("bogoPayQuantity يجب أن يكون بين 1 و 999");
+  }
+  if (body.bogoFreeQuantity !== undefined && body.bogoFreeQuantity !== null) {
+    const free = Math.trunc(body.bogoFreeQuantity);
+    if (free < 1 || free > 999) return apiBadRequest("bogoFreeQuantity يجب أن يكون بين 1 و 999");
+  }
+
   if (body.maxUses !== undefined && body.maxUses !== null && (body.maxUses < 0 || body.maxUses < existing.usedCount))
     return apiBadRequest("maxUses لا يمكن أن يكون أقل من عدد مرات الاستخدام الحالية");
+
+  const typeAfter = body.discountType ?? existing.discountType;
+  const clearBogo = typeAfter === "PERCENT" || typeAfter === "FIXED";
+  const clearPercentFixed = typeAfter === "BOGO_QTY";
+
+  let promotionPopupMessage: string | null | undefined = undefined;
+  if (body.showPromotionPopup !== undefined || body.promotionPopupMessage !== undefined) {
+    const show =
+      body.showPromotionPopup !== undefined ? body.showPromotionPopup === true : existing.showPromotionPopup;
+    const msgRaw =
+      body.promotionPopupMessage !== undefined
+        ? typeof body.promotionPopupMessage === "string"
+          ? body.promotionPopupMessage.trim().slice(0, 8000)
+          : ""
+        : (existing.promotionPopupMessage ?? "").trim();
+    if (show && !msgRaw) return apiBadRequest("نص الرسالة مطلوب عند تفعيل النافذة المنبثقة للعرض");
+    promotionPopupMessage = show ? msgRaw : null;
+  }
 
   const coupon = await prisma.coupon.update({
     where: { id },
     data: {
       ...(body.code !== undefined && { code: body.code.trim().toUpperCase() }),
       ...(body.discountType !== undefined && { discountType: body.discountType }),
+      ...(clearBogo && {
+        bogoPayQuantity: null,
+        bogoFreeQuantity: null,
+        bogoSameVariantOnly: true,
+      }),
       ...(body.discountValue !== undefined && { discountValue: body.discountValue }),
+      ...(clearPercentFixed && { discountValue: 0 }),
+      ...(body.bogoPayQuantity !== undefined && !clearBogo && { bogoPayQuantity: body.bogoPayQuantity }),
+      ...(body.bogoFreeQuantity !== undefined && !clearBogo && { bogoFreeQuantity: body.bogoFreeQuantity }),
+      ...(body.bogoSameVariantOnly !== undefined && { bogoSameVariantOnly: body.bogoSameVariantOnly }),
+      ...(body.showPromotionPopup !== undefined && { showPromotionPopup: body.showPromotionPopup }),
+      ...(promotionPopupMessage !== undefined && { promotionPopupMessage }),
       ...(body.minOrderPiastres !== undefined && { minOrderPiastres: body.minOrderPiastres == null || (typeof body.minOrderPiastres === "number" && body.minOrderPiastres >= 0) ? body.minOrderPiastres : undefined }),
       ...(body.maxUses !== undefined && { maxUses: body.maxUses }),
       ...(body.validFrom !== undefined && { validFrom: new Date(body.validFrom) }),

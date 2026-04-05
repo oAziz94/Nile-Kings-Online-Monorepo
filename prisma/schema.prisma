@@ -246,8 +246,16 @@ model CartItem {
 model Coupon {
   id            String   @id @default(cuid())
   code          String   @unique
-  discountType  String   // "PERCENT" | "FIXED"
-  discountValue Int      // percent 1-100 or piastres
+  discountType  String   // "PERCENT" | "FIXED" | "BOGO_QTY"
+  discountValue Int      // percent 1-100 or piastres; unused (0) for BOGO_QTY
+  /// For BOGO_QTY: paid units per cycle (e.g. 2 in "buy 2 get 1 free")
+  bogoPayQuantity       Int?
+  /// For BOGO_QTY: free units per cycle (e.g. 1)
+  bogoFreeQuantity      Int?
+  /// When true, BOGO groups units per variant only; when false, pools all cart lines
+  bogoSameVariantOnly   Boolean  @default(true)
+  showPromotionPopup    Boolean  @default(false)
+  promotionPopupMessage String?  @db.Text
   minOrderPiastres Int?  @default(0)
   maxUses       Int?
   usedCount     Int      @default(0)

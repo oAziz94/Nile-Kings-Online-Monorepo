@@ -38,21 +38,21 @@ export const INSURANCE_FEE_EGP = 0.5;
 export const MARGIN_PERCENT = 0.1;
 export const MARGIN_FLOOR_EGP = 5;
 
-/** Weight: first 2 kg at base price, then +6 EGP per additional kg */
+/** Weight: first 2 kg at base price, then +7 EGP per additional kg */
 export const FIRST_KG_LIMIT = 2;
-export const EXTRA_KG_EGP = 6;
+export const EXTRA_KG_EGP = 7;
 
 /**
  * Base shipping price from CAIRO_METRO to each zone (EGP).
  * Origin is always Cairo for Phase 1.
  */
 export const CAIRO_ORIGIN_PRICE_TABLE: Record<DestinationZone, number> = {
-  CAIRO_METRO: 50,
-  ALEX_DELTA: 55,
-  CANAL: 60,
-  NORTH_UPPER: 65,
-  SOUTH_UPPER_REDSEA: 90,
-  REMOTE: 100,
+  CAIRO_METRO: 55,
+  ALEX_DELTA: 65,
+  CANAL: 70,
+  NORTH_UPPER: 75,
+  SOUTH_UPPER_REDSEA: 100,
+  REMOTE: 110,
 };
 
 /**
