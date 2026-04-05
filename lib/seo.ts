@@ -9,8 +9,8 @@ const DEFAULT_DESCRIPTION = "متجر نايل كينجز أونلاين - تس�
 
 const DEFAULT_APP_URL = "https://nilekingscotton.com";
 
-/** Used for Open Graph / Twitter when a page has no specific image (e.g. homepage). Prefer a 1200×630 asset as `public/opengraph.png` and point this path there for best Facebook cropping. */
-const DEFAULT_OG_IMAGE_PATH = "/hero.png";
+/** Open Graph / Twitter default when a page has no specific image (e.g. homepage). File: `public/opengraph.png`. */
+const DEFAULT_OG_IMAGE_PATH = "/opengraph.png";
 
 /**
  * Canonical site origin for metadata, canonical URLs, and resolving relative OG image paths.
