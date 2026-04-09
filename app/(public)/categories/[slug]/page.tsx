@@ -33,23 +33,16 @@ async function getCategory(slug: string) {
 
 export default async function CategoryPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { slug } = await params;
   const category = await getCategory(slug);
   if (!category) notFound();
 
-  const q = await searchParams;
   return (
     <div className="container px-4 py-6 md:py-8">
-      <CategoryContent
-        categorySlug={category.slug}
-        categoryName={category.name}
-        searchParams={q}
-      />
+      <CategoryContent categorySlug={category.slug} categoryName={category.name} />
     </div>
   );
 }

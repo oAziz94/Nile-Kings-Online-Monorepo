@@ -112,13 +112,19 @@ function toListItemsByVariant(p: {
   category: { slug: string; name: string };
   variants: VariantRow[];
 }): ProductListItem[] {
-  const byColor = new Map<string, VariantRow>();
+  /** Representative row per color + total units across all sizes for that color (for sorting). */
+  const byColor = new Map<string, { rep: VariantRow; totalStock: number }>();
   for (const v of p.variants) {
     const key = colorKey(v);
-    if (!byColor.has(key)) byColor.set(key, v);
+    const existing = byColor.get(key);
+    if (!existing) {
+      byColor.set(key, { rep: v, totalStock: v.stockAvailable });
+    } else {
+      existing.totalStock += v.stockAvailable;
+    }
   }
   const items: ProductListItem[] = [];
-  for (const v of byColor.values()) {
+  for (const { rep: v, totalStock } of byColor.values()) {
     const priceEgp = piastresToEgp(v.pricePiastres);
     const baseEgp = p.basePricePiastres != null ? piastresToEgp(p.basePricePiastres) : undefined;
     const originalPriceEgp = baseEgp != null && baseEgp > priceEgp ? baseEgp : undefined;
@@ -135,8 +141,9 @@ function toListItemsByVariant(p: {
       ...(discountPercent != null && { discountPercent }),
       categorySlug: p.category.slug,
       categoryName: p.category.name,
-      inStock: v.stockAvailable > 0,
+      inStock: totalStock > 0,
       variantSlug: v.slug,
+      stockAvailable: totalStock,
     });
   }
   return items;
@@ -238,6 +245,11 @@ export async function GET(req: NextRequest) {
   if (q.sort === "price_asc") filtered.sort((a, b) => a.priceEgp - b.priceEgp);
   else if (q.sort === "price_desc") filtered.sort((a, b) => b.priceEgp - a.priceEgp);
 
+  // Variant-level lists (كل المنتجات + تصنيفات): order by total stock per color, highest first.
+  if (byVariant) {
+    filtered.sort((a, b) => (b.stockAvailable ?? 0) - (a.stockAvailable ?? 0));
+  }
+
   // When byVariant, paginate the variant-level list; total is variant count so frontend can load all.
   const start = hasPriceFilter ? (q.offset ?? 0) : (q.offset ?? 0);
   const end = start + (q.limit ?? 24);
@@ -247,5 +259,7 @@ export async function GET(req: NextRequest) {
     : byVariant
       ? filtered.length
       : (totalCount ?? paginated.length);
-  return apiSuccess({ products: paginated, total });
+  const response = apiSuccess({ products: paginated, total });
+  response.headers.set("Cache-Control", "no-store, must-revalidate");
+  return response;
 }

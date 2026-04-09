@@ -51,6 +51,8 @@ export interface ProductListItem {
   colorVariants?: ColorVariantListItem[];
   /** When set, card links to this variant (variant slug). Used when listing one product per color variant. */
   variantSlug?: string | null;
+  /** Present on variant-level rows; used for ordering (storefront lists by stock). */
+  stockAvailable?: number;
 }
 
 /** When original > price, returns rounded discount percentage; otherwise undefined. */

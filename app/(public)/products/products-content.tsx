@@ -2,13 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/shared/product-card";
-import { ProductGridSkeleton } from "@/components/shared/skeleton";
 import { LoadingDots } from "@/components/shared/loading-dots";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import { SortDropdown, type SortOptionValue } from "@/components/shared/sort-dropdown";
 import { Package } from "lucide-react";
 
 const PAGE_SIZE = 9;
@@ -27,37 +24,20 @@ type ProductItem = {
   variantSlug?: string | null;
 };
 
-const DEFAULT_SORT: SortOptionValue = "name_ar";
-
 export function ProductsContent() {
-  const router = useRouter();
-  const search = useSearchParams();
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const sortFromUrlRaw = search.get("sort");
-  const sortFromUrl = sortFromUrlRaw as SortOptionValue | null;
-  const sortParam = sortFromUrl ?? DEFAULT_SORT;
-
-  // Sync URL to default sort when missing so dropdown shows "ابجديا، من الالف للياء" not fallback
-  useEffect(() => {
-    if (sortFromUrlRaw != null && sortFromUrlRaw !== "") return;
-    const next = new URLSearchParams(search.toString());
-    next.set("sort", DEFAULT_SORT);
-    router.replace(`/products?${next.toString()}`, { scroll: false });
-  }, [router, search, sortFromUrlRaw]);
-
   const fetchPage = useCallback(
     async (offset: number, append: boolean) => {
       const params = new URLSearchParams();
       params.set("expandVariants", "true");
-      params.set("sort", sortParam);
       params.set("limit", String(PAGE_SIZE));
       params.set("offset", String(offset));
-      const res = await fetch(`/api/products?${params}`);
+      const res = await fetch(`/api/products?${params}`, { cache: "no-store" });
       const json = await res.json();
       if (json.success && json.data) {
         if (append) {
@@ -71,7 +51,7 @@ export function ProductsContent() {
         setTotal(0);
       }
     },
-    [sortParam]
+    []
   );
 
   useEffect(() => {
@@ -102,29 +82,15 @@ export function ProductsContent() {
     return () => observer.disconnect();
   }, [loading, loadingMore, products.length, total, fetchPage]);
 
-  const updateSearch = (updates: Record<string, string | undefined>) => {
-    const next = new URLSearchParams(search.toString());
-    Object.entries(updates).forEach(([k, v]) => {
-      if (v === undefined || v === "") next.delete(k);
-      else next.set(k, v);
-    });
-    router.push(`/products?${next.toString()}`);
-  };
-
   return (
     <div className="mx-auto max-w-6xl px-4 md:px-6 lg:px-8">
-      <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground md:text-3xl">
-            كل المنتجات
-          </h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <SortDropdown
-            value={sortParam}
-            onChange={(value) => updateSearch({ sort: value })}
-          />
-        </div>
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold text-foreground md:text-3xl">
+          كل المنتجات
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          مرتبة حسب المخزون المتاح (الأعلى أولاً)
+        </p>
       </div>
 
       <div>
