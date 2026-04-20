@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { AdminPaginationBar } from "@/components/admin/admin-pagination";
 import { ShoppingBag, FileDown, Search, Loader2 } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
@@ -64,6 +65,7 @@ export default function AdminOrdersPage() {
   const [fetching, setFetching] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [debouncedQ, setDebouncedQ] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("");
   const [page, setPage] = React.useState(0);
   const [pageSize, setPageSize] = React.useState(20);
   const [selectedOrderIds, setSelectedOrderIds] = React.useState<string[]>([]);
@@ -77,11 +79,11 @@ export default function AdminOrdersPage() {
 
   React.useEffect(() => {
     setPage(0);
-  }, [debouncedQ]);
+  }, [debouncedQ, statusFilter]);
 
   React.useEffect(() => {
     setSelectedOrderIds([]);
-  }, [debouncedQ, page, pageSize]);
+  }, [debouncedQ, statusFilter, page, pageSize]);
 
   React.useEffect(() => {
     const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
@@ -96,6 +98,7 @@ export default function AdminOrdersPage() {
       offset: String(page * pageSize),
     });
     if (debouncedQ) params.set("q", debouncedQ);
+    if (statusFilter) params.set("status", statusFilter);
     fetch(`/api/admin/orders?${params}`, { credentials: "include", signal: ac.signal })
       .then((r) => r.json())
       .then((json: { success?: boolean; data?: { orders: Order[]; total: number } }) => {
@@ -115,7 +118,7 @@ export default function AdminOrdersPage() {
         }
       });
     return () => ac.abort();
-  }, [debouncedQ, page, pageSize, toast]);
+  }, [debouncedQ, statusFilter, page, pageSize, toast]);
 
   const handleExportCourier = React.useCallback(async () => {
     if (selectedOrderIds.length === 0) {
@@ -195,6 +198,18 @@ export default function AdminOrdersPage() {
                 className="pr-9"
               />
             </div>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full sm:w-40"
+            >
+              <option value="">كل الحالات</option>
+              {Object.entries(STATUS_LABELS).map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </Select>
             <Button
               type="button"
               variant="outline"

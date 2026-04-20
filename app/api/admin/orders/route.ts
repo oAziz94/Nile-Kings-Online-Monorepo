@@ -36,12 +36,12 @@ export async function GET(req: NextRequest) {
 
   const searchWhere: Prisma.OrderWhereInput | undefined = q
     ? {
-        OR: [
-          { id: { contains: q, mode: "insensitive" } },
-          { user: { name: { contains: q, mode: "insensitive" } } },
-          { user: { phone: { contains: q, mode: "insensitive" } } },
-        ],
-      }
+      OR: [
+        { id: { contains: q, mode: "insensitive" } },
+        { user: { name: { contains: q, mode: "insensitive" } } },
+        { user: { phone: { contains: q, mode: "insensitive" } } },
+      ],
+    }
     : undefined;
 
   const where: Prisma.OrderWhereInput = {

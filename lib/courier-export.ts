@@ -179,11 +179,24 @@ function getCodValue(order: OrderForCourierExport): string {
   return isCod ? toEgp(order.totalPiastres) : "0";
 }
 
-/** Description text from order items: e.g. "Product A - Variant x 2, Product B - Variant x 1". */
+/** Description text as a brief order summary for easier printing. */
 function getDescription(order: OrderForCourierExport): string {
-  return order.items
-    .map((i) => `${i.productName} - ${i.variantName} x${i.quantity}`)
+  if (order.items.length === 0) return "";
+
+  const totalQty = order.items.reduce((sum, i) => sum + i.quantity, 0);
+  const uniqueProducts = new Set(order.items.map((i) => i.productName.trim()).filter(Boolean)).size;
+
+  // Keep a tiny preview for operator readability without listing all lines.
+  const preview = order.items
+    .slice(0, 2)
+    .map((i) => `${i.productName} x${i.quantity}`)
     .join(", ");
+  const moreCount = Math.max(0, order.items.length - 2);
+
+  const summary = `${uniqueProducts} item(s), ${totalQty} pcs`;
+  if (!preview) return summary;
+  if (moreCount > 0) return `${summary} - ${preview} +${moreCount} more`;
+  return `${summary} - ${preview}`;
 }
 
 /** Total weight in grams: sum of (quantity * weightGrams) per item. */
