@@ -18,8 +18,9 @@ import { Skeleton } from "@/components/shared/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { AdminPaginationBar } from "@/components/admin/admin-pagination";
-import { ShoppingBag, FileDown, Search, Loader2 } from "lucide-react";
-import { formatDateEn } from "@/lib/format-en-numbers";
+import { ShoppingBag, FileDown, FileText, Search, Loader2 } from "lucide-react";
+import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
+import { piastresToEgp } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -51,12 +52,19 @@ const PAYMENT_LABELS: Record<string, string> = {
 type Order = {
   id: string;
   status: string;
+  subtotalPiastres: number;
+  shippingPiastres: number;
+  codFeePiastres: number;
   totalPiastres: number;
   paymentMethod: string;
   createdAt: string;
   user: { phone: string; name: string | null };
   items: { quantity: number; productName: string }[];
 };
+
+function egp(piastres: number): string {
+  return `${formatNumberEn(piastresToEgp(piastres))} ج.م`;
+}
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = React.useState<Order[]>([]);
@@ -69,7 +77,8 @@ export default function AdminOrdersPage() {
   const [page, setPage] = React.useState(0);
   const [pageSize, setPageSize] = React.useState(20);
   const [selectedOrderIds, setSelectedOrderIds] = React.useState<string[]>([]);
-  const [exporting, setExporting] = React.useState(false);
+  const [exportingCourier, setExportingCourier] = React.useState(false);
+  const [exportingCsv, setExportingCsv] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -129,7 +138,7 @@ export default function AdminOrdersPage() {
       });
       return;
     }
-    setExporting(true);
+    setExportingCourier(true);
     try {
       const res = await fetch(`/api/admin/orders/courier-export`, {
         method: "POST",
@@ -165,17 +174,61 @@ export default function AdminOrdersPage() {
         variant: "destructive",
       });
     } finally {
-      setExporting(false);
+      setExportingCourier(false);
+    }
+  }, [selectedOrderIds, toast]);
+
+  const handleExportCsv = React.useCallback(async () => {
+    if (selectedOrderIds.length === 0) {
+      toast({
+        title: "اختر طلبات للتصدير",
+        description: "حدد طلبًا واحدًا على الأقل.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setExportingCsv(true);
+    try {
+      const res = await fetch(`/api/admin/orders/csv-export`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderIds: selectedOrderIds }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast({
+          title: "فشل تصدير CSV",
+          description: j?.error?.message ?? res.statusText,
+          variant: "destructive",
+        });
+        return;
+      }
+      const blob = await res.blob();
+      const filename =
+        res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ?? `orders-export.csv`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "تم تصدير CSV" });
+      setSelectedOrderIds([]);
+    } catch (e) {
+      toast({
+        title: "فشل تصدير CSV",
+        description: e instanceof Error ? e.message : "خطأ غير متوقع",
+        variant: "destructive",
+      });
+    } finally {
+      setExportingCsv(false);
     }
   }, [selectedOrderIds, toast]);
 
   const selectedSet = React.useMemo(() => new Set(selectedOrderIds), [selectedOrderIds]);
-  const readyOrdersOnPage = React.useMemo(
-    () => orders.filter((o) => o.status === "READY_TO_SHIP"),
-    [orders]
-  );
   const allSelectedOnPage =
-    readyOrdersOnPage.length > 0 && readyOrdersOnPage.every((o) => selectedSet.has(o.id));
+    orders.length > 0 && orders.every((o) => selectedSet.has(o.id));
 
   if (loading && orders.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
 
@@ -210,15 +263,34 @@ export default function AdminOrdersPage() {
                 </option>
               ))}
             </Select>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleExportCourier}
-              disabled={exporting || selectedOrderIds.length === 0}
-            >
-              <FileDown className="ml-2 h-4 w-4" />
-              {exporting ? "جاري التصدير…" : `تصدير ملف الشحن (${selectedOrderIds.length})`}
-            </Button>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleExportCourier}
+                disabled={
+                  exportingCourier || exportingCsv || selectedOrderIds.length === 0
+                }
+              >
+                <FileDown className="ml-2 h-4 w-4" />
+                {exportingCourier
+                  ? "جاري التصدير…"
+                  : `تصدير ملف الشحن (${selectedOrderIds.length})`}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleExportCsv}
+                disabled={
+                  exportingCourier || exportingCsv || selectedOrderIds.length === 0
+                }
+              >
+                <FileText className="ml-2 h-4 w-4" />
+                {exportingCsv
+                  ? "جاري تصدير CSV…"
+                  : `تصدير CSV (${selectedOrderIds.length})`}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -246,17 +318,15 @@ export default function AdminOrdersPage() {
                       onChange={(e) => {
                         if (e.target.checked) {
                           const merged = new Set(selectedOrderIds);
-                          orders.forEach((o) => {
-                            if (o.status === "READY_TO_SHIP") merged.add(o.id);
-                          });
+                          orders.forEach((o) => merged.add(o.id));
                           setSelectedOrderIds(Array.from(merged));
                           return;
                         }
                         const pageIds = new Set(orders.map((o) => o.id));
                         setSelectedOrderIds((prev) => prev.filter((id) => !pageIds.has(id)));
                       }}
-                      aria-label="تحديد كل الطلبات الجاهزة للشحن"
-                      disabled={readyOrdersOnPage.length === 0}
+                      aria-label="تحديد كل الطلبات في هذه الصفحة"
+                      disabled={orders.length === 0}
                     />
                   </TableHead>
                   <TableHead>الرقم</TableHead>
@@ -275,7 +345,6 @@ export default function AdminOrdersPage() {
                       <input
                         type="checkbox"
                         checked={selectedSet.has(o.id)}
-                        disabled={o.status !== "READY_TO_SHIP"}
                         onChange={(e) => {
                           if (e.target.checked) {
                             setSelectedOrderIds((prev) => (prev.includes(o.id) ? prev : [...prev, o.id]));
@@ -288,7 +357,24 @@ export default function AdminOrdersPage() {
                     </TableCell>
                     <TableCell className="font-mono text-sm">{o.id.slice(0, 8)}</TableCell>
                     <TableCell>{o.user?.phone ?? "—"} {o.user?.name ? `(${o.user.name})` : ""}</TableCell>
-                    <TableCell>{(o.totalPiastres / 100).toFixed(0)} ج.م</TableCell>
+                    <TableCell className="align-top">
+                      <div className="space-y-1 whitespace-nowrap">
+                        <p className="font-semibold tabular-nums">{egp(o.totalPiastres)}</p>
+                        <div className="text-[11px] leading-snug text-muted-foreground tabular-nums">
+                          <p>
+                            <span className="text-foreground/70">المجموع الفرعي:</span>{" "}
+                            {egp(o.subtotalPiastres)}
+                          </p>
+                          <p>
+                            <span className="text-foreground/70">الشحن:</span> {egp(o.shippingPiastres)}
+                          </p>
+                          <p>
+                            <span className="text-foreground/70">رسوم الدفع عند الاستلام:</span>{" "}
+                            {egp(o.codFeePiastres)}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell>{PAYMENT_LABELS[o.paymentMethod] ?? o.paymentMethod ?? "—"}</TableCell>
                     <TableCell>
                       <Badge

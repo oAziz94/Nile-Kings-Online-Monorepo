@@ -16,7 +16,12 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/admin/analytics?section=kpis", { credentials: "include" })
+    const params = new URLSearchParams({
+      section: "kpis",
+      // Dashboard KPIs should represent all-time totals, not default 30-day window.
+      from: "1970-01-01",
+    });
+    fetch(`/api/admin/analytics?${params.toString()}`, { credentials: "include" })
       .then((res) => res.json())
       .then((json: { success?: boolean; data?: Kpis }) => {
         if (json?.success && json.data) setKpis(json.data);

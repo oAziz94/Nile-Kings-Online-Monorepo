@@ -44,6 +44,10 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  if (orders.length === 0) {
+    return apiBadRequest("لا توجد طلبات بحالة «جاهز للشحن» ضمن الطلبات المحددة");
+  }
+
   const now = new Date();
   const exportedOrderIds = orders.map((o) => o.id);
 
