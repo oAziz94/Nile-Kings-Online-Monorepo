@@ -1,7 +1,8 @@
 /**
  * Catalog products export: matches the Meta/Facebook product catalog format
- * (e.g. catalog_products_*.xlsx) with columns: id, title, description, availability,
+ * (e.g. catalog_products_*.xlsx) with columns: id, quantity, title, description, availability,
  * condition, price, link, image_link, brand. One row per variant (product + color/size).
+ * quantity is stockAvailable for that variant.
  */
 
 import * as XLSX from "xlsx";
@@ -9,6 +10,7 @@ import * as XLSX from "xlsx";
 /** Column headers in exact order (from catalog template). */
 export const CATALOG_EXPORT_HEADERS = [
   "id",
+  "quantity",
   "title",
   "description",
   "availability",
@@ -72,6 +74,7 @@ function productVariantToRow(
 
   return [
     variant.sku,
+    variant.stockAvailable,
     title,
     description,
     availability,

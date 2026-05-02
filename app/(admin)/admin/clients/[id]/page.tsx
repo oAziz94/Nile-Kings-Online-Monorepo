@@ -74,6 +74,7 @@ type ClientProfile = {
 type AddressForm = {
   label: string;
   governorate: string;
+  city: string;
   area: string;
   street: string;
   notes: string;
@@ -113,6 +114,7 @@ export default function AdminClientProfilePage() {
     setAddressForm({
       label: addr.label ?? "",
       governorate: addr.governorate ?? "",
+      city: addr.city ?? "",
       area: addr.area ?? "",
       street: addr.street ?? "",
       notes: addr.notes ?? "",
@@ -129,8 +131,8 @@ export default function AdminClientProfilePage() {
 
   const saveAddress = () => {
     if (!editingAddressId || !addressForm) return;
-    if (!addressForm.governorate.trim() || !addressForm.area.trim() || !addressForm.street.trim() || !addressForm.phone.trim()) {
-      toast({ title: "المحافظة والمنطقة والعنوان ورقم الهاتف مطلوبة", variant: "destructive" });
+    if (!addressForm.governorate.trim() || !addressForm.city.trim() || !addressForm.area.trim() || !addressForm.street.trim() || !addressForm.phone.trim()) {
+      toast({ title: "المحافظة والمدينة والمنطقة والعنوان ورقم الهاتف مطلوبة", variant: "destructive" });
       return;
     }
 
@@ -142,6 +144,7 @@ export default function AdminClientProfilePage() {
       body: JSON.stringify({
         label: addressForm.label.trim() || null,
         governorate: addressForm.governorate.trim(),
+        city: addressForm.city.trim(),
         area: addressForm.area.trim(),
         street: addressForm.street.trim(),
         notes: addressForm.notes.trim() || null,
@@ -396,6 +399,13 @@ export default function AdminClientProfilePage() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">المدينة *</label>
+                <Input
+                  value={addressForm.city}
+                  onChange={(e) => setAddressForm((s) => (s ? { ...s, city: e.target.value } : s))}
+                />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">المنطقة *</label>

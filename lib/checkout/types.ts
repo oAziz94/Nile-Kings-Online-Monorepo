@@ -15,7 +15,7 @@ export const CHECKOUT_PAYMENT_OPTIONS = [
 
 export type CheckoutAddress = {
   governorate: string;
-  city?: string | null;
+  city: string;
   area?: string | null;
   street: string;
   building?: string | null;

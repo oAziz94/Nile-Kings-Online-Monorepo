@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!addressBodySchema.governorate(body.governorate)) return apiBadRequest("المحافظة مطلوبة");
+  if (!(typeof body.city === "string" && body.city.trim().length > 0)) return apiBadRequest("المدينة مطلوبة");
   if (!addressBodySchema.area(body.area)) return apiBadRequest("المنطقة مطلوبة");
   if (!addressBodySchema.street(body.street)) return apiBadRequest("العنوان بالتفصيل مطلوب");
   if (!addressBodySchema.phone(body.phone)) return apiBadRequest("رقم الهاتف مطلوب");

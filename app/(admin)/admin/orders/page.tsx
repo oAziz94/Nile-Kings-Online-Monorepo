@@ -245,7 +245,7 @@ export default function AdminOrdersPage() {
             <div className="relative w-full sm:min-w-[240px]">
               <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="بحث برقم الطلب أو اسم العميل أو الهاتف…"
+                placeholder="بحث برقم الطلب أو العميل أو الهاتف أو اسم المنتج…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pr-9"

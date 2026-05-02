@@ -99,13 +99,13 @@ export default function ProfileAddressesPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.governorate.trim() || !form.area.trim() || !form.street.trim() || !form.phone.trim()) {
-      toast({ title: "المحافظة والمنطقة والعنوان بالتفصيل والهاتف مطلوبة", variant: "destructive" });
+    if (!form.governorate.trim() || !form.city.trim() || !form.area.trim() || !form.street.trim() || !form.phone.trim()) {
+      toast({ title: "المحافظة والمدينة والمنطقة والعنوان بالتفصيل والهاتف مطلوبة", variant: "destructive" });
       return;
     }
     const body = {
       ...form,
-      city: form.city?.trim() || null,
+      city: form.city.trim(),
       area: form.area || null,
       floor: form.floor || null,
       apartment: form.apartment || null,
@@ -216,6 +216,15 @@ export default function ProfileAddressesPage() {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-foreground">المدينة *</label>
+              <Input
+                value={form.city}
+                onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
+                required
+                className="rounded-xl"
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-foreground">هاتف التوصيل *</label>

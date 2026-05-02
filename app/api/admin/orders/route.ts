@@ -40,6 +40,16 @@ export async function GET(req: NextRequest) {
         { id: { contains: q, mode: "insensitive" } },
         { user: { name: { contains: q, mode: "insensitive" } } },
         { user: { phone: { contains: q, mode: "insensitive" } } },
+        {
+          items: {
+            some: {
+              OR: [
+                { productName: { contains: q, mode: "insensitive" } },
+                { variantName: { contains: q, mode: "insensitive" } },
+              ],
+            },
+          },
+        },
       ],
     }
     : undefined;

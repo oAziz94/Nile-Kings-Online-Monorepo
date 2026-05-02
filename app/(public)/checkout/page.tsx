@@ -83,7 +83,7 @@ function piastresToEgpDisplay(p: number) {
 function addressToPayload(addr: typeof emptyAddress) {
   return {
     governorate: addr.governorate,
-    city: addr.city || null,
+    city: addr.city.trim(),
     area: addr.area || null,
     street: addr.street,
     floor: addr.floor || null,
@@ -197,7 +197,7 @@ export default function CheckoutPage() {
         })()
         : null;
 
-    if (!addr || !addr.governorate.trim() || !addr.area.trim() || !addr.street.trim() || !addr.phone.trim()) {
+    if (!addr || !addr.governorate.trim() || !addr.city.trim() || !addr.area.trim() || !addr.street.trim() || !addr.phone.trim()) {
       setSummary(null);
       return;
     }
@@ -255,6 +255,7 @@ export default function CheckoutPage() {
     savedAddresses.length,
     savedAddresses.find((a) => a.id === selectedAddressId)?.governorate,
     savedAddresses.find((a) => a.id === selectedAddressId)?.street,
+    savedAddresses.find((a) => a.id === selectedAddressId)?.city,
     savedAddresses.find((a) => a.id === selectedAddressId)?.phone,
     router,
     toast,
@@ -277,8 +278,8 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     const addr = currentAddress;
-    if (!addr || !addr.governorate.trim() || !addr.area.trim() || !addr.street.trim() || !addr.phone.trim()) {
-      toast({ title: "اختر عنوان توصيل أو أكمل البيانات (المنطقة والعنوان بالتفصيل والهاتف)", variant: "destructive" });
+    if (!addr || !addr.governorate.trim() || !addr.city.trim() || !addr.area.trim() || !addr.street.trim() || !addr.phone.trim()) {
+      toast({ title: "اختر عنوان توصيل أو أكمل البيانات (المدينة والمنطقة والعنوان بالتفصيل والهاتف)", variant: "destructive" });
       return;
     }
     if (!summary) {
@@ -295,7 +296,7 @@ export default function CheckoutPage() {
         const saveBody = {
           label: addr.label?.trim() || null,
           governorate: addr.governorate.trim(),
-          city: addr.city?.trim() || null,
+          city: addr.city.trim(),
           area: addr.area?.trim() || null,
           street: addr.street.trim(),
           floor: addr.floor?.trim() || null,
@@ -339,7 +340,7 @@ export default function CheckoutPage() {
         const saveBody = {
           label: addr.label?.trim() || null,
           governorate: addr.governorate.trim(),
-          city: addr.city?.trim() || null,
+          city: addr.city.trim(),
           area: addr.area?.trim() || null,
           street: addr.street.trim(),
           floor: addr.floor?.trim() || null,
@@ -517,6 +518,15 @@ export default function CheckoutPage() {
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
                     </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-foreground">المدينة *</label>
+                    <Input
+                      value={address.city}
+                      onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
+                      required={useNewAddress}
+                      className="rounded-xl"
+                    />
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium text-foreground">هاتف التوصيل *</label>

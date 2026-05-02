@@ -8,6 +8,7 @@ import { assignOrderToGovernorate } from "@/lib/rerouting/assign";
 
 const addressSchema = {
   governorate: (v: unknown) => typeof v === "string" && v.trim().length > 0,
+  city: (v: unknown) => typeof v === "string" && v.trim().length > 0,
   area: (v: unknown) => typeof v === "string" && v.trim().length > 0,
   street: (v: unknown) => typeof v === "string" && v.trim().length > 0,
   phone: (v: unknown) => typeof v === "string" && v.trim().length > 0,
@@ -39,6 +40,9 @@ async function postHandler(req: Request) {
   if (!addressSchema.governorate(address.governorate)) {
     return apiBadRequest("المحافظة مطلوبة");
   }
+  if (!addressSchema.city(address.city)) {
+    return apiBadRequest("المدينة مطلوبة");
+  }
   if (!addressSchema.area(address.area)) {
     return apiBadRequest("المنطقة مطلوبة");
   }
@@ -58,7 +62,7 @@ async function postHandler(req: Request) {
     userId: user.userId,
     address: {
       governorate: String(address.governorate).trim(),
-      city: address.city != null ? String(address.city).trim() : null,
+      city: String(address.city).trim(),
       area: String(address.area).trim(),
       street: String(address.street).trim(),
       floor: address.floor != null ? String(address.floor) : null,

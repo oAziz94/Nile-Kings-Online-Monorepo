@@ -2,6 +2,7 @@
  * Courier export: matches NewTemplate.xlsx column names.
  * Only red columns + COD_Value are filled; all other columns left empty.
  * City = governorate mapped to the template's 27 Egyptian governorate names.
+ * Street = multiline Arabic full address (محافظة، مدينة، منطقة، تفاصيل).
  */
 
 import * as XLSX from "xlsx";
@@ -207,13 +208,31 @@ function getTotalWeightGrams(order: OrderForCourierExport): number {
   );
 }
 
+/**
+ * Full address for the template "Street" column (Arabic, multiline):
+ * المحافظة / المدينة / المنطقة / العنوان بالتفصيل (+ building, floor, apartment on last line).
+ */
+function buildCourierStreetField(addr: ShippingAddressJson): string {
+  const governorate = (addr.governorate ?? "").trim();
+  const cityLine = (addr.city ?? "").trim();
+  const area = (addr.area ?? "").trim();
+  const detailTail = [addr.building, addr.floor, addr.apartment]
+    .filter(Boolean)
+    .join("، ");
+  const streetBase = (addr.street ?? "").trim();
+  const detail =
+    streetBase && detailTail
+      ? `${streetBase}، ${detailTail}`
+      : streetBase || detailTail;
+
+  return [governorate, cityLine, area, detail].join("\n");
+}
+
 /** Build one row: only red columns + COD_Value filled; City = governorate mapped to template list. */
 export function orderToCourierRow(order: OrderForCourierExport): CourierExportRow {
   const addr = getAddress(order);
   const city = mapGovernorateToTemplateCity(addr.governorate);
-  const street = [addr.street, addr.building, addr.floor, addr.apartment]
-    .filter(Boolean)
-    .join(", ");
+  const street = buildCourierStreetField(addr);
 
   return {
     "Package_Serial": "",
@@ -239,9 +258,7 @@ export function orderToCourierRow(order: OrderForCourierExport): CourierExportRo
 function orderToRowArray(order: OrderForCourierExport): (string | number)[] {
   const addr = getAddress(order);
   const city = mapGovernorateToTemplateCity(addr.governorate);
-  const street = [addr.street, addr.building, addr.floor, addr.apartment]
-    .filter(Boolean)
-    .join(", ");
+  const street = buildCourierStreetField(addr);
   const codVal = order.paymentMethod === "COD" ? toEgp(order.totalPiastres) : "0";
   return [
     "", // Package_Serial

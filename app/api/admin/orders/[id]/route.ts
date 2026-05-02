@@ -7,8 +7,44 @@ import { getPhase1ShippingFee, PHASE1_SHIPPING_PROVIDER_DISPLAY } from "@/lib/se
 import { getCodFeePercent } from "@/lib/settings";
 import { computePricing } from "@/lib/services/pricing";
 import { isSeniorPromoEnabled } from "@/lib/settings";
+import {
+  releaseReservation,
+  restoreCommittedStock,
+  reconcileStockForAdminOrderItemEdit,
+  stockLinesEquivalent,
+  InsufficientStockError,
+  type StockLine,
+} from "@/lib/services/stock";
+import { logOrderCancelled } from "@/lib/audit/order-audit";
 
 const ORDER_STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
+
+const orderDetailInclude = {
+  user: { select: { id: true, phone: true, name: true } },
+  items: {
+    include: {
+      variant: {
+        select: {
+          imageUrl: true,
+          product: { select: { imageUrl: true } },
+        },
+      },
+    },
+  },
+} as const;
+
+type OrderDetailRow = Prisma.OrderGetPayload<{ include: typeof orderDetailInclude }>;
+
+function mapOrderDetailApiRow(order: OrderDetailRow) {
+  return {
+    ...order,
+    items: order.items.map((item) => ({
+      ...item,
+      imageUrl: item.variant.imageUrl ?? item.variant.product.imageUrl ?? null,
+      variant: undefined,
+    })),
+  };
+}
 
 type Params = Promise<{ id: string }>;
 const INT32_MAX = 2_147_483_647;
@@ -27,29 +63,10 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
   const { id } = await params;
   const order = await prisma.order.findUnique({
     where: { id },
-    include: {
-      user: { select: { id: true, phone: true, name: true } },
-      items: {
-        include: {
-          variant: {
-            select: {
-              imageUrl: true,
-              product: { select: { imageUrl: true } },
-            },
-          },
-        },
-      },
-    },
+    include: orderDetailInclude,
   });
   if (!order) return apiNotFound("الطلب غير موجود");
-  return apiSuccess({
-    ...order,
-    items: order.items.map((item) => ({
-      ...item,
-      imageUrl: item.variant.imageUrl ?? item.variant.product.imageUrl ?? null,
-      variant: undefined,
-    })),
-  });
+  return apiSuccess(mapOrderDetailApiRow(order));
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
@@ -78,7 +95,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   });
   if (!existing) return apiNotFound("الطلب غير موجود");
 
-  let body: { status?: string; userId?: string; savedAddressId?: string; items?: IncomingItem[] };
+  let body: {
+    status?: string;
+    userId?: string;
+    savedAddressId?: string;
+    items?: IncomingItem[];
+    cancellationReason?: string | null;
+  };
   try {
     body = await req.json();
   } catch {
@@ -105,6 +128,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   if (Array.isArray(body.items) && body.items.length === 0) {
     return apiBadRequest("يجب أن يحتوي الطلب على بند واحد على الأقل");
   }
+
+  const transitioningToCancelled =
+    nextStatus === "CANCELLED" && existing.status !== "CANCELLED";
+  if (transitioningToCancelled && nextItems) {
+    return apiBadRequest("لا يمكن تعديل أصناف الطلب مع إلغائه في نفس الطلب");
+  }
+
+  const oldItemStockLines: StockLine[] = existing.items.map((i) => ({
+    variantId: i.variantId,
+    quantity: i.quantity,
+  }));
+  let newItemStockLines: StockLine[] | undefined;
 
   const data: Prisma.OrderUpdateInput = {};
   let nextItemsWeightGrams: number | undefined;
@@ -209,6 +244,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
         };
       }),
     };
+    newItemStockLines = lines;
   }
 
   if (nextUserId) {
@@ -283,29 +319,78 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     data.user = { connect: { id: nextUserId } };
   }
 
+  if (transitioningToCancelled) {
+    data.cancellationReason =
+      typeof body.cancellationReason === "string" && body.cancellationReason.trim()
+        ? body.cancellationReason.trim()
+        : "admin";
+  }
+
+  const itemEditChangesStock =
+    Boolean(newItemStockLines) &&
+    !stockLinesEquivalent(oldItemStockLines, newItemStockLines!);
+
+  if (itemEditChangesStock && existing.status === "CANCELLED") {
+    return apiBadRequest("لا يمكن تعديل أصناف طلب ملغى");
+  }
+
+  if (transitioningToCancelled) {
+    const stockLines = existing.items.map((i) => ({
+      variantId: i.variantId,
+      quantity: i.quantity,
+    }));
+    const cancellationAuditReason =
+      typeof data.cancellationReason === "string" ? data.cancellationReason : "admin";
+    const order = await prisma.$transaction(
+      async (tx) => {
+        if (existing.status === "CREATED") {
+          await releaseReservation(tx, stockLines);
+        } else {
+          await restoreCommittedStock(tx, stockLines);
+        }
+        await logOrderCancelled(tx, existing.id, cancellationAuditReason, existing.status);
+        return tx.order.update({
+          where: { id },
+          data,
+          include: orderDetailInclude,
+        });
+      },
+      { maxWait: 15_000, timeout: 60_000 }
+    );
+    return apiSuccess(mapOrderDetailApiRow(order));
+  }
+
+  if (itemEditChangesStock) {
+    try {
+      const order = await prisma.$transaction(
+        async (tx) => {
+          await reconcileStockForAdminOrderItemEdit(
+            tx,
+            existing.status,
+            oldItemStockLines,
+            newItemStockLines!
+          );
+          return tx.order.update({
+            where: { id },
+            data,
+            include: orderDetailInclude,
+          });
+        },
+        { maxWait: 15_000, timeout: 60_000 }
+      );
+      return apiSuccess(mapOrderDetailApiRow(order));
+    } catch (e) {
+      if (e instanceof InsufficientStockError) {
+        return apiBadRequest("كمية غير متوفرة في المخزون لتعديل الطلب بهذه الأصناف");
+      }
+      throw e;
+    }
+  }
+
   const order = await prisma.order.update({
     where: { id },
     data,
-    include: {
-      user: { select: { id: true, phone: true, name: true } },
-      items: {
-        include: {
-          variant: {
-            select: {
-              imageUrl: true,
-              product: { select: { imageUrl: true } },
-            },
-          },
-        },
-      },
-    },
+    include: orderDetailInclude,
   });
-  return apiSuccess({
-    ...order,
-    items: order.items.map((item) => ({
-      ...item,
-      imageUrl: item.variant.imageUrl ?? item.variant.product.imageUrl ?? null,
-      variant: undefined,
-    })),
-  });
+  return apiSuccess(mapOrderDetailApiRow(order));
 }

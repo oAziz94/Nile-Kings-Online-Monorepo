@@ -67,6 +67,7 @@ export function buildOrderAssignmentMessage(order: OrderForMessage): string {
   const customerName = order.user?.name?.trim() || "—";
   const customerPhone = order.user?.phone || addr.phone || "—";
   const governorate = addr.governorate || "—";
+  const cityLine = addr.city?.trim() || "—";
   const area = addr.area || "—";
   const fullAddress = buildAddressLine(addr);
   const customerNotes = addr.notes?.trim();
@@ -82,6 +83,7 @@ export function buildOrderAssignmentMessage(order: OrderForMessage): string {
     `اسم العميل: ${customerName}`,
     `رقم الهاتف: ${customerPhone}`,
     `المحافظة: ${governorate}`,
+    `المدينة: ${cityLine}`,
     `المنطقة: ${area}`,
     `العنوان: ${fullAddress}`,
   ];

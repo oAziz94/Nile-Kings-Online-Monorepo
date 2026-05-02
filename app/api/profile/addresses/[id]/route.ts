@@ -42,6 +42,19 @@ export async function PATCH(
     return apiBadRequest("جسم الطلب غير صالح");
   }
 
+  const touchesCoreAddress =
+    body.governorate !== undefined ||
+    body.city !== undefined ||
+    body.area !== undefined ||
+    body.street !== undefined;
+  if (touchesCoreAddress) {
+    const nextCity =
+      body.city !== undefined
+        ? String(body.city).trim()
+        : (existing.city ?? "").trim();
+    if (!nextCity) return apiBadRequest("المدينة مطلوبة");
+  }
+
   const isDefault = body.isDefault === true;
   if (isDefault) {
     await prisma.savedAddress.updateMany({

@@ -39,7 +39,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
 
   const existing = await prisma.savedAddress.findFirst({
     where: { id: addressId, userId },
-    select: { id: true },
+    select: {
+      id: true,
+      governorate: true,
+      city: true,
+      area: true,
+      street: true,
+    },
   });
   if (!existing) return apiNotFound("العنوان غير موجود");
 
@@ -60,6 +66,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
 
   const makeNullableText = (value: string | null | undefined) =>
     value == null ? null : String(value).trim() || null;
+
+  const touchesCoreAddress =
+    body.governorate !== undefined ||
+    body.city !== undefined ||
+    body.area !== undefined ||
+    body.street !== undefined;
+  if (touchesCoreAddress) {
+    const nextCity =
+      body.city !== undefined
+        ? String(body.city ?? "").trim()
+        : (existing.city ?? "").trim();
+    if (!nextCity) return apiBadRequest("المدينة مطلوبة");
+  }
 
   const isDefault = body.isDefault === true;
   if (isDefault) {

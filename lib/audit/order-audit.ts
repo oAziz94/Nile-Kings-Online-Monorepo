@@ -33,13 +33,14 @@ export async function logOrderConfirmed(tx: Tx, orderId: string): Promise<void> 
 export async function logOrderCancelled(
   tx: Tx,
   orderId: string,
-  reason?: string
+  reason?: string,
+  statusFrom: string = "CREATED"
 ): Promise<void> {
   await tx.orderAuditLog.create({
     data: {
       orderId,
       event: "cancelled",
-      statusFrom: "CREATED",
+      statusFrom,
       statusTo: "CANCELLED",
       details: reason ? { cancellationReason: reason } : undefined,
     },
