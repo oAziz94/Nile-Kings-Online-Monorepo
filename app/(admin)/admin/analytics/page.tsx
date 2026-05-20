@@ -1,8 +1,21 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { AdminKpiCard } from "@/components/admin/admin-kpi-card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  clampEndDate,
+  clampStartDate,
+  defaultReportRange,
+  rangeForPreset,
+  resolveEndWhenStartChanges,
+  todayIso,
+  type ReportRangePreset,
+} from "@/lib/analytics/date-range";
 import {
   Table,
   TableBody,
@@ -11,87 +24,130 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/shared/skeleton";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatNumberEn, formatDateEn } from "@/lib/format-en-numbers";
+import { cn } from "@/lib/utils";
 import {
   BarChart3,
+  Banknote,
+  CalendarRange,
+  CheckCircle2,
   Download,
   Package,
   ShoppingCart,
-  Users,
   TrendingUp,
-  AlertTriangle,
-  Ticket,
-  Truck,
-  CreditCard,
 } from "lucide-react";
 
 type Kpis = {
   totalRevenuePiastres: number;
+  netMerchandisePiastres: number;
   orderCount: number;
-  productCount: number;
-  customerCount: number;
   period: { from: string; to: string };
 };
 
-type RevenueBucket = { period: string; revenuePiastres: number; orderCount: number };
-type BestSellerRow = {
-  productName: string;
-  variantName: string;
-  sku: string;
-  quantitySold: number;
-  revenuePiastres: number;
-};
-type VariantRow = BestSellerRow & { stockAvailable: number; stockReserved: number };
-type LowStockRow = {
-  productName: string;
-  variantName: string;
-  sku: string;
-  stockAvailable: number;
-  stockReserved: number;
-  threshold: number;
-};
-type CouponRow = {
-  code: string;
-  discountType: string;
-  discountValue: number;
-  uses: number;
-  maxUses: number | null;
-  totalDiscountPiastres: number;
+type RevenueBucket = {
+  period: string;
+  totalRevenuePiastres: number;
+  netMerchandisePiastres: number;
   orderCount: number;
 };
-type SeniorRow = {
-  orderId: string;
-  totalPiastres: number;
-  seniorFreeValuePiastres: number;
-  createdAt: string;
+
+type ProductVariantRow = {
+  variantId: string;
+  productName: string;
+  variantName: string;
+  colorName: string | null;
+  sku: string;
+  pricePiastres: number;
+  quantitySold: number;
+  lineRevenuePiastres: number;
+  stockAvailable: number;
+  stockReserved: number;
 };
-type ProviderRow = { provider: string; orderCount: number; revenuePiastres: number };
-type PaymentRow = { paymentMethod: string; orderCount: number; revenuePiastres: number };
 
 type AnalyticsData = {
   kpis: Kpis;
   revenue: RevenueBucket[];
-  bestSellers: BestSellerRow[];
-  variantPerformance: VariantRow[];
-  lowStock: LowStockRow[];
-  coupons: CouponRow[];
-  seniorPromo: SeniorRow[];
-  providers: ProviderRow[];
-  paymentMethods: PaymentRow[];
+  products: ProductVariantRow[];
 };
 
-function formatDate(d: string): string {
-  return formatDateEn(d);
+const PRESETS: { id: ReportRangePreset; label: string }[] = [
+  { id: "7d", label: "آخر 7 أيام" },
+  { id: "30d", label: "آخر 30 يوم" },
+  { id: "month", label: "هذا الشهر" },
+  { id: "all", label: "من البداية" },
+];
+
+const DATE_INPUT_CLASS =
+  "h-10 w-full min-w-[10.5rem] rounded-xl border border-input bg-background/80 px-3 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+function matchesPreset(from: string, to: string, preset: ReportRangePreset): boolean {
+  const r = rangeForPreset(preset);
+  return from === r.from && to === r.to;
+}
+
+function ReportsSkeleton() {
+  return (
+    <div className="space-y-8">
+      <Skeleton className="h-28 w-full rounded-2xl" />
+      <div className="grid gap-4 md:grid-cols-3">
+        <Skeleton className="h-36 rounded-2xl" />
+        <Skeleton className="h-36 rounded-2xl" />
+        <Skeleton className="h-36 rounded-2xl" />
+      </div>
+      <Skeleton className="h-64 rounded-2xl" />
+      <Skeleton className="h-96 rounded-2xl" />
+    </div>
+  );
+}
+
+function ExportButton({
+  onClick,
+  label = "تصدير CSV",
+}: {
+  onClick: () => void;
+  label?: string;
+}) {
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="gap-1.5 rounded-xl border-dashed"
+      onClick={onClick}
+    >
+      <Download className="h-4 w-4" />
+      {label}
+    </Button>
+  );
 }
 
 export default function AdminAnalyticsPage() {
+  const initialRange = defaultReportRange();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(initialRange.from);
+  const [to, setTo] = useState(initialRange.to);
   const [granularity, setGranularity] = useState<"day" | "week" | "month">("day");
+  const [productSearch, setProductSearch] = useState("");
+  const today = todayIso();
+
+  const handleFromChange = (value: string) => {
+    const newFrom = clampStartDate(value);
+    const newTo = resolveEndWhenStartChanges(newFrom, from, to);
+    setFrom(newFrom);
+    setTo(newTo);
+  };
+
+  const handleToChange = (value: string) => {
+    setTo(clampEndDate(value, from));
+  };
+
+  const applyPreset = (preset: ReportRangePreset) => {
+    const range = rangeForPreset(preset);
+    setFrom(range.from);
+    setTo(range.to);
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -116,399 +172,370 @@ export default function AdminAnalyticsPage() {
     fetchData();
   }, [fetchData]);
 
-  const exportCsv = (report: string) => {
+  const exportCsv = (report: "summary" | "revenue" | "products") => {
     const params = new URLSearchParams();
     params.set("report", report);
     if (from) params.set("from", from);
     if (to) params.set("to", to);
+    if (report === "revenue") params.set("granularity", granularity);
     window.open(`/api/admin/analytics/export?${params}`, "_blank");
   };
 
+  const kpis = data?.kpis;
+  const revenue = data?.revenue ?? [];
+  const products = data?.products ?? [];
+
+  const maxRevenue = useMemo(
+    () => Math.max(...revenue.map((r) => r.totalRevenuePiastres), 1),
+    [revenue]
+  );
+
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter(
+      (p) =>
+        p.productName.toLowerCase().includes(q) ||
+        p.variantName.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q) ||
+        (p.colorName?.toLowerCase().includes(q) ?? false)
+    );
+  }, [products, productSearch]);
+
+  const soldCount = useMemo(
+    () => products.filter((p) => p.quantitySold > 0).length,
+    [products]
+  );
+
   if (loading && !data) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center text-muted-foreground">
-        جاري التحميل...
+      <div>
+        <h1 className="mb-6 text-2xl font-bold text-foreground">التقارير</h1>
+        <ReportsSkeleton />
       </div>
     );
   }
 
-  const kpis = data?.kpis;
-
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-foreground">التحليلات</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="date"
-            className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-          />
-          <input
-            type="date"
-            className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          />
-          <select
-            className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
-            value={granularity}
-            onChange={(e) => setGranularity(e.target.value as "day" | "week" | "month")}
-          >
-            <option value="day">يومي</option>
-            <option value="week">أسبوعي</option>
-            <option value="month">شهري</option>
-          </select>
-          <Button variant="outline" size="sm" onClick={fetchData}>
-            تحديث
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => exportCsv("all")}>
-            <Download className="ml-1 h-4 w-4" />
-            تصدير CSV
-          </Button>
+    <div className={cn("space-y-8 transition-opacity", loading && data && "opacity-70")}>
+      {/* Header */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-l from-burgundy/8 via-card to-gold/10 p-6 shadow-card">
+        <div className="pointer-events-none absolute -left-8 -top-8 h-32 w-32 rounded-full bg-burgundy/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-10 -right-6 h-28 w-28 rounded-full bg-gold/15 blur-2xl" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold text-foreground">التقارير</h1>
+              <Badge variant="success" className="gap-1 font-normal">
+                <CheckCircle2 className="h-3 w-3" />
+                تم التسليم فقط
+              </Badge>
+            </div>
+            <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+              ملخص الإيرادات والمبيعات للطلبات المُسلَّمة في الفترة المحددة.
+            </p>
+            {kpis && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">الفترة المعروضة:</span>{" "}
+                {formatDateEn(kpis.period.from)} – {formatDateEn(kpis.period.to)}
+              </p>
+            )}
+          </div>
+
+          {/* Filters */}
+          <Card className="w-full max-w-2xl shrink-0 rounded-2xl border-border/60 bg-background/90 shadow-subtle backdrop-blur-sm">
+            <CardHeader className="pb-3 pt-4">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <CalendarRange className="h-4 w-4 text-burgundy" />
+                فترة التقرير
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 pb-4 pt-0">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="report-date-from" className="text-xs text-muted-foreground">
+                    من
+                  </Label>
+                  <input
+                    id="report-date-from"
+                    type="date"
+                    className={DATE_INPUT_CLASS}
+                    value={from}
+                    max={to || today}
+                    onChange={(e) => handleFromChange(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="report-date-to" className="text-xs text-muted-foreground">
+                    إلى
+                  </Label>
+                  <input
+                    id="report-date-to"
+                    type="date"
+                    className={DATE_INPUT_CLASS}
+                    value={to}
+                    min={from}
+                    max={today}
+                    onChange={(e) => handleToChange(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="report-granularity" className="text-xs text-muted-foreground">
+                    التجميع
+                  </Label>
+                  <select
+                    id="report-granularity"
+                    className={DATE_INPUT_CLASS}
+                    value={granularity}
+                    onChange={(e) => setGranularity(e.target.value as "day" | "week" | "month")}
+                  >
+                    <option value="day">يومي</option>
+                    <option value="week">أسبوعي</option>
+                    <option value="month">شهري</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {PRESETS.map(({ id, label }) => {
+                  const active = matchesPreset(from, to, id);
+                  return (
+                    <Button
+                      key={id}
+                      type="button"
+                      variant={active ? "default" : "outline"}
+                      size="sm"
+                      className={cn(
+                        "h-8 rounded-full px-3 text-xs",
+                        active && "shadow-sm"
+                      )}
+                      onClick={() => applyPreset(id)}
+                    >
+                      {label}
+                    </Button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* KPI cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="rounded-2xl border border-border shadow-subtle">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              إجمالي المبيعات
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-foreground">
-              {kpis ? `${formatNumberEn(piastresToEgp(kpis.totalRevenuePiastres))} ج.م` : "—"}
-            </p>
-            {kpis && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {formatDate(kpis.period.from)} – {formatDate(kpis.period.to)}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-        <Card className="rounded-2xl border border-border shadow-subtle">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">الطلبات</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-foreground">
-              {kpis ? formatNumberEn(kpis.orderCount) : "—"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="rounded-2xl border border-border shadow-subtle">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">المنتجات</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-foreground">
-              {kpis ? formatNumberEn(kpis.productCount) : "—"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="rounded-2xl border border-border shadow-subtle">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">العملاء</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-foreground">
-              {kpis ? formatNumberEn(kpis.customerCount) : "—"}
-            </p>
-          </CardContent>
-        </Card>
+      {/* KPIs */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <AdminKpiCard
+          title="إجمالي الإيراد"
+          value={kpis ? `${formatNumberEn(piastresToEgp(kpis.totalRevenuePiastres))} ج.م` : "—"}
+          hint="إجمالي محصل (شامل الشحن ورسوم COD)"
+          icon={<TrendingUp className="h-6 w-6" />}
+          accent="burgundy"
+          loading={loading}
+          footer={
+            <Button
+              variant="link"
+              size="sm"
+              className="mt-2 h-auto p-0 text-xs text-burgundy"
+              onClick={() => exportCsv("summary")}
+            >
+              <Download className="ml-1 h-3 w-3" />
+              تصدير الملخص
+            </Button>
+          }
+        />
+        <AdminKpiCard
+          title="صافي المنتجات"
+          value={
+            kpis ? `${formatNumberEn(piastresToEgp(kpis.netMerchandisePiastres))} ج.م` : "—"
+          }
+          hint="بعد الخصومات، بدون الشحن ورسوم COD"
+          icon={<Banknote className="h-6 w-6" />}
+          accent="gold"
+          loading={loading}
+        />
+        <AdminKpiCard
+          title="طلبات مُسلَّمة"
+          value={kpis ? formatNumberEn(kpis.orderCount) : "—"}
+          hint="عدد الطلبات في الفترة"
+          icon={<ShoppingCart className="h-6 w-6" />}
+          accent="emerald"
+          loading={loading}
+        />
       </div>
 
-      {/* Revenue over time */}
-      <Card className="rounded-2xl border border-border shadow-subtle">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            الإيرادات عبر الزمن
-          </CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => exportCsv("revenue")}>
-            CSV
-          </Button>
+      {/* Revenue chart + table */}
+      <Card className="rounded-2xl border-border/80 shadow-card">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/30 pb-4">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <BarChart3 className="h-5 w-5 text-burgundy" />
+              الإيرادات عبر الزمن
+            </CardTitle>
+            <CardDescription className="mt-1">
+              مقارنة الإيراد الكلي وصافي المنتجات حسب الفترة
+            </CardDescription>
+          </div>
+          <ExportButton onClick={() => exportCsv("revenue")} />
         </CardHeader>
-        <CardContent>
-          {data?.revenue && data.revenue.length > 0 ? (
-            <div className="overflow-x-auto">
+        <CardContent className="pt-6">
+          {revenue.length > 0 ? (
+            <div className="space-y-6">
+              <div className="flex items-end gap-1 overflow-x-auto pb-2 pt-1">
+                {revenue.map((r) => {
+                  const height = Math.max(
+                    8,
+                    Math.round((r.totalRevenuePiastres / maxRevenue) * 120)
+                  );
+                  return (
+                    <div
+                      key={r.period}
+                      className="flex min-w-[2.5rem] flex-1 flex-col items-center gap-2"
+                      title={`${r.period}: ${formatNumberEn(piastresToEgp(r.totalRevenuePiastres))} ج.م`}
+                    >
+                      <div
+                        className="w-full max-w-[3rem] rounded-t-lg bg-gradient-to-t from-burgundy/80 to-burgundy/40 transition-all"
+                        style={{ height: `${height}px` }}
+                      />
+                      <span className="max-w-[3.5rem] truncate text-center text-[10px] text-muted-foreground">
+                        {r.period}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-border/60">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <TableHead>الفترة</TableHead>
+                      <TableHead>إجمالي الإيراد (ج.م)</TableHead>
+                      <TableHead>صافي المنتجات (ج.م)</TableHead>
+                      <TableHead className="text-center">الطلبات</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {revenue.map((r) => (
+                      <TableRow key={r.period} className="hover:bg-muted/20">
+                        <TableCell className="font-medium">{r.period}</TableCell>
+                        <TableCell>{formatNumberEn(piastresToEgp(r.totalRevenuePiastres))}</TableCell>
+                        <TableCell className="text-amber-800/90">
+                          {formatNumberEn(piastresToEgp(r.netMerchandisePiastres))}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary" className="font-normal">
+                            {r.orderCount}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+              <BarChart3 className="h-10 w-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">لا توجد بيانات في الفترة المحددة.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Products */}
+      <Card className="rounded-2xl border-border/80 shadow-card">
+        <CardHeader className="flex flex-col gap-4 border-b border-border/60 bg-muted/30 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Package className="h-5 w-5 text-burgundy" />
+              المنتجات والمتغيرات
+            </CardTitle>
+            <CardDescription className="mt-1">
+              {formatNumberEn(products.length)} متغير · {formatNumberEn(soldCount)} بمبيعات في
+              الفترة
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <AdminSearchInput
+              value={productSearch}
+              onChange={setProductSearch}
+              placeholder="بحث منتج، مقاس، SKU..."
+            />
+            <ExportButton onClick={() => exportCsv("products")} />
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {filteredProducts.length > 0 ? (
+            <div className="max-h-[32rem] overflow-auto">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>الفترة</TableHead>
-                    <TableHead>الإيراد (ج.م)</TableHead>
-                    <TableHead>عدد الطلبات</TableHead>
+                <TableHeader className="sticky top-0 z-10 bg-card shadow-sm">
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead>المنتج</TableHead>
+                    <TableHead>المقاس</TableHead>
+                    <TableHead>اللون</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>السعر</TableHead>
+                    <TableHead className="text-center">مباع</TableHead>
+                    <TableHead>إيراد البنود</TableHead>
+                    <TableHead className="text-center">متبقي</TableHead>
+                    <TableHead className="text-center">محجوز</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.revenue.map((r) => (
-                    <TableRow key={r.period}>
-                      <TableCell>{r.period}</TableCell>
-                      <TableCell>{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
-                      <TableCell>{r.orderCount}</TableCell>
+                  {filteredProducts.map((r) => (
+                    <TableRow
+                      key={r.variantId}
+                      className={cn(
+                        "transition-colors hover:bg-muted/25",
+                        r.quantitySold > 0 && "bg-emerald-500/[0.03]"
+                      )}
+                    >
+                      <TableCell className="font-medium">{r.productName}</TableCell>
+                      <TableCell>{r.variantName}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {r.colorName ?? "—"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {r.sku}
+                      </TableCell>
+                      <TableCell>{formatNumberEn(piastresToEgp(r.pricePiastres))}</TableCell>
+                      <TableCell className="text-center">
+                        {r.quantitySold > 0 ? (
+                          <Badge variant="success">{r.quantitySold}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">0</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {r.lineRevenuePiastres > 0
+                          ? `${formatNumberEn(piastresToEgp(r.lineRevenuePiastres))} ج.م`
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          variant={r.stockAvailable === 0 ? "destructive" : "outline"}
+                          className="font-normal"
+                        >
+                          {r.stockAvailable}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center text-muted-foreground">
+                        {r.stockReserved}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">لا توجد بيانات في الفترة المحددة.</p>
+            <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+              <Package className="h-10 w-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                {productSearch.trim()
+                  ? "لا توجد نتائج للبحث."
+                  : "لا توجد منتجات نشطة."}
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Best sellers */}
-      <Card className="rounded-2xl border border-border shadow-subtle">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>الأكثر مبيعاً</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => exportCsv("best_sellers")}>
-            CSV
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {data?.bestSellers && data.bestSellers.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>المنتج</TableHead>
-                  <TableHead>المقاس/النوع</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>الكمية المباعة</TableHead>
-                  <TableHead>الإيراد (ج.م)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.bestSellers.map((r, i) => (
-                  <TableRow key={`${r.sku}-${i}`}>
-                    <TableCell>{r.productName}</TableCell>
-                    <TableCell>{r.variantName}</TableCell>
-                    <TableCell>{r.sku}</TableCell>
-                    <TableCell>{r.quantitySold}</TableCell>
-                    <TableCell>{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-sm text-muted-foreground">لا توجد مبيعات في الفترة.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Variant performance + remaining stock */}
-      <Card className="rounded-2xl border border-border shadow-subtle">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>أداء المتغيرات والمخزون المتبقي</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => exportCsv("variant_performance")}>
-            CSV
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {data?.variantPerformance && data.variantPerformance.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>المنتج</TableHead>
-                  <TableHead>المقاس</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>مباع</TableHead>
-                  <TableHead>الإيراد</TableHead>
-                  <TableHead>متبقي</TableHead>
-                  <TableHead>محجوز</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.variantPerformance.map((r, i) => (
-                  <TableRow key={`${r.sku}-${i}`}>
-                    <TableCell>{r.productName}</TableCell>
-                    <TableCell>{r.variantName}</TableCell>
-                    <TableCell>{r.sku}</TableCell>
-                    <TableCell>{r.quantitySold}</TableCell>
-                    <TableCell>{formatNumberEn(piastresToEgp(r.revenuePiastres))} ج.م</TableCell>
-                    <TableCell>{r.stockAvailable}</TableCell>
-                    <TableCell>{r.stockReserved}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-sm text-muted-foreground">لا توجد بيانات.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Low stock alerts */}
-      <Card className="rounded-2xl border border-border shadow-subtle">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
-            تنبيهات مخزون منخفض
-          </CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => exportCsv("low_stock")}>
-            CSV
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {data?.lowStock && data.lowStock.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>المنتج</TableHead>
-                  <TableHead>المقاس</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>المتاح</TableHead>
-                  <TableHead>المحجوز</TableHead>
-                  <TableHead>الحد</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.lowStock.map((r, i) => (
-                  <TableRow key={`${r.sku}-${i}`}>
-                    <TableCell>{r.productName}</TableCell>
-                    <TableCell>{r.variantName}</TableCell>
-                    <TableCell>{r.sku}</TableCell>
-                    <TableCell>
-                      <Badge variant={r.stockAvailable === 0 ? "destructive" : "secondary"}>
-                        {r.stockAvailable}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{r.stockReserved}</TableCell>
-                    <TableCell>{r.threshold}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-sm text-muted-foreground">لا توجد عناصر تحت الحد.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Coupon performance */}
-      <Card className="rounded-2xl border border-border shadow-subtle">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Ticket className="h-5 w-5" />
-            أداء الكوبونات
-          </CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => exportCsv("coupons")}>
-            CSV
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {data?.coupons && data.coupons.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>الكود</TableHead>
-                  <TableHead>النوع</TableHead>
-                  <TableHead>القيمة</TableHead>
-                  <TableHead>الاستخدامات</TableHead>
-                  <TableHead>الحد الأقصى</TableHead>
-                  <TableHead>إجمالي الخصم (ج.م)</TableHead>
-                  <TableHead>طلبات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.coupons.map((c) => (
-                  <TableRow key={c.code}>
-                    <TableCell className="font-mono">{c.code}</TableCell>
-                    <TableCell>{c.discountType}</TableCell>
-                    <TableCell>{c.discountValue}</TableCell>
-                    <TableCell>{c.uses}</TableCell>
-                    <TableCell>{c.maxUses ?? "—"}</TableCell>
-                    <TableCell>{formatNumberEn(piastresToEgp(c.totalDiscountPiastres))}</TableCell>
-                    <TableCell>{c.orderCount}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-sm text-muted-foreground">لا توجد كوبونات أو استخدامات.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Provider + Payment in one row */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="rounded-2xl border border-border shadow-subtle">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Truck className="h-5 w-5" />
-              أداء مقدمي الشحن
-            </CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => exportCsv("providers")}>
-              CSV
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {data?.providers && data.providers.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>المزود</TableHead>
-                    <TableHead>الطلبات</TableHead>
-                    <TableHead>الإيراد (ج.م)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.providers.map((r) => (
-                    <TableRow key={r.provider}>
-                      <TableCell>{r.provider}</TableCell>
-                      <TableCell>{r.orderCount}</TableCell>
-                      <TableCell>{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <p className="text-sm text-muted-foreground">لا توجد بيانات.</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card className="rounded-2xl border border-border shadow-subtle">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              طرق الدفع
-            </CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => exportCsv("payment_methods")}>
-              CSV
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {data?.paymentMethods && data.paymentMethods.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>طريقة الدفع</TableHead>
-                    <TableHead>الطلبات</TableHead>
-                    <TableHead>الإيراد (ج.م)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.paymentMethods.map((r) => (
-                    <TableRow key={r.paymentMethod}>
-                      <TableCell>{r.paymentMethod}</TableCell>
-                      <TableCell>{r.orderCount}</TableCell>
-                      <TableCell>{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <p className="text-sm text-muted-foreground">لا توجد بيانات.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

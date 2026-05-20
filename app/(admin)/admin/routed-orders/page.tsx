@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -15,10 +14,13 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { AdminPaginationBar } from "@/components/admin/admin-pagination";
-import { Truck, Search, Loader2 } from "lucide-react";
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminPanelCard } from "@/components/admin/admin-panel-card";
+import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { Truck, Loader2 } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
 
@@ -110,33 +112,36 @@ export default function AdminRoutedOrdersPage() {
   if (loading && rows.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
 
   return (
-    <div dir="rtl" className="space-y-6">
-      <h1 className="text-2xl font-bold">الطلبات الموجهة</h1>
-      <Card>
-        <CardHeader className="flex flex-col gap-4 space-y-0 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <CardTitle>قائمة الطلبات الموجهة</CardTitle>
-            <CardDescription>عرض الطلبات المُوجّهة للشركاء وتحديث الحالة وإثبات التسليم من صفحة التفاصيل.</CardDescription>
-          </div>
-          <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:w-auto">
-            <div className="relative w-full min-w-[200px] sm:max-w-xs">
-              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="بحث برقم الطلب أو اسم العميل…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pr-9"
-              />
-            </div>
-            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-40">
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="الطلبات الموجهة"
+        description="متابعة التوجيه للشركاء، الحالة، وإثبات التسليم."
+      />
+      <AdminPanelCard
+        title="قائمة الطلبات الموجهة"
+        icon={<Truck className="h-5 w-5 text-burgundy" />}
+        toolbar={
+          <div className="flex flex-wrap gap-3">
+            <AdminSearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="بحث برقم الطلب…"
+            />
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-10 w-full rounded-xl sm:w-40"
+            >
               <option value="">كل الحالات</option>
               {Object.entries(ROUTED_STATUS_LABELS).map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
+                <option key={v} value={v}>
+                  {l}
+                </option>
               ))}
             </Select>
           </div>
-        </CardHeader>
-        <CardContent>
+        }
+      >
           {fetching && rows.length > 0 && (
             <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -144,16 +149,15 @@ export default function AdminRoutedOrdersPage() {
             </div>
           )}
           {rows.length === 0 && !fetching ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
-              <Truck className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">
-                {debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات موجهة"}
-              </p>
-            </div>
+            <AdminEmptyState
+              icon={<Truck className="h-12 w-12" />}
+              title={debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات موجهة"}
+            />
           ) : rows.length > 0 ? (
+            <div className="overflow-x-auto rounded-xl border border-border/60">
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead>رقم الطلب</TableHead>
                   <TableHead>العميل</TableHead>
                   <TableHead>المحافظة</TableHead>
@@ -187,6 +191,7 @@ export default function AdminRoutedOrdersPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           ) : null}
           {total > 0 && (
             <AdminPaginationBar
@@ -199,8 +204,7 @@ export default function AdminRoutedOrdersPage() {
               disabled={fetching}
             />
           )}
-        </CardContent>
-      </Card>
+      </AdminPanelCard>
     </div>
   );
 }

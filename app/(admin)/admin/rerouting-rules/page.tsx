@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -15,6 +14,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminPanelCard } from "@/components/admin/admin-panel-card";
 import { Route, Plus } from "lucide-react";
 
 type Rule = {
@@ -49,36 +51,34 @@ export default function AdminReroutingRulesPage() {
   if (loading) return <Skeleton className="h-64 w-full rounded-2xl" />;
 
   return (
-    <div dir="rtl" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">قواعد التوجيه</h1>
-        <Button asChild>
-          <Link href="/admin/rerouting-rules/new">
-            <Plus className="ml-2 h-4 w-4" />
-            قاعدة جديدة
-          </Link>
-        </Button>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>قواعد التوجيه حسب المحافظة</CardTitle>
-          <CardDescription>
-            تعيين الطلبات للشركاء حسب محافظة العميل (دوران round-robin). تفعيل/إلغاء القاعدة وإدارة الشركاء من صفحة التفاصيل.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="قواعد التوجيه"
+        description="تعيين الطلبات للشركاء حسب المحافظة (round-robin)."
+        actions={
+          <Button asChild className="rounded-xl">
+            <Link href="/admin/rerouting-rules/new">
+              <Plus className="ml-2 h-4 w-4" />
+              قاعدة جديدة
+            </Link>
+          </Button>
+        }
+      />
+      <AdminPanelCard
+        title="قواعد التوجيه حسب المحافظة"
+        icon={<Route className="h-5 w-5 text-burgundy" />}
+      >
           {rules.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
-              <Route className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">لا توجد قواعد توجيه</p>
-              <Button asChild variant="outline">
-                <Link href="/admin/rerouting-rules/new">إضافة قاعدة</Link>
-              </Button>
-            </div>
+            <AdminEmptyState
+              icon={<Route className="h-12 w-12" />}
+              title="لا توجد قواعد توجيه"
+              description="أنشئ قاعدة لربط المحافظات بالشركاء."
+            />
           ) : (
+            <div className="overflow-x-auto rounded-xl border border-border/60">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead>المحافظة</TableHead>
                   <TableHead>عدد الشركاء</TableHead>
                   <TableHead>الحالة</TableHead>
@@ -110,9 +110,9 @@ export default function AdminReroutingRulesPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
-        </CardContent>
-      </Card>
+      </AdminPanelCard>
     </div>
   );
 }

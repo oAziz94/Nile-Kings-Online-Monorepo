@@ -1,13 +1,11 @@
 /**
  * Admin analytics queries.
- * Orders and revenue include any order status except CANCELLED.
+ * Financial metrics include only orders with status DELIVERED.
  */
 
 import { prisma } from "@/lib/db";
+import { REPORT_ORDER_STATUS } from "./types";
 import type { DateGranularity } from "./types";
-
-/** Exclude cancelled orders from analytics (revenue and order counts). */
-const NOT_CANCELLED = { not: "CANCELLED" as const };
 
 function parseRange(from?: string | null, to?: string | null): { from: Date; to: Date } {
   const toDate = to ? new Date(to) : new Date();
@@ -15,45 +13,70 @@ function parseRange(from?: string | null, to?: string | null): { from: Date; to:
   return { from: fromDate, to: toDate };
 }
 
+function orderWhere(fromDate: Date, toDate: Date) {
+  return {
+    status: REPORT_ORDER_STATUS,
+    createdAt: { gte: fromDate, lte: toDate },
+  } as const;
+}
+
+/** Net merchandise: product revenue after discounts, excluding shipping and COD. */
+export function netMerchandisePiastres(order: {
+  subtotalPiastres: number;
+  discountPiastres: number;
+  seniorFreeValuePiastres: number;
+}): number {
+  return (
+    order.subtotalPiastres - order.discountPiastres - order.seniorFreeValuePiastres
+  );
+}
+
 export type Kpis = {
   totalRevenuePiastres: number;
+  netMerchandisePiastres: number;
   orderCount: number;
-  productCount: number;
-  customerCount: number;
   period: { from: Date; to: Date };
 };
 
 export async function getKpis(from?: string | null, to?: string | null): Promise<Kpis> {
   const { from: fromDate, to: toDate } = parseRange(from, to);
+  const where = orderWhere(fromDate, toDate);
 
-  const [revenueRow, orderCount, productCount, customerCount] = await Promise.all([
+  const [revenueRow, orders] = await Promise.all([
     prisma.order.aggregate({
-      where: {
-        status: NOT_CANCELLED,
-        createdAt: { gte: fromDate, lte: toDate },
-      },
+      where,
       _sum: { totalPiastres: true },
+      _count: true,
     }),
-    prisma.order.count({
-      where: {
-        status: NOT_CANCELLED,
-        createdAt: { gte: fromDate, lte: toDate },
+    prisma.order.findMany({
+      where,
+      select: {
+        subtotalPiastres: true,
+        discountPiastres: true,
+        seniorFreeValuePiastres: true,
       },
     }),
-    prisma.product.count({ where: { active: true } }),
-    prisma.user.count({ where: { role: "CUSTOMER" } }),
   ]);
+
+  const netMerchandiseTotal = orders.reduce(
+    (sum, o) => sum + netMerchandisePiastres(o),
+    0
+  );
 
   return {
     totalRevenuePiastres: revenueRow._sum.totalPiastres ?? 0,
-    orderCount,
-    productCount,
-    customerCount,
+    netMerchandisePiastres: netMerchandiseTotal,
+    orderCount: revenueRow._count,
     period: { from: fromDate, to: toDate },
   };
 }
 
-export type RevenueBucket = { period: string; revenuePiastres: number; orderCount: number };
+export type RevenueBucket = {
+  period: string;
+  totalRevenuePiastres: number;
+  netMerchandisePiastres: number;
+  orderCount: number;
+};
 
 export async function getRevenueOverTime(
   granularity: DateGranularity,
@@ -63,11 +86,14 @@ export async function getRevenueOverTime(
   const { from: fromDate, to: toDate } = parseRange(from, to);
 
   const orders = await prisma.order.findMany({
-    where: {
-      status: NOT_CANCELLED,
-      createdAt: { gte: fromDate, lte: toDate },
+    where: orderWhere(fromDate, toDate),
+    select: {
+      createdAt: true,
+      totalPiastres: true,
+      subtotalPiastres: true,
+      discountPiastres: true,
+      seniorFreeValuePiastres: true,
     },
-    select: { createdAt: true, totalPiastres: true },
     orderBy: { createdAt: "asc" },
   });
 
@@ -81,355 +107,95 @@ export async function getRevenueOverTime(
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   };
 
-  const map = new Map<string, { revenuePiastres: number; orderCount: number }>();
+  const map = new Map<
+    string,
+    { totalRevenuePiastres: number; netMerchandisePiastres: number; orderCount: number }
+  >();
+
   for (const o of orders) {
     const key = formatKey(o.createdAt);
-    const cur = map.get(key) ?? { revenuePiastres: 0, orderCount: 0 };
-    cur.revenuePiastres += o.totalPiastres;
+    const cur = map.get(key) ?? {
+      totalRevenuePiastres: 0,
+      netMerchandisePiastres: 0,
+      orderCount: 0,
+    };
+    cur.totalRevenuePiastres += o.totalPiastres;
+    cur.netMerchandisePiastres += netMerchandisePiastres(o);
     cur.orderCount += 1;
     map.set(key, cur);
   }
 
   const result: RevenueBucket[] = [];
   for (const [period, v] of map.entries()) {
-    result.push({ period, revenuePiastres: v.revenuePiastres, orderCount: v.orderCount });
+    result.push({
+      period,
+      totalRevenuePiastres: v.totalRevenuePiastres,
+      netMerchandisePiastres: v.netMerchandisePiastres,
+      orderCount: v.orderCount,
+    });
   }
   result.sort((a, b) => a.period.localeCompare(b.period));
   return result;
 }
 
-export type BestSellerRow = {
-  variantId: string;
+export type ProductVariantReportRow = {
+  productId: string;
   productName: string;
-  variantName: string;
-  sku: string;
-  quantitySold: number;
-  revenuePiastres: number;
-};
-
-export async function getBestSellers(
-  from?: string | null,
-  to?: string | null,
-  limit = 20
-): Promise<BestSellerRow[]> {
-  const { from: fromDate, to: toDate } = parseRange(from, to);
-
-  const items = await prisma.orderItem.findMany({
-    where: {
-      order: {
-        status: NOT_CANCELLED,
-        createdAt: { gte: fromDate, lte: toDate },
-      },
-    },
-    select: {
-      variantId: true,
-      productName: true,
-      variantName: true,
-      sku: true,
-      quantity: true,
-      totalPiastres: true,
-    },
-  });
-
-  const byVariant = new Map<
-    string,
-    { productName: string; variantName: string; sku: string; quantity: number; revenue: number }
-  >();
-  for (const i of items) {
-    const cur = byVariant.get(i.variantId);
-    if (cur) {
-      cur.quantity += i.quantity;
-      cur.revenue += i.totalPiastres;
-    } else {
-      byVariant.set(i.variantId, {
-        productName: i.productName,
-        variantName: i.variantName,
-        sku: i.sku,
-        quantity: i.quantity,
-        revenue: i.totalPiastres,
-      });
-    }
-  }
-
-  return Array.from(byVariant.entries())
-    .map(([variantId, v]) => ({
-      variantId,
-      productName: v.productName,
-      variantName: v.variantName,
-      sku: v.sku,
-      quantitySold: v.quantity,
-      revenuePiastres: v.revenue,
-    }))
-    .sort((a, b) => b.quantitySold - a.quantitySold)
-    .slice(0, limit);
-}
-
-export type VariantPerformanceRow = {
   variantId: string;
-  productName: string;
   variantName: string;
+  colorName: string | null;
   sku: string;
-  quantitySold: number;
-  revenuePiastres: number;
+  pricePiastres: number;
   stockAvailable: number;
   stockReserved: number;
+  quantitySold: number;
+  /** Sum of order line totals (pre order-level discount). */
+  lineRevenuePiastres: number;
 };
 
-export async function getVariantPerformance(
+export async function getProductVariantReport(
   from?: string | null,
-  to?: string | null,
-  limit = 50
-): Promise<VariantPerformanceRow[]> {
+  to?: string | null
+): Promise<ProductVariantReportRow[]> {
   const { from: fromDate, to: toDate } = parseRange(from, to);
 
-  const itemRows = await prisma.orderItem.findMany({
-    where: {
-      order: {
-        status: NOT_CANCELLED,
-        createdAt: { gte: fromDate, lte: toDate },
+  const [variants, salesGroups] = await Promise.all([
+    prisma.variant.findMany({
+      where: { product: { active: true } },
+      include: { product: { select: { id: true, name: true } } },
+      orderBy: [{ product: { name: "asc" } }, { sku: "asc" }],
+    }),
+    prisma.orderItem.groupBy({
+      by: ["variantId"],
+      where: { order: orderWhere(fromDate, toDate) },
+      _sum: { quantity: true, totalPiastres: true },
+    }),
+  ]);
+
+  const soldMap = new Map(
+    salesGroups.map((g) => [
+      g.variantId,
+      {
+        quantitySold: g._sum.quantity ?? 0,
+        lineRevenuePiastres: g._sum.totalPiastres ?? 0,
       },
-    },
-    select: { variantId: true, quantity: true, totalPiastres: true },
-  });
+    ])
+  );
 
-  const soldMap = new Map<string, { quantity: number; revenue: number }>();
-  for (const r of itemRows) {
-    const cur = soldMap.get(r.variantId) ?? { quantity: 0, revenue: 0 };
-    cur.quantity += r.quantity;
-    cur.revenue += r.totalPiastres;
-    soldMap.set(r.variantId, cur);
-  }
-
-  const variantIds = Array.from(soldMap.keys());
-  const variants =
-    variantIds.length === 0
-      ? []
-      : await prisma.variant.findMany({
-          where: { id: { in: variantIds } },
-          include: { product: { select: { name: true } } },
-        });
-
-  const rows: VariantPerformanceRow[] = variants.map((v) => {
-    const sold = soldMap.get(v.id) ?? { quantity: 0, revenue: 0 };
+  return variants.map((v) => {
+    const sold = soldMap.get(v.id);
     return {
-      variantId: v.id,
+      productId: v.product.id,
       productName: v.product.name,
+      variantId: v.id,
       variantName: v.name,
+      colorName: v.colorName,
       sku: v.sku,
-      quantitySold: sold.quantity,
-      revenuePiastres: sold.revenue,
+      pricePiastres: v.pricePiastres,
       stockAvailable: v.stockAvailable,
       stockReserved: v.stockReserved,
+      quantitySold: sold?.quantitySold ?? 0,
+      lineRevenuePiastres: sold?.lineRevenuePiastres ?? 0,
     };
   });
-  rows.sort((a, b) => b.quantitySold - a.quantitySold);
-  return rows.slice(0, limit);
-}
-
-export type LowStockRow = {
-  variantId: string;
-  productName: string;
-  variantName: string;
-  sku: string;
-  stockAvailable: number;
-  stockReserved: number;
-  threshold: number;
-};
-
-const DEFAULT_LOW_STOCK_THRESHOLD = 5;
-
-export async function getLowStockAlerts(
-  threshold: number = DEFAULT_LOW_STOCK_THRESHOLD
-): Promise<LowStockRow[]> {
-  const variants = await prisma.variant.findMany({
-    where: { stockAvailable: { lte: threshold } },
-    include: { product: { select: { name: true } } },
-    orderBy: { stockAvailable: "asc" },
-  });
-  return variants.map((v) => ({
-    variantId: v.id,
-    productName: v.product.name,
-    variantName: v.name,
-    sku: v.sku,
-    stockAvailable: v.stockAvailable,
-    stockReserved: v.stockReserved,
-    threshold,
-  }));
-}
-
-export type CouponPerformanceRow = {
-  couponId: string;
-  code: string;
-  discountType: string;
-  discountValue: number;
-  uses: number;
-  maxUses: number | null;
-  totalDiscountPiastres: number;
-  orderCount: number;
-};
-
-export async function getCouponPerformance(
-  from?: string | null,
-  to?: string | null
-): Promise<CouponPerformanceRow[]> {
-  const { from: fromDate, to: toDate } = parseRange(from, to);
-
-  const coupons = await prisma.coupon.findMany({
-    include: {
-      usages: {
-        where: { usedAt: { gte: fromDate, lte: toDate } },
-        include: { user: true },
-      },
-    },
-  });
-
-  const orderIdsByCoupon = new Map<string, Set<string>>();
-  const discountByOrder = new Map<string, number>();
-  const ordersInRange = await prisma.order.findMany({
-    where: {
-      status: NOT_CANCELLED,
-      createdAt: { gte: fromDate, lte: toDate },
-      couponCode: { not: null },
-    },
-    select: { id: true, couponCode: true, discountPiastres: true },
-  });
-  for (const o of ordersInRange) {
-    if (o.couponCode) {
-      discountByOrder.set(o.id, o.discountPiastres);
-      const coupon = coupons.find((c) => c.code === o.couponCode);
-      if (coupon) {
-        let set = orderIdsByCoupon.get(coupon.id);
-        if (!set) {
-          set = new Set();
-          orderIdsByCoupon.set(coupon.id, set);
-        }
-        set.add(o.id);
-      }
-    }
-  }
-
-  return coupons.map((c) => {
-    const orderIds = orderIdsByCoupon.get(c.id) ?? new Set<string>();
-    const totalDiscountPiastres = Array.from(orderIds).reduce(
-      (sum, oid) => sum + (discountByOrder.get(oid) ?? 0),
-      0
-    );
-    const usesInRange = c.usages.filter((u) => u.orderId && orderIds.has(u.orderId)).length;
-    return {
-      couponId: c.id,
-      code: c.code,
-      discountType: c.discountType,
-      discountValue: c.discountValue,
-      uses: c.usedCount,
-      maxUses: c.maxUses,
-      totalDiscountPiastres,
-      orderCount: orderIds.size,
-    };
-  });
-}
-
-export type SeniorPromoRow = {
-  orderId: string;
-  userId: string;
-  totalPiastres: number;
-  seniorFreeValuePiastres: number;
-  createdAt: Date;
-};
-
-export async function getSeniorPromoReport(
-  from?: string | null,
-  to?: string | null
-): Promise<SeniorPromoRow[]> {
-  const { from: fromDate, to: toDate } = parseRange(from, to);
-
-  const orders = await prisma.order.findMany({
-    where: {
-      status: NOT_CANCELLED,
-      seniorFreeValuePiastres: { gt: 0 },
-      createdAt: { gte: fromDate, lte: toDate },
-    },
-    select: {
-      id: true,
-      userId: true,
-      totalPiastres: true,
-      seniorFreeValuePiastres: true,
-      createdAt: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
-  return orders.map((o) => ({
-    orderId: o.id,
-    userId: o.userId,
-    totalPiastres: o.totalPiastres,
-    seniorFreeValuePiastres: o.seniorFreeValuePiastres,
-    createdAt: o.createdAt,
-  }));
-}
-
-export type ProviderPerformanceRow = {
-  provider: string;
-  orderCount: number;
-  revenuePiastres: number;
-};
-
-export async function getProviderPerformance(
-  from?: string | null,
-  to?: string | null
-): Promise<ProviderPerformanceRow[]> {
-  const { from: fromDate, to: toDate } = parseRange(from, to);
-
-  const orders = await prisma.order.findMany({
-    where: {
-      status: NOT_CANCELLED,
-      createdAt: { gte: fromDate, lte: toDate },
-    },
-    select: { shippingProvider: true, totalPiastres: true },
-  });
-
-  const byProvider = new Map<string, { count: number; revenue: number }>();
-  for (const o of orders) {
-    const cur = byProvider.get(o.shippingProvider) ?? { count: 0, revenue: 0 };
-    cur.count += 1;
-    cur.revenue += o.totalPiastres;
-    byProvider.set(o.shippingProvider, cur);
-  }
-  return Array.from(byProvider.entries()).map(([provider, v]) => ({
-    provider,
-    orderCount: v.count,
-    revenuePiastres: v.revenue,
-  }));
-}
-
-export type PaymentMethodRow = {
-  paymentMethod: string;
-  orderCount: number;
-  revenuePiastres: number;
-};
-
-export async function getPaymentMethodBreakdown(
-  from?: string | null,
-  to?: string | null
-): Promise<PaymentMethodRow[]> {
-  const { from: fromDate, to: toDate } = parseRange(from, to);
-
-  const orders = await prisma.order.findMany({
-    where: {
-      status: NOT_CANCELLED,
-      createdAt: { gte: fromDate, lte: toDate },
-    },
-    select: { paymentMethod: true, totalPiastres: true },
-  });
-
-  const byMethod = new Map<string, { count: number; revenue: number }>();
-  for (const o of orders) {
-    const cur = byMethod.get(o.paymentMethod) ?? { count: 0, revenue: 0 };
-    cur.count += 1;
-    cur.revenue += o.totalPiastres;
-    byMethod.set(o.paymentMethod, cur);
-  }
-  return Array.from(byMethod.entries()).map(([paymentMethod, v]) => ({
-    paymentMethod,
-    orderCount: v.count,
-    revenuePiastres: v.revenue,
-  }));
 }

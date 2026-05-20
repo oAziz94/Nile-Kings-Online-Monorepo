@@ -7,11 +7,5 @@ export type AnalyticsDateRange = {
   to: Date;
 };
 
-export const CONFIRMED_ORDER_STATUSES = [
-  "CONFIRMED",
-  "PROCESSING",
-  "SHIPPED",
-  "DELIVERED",
-] as const;
-
-export type ConfirmedOrderStatus = (typeof CONFIRMED_ORDER_STATUSES)[number];
+/** Only delivered orders count toward financial reporting. */
+export const REPORT_ORDER_STATUS = "DELIVERED" as const;
