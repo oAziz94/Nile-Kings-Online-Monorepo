@@ -363,6 +363,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     });
   }
 
+  const isInstaPayPrepaid = existing.paymentMethod === "INSTAPAY_PREPAID";
+
   async function applyLeavingCreatedStock(tx: OrderTx, lines: StockLine[]) {
     await commitReservation(tx, lines);
     data.reservationExpiresAt = null;
@@ -371,7 +373,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     } else if (nextStatus) {
       await logOrderStatusChange(tx, id, "CREATED", nextStatus);
     }
-    if (existing.paymentMethod === "INSTAPAY_PREPAID") {
+    if (isInstaPayPrepaid) {
       await applyInstaPayCapture(tx, id);
     }
   }
