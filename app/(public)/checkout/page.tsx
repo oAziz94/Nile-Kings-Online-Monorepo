@@ -12,6 +12,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/cart-context";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { CHECKOUT_PAYMENT_OPTIONS } from "@/lib/checkout/types";
+import {
+  INSTAPAY_IPA,
+  getInstapayTransferHref,
+  getInstapayStoreHref,
+  copyInstapayAddress,
+} from "@/lib/checkout/instapay";
 import { MapPin, CreditCard, X } from "lucide-react";
 import {
   Dialog,
@@ -130,7 +136,30 @@ export default function CheckoutPage() {
   const [isGuest, setIsGuest] = useState(false);
   const [instaPayModalOpen, setInstaPayModalOpen] = useState(false);
   const [instaPayConfirmLoading, setInstaPayConfirmLoading] = useState(false);
+  const [instapayTransferHref, setInstapayTransferHref] = useState("#");
   const [successModalOpen, setSuccessModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!instaPayModalOpen) return;
+    const amountEgp = summary ? piastresToEgp(summary.finalTotal) : undefined;
+    setInstapayTransferHref(getInstapayTransferHref(amountEgp));
+  }, [instaPayModalOpen, summary]);
+
+  const handleInstapayAddressClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    try {
+      await copyInstapayAddress();
+      toast({
+        title: "تم نسخ عنوان الدفع",
+        description: "افتح InstaPay وألصق العنوان إن لم يظهر تلقائياً.",
+      });
+    } catch {
+      /* clipboard blocked */
+    }
+    if (instapayTransferHref === "#") {
+      e.preventDefault();
+      window.open(getInstapayStoreHref(), "_blank", "noopener,noreferrer");
+    }
+  };
 
   // Resolve effective delivery address from saved selection or new-address form
   const currentAddress = useNewAddress
@@ -810,8 +839,17 @@ export default function CheckoutPage() {
               className="h-48 w-48 object-contain rounded-lg border border-border bg-muted/30"
             />
             <div className="text-center">
-              <p className="text-sm font-medium text-foreground">omar947@instapay</p>
-              <p className="mt-1 text-xs text-muted-foreground">Powered by InstaPay</p>
+              <a
+                href={instapayTransferHref}
+                onClick={handleInstapayAddressClick}
+                className="text-sm font-semibold text-primary underline underline-offset-2 hover:text-primary/90"
+                rel="noopener noreferrer"
+              >
+                {INSTAPAY_IPA}
+              </a>
+              <p className="mt-1 text-xs text-muted-foreground">
+                اضغط لفتح تطبيق InstaPay وإتمام التحويل
+              </p>
               {summary && (
                 <p className="mt-3 text-base font-semibold text-foreground">
                   المبلغ: {formatNumberEn(piastresToEgp(summary.finalTotal))} ج.م
