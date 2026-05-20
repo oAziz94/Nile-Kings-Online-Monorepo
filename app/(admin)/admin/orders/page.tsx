@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -15,10 +14,13 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { AdminPaginationBar } from "@/components/admin/admin-pagination";
-import { ShoppingBag, FileDown, FileText, Search, Loader2 } from "lucide-react";
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminPanelCard } from "@/components/admin/admin-panel-card";
+import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { ShoppingBag, FileDown, FileText, Loader2 } from "lucide-react";
 import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
 import { piastresToEgp } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
@@ -233,28 +235,27 @@ export default function AdminOrdersPage() {
   if (loading && orders.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
 
   return (
-    <div dir="rtl" className="space-y-6">
-      <h1 className="text-2xl font-bold">الطلبات</h1>
-      <Card>
-        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle>قائمة الطلبات</CardTitle>
-            <CardDescription>عرض تفاصيل الطلب وتحديث الحالة من صفحة التفاصيل.</CardDescription>
-          </div>
-          <div className="flex w-full flex-col gap-3 sm:w-auto sm:max-w-md sm:flex-row sm:items-center sm:justify-end">
-            <div className="relative w-full sm:min-w-[240px]">
-              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="بحث برقم الطلب أو العميل أو الهاتف أو اسم المنتج…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pr-9"
-              />
-            </div>
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="الطلبات"
+        description="عرض الطلبات، التصدير، وتحديث الحالة من صفحة التفاصيل."
+      />
+      <AdminPanelCard
+        title="قائمة الطلبات"
+        description="حدّد الطلبات للتصدير أو ابحث بالعميل والمنتج."
+        icon={<ShoppingBag className="h-5 w-5 text-burgundy" />}
+        toolbar={
+          <div className="flex w-full flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-end">
+            <AdminSearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="بحث برقم الطلب أو العميل…"
+              className="sm:min-w-[16rem] lg:w-64"
+            />
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full sm:w-40"
+              className="h-10 w-full rounded-xl sm:w-40"
             >
               <option value="">كل الحالات</option>
               {Object.entries(STATUS_LABELS).map(([v, l]) => (
@@ -263,10 +264,11 @@ export default function AdminOrdersPage() {
                 </option>
               ))}
             </Select>
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+            <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
+                className="rounded-xl"
                 onClick={handleExportCourier}
                 disabled={
                   exportingCourier || exportingCsv || selectedOrderIds.length === 0
@@ -275,25 +277,24 @@ export default function AdminOrdersPage() {
                 <FileDown className="ml-2 h-4 w-4" />
                 {exportingCourier
                   ? "جاري التصدير…"
-                  : `تصدير ملف الشحن (${selectedOrderIds.length})`}
+                  : `ملف الشحن (${selectedOrderIds.length})`}
               </Button>
               <Button
                 type="button"
                 variant="outline"
+                className="rounded-xl border-dashed"
                 onClick={handleExportCsv}
                 disabled={
                   exportingCourier || exportingCsv || selectedOrderIds.length === 0
                 }
               >
                 <FileText className="ml-2 h-4 w-4" />
-                {exportingCsv
-                  ? "جاري تصدير CSV…"
-                  : `تصدير CSV (${selectedOrderIds.length})`}
+                {exportingCsv ? "جاري CSV…" : `CSV (${selectedOrderIds.length})`}
               </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
+        }
+      >
           {fetching && orders.length > 0 && (
             <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -301,16 +302,15 @@ export default function AdminOrdersPage() {
             </div>
           )}
           {orders.length === 0 && !fetching ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
-              <ShoppingBag className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">
-                {debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات"}
-              </p>
-            </div>
+            <AdminEmptyState
+              icon={<ShoppingBag className="h-12 w-12" />}
+              title={debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات"}
+            />
           ) : orders.length > 0 ? (
+            <div className="overflow-x-auto rounded-xl border border-border/60">
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead className="w-12">
                     <input
                       type="checkbox"
@@ -394,6 +394,7 @@ export default function AdminOrdersPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           ) : null}
           {total > 0 && (
             <AdminPaginationBar
@@ -406,8 +407,7 @@ export default function AdminOrdersPage() {
               disabled={fetching}
             />
           )}
-        </CardContent>
-      </Card>
+      </AdminPanelCard>
     </div>
   );
 }

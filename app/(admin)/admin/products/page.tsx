@@ -4,8 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -17,7 +15,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
 import { AdminPaginationBar } from "@/components/admin/admin-pagination";
-import { FileDown, Package, Plus, Search, Loader2 } from "lucide-react";
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminPanelCard } from "@/components/admin/admin-panel-card";
+import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { FileDown, Package, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Product = {
@@ -136,45 +138,43 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <div dir="rtl" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">المنتجات</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleExportExcel}
-            disabled={exporting}
-          >
-            <FileDown className="h-4 w-4" />
-            تصدير إلى Excel
-          </Button>
-          <Button asChild>
-            <Link href="/admin/products/new">
-              <Plus className="h-4 w-4" />
-              إضافة منتج
-            </Link>
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="المنتجات"
+        description="إدارة الكتالوج، المتغيرات، الأسعار، والتصدير إلى Excel."
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl"
+              onClick={handleExportExcel}
+              disabled={exporting}
+            >
+              <FileDown className="h-4 w-4" />
+              تصدير Excel
+            </Button>
+            <Button asChild className="rounded-xl">
+              <Link href="/admin/products/new">
+                <Plus className="h-4 w-4" />
+                إضافة منتج
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
-      <Card>
-        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle>قائمة المنتجات</CardTitle>
-            <CardDescription>إدارة المنتجات والمتغيرات والأسعار.</CardDescription>
-          </div>
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="بحث بالاسم أو الرابط (slug)…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pr-9"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
+      <AdminPanelCard
+        title="قائمة المنتجات"
+        icon={<Package className="h-5 w-5 text-burgundy" />}
+        toolbar={
+          <AdminSearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="بحث بالاسم أو slug…"
+          />
+        }
+      >
           {fetching && list.length > 0 && (
             <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -182,19 +182,16 @@ export default function AdminProductsPage() {
             </div>
           )}
           {empty ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
-              <Package className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">
-                {debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد منتجات بعد"}
-              </p>
-              <Button asChild variant="outline">
-                <Link href="/admin/products/new">إضافة أول منتج</Link>
-              </Button>
-            </div>
+            <AdminEmptyState
+              icon={<Package className="h-12 w-12" />}
+              title={debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد منتجات بعد"}
+              description="ابدأ بإضافة أول منتج إلى الكتالوج."
+            />
           ) : (
+            <div className="overflow-x-auto rounded-xl border border-border/60">
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead>الصورة</TableHead>
                   <TableHead>الاسم</TableHead>
                   <TableHead>الفئة</TableHead>
@@ -246,6 +243,7 @@ export default function AdminProductsPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
           {total > 0 && (
             <AdminPaginationBar
@@ -258,8 +256,7 @@ export default function AdminProductsPage() {
               disabled={fetching}
             />
           )}
-        </CardContent>
-      </Card>
+      </AdminPanelCard>
     </div>
   );
 }

@@ -26,7 +26,11 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
 import { AdminPaginationBar } from "@/components/admin/admin-pagination";
-import { Ticket, Plus, Search, Loader2, Pencil, Trash2 } from "lucide-react";
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminPanelCard } from "@/components/admin/admin-panel-card";
+import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { Ticket, Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Coupon = {
@@ -487,14 +491,17 @@ export default function AdminCouponsPage() {
   if (loading && list.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
 
   return (
-    <div dir="rtl" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">الكوبونات</h1>
-        <Button type="button" onClick={openCreate}>
-          <Plus className="h-4 w-4" />
-          إضافة كوبون
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="الكوبونات"
+        description="إنشاء وتعديل أكواد الخصم والعروض الترويجية."
+        actions={
+          <Button type="button" className="rounded-xl" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            إضافة كوبون
+          </Button>
+        }
+      />
 
       <Dialog open={couponDialogOpen} onOpenChange={onCouponDialogOpenChange}>
         <DialogContent>
@@ -550,23 +557,17 @@ export default function AdminCouponsPage() {
         </DialogContent>
       </Dialog>
 
-      <Card>
-        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle>قائمة الكوبونات</CardTitle>
-            <CardDescription>إدارة أكواد الخصم.</CardDescription>
-          </div>
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="بحث بكود الكوبون…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pr-9"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
+      <AdminPanelCard
+        title="قائمة الكوبونات"
+        icon={<Ticket className="h-5 w-5 text-burgundy" />}
+        toolbar={
+          <AdminSearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="بحث بكود الكوبون…"
+          />
+        }
+      >
           {fetching && list.length > 0 && (
             <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -574,19 +575,15 @@ export default function AdminCouponsPage() {
             </div>
           )}
           {list.length === 0 && !fetching ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
-              <Ticket className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="mb-2 text-muted-foreground">
-                {debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد كوبونات"}
-              </p>
-              <Button variant="outline" onClick={openCreate}>
-                إضافة أول كوبون
-              </Button>
-            </div>
+            <AdminEmptyState
+              icon={<Ticket className="h-12 w-12" />}
+              title={debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد كوبونات"}
+            />
           ) : (
+            <div className="overflow-x-auto rounded-xl border border-border/60">
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead>الكود</TableHead>
                   <TableHead>الخصم</TableHead>
                   <TableHead>نافذة الموقع</TableHead>
@@ -645,6 +642,7 @@ export default function AdminCouponsPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
           {total > 0 && (
             <AdminPaginationBar
@@ -657,8 +655,7 @@ export default function AdminCouponsPage() {
               disabled={fetching}
             />
           )}
-        </CardContent>
-      </Card>
+      </AdminPanelCard>
     </div>
   );
 }

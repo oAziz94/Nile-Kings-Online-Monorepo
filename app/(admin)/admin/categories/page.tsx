@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -24,6 +23,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/shared/skeleton";
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminPanelCard } from "@/components/admin/admin-panel-card";
 import { Folder, Plus, Pencil, Trash2 } from "lucide-react";
 
 type Category = { id: string; name: string; slug: string; sortOrder: number; productCount: number };
@@ -154,12 +156,15 @@ export default function AdminCategoriesPage() {
   const categories = list ?? [];
 
   return (
-    <div dir="rtl" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">الفئات</h1>
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="الفئات"
+        description="تنظيم المنتجات في فئات بدون تصنيفات فرعية."
+        actions={
+        <>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="rounded-xl">
               <Plus className="h-4 w-4" />
               إضافة فئة
             </Button>
@@ -258,24 +263,25 @@ export default function AdminCategoriesPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+        </>
+        }
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>قائمة الفئات</CardTitle>
-          <CardDescription>فئات المنتجات بدون تصنيفات فرعية.</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <AdminPanelCard
+        title="قائمة الفئات"
+        icon={<Folder className="h-5 w-5 text-burgundy" />}
+      >
           {categories.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
-              <Folder className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">لا توجد فئات</p>
-              <Button variant="outline" onClick={() => setOpen(true)}>إضافة أول فئة</Button>
-            </div>
+            <AdminEmptyState
+              icon={<Folder className="h-12 w-12" />}
+              title="لا توجد فئات"
+              description="أضف فئة لتنظيم المنتجات."
+            />
           ) : (
+            <div className="overflow-x-auto rounded-xl border border-border/60">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead>الاسم</TableHead>
                   <TableHead>الرابط</TableHead>
                   <TableHead>ترتيب</TableHead>
@@ -319,9 +325,9 @@ export default function AdminCategoriesPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
-        </CardContent>
-      </Card>
+      </AdminPanelCard>
     </div>
   );
 }

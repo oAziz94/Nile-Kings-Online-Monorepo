@@ -38,6 +38,7 @@ import {
   Search,
 } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 
 type TabId = "requests" | "agents" | "distributors" | "new";
@@ -89,15 +90,21 @@ export default function AdminPartnersPage() {
   const { toast } = useToast();
 
   return (
-    <div dir="rtl" className="space-y-6">
-      <h1 className="text-2xl font-bold">شركاؤنا</h1>
-      <div className="flex flex-wrap gap-2 border-b border-border pb-2">
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="شركاؤنا"
+        description="طلبات الشراكة، الوكلاء، الموزعون، وإدخال شركاء جدد."
+      />
+      <div className="flex flex-wrap gap-2 rounded-2xl border border-border/80 bg-card p-2 shadow-subtle">
         {TABS.map((tab) => (
           <Button
             key={tab.id}
             variant={activeTab === tab.id ? "default" : "ghost"}
             size="sm"
-            className="gap-2"
+            className={cn(
+              "gap-2 rounded-xl",
+              activeTab === tab.id && "shadow-sm"
+            )}
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.icon}

@@ -44,77 +44,18 @@ export async function GET(req: NextRequest) {
     return apiSuccess(data);
   }
 
-  if (section === "best_sellers") {
-    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10) || 20));
-    const data = await queries.getBestSellers(from, to, limit);
-    return apiSuccess(data);
-  }
-
-  if (section === "variant_performance") {
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50", 10) || 50));
-    const data = await queries.getVariantPerformance(from, to, limit);
-    return apiSuccess(data);
-  }
-
-  if (section === "low_stock") {
-    const threshold = Math.max(0, parseInt(searchParams.get("threshold") ?? "5", 10) || 5);
-    const data = await queries.getLowStockAlerts(threshold);
-    return apiSuccess(data);
-  }
-
-  if (section === "coupons") {
-    const data = await queries.getCouponPerformance(from, to);
-    return apiSuccess(data);
-  }
-
-  if (section === "senior_promo") {
-    const data = await queries.getSeniorPromoReport(from, to);
-    return apiSuccess(data);
-  }
-
-  if (section === "providers") {
-    const data = await queries.getProviderPerformance(from, to);
-    return apiSuccess(data);
-  }
-
-  if (section === "payment_methods") {
-    const data = await queries.getPaymentMethodBreakdown(from, to);
+  if (section === "products") {
+    const data = await queries.getProductVariantReport(from, to);
     return apiSuccess(data);
   }
 
   if (section === "all") {
-    const [
-      kpis,
-      revenue,
-      bestSellers,
-      variantPerformance,
-      lowStock,
-      coupons,
-      seniorPromo,
-      providers,
-      paymentMethods,
-    ] = await Promise.all([
+    const [kpis, revenue, products] = await Promise.all([
       queries.getKpis(from, to),
       queries.getRevenueOverTime(granularity, from, to),
-      queries.getBestSellers(from, to, 20),
-      queries.getVariantPerformance(from, to, 30),
-      queries.getLowStockAlerts(5),
-      queries.getCouponPerformance(from, to),
-      queries.getSeniorPromoReport(from, to),
-      queries.getProviderPerformance(from, to),
-      queries.getPaymentMethodBreakdown(from, to),
+      queries.getProductVariantReport(from, to),
     ]);
-    return apiSuccess({
-      kpis,
-      revenue,
-      bestSellers,
-      variantPerformance,
-      lowStock,
-      coupons,
-      seniorPromo,
-      providers,
-      paymentMethods,
-    });
+    return apiSuccess({ kpis, revenue, products });
   }
 
   return apiBadRequest("قسم غير صالح");

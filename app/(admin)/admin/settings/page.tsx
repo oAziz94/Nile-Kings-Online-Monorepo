@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/shared/skeleton";
-import { MessageCircle } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { MessageCircle, Settings } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type OtpRules = {
   expiryMinutes: number;
@@ -148,10 +150,19 @@ export default function AdminSettingsPage() {
   if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />;
 
   return (
-    <div dir="rtl" className="space-y-6">
-      <h1 className="text-2xl font-bold">الإعدادات</h1>
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="الإعدادات"
+        description="رسوم COD، قواعد OTP، واختبار إشعارات واتساب."
+        badge={
+          <span className="inline-flex items-center gap-1 rounded-full bg-burgundy/10 px-2.5 py-0.5 text-xs font-medium text-burgundy">
+            <Settings className="h-3 w-3" />
+            إعدادات النظام
+          </span>
+        }
+      />
 
-      <Card>
+      <Card className={cn("rounded-2xl border-border/80 shadow-card")}>
         <CardHeader>
           <CardTitle>رسوم الدفع عند الاستلام (COD)</CardTitle>
           <CardDescription>نسبة مئوية من (مجموع المنتجات + التوصيل − الخصم إن وُجد). مثال: 2 = 2٪ من هذا المجموع.</CardDescription>
@@ -176,7 +187,7 @@ export default function AdminSettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={cn("rounded-2xl border-border/80 shadow-card")}>
         <CardHeader>
           <CardTitle>قواعد OTP</CardTitle>
           <CardDescription>مدة صلاحية الكود، المهلة بين الطلبات، عدد المحاولات، مدة القفل.</CardDescription>
@@ -228,7 +239,7 @@ export default function AdminSettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={cn("rounded-2xl border-border/80 shadow-card")}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
