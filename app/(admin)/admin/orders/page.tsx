@@ -20,7 +20,7 @@ import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminPanelCard } from "@/components/admin/admin-panel-card";
 import { AdminSearchInput } from "@/components/admin/admin-search-input";
-import { ShoppingBag, FileDown, FileText, Loader2 } from "lucide-react";
+import { ShoppingBag, FileDown, FileText, Loader2, ChevronDown } from "lucide-react";
 import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
 import { piastresToEgp } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
@@ -59,10 +59,48 @@ type Order = {
   codFeePiastres: number;
   totalPiastres: number;
   paymentMethod: string;
+  adminNotes: string | null;
   createdAt: string;
   user: { phone: string; name: string | null };
   items: { quantity: number; productName: string }[];
 };
+
+const NOTE_PREVIEW_MAX = 56;
+
+function ExpandableAdminNotesCell({ notes }: { notes: string | null }) {
+  const [expanded, setExpanded] = React.useState(false);
+  const text = notes?.trim() ?? "";
+  if (!text) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+  const needsToggle = text.length > NOTE_PREVIEW_MAX || text.includes("\n");
+  return (
+    <div className="max-w-[11rem] min-w-[4.5rem]">
+      <p
+        className={cn(
+          "text-xs leading-relaxed text-foreground/90 break-words whitespace-pre-wrap",
+          !expanded && needsToggle && "line-clamp-2 whitespace-normal"
+        )}
+      >
+        {text}
+      </p>
+      {needsToggle && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-medium text-burgundy hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+          aria-expanded={expanded}
+        >
+          {expanded ? "أقل" : "المزيد"}
+          <ChevronDown
+            className={cn("h-3 w-3 shrink-0 transition-transform duration-200", expanded && "rotate-180")}
+            aria-hidden
+          />
+        </button>
+      )}
+    </div>
+  );
+}
 
 function egp(piastres: number): string {
   return `${formatNumberEn(piastresToEgp(piastres))} ج.م`;
@@ -334,6 +372,7 @@ export default function AdminOrdersPage() {
                   <TableHead>الإجمالي</TableHead>
                   <TableHead>طريقة الدفع</TableHead>
                   <TableHead>الحالة</TableHead>
+                  <TableHead className="min-w-[5.5rem] max-w-[12rem]">ملاحظات</TableHead>
                   <TableHead>التاريخ</TableHead>
                   <TableHead className="text-left">إجراءات</TableHead>
                 </TableRow>
@@ -383,6 +422,9 @@ export default function AdminOrdersPage() {
                       >
                         {STATUS_LABELS[o.status] ?? o.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="align-top py-3">
+                      <ExpandableAdminNotesCell notes={o.adminNotes} />
                     </TableCell>
                     <TableCell>{formatDateEn(o.createdAt)}</TableCell>
                     <TableCell className="text-left">

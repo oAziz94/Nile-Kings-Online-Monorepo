@@ -10,8 +10,6 @@ import { buildCheckoutSummary } from "./summary";
 import { PHASE1_SHIPPING_PROVIDER_DISPLAY } from "@/lib/services/shipping";
 import type { CheckoutAddress } from "./types";
 
-const RESERVATION_MINUTES = 15;
-
 /** Postgres `Int` columns — totals must fit or Prisma throws at persist time. */
 const INT32_MAX = 2_147_483_647;
 
@@ -48,7 +46,7 @@ export type PlaceOrderResult =
 /**
  * Place order: in one Prisma transaction:
  * - Lock variant rows, ensure available >= qty, increase stockReserved
- * - Create Order (status CREATED) with reservationExpiresAt = now + 15m
+ * - Create Order (status CREATED) for InstaPay; admin confirms or cancels (no auto-expiry)
  * - Create OrderItems
  * - If COD or PAYMOB dummy: commit reservation, set CONFIRMED, record payment. If INSTAPAY_PREPAID: order stays CREATED, payment PENDING.
  * - Record coupon usage if applied
@@ -136,7 +134,6 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   }
 
   const stockLines = orderLines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }));
-  const reservationExpiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
   const immediateConfirm = input.paymentMethod === "COD" || input.paymentMethod === "PAYMOB";
   const isInstaPayPrepaid = input.paymentMethod === "INSTAPAY_PREPAID";
 
@@ -161,7 +158,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
           shippingProvider: PHASE1_SHIPPING_PROVIDER_DISPLAY,
           paymentMethod: input.paymentMethod,
           couponCode: summary.appliedCouponCode ?? undefined,
-          reservationExpiresAt: immediateConfirm ? null : reservationExpiresAt,
+          reservationExpiresAt: null,
         },
       });
 

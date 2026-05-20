@@ -10,7 +10,7 @@ const envSchema = z.object({
   TWILIO_FROM: z.string().min(1, "TWILIO_FROM is required"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   ENCRYPTION_KEY: z.string().length(64, "ENCRYPTION_KEY must be 64 hex chars (32 bytes for AES-256)").optional(),
-  CRON_SECRET: z.string().min(1).optional(), // protect cron job routes (e.g. release-expired-reservations)
+  CRON_SECRET: z.string().min(1).optional(), // optional secret for future scheduled jobs
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   NEXT_PUBLIC_API_URL: z.string().url().optional(),
   // Cloudinary (admin product images)

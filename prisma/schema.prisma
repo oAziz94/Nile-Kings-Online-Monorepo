@@ -22,7 +22,7 @@ enum UserRole {
 }
 
 enum OrderStatus {
-  CREATED       // قيد الانشاء — order created with stock reserved; reservationExpiresAt set
+  CREATED       // قيد الانشاء — unpaid InstaPay; stock held in stockReserved until admin confirms/cancels
   CONFIRMED     // مؤكد
   PROCESSING    // قيد التجهيز
   READY_TO_SHIP // جاهز للشحن — ready for courier export
@@ -328,8 +328,9 @@ model Order {
   shippingProvider      String       // Phase 1: "Egypt Post" only
   paymentMethod         String       // "COD" | "PAYMOB" | "INSTAPAY_PREPAID"
   couponCode            String?
-  reservationExpiresAt  DateTime?    // set when status = CREATED; stock reserved until this time
-  cancellationReason   String?      // e.g. "expired" when reservation times out
+  reservationExpiresAt  DateTime?    // legacy; unused (admin decides, no auto-expiry)
+  cancellationReason   String?      // e.g. "admin" when cancelled manually
+  adminNotes            String?      // internal admin notes (not customer shipping notes)
   exportedToCourierAt   DateTime?    // set when order is included in a courier export (prevents duplicate export)
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
