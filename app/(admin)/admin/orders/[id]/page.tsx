@@ -41,6 +41,7 @@ type Order = {
   shippingProvider: string;
   paymentMethod: string;
   couponCode: string | null;
+  adminNotes: string | null;
   createdAt: string;
   shippingAddress: Record<string, unknown>;
   user: { id: string; phone: string; name: string | null };
@@ -108,6 +109,8 @@ export default function AdminOrderDetailPage() {
   const [variantOptions, setVariantOptions] = React.useState<ProductVariantOption[]>([]);
   const [selectedVariantId, setSelectedVariantId] = React.useState("");
   const [newItemQty, setNewItemQty] = React.useState(1);
+  const [adminNotes, setAdminNotes] = React.useState("");
+  const [savingNotes, setSavingNotes] = React.useState(false);
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedClientSearch(clientSearch.trim()), 350);
@@ -132,6 +135,7 @@ export default function AdminOrderDetailPage() {
             }))
           );
           setStatus(json.data.status);
+          setAdminNotes(json.data.adminNotes ?? "");
           setSelectedClientId(json.data.user.id);
           setClientOptions((prev) =>
             prev.some((c) => c.id === json.data!.user.id)
@@ -241,6 +245,29 @@ export default function AdminOrderDetailPage() {
       return preferred.id;
     });
   }, [selectedClient, order]);
+
+  const saveAdminNotes = async () => {
+    if (!order) return;
+    setSavingNotes(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ adminNotes: adminNotes.trim() || null }),
+      });
+      const json = await res.json();
+      if (res.ok && json?.success) {
+        setOrder(json.data);
+        setAdminNotes(json.data.adminNotes ?? "");
+        toast({ title: "تم حفظ الملاحظات" });
+      } else toast({ title: json?.error?.message ?? "فشل", variant: "destructive" });
+    } catch {
+      toast({ title: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setSavingNotes(false);
+    }
+  };
 
   const updateStatus = async () => {
     if (!order || status === order.status) return;
@@ -408,6 +435,33 @@ export default function AdminOrderDetailPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>ملاحظات الإدارة</CardTitle>
+          <CardDescription>ملاحظات داخلية للفريق — لا تظهر للعميل ولا تُرسل لشركة الشحن.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-2">
+            <Label htmlFor="admin-notes">ملاحظات</Label>
+            <textarea
+              id="admin-notes"
+              className="flex min-h-[100px] w-full max-w-lg rounded-2xl border border-input bg-background px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              placeholder="أضف ملاحظة عن هذا الطلب…"
+              value={adminNotes}
+              onChange={(e) => setAdminNotes(e.target.value)}
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={saveAdminNotes}
+            disabled={savingNotes || adminNotes === (order.adminNotes ?? "")}
+          >
+            {savingNotes ? "جاري…" : "حفظ الملاحظات"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>العميل والعنوان</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -416,6 +470,11 @@ export default function AdminOrderDetailPage() {
           {addr && (
             <p className="text-muted-foreground">
               {addr.governorate} {addr.city ? `، ${addr.city}` : ""} {addr.area ? `، ${addr.area}` : ""} – {addr.street}
+            </p>
+          )}
+          {addr?.notes && (
+            <p className="text-sm text-muted-foreground">
+              <strong>ملاحظات العميل على العنوان:</strong> {addr.notes}
             </p>
           )}
         </CardContent>

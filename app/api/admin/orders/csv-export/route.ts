@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
     "طريقة الدفع",
     "الحالة",
     "التاريخ",
+    "ملاحظات الإدارة",
     "المنتجات",
   ];
 
@@ -100,6 +101,7 @@ export async function POST(req: NextRequest) {
         csvCell(PAYMENT_LABELS[o.paymentMethod] ?? o.paymentMethod),
         csvCell(getOrderStatusLabel(o.status)),
         csvCell(formatDateEn(o.createdAt)),
+        csvCell(o.adminNotes ?? ""),
         csvCell(itemsSummary),
       ].join(",");
     }),

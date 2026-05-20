@@ -1,6 +1,7 @@
 /**
  * Stock service: reserve, release, commit using Prisma transactions.
- * Checkout flow: available = stockAvailable - stockReserved; reserve = increase stockReserved only; commit = decrease both.
+ * Sellable = stockAvailable - stockReserved.
+ * CREATED (unpaid InstaPay): stockReserved only. CONFIRMED+: committed (both counters adjusted).
  */
 
 import type { OrderStatus } from "@prisma/client";
@@ -11,6 +12,11 @@ export type StockLine = {
   variantId: string;
   quantity: number;
 };
+
+/** Unpaid InstaPay orders hold units only in stockReserved until admin confirms or cancels. */
+export function orderUsesReservationOnly(status: OrderStatus): boolean {
+  return status === "CREATED";
+}
 
 export class InsufficientStockError extends Error {
   constructor(
@@ -73,11 +79,24 @@ export async function commitReservation(
 ): Promise<void> {
   for (const { variantId, quantity } of lines) {
     if (quantity <= 0) continue;
+    const v = await tx.variant.findUnique({
+      where: { id: variantId },
+      select: { stockAvailable: true, stockReserved: true },
+    });
+    if (!v) throw new Error(`Variant not found: ${variantId}`);
+    const toCommit = Math.min(quantity, v.stockReserved);
+    if (toCommit < quantity) {
+      throw new InsufficientStockError(
+        variantId,
+        quantity,
+        Math.max(0, v.stockAvailable - v.stockReserved) + toCommit
+      );
+    }
     await tx.variant.update({
       where: { id: variantId },
       data: {
-        stockAvailable: { decrement: quantity },
-        stockReserved: { decrement: quantity },
+        stockAvailable: { decrement: toCommit },
+        stockReserved: { decrement: toCommit },
       },
     });
   }
@@ -215,89 +234,4 @@ export async function reconcileStockForAdminOrderItemEdit(
     return;
   }
   throw new Error(`Stock reconcile not supported for order status: ${orderStatus}`);
-}
-
-/**
- * Reserve stock (legacy): decrease stockAvailable, increase stockReserved.
- * Fails if any variant has insufficient stockAvailable.
- */
-export async function reserveStock(
-  lines: StockLine[]
-): Promise<{ success: true }> {
-  await prisma.$transaction(async (tx) => {
-    for (const { variantId, quantity } of lines) {
-      if (quantity <= 0) continue;
-
-      const v = await tx.variant.findUnique({
-        where: { id: variantId },
-        select: { id: true, stockAvailable: true, stockReserved: true },
-      });
-      if (!v) throw new Error(`Variant not found: ${variantId}`);
-      const available = v.stockAvailable;
-      if (available < quantity) {
-        throw new InsufficientStockError(variantId, quantity, available);
-      }
-
-      await tx.variant.update({
-        where: { id: variantId },
-        data: {
-          stockAvailable: { decrement: quantity },
-          stockReserved: { increment: quantity },
-        },
-      });
-    }
-  });
-  return { success: true };
-}
-
-/**
- * Release reserved stock: increase stockAvailable, decrease stockReserved.
- */
-export async function releaseStock(lines: StockLine[]): Promise<{ success: true }> {
-  await prisma.$transaction(async (tx) => {
-    for (const { variantId, quantity } of lines) {
-      if (quantity <= 0) continue;
-
-      const v = await tx.variant.findUnique({
-        where: { id: variantId },
-        select: { id: true, stockReserved: true },
-      });
-      if (!v) throw new Error(`Variant not found: ${variantId}`);
-      const toRelease = Math.min(quantity, v.stockReserved);
-
-      await tx.variant.update({
-        where: { id: variantId },
-        data: {
-          stockAvailable: { increment: toRelease },
-          stockReserved: { decrement: toRelease },
-        },
-      });
-    }
-  });
-  return { success: true };
-}
-
-/**
- * Commit reserved stock (e.g. on order confirmation): only decrease stockReserved.
- * stockAvailable was already reduced at reserve time.
- */
-export async function commitStock(lines: StockLine[]): Promise<{ success: true }> {
-  await prisma.$transaction(async (tx) => {
-    for (const { variantId, quantity } of lines) {
-      if (quantity <= 0) continue;
-
-      const v = await tx.variant.findUnique({
-        where: { id: variantId },
-        select: { id: true, stockReserved: true },
-      });
-      if (!v) throw new Error(`Variant not found: ${variantId}`);
-      const toCommit = Math.min(quantity, v.stockReserved);
-
-      await tx.variant.update({
-        where: { id: variantId },
-        data: { stockReserved: { decrement: toCommit } },
-      });
-    }
-  });
-  return { success: true };
 }

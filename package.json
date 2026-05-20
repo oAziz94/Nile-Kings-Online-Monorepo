@@ -15,7 +15,9 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "backfill:partner-requests-emails": "tsx scripts/backfill-partner-request-emails.ts"
+    "backfill:partner-requests-emails": "tsx scripts/backfill-partner-request-emails.ts",
+    "inventory:audit": "tsx scripts/inventory-audit.ts",
+    "inventory:rebuild-reserved": "tsx scripts/inventory-rebuild-reserved.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.0",

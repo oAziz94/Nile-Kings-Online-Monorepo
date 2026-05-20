@@ -10,12 +10,14 @@ import { isSeniorPromoEnabled } from "@/lib/settings";
 import {
   releaseReservation,
   restoreCommittedStock,
+  commitReservation,
   reconcileStockForAdminOrderItemEdit,
   stockLinesEquivalent,
+  orderUsesReservationOnly,
   InsufficientStockError,
   type StockLine,
 } from "@/lib/services/stock";
-import { logOrderCancelled } from "@/lib/audit/order-audit";
+import { logOrderCancelled, logOrderConfirmed, logOrderStatusChange } from "@/lib/audit/order-audit";
 
 const ORDER_STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
 
@@ -101,6 +103,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     savedAddressId?: string;
     items?: IncomingItem[];
     cancellationReason?: string | null;
+    adminNotes?: string | null;
   };
   try {
     body = await req.json();
@@ -116,7 +119,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       ? body.items
       : undefined;
 
-  if (!nextStatus && !nextUserId && !nextSavedAddressId && !nextItems) {
+  if (
+    !nextStatus &&
+    !nextUserId &&
+    !nextSavedAddressId &&
+    !nextItems &&
+    body.adminNotes === undefined
+  ) {
     return apiBadRequest("لا توجد حقول للتحديث");
   }
   if (nextStatus && !ORDER_STATUSES.includes(nextStatus as (typeof ORDER_STATUSES)[number])) {
@@ -131,6 +140,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
 
   const transitioningToCancelled =
     nextStatus === "CANCELLED" && existing.status !== "CANCELLED";
+  const leavingCreated =
+    existing.status === "CREATED" &&
+    !!nextStatus &&
+    nextStatus !== "CREATED" &&
+    nextStatus !== "CANCELLED";
   if (transitioningToCancelled && nextItems) {
     return apiBadRequest("لا يمكن تعديل أصناف الطلب مع إلغائه في نفس الطلب");
   }
@@ -144,6 +158,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   const data: Prisma.OrderUpdateInput = {};
   let nextItemsWeightGrams: number | undefined;
   let nextItemsAfterDiscounts: number | undefined;
+  if (body.adminNotes !== undefined) {
+    data.adminNotes = body.adminNotes === "" ? null : String(body.adminNotes).trim();
+  }
   if (nextStatus) data.status = nextStatus as (typeof ORDER_STATUSES)[number];
 
   if (nextItems) {
@@ -334,6 +351,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     return apiBadRequest("لا يمكن تعديل أصناف طلب ملغى");
   }
 
+  type OrderTx = Omit<
+    typeof prisma,
+    "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+  >;
+
+  async function applyInstaPayCapture(tx: OrderTx, orderId: string) {
+    await tx.paymentAttempt.updateMany({
+      where: { orderId, status: "PENDING" },
+      data: { status: "CAPTURED" },
+    });
+  }
+
+  const isInstaPayPrepaid = existing.paymentMethod === "INSTAPAY_PREPAID";
+
+  async function applyLeavingCreatedStock(tx: OrderTx, lines: StockLine[]) {
+    await commitReservation(tx, lines);
+    data.reservationExpiresAt = null;
+    if (nextStatus === "CONFIRMED") {
+      await logOrderConfirmed(tx, id);
+    } else if (nextStatus) {
+      await logOrderStatusChange(tx, id, "CREATED", nextStatus);
+    }
+    if (isInstaPayPrepaid) {
+      await applyInstaPayCapture(tx, id);
+    }
+  }
+
   if (transitioningToCancelled) {
     const stockLines = existing.items.map((i) => ({
       variantId: i.variantId,
@@ -343,7 +387,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       typeof data.cancellationReason === "string" ? data.cancellationReason : "admin";
     const order = await prisma.$transaction(
       async (tx) => {
-        if (existing.status === "CREATED") {
+        if (orderUsesReservationOnly(existing.status)) {
           await releaseReservation(tx, stockLines);
         } else {
           await restoreCommittedStock(tx, stockLines);
@@ -362,14 +406,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
 
   if (itemEditChangesStock) {
     try {
+      const linesAfterEdit = newItemStockLines!;
       const order = await prisma.$transaction(
         async (tx) => {
           await reconcileStockForAdminOrderItemEdit(
             tx,
             existing.status,
             oldItemStockLines,
-            newItemStockLines!
+            linesAfterEdit
           );
+          if (leavingCreated) {
+            await applyLeavingCreatedStock(tx, linesAfterEdit);
+          }
           return tx.order.update({
             where: { id },
             data,
@@ -382,6 +430,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     } catch (e) {
       if (e instanceof InsufficientStockError) {
         return apiBadRequest("كمية غير متوفرة في المخزون لتعديل الطلب بهذه الأصناف");
+      }
+      throw e;
+    }
+  }
+
+  if (leavingCreated) {
+    try {
+      const order = await prisma.$transaction(
+        async (tx) => {
+          await applyLeavingCreatedStock(tx, oldItemStockLines);
+          return tx.order.update({
+            where: { id },
+            data,
+            include: orderDetailInclude,
+          });
+        },
+        { maxWait: 15_000, timeout: 60_000 }
+      );
+      return apiSuccess(mapOrderDetailApiRow(order));
+    } catch (e) {
+      if (e instanceof InsufficientStockError) {
+        return apiBadRequest("كمية غير متوفرة في المخزون لتأكيد الطلب");
       }
       throw e;
     }
