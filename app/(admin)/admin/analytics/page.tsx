@@ -219,13 +219,13 @@ export default function AdminAnalyticsPage() {
   return (
     <div className={cn("space-y-8 transition-opacity", loading && data && "opacity-70")}>
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-l from-burgundy/8 via-card to-gold/10 p-6 shadow-card">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-l from-burgundy/8 via-card to-gold/10 p-4 shadow-card sm:p-6">
         <div className="pointer-events-none absolute -left-8 -top-8 h-32 w-32 rounded-full bg-burgundy/10 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-10 -right-6 h-28 w-28 rounded-full bg-gold/15 blur-2xl" />
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-foreground">التقارير</h1>
+              <h1 className="text-xl font-bold text-foreground sm:text-2xl">التقارير</h1>
               <Badge variant="success" className="gap-1 font-normal">
                 <CheckCircle2 className="h-3 w-3" />
                 تم التسليم فقط

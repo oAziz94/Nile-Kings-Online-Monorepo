@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AdminTableScroll } from "@/components/admin/admin-table-scroll";
 import {
   Dialog,
   DialogContent,
@@ -481,6 +482,7 @@ export default function AdminProductDetailPage() {
               <Button variant="default" onClick={openAddVariant}>إضافة متغير</Button>
             </div>
           ) : (
+            <AdminTableScroll>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -530,6 +532,7 @@ export default function AdminProductDetailPage() {
                 ))}
               </TableBody>
             </Table>
+            </AdminTableScroll>
           )}
         </CardContent>
       </Card>

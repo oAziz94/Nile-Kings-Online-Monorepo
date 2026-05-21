@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
 import { AdminPaginationBar } from "@/components/admin/admin-pagination";
+import { AdminTableScroll } from "@/components/admin/admin-table-scroll";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -292,6 +293,7 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
               <p className="text-muted-foreground">{debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات شراكة"}</p>
             </div>
           ) : (
+            <AdminTableScroll>
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
@@ -348,6 +350,7 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
                 ))}
               </TableBody>
             </Table>
+            </AdminTableScroll>
           )}
           {total > 0 && (
             <AdminPaginationBar
@@ -591,6 +594,7 @@ function AgentsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
               <p className="text-muted-foreground">{debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد وكلاء"}</p>
             </div>
           ) : (
+            <AdminTableScroll>
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
@@ -619,6 +623,7 @@ function AgentsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
                 ))}
               </TableBody>
             </Table>
+            </AdminTableScroll>
           )}
           {total > 0 && (
             <AdminPaginationBar
@@ -765,6 +770,7 @@ function DistributorsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"
               <p className="text-muted-foreground">{debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد موزعين"}</p>
             </div>
           ) : (
+            <AdminTableScroll>
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
@@ -793,6 +799,7 @@ function DistributorsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"
                 ))}
               </TableBody>
             </Table>
+            </AdminTableScroll>
           )}
           {total > 0 && (
             <AdminPaginationBar

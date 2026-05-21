@@ -19,7 +19,7 @@ export function AdminPageHeader({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-l from-burgundy/8 via-card to-gold/10 p-6 shadow-card",
+        "relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-l from-burgundy/8 via-card to-gold/10 p-4 shadow-card sm:p-6",
         className
       )}
     >
@@ -28,7 +28,7 @@ export function AdminPageHeader({
       <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+            <h1 className="text-xl font-bold text-foreground sm:text-2xl">{title}</h1>
             {badge}
           </div>
           {description && (

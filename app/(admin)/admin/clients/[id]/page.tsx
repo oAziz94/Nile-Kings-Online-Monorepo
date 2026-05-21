@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
+import { AdminTableScroll } from "@/components/admin/admin-table-scroll";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { User, MapPin, Package, Loader2, Pencil, ShieldPlus } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
@@ -308,6 +309,7 @@ export default function AdminClientProfilePage() {
           {client.orders.length === 0 ? (
             <p className="text-muted-foreground">لا توجد طلبات.</p>
           ) : (
+            <AdminTableScroll>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -338,6 +340,7 @@ export default function AdminClientProfilePage() {
                 ))}
               </TableBody>
             </Table>
+            </AdminTableScroll>
           )}
           {client._count.orders > client.orders.length && (
             <p className="mt-4 text-sm text-muted-foreground">
