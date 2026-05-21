@@ -20,7 +20,7 @@ import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminPanelCard } from "@/components/admin/admin-panel-card";
 import { AdminSearchInput } from "@/components/admin/admin-search-input";
-import { ShoppingBag, FileDown, FileText, Loader2, ChevronDown } from "lucide-react";
+import { ShoppingBag, FileDown, FileText, Loader2, ChevronDown, Plus } from "lucide-react";
 import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
 import { piastresToEgp } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
@@ -277,6 +277,14 @@ export default function AdminOrdersPage() {
       <AdminPageHeader
         title="الطلبات"
         description="عرض الطلبات، التصدير، وتحديث الحالة من صفحة التفاصيل."
+        actions={
+          <Button asChild className="rounded-xl">
+            <Link href="/admin/orders/new">
+              <Plus className="h-4 w-4" />
+              طلب جديد
+            </Link>
+          </Button>
+        }
       />
       <AdminPanelCard
         title="قائمة الطلبات"

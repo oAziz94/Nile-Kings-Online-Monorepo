@@ -1,7 +1,12 @@
 import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { apiSuccess, apiUnauthorized, apiForbidden } from "@/lib/api/response";
+import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/api/response";
+import { normalizePhone } from "@/lib/auth/otp";
+import { hashPassword } from "@/lib/auth/password";
+import { parseCreateAddressInput } from "@/lib/admin/address";
+
+const MIN_PASSWORD_LEN = 8;
 
 export async function GET(req: NextRequest) {
   try {
@@ -55,4 +60,102 @@ export async function GET(req: NextRequest) {
   ]);
 
   return apiSuccess({ clients, total, limit, offset });
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    await requireAdmin();
+  } catch (e: unknown) {
+    const err = e as { status?: number };
+    if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
+    if (err.status === 403) return apiForbidden("غير مصرح");
+    throw e;
+  }
+
+  let body: {
+    phone?: string;
+    name?: string;
+    email?: string;
+    password?: string;
+    address?: unknown;
+  };
+  try {
+    body = await req.json();
+  } catch {
+    return apiBadRequest("جسم الطلب غير صالح");
+  }
+
+  const phone = body.phone?.trim();
+  const name = body.name?.trim();
+  const email = body.email?.trim() || null;
+  const password = body.password;
+
+  if (!phone) return apiBadRequest("رقم الجوال مطلوب");
+  if (!name || name.length < 2) return apiBadRequest("الاسم مطلوب (حرفان على الأقل)");
+  if (!password || password.length < MIN_PASSWORD_LEN) {
+    return apiBadRequest(`كلمة المرور مطلوبة (${MIN_PASSWORD_LEN} أحرف على الأقل)`);
+  }
+
+  const addressParsed = parseCreateAddressInput(body.address);
+  if (!addressParsed.ok) return apiBadRequest(addressParsed.message);
+
+  const normalizedPhone = normalizePhone(phone);
+
+  const existing = await prisma.user.findUnique({
+    where: { phone: normalizedPhone },
+  });
+  if (existing) {
+    return apiBadRequest("هذا الرقم مسجّل مسبقاً");
+  }
+
+  const passwordHash = await hashPassword(password);
+  const { address } = addressParsed;
+
+  const user = await prisma.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: {
+        phone: normalizedPhone,
+        passwordHash,
+        name,
+        email,
+        role: "CUSTOMER",
+      },
+      select: {
+        id: true,
+        phone: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    if (address.isDefault) {
+      await tx.savedAddress.updateMany({
+        where: { userId: created.id },
+        data: { isDefault: false },
+      });
+    }
+
+    await tx.savedAddress.create({
+      data: {
+        userId: created.id,
+        label: address.label,
+        governorate: address.governorate,
+        city: address.city,
+        area: address.area,
+        street: address.street,
+        building: address.building,
+        floor: address.floor,
+        apartment: address.apartment,
+        notes: address.notes,
+        phone: address.phone,
+        isDefault: address.isDefault ?? true,
+      },
+    });
+
+    return created;
+  });
+
+  return apiSuccess({ user }, "تم إنشاء العميل", 201);
 }
