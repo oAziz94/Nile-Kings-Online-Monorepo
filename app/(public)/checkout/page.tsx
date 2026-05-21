@@ -30,6 +30,10 @@ import {
 import { cn } from "@/lib/utils";
 import { parseJsonResponse } from "@/lib/api/parse-json";
 import { formatNumberEn } from "@/lib/format-en-numbers";
+import {
+  isCheckoutAddressComplete,
+  isSavedAddressIncomplete,
+} from "@/lib/addresses/completeness";
 
 type Summary = {
   subtotal: number;
@@ -124,6 +128,8 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [useNewAddress, setUseNewAddress] = useState(false);
   const [address, setAddress] = useState(emptyAddress);
+  /** City entered at checkout when a saved address predates the required city field. */
+  const [pendingCity, setPendingCity] = useState("");
 
   const [paymentMethod, setPaymentMethod] = useState<string>(CHECKOUT_PAYMENT_OPTIONS[0].value);
   const [couponCode, setCouponCode] = useState("");
@@ -161,12 +167,43 @@ export default function CheckoutPage() {
     }
   };
 
-  // Resolve effective delivery address from saved selection or new-address form
-  const currentAddress = useNewAddress
-    ? address
-    : savedAddresses.find((a) => a.id === selectedAddressId)
-      ? savedToAddress(savedAddresses.find((a) => a.id === selectedAddressId)!)
-      : null;
+  const selectedSavedAddress = !useNewAddress && selectedAddressId
+    ? savedAddresses.find((a) => a.id === selectedAddressId) ?? null
+    : null;
+
+  const needsCityCompletion = !!selectedSavedAddress && isSavedAddressIncomplete(selectedSavedAddress);
+
+  const resolveCheckoutAddress = useCallback((): typeof emptyAddress | null => {
+    if (useNewAddress) return address;
+    if (!selectedSavedAddress) return null;
+    const base = savedToAddress(selectedSavedAddress);
+    const city = (pendingCity.trim() || selectedSavedAddress.city?.trim() || "").trim();
+    return { ...base, city };
+  }, [useNewAddress, address, selectedSavedAddress, pendingCity]);
+
+  const currentAddress = resolveCheckoutAddress();
+
+  async function persistSavedAddressCity(addressId: string, city: string): Promise<boolean> {
+    const res = await fetch(`/api/profile/addresses/${addressId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ city: city.trim() }),
+    });
+    const json = await parseJsonResponse<{ success?: boolean; error?: { message?: string } }>(res);
+    if (!json?.success) {
+      toast({
+        title: json?.error?.message ?? "تعذر حفظ المدينة على العنوان",
+        variant: "destructive",
+      });
+      return false;
+    }
+    setSavedAddresses((prev) =>
+      prev.map((a) => (a.id === addressId ? { ...a, city: city.trim() } : a))
+    );
+    setPendingCity("");
+    return true;
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -197,6 +234,7 @@ export default function CheckoutPage() {
           setSavedAddresses(json.data);
           const defaultAddr = json.data.find((a) => a.isDefault) ?? json.data[0];
           setSelectedAddressId(defaultAddr.id);
+          setPendingCity(defaultAddr.city?.trim() ?? "");
           setUseNewAddress(false);
         } else {
           setUseNewAddress(true);
@@ -213,20 +251,13 @@ export default function CheckoutPage() {
     }
   }, [profilePhone, useNewAddress, address.phone]);
 
-  // Fetch summary when delivery address or options change. Resolve address inside effect from current state so we never use stale data.
+  // Fetch summary when delivery address or options change.
   useEffect(() => {
     if (!authChecked || isGuest) return;
 
-    const addr = useNewAddress
-      ? address
-      : selectedAddressId
-        ? (() => {
-          const saved = savedAddresses.find((a) => a.id === selectedAddressId);
-          return saved ? savedToAddress(saved) : null;
-        })()
-        : null;
+    const addr = resolveCheckoutAddress();
 
-    if (!addr || !addr.governorate.trim() || !addr.city.trim() || !addr.area.trim() || !addr.street.trim() || !addr.phone.trim()) {
+    if (!addr || !isCheckoutAddressComplete(addr)) {
       setSummary(null);
       return;
     }
@@ -271,21 +302,9 @@ export default function CheckoutPage() {
   }, [
     authChecked,
     isGuest,
-    selectedAddressId,
-    useNewAddress,
+    resolveCheckoutAddress,
     paymentMethod,
     appliedCouponCode,
-    address.governorate,
-    address.street,
-    address.phone,
-    address.city,
-    address.area,
-    // Refetch when saved list gets the selected id (e.g. after load)
-    savedAddresses.length,
-    savedAddresses.find((a) => a.id === selectedAddressId)?.governorate,
-    savedAddresses.find((a) => a.id === selectedAddressId)?.street,
-    savedAddresses.find((a) => a.id === selectedAddressId)?.city,
-    savedAddresses.find((a) => a.id === selectedAddressId)?.phone,
     router,
     toast,
   ]);
@@ -307,8 +326,13 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     const addr = currentAddress;
-    if (!addr || !addr.governorate.trim() || !addr.city.trim() || !addr.area.trim() || !addr.street.trim() || !addr.phone.trim()) {
-      toast({ title: "اختر عنوان توصيل أو أكمل البيانات (المدينة والمنطقة والعنوان بالتفصيل والهاتف)", variant: "destructive" });
+    if (!addr || !isCheckoutAddressComplete(addr)) {
+      toast({
+        title: needsCityCompletion && !pendingCity.trim()
+          ? "أدخل المدينة لإكمال العنوان المحفوظ"
+          : "اختر عنوان توصيل أو أكمل البيانات (المدينة والمنطقة والعنوان بالتفصيل والهاتف)",
+        variant: "destructive",
+      });
       return;
     }
     if (!summary) {
@@ -321,6 +345,10 @@ export default function CheckoutPage() {
     }
     setPlaceLoading(true);
     try {
+      if (selectedSavedAddress && isSavedAddressIncomplete(selectedSavedAddress)) {
+        const ok = await persistSavedAddressCity(selectedSavedAddress.id, addr.city);
+        if (!ok) return;
+      }
       if (useNewAddress) {
         const saveBody = {
           label: addr.label?.trim() || null,
@@ -363,8 +391,21 @@ export default function CheckoutPage() {
   const handleInstaPayConfirm = async () => {
     const addr = currentAddress;
     if (!addr || !summary) return;
+    if (!isCheckoutAddressComplete(addr)) {
+      toast({
+        title: needsCityCompletion && !pendingCity.trim()
+          ? "أدخل المدينة لإكمال العنوان المحفوظ"
+          : "أكمل بيانات عنوان التوصيل",
+        variant: "destructive",
+      });
+      return;
+    }
     setInstaPayConfirmLoading(true);
     try {
+      if (selectedSavedAddress && isSavedAddressIncomplete(selectedSavedAddress)) {
+        const ok = await persistSavedAddressCity(selectedSavedAddress.id, addr.city);
+        if (!ok) return;
+      }
       if (useNewAddress) {
         const saveBody = {
           label: addr.label?.trim() || null,
@@ -482,6 +523,7 @@ export default function CheckoutPage() {
                       onClick={() => {
                         setSelectedAddressId(a.id);
                         setUseNewAddress(false);
+                        setPendingCity(a.city?.trim() ?? "");
                       }}
                       className={cn(
                         "w-full rounded-xl border p-4 text-right transition-colors",
@@ -490,11 +532,18 @@ export default function CheckoutPage() {
                           : "border-border hover:bg-muted/50"
                       )}
                     >
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-medium text-foreground">{a.label || a.governorate}</span>
-                        {a.isDefault && (
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">افتراضي</span>
-                        )}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {isSavedAddressIncomplete(a) && (
+                            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                              يحتاج المدينة
+                            </span>
+                          )}
+                          {a.isDefault && (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">افتراضي</span>
+                          )}
+                        </div>
                       </div>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {[a.governorate, a.city, a.area, a.street].filter(Boolean).join("، ")}
@@ -503,6 +552,26 @@ export default function CheckoutPage() {
                     </button>
                   ))}
                 </div>
+                {needsCityCompletion && selectedSavedAddress && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+                    <p className="text-sm font-medium text-foreground">
+                      هذا العنوان قديم ولا يتضمن المدينة. أدخل المدينة لمتابعة الطلب.
+                    </p>
+                    <div className="mt-3">
+                      <label className="mb-1 block text-sm font-medium text-foreground">المدينة *</label>
+                      <Input
+                        value={pendingCity}
+                        onChange={(e) => setPendingCity(e.target.value)}
+                        placeholder="مثال: مدينة نصر"
+                        className="rounded-xl"
+                        required
+                      />
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      سيتم حفظ المدينة على هذا العنوان تلقائياً عند تأكيد الطلب.
+                    </p>
+                  </div>
+                )}
                 <p className="text-sm text-muted-foreground">أو</p>
                 <Button
                   type="button"
@@ -511,6 +580,7 @@ export default function CheckoutPage() {
                   onClick={() => {
                     setUseNewAddress(true);
                     setSelectedAddressId(null);
+                    setPendingCity("");
                     setAddress((a) => ({ ...a, phone: profilePhone || a.phone }));
                   }}
                 >

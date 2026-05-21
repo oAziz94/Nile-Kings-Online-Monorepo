@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/db";
 import { getWhatsAppService } from "@/lib/services/whatsapp";
 import { buildOrderAssignmentMessage } from "./message";
+import { getCourierFacingShippingPiastres } from "@/lib/services/shipping";
 
 export type AssignResult =
   | { assigned: true; routedOrderId: string; partnerId: string; notified: boolean }
@@ -120,7 +121,7 @@ export async function assignOrderToGovernorate(orderId: string): Promise<AssignR
       id: order.id,
       createdAt: order.createdAt,
       paymentMethod: order.paymentMethod,
-      shippingPiastres: order.shippingPiastres,
+      courierShippingPiastres: getCourierFacingShippingPiastres(order),
       totalPiastres: order.totalPiastres,
       shippingAddress: order.shippingAddress,
       user: order.user,

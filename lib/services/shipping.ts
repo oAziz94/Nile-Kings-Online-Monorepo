@@ -14,6 +14,15 @@ export const PHASE1_SHIPPING_PROVIDER_DISPLAY = "Egypt Post" as const;
 export const SHIPPING_PROVIDERS = [PHASE1_SHIPPING_PROVIDER_DISPLAY] as const;
 export type ShippingProvider = (typeof SHIPPING_PROVIDERS)[number];
 
+/** Shipping amount shown to courier/partner (Wasalha only). Falls back for orders before carrier split. */
+export function getCourierFacingShippingPiastres(order: {
+  shippingPiastres: number;
+  carrierShippingPiastres?: number | null;
+}): number {
+  const carrier = order.carrierShippingPiastres ?? 0;
+  return carrier > 0 ? carrier : order.shippingPiastres;
+}
+
 export type ShippingAddress = {
   governorate: string;
   city?: string | null;
@@ -23,7 +32,10 @@ export type ShippingAddress = {
 export type ShippingOption = {
   ruleId: string;
   provider: string;
+  /** Customer-facing shipping (carrier + shop surcharges). */
   feePiastres: number;
+  /** Egypt Post Wasalha only — for courier/partner export. */
+  carrierFeePiastres: number;
   governorate: string;
   city: string | null;
   area: string | null;
@@ -82,6 +94,7 @@ export function getPhase1ShippingFee(
     ruleId: `${PHASE1_CARRIER}-${PHASE1_SERVICE}`,
     provider: PHASE1_SHIPPING_PROVIDER_DISPLAY,
     feePiastres: result.breakdown.feePiastres,
+    carrierFeePiastres: result.breakdown.carrierFeePiastres,
     governorate: address.governorate,
     city: address.city ?? null,
     area: address.area ?? null,

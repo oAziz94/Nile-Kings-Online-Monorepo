@@ -1,5 +1,5 @@
 /**
- * Unit tests for Egypt Post Phase 1 shipping: governorate mapping, weight, margin, final calculation.
+ * Unit tests for Egypt Post Phase 1 shipping: governorate mapping, weight, margin, prep, carrier vs customer fee.
  */
 
 import { describe, it, expect } from "vitest";
@@ -13,6 +13,7 @@ import {
   INSURANCE_FEE_EGP,
   VAT_RATE,
   MARGIN_FLOOR_EGP,
+  PREP_SERVICE_FEE_EGP,
 } from "./index";
 
 describe("governorateToZone", () => {
@@ -84,15 +85,15 @@ describe("calculateExtraWeightCharge", () => {
 
 describe("calculateMargin", () => {
   it("uses 10% of (base + extra weight) when >= 5 EGP", () => {
-    expect(calculateMargin(55, 0)).toBe(5.5); // 55 * 0.1 = 5.5
+    expect(calculateMargin(55, 0)).toBe(5.5);
     expect(calculateMargin(60, 0)).toBe(6);
     expect(calculateMargin(55, 7)).toBeCloseTo(6.2, 10);
   });
 
   it("uses minimum 5 EGP when 10% is below 5", () => {
-    expect(calculateMargin(30, 0)).toBe(5); // 30 * 0.1 = 3, floor 5
+    expect(calculateMargin(30, 0)).toBe(5);
     expect(calculateMargin(40, 0)).toBe(5);
-    expect(calculateMargin(49, 0)).toBe(5); // 4.9 < 5
+    expect(calculateMargin(49, 0)).toBe(5);
   });
 });
 
@@ -105,36 +106,43 @@ describe("calculateShippingPhase1ByZone", () => {
     }
   });
 
-  it("calculates CAIRO_METRO to CAIRO_METRO for 2 kg: base 55 + insurance 0.5 + margin 5.5, then VAT 14%", () => {
+  it("calculates CAIRO_METRO 2 kg: carrier VAT on base+insurance only; customer adds margin+prep", () => {
     const result = calculateShippingPhase1ByZone(2, "CAIRO_METRO");
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.breakdown.baseShippingEGP).toBe(CAIRO_ORIGIN_PRICE_TABLE.CAIRO_METRO);
-      expect(result.breakdown.baseShippingEGP).toBe(55);
-      expect(result.breakdown.extraWeightChargeEGP).toBe(0);
-      expect(result.breakdown.insuranceFeeEGP).toBe(INSURANCE_FEE_EGP);
-      expect(result.breakdown.marginAmountEGP).toBe(5.5);
-      const subtotal = 55 + 0 + 0.5 + 5.5;
-      expect(result.breakdown.subtotalBeforeVatEGP).toBe(subtotal);
-      expect(result.breakdown.vatAmountEGP).toBeCloseTo(subtotal * VAT_RATE, 2);
-      expect(result.breakdown.finalShippingEGP).toBeCloseTo(subtotal * (1 + VAT_RATE), 2);
-      expect(result.breakdown.feePiastres).toBe(Math.round(result.breakdown.finalShippingEGP * 100));
+      const b = result.breakdown;
+      expect(b.baseShippingEGP).toBe(CAIRO_ORIGIN_PRICE_TABLE.CAIRO_METRO);
+      expect(b.baseShippingEGP).toBe(55);
+      expect(b.extraWeightChargeEGP).toBe(0);
+      expect(b.insuranceFeeEGP).toBe(INSURANCE_FEE_EGP);
+      expect(b.marginAmountEGP).toBe(5.5);
+      expect(b.prepServiceFeeEGP).toBe(PREP_SERVICE_FEE_EGP);
+
+      const carrierSubtotal = 55 + 0 + 0.5;
+      expect(b.carrierSubtotalBeforeVatEGP).toBe(carrierSubtotal);
+      expect(b.carrierVatAmountEGP).toBeCloseTo(carrierSubtotal * VAT_RATE, 2);
+      expect(b.carrierShippingEGP).toBeCloseTo(carrierSubtotal * (1 + VAT_RATE), 2);
+      expect(b.carrierFeePiastres).toBe(Math.round(b.carrierShippingEGP * 100));
+
+      expect(b.customerShippingEGP).toBeCloseTo(
+        b.carrierShippingEGP + b.marginAmountEGP + b.prepServiceFeeEGP,
+        2
+      );
+      expect(b.feePiastres).toBe(Math.round(b.customerShippingEGP * 100));
+      expect(b.feePiastres).toBeGreaterThan(b.carrierFeePiastres);
     }
   });
 
-  it("calculates REMOTE for 5 kg: base 110 + 21 extra + 0.5 insurance + margin, then VAT", () => {
+  it("calculates REMOTE for 5 kg with carrier and customer fees", () => {
     const result = calculateShippingPhase1ByZone(5, "REMOTE");
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.breakdown.baseShippingEGP).toBe(110);
-      expect(result.breakdown.extraWeightChargeEGP).toBe(21); // ceil(5-2)*7 = 21
-      expect(result.breakdown.insuranceFeeEGP).toBe(0.5);
-      expect(result.breakdown.marginAmountEGP).toBe(Math.max((110 + 21) * 0.1, MARGIN_FLOOR_EGP));
-      expect(result.breakdown.marginAmountEGP).toBeCloseTo(13.1, 10);
-      const subtotal =
-        110 + 21 + 0.5 + result.breakdown.marginAmountEGP;
-      expect(result.breakdown.subtotalBeforeVatEGP).toBeCloseTo(subtotal, 2);
-      expect(result.breakdown.feePiastres).toBeGreaterThan(0);
+      const b = result.breakdown;
+      expect(b.baseShippingEGP).toBe(110);
+      expect(b.extraWeightChargeEGP).toBe(21);
+      expect(b.marginAmountEGP).toBeCloseTo(13.1, 10);
+      expect(b.carrierSubtotalBeforeVatEGP).toBeCloseTo(110 + 21 + 0.5, 2);
+      expect(b.feePiastres).toBeGreaterThan(b.carrierFeePiastres);
     }
   });
 });
@@ -152,13 +160,14 @@ describe("calculateShippingPhase1 (by governorate)", () => {
     if (!r.ok) expect(r.reason).toBe("UNKNOWN_ZONE");
   });
 
-  it("returns same fee as ByZone for القاهرة 2 kg", () => {
+  it("returns same fees as ByZone for القاهرة 2 kg", () => {
     const byGov = calculateShippingPhase1(2, "القاهرة");
     const byZone = calculateShippingPhase1ByZone(2, "CAIRO_METRO");
     expect(byGov.ok).toBe(true);
     expect(byZone.ok).toBe(true);
     if (byGov.ok && byZone.ok) {
       expect(byGov.breakdown.feePiastres).toBe(byZone.breakdown.feePiastres);
+      expect(byGov.breakdown.carrierFeePiastres).toBe(byZone.breakdown.carrierFeePiastres);
       expect(byGov.breakdown.zone).toBe("CAIRO_METRO");
     }
   });

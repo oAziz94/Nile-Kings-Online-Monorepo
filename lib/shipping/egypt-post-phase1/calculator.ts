@@ -1,6 +1,7 @@
 /**
  * Egypt Post Wasalha Phase 1 shipping calculator.
- * Origin always Cairo; single carrier; no pickup fee; includes insurance and margin; VAT 14%.
+ * Carrier fee: base + extra weight + insurance + VAT (shown to courier).
+ * Shop surcharges: margin + prep (customer pays; hidden from courier).
  */
 
 import {
@@ -11,6 +12,7 @@ import {
   MARGIN_FLOOR_EGP,
   FIRST_KG_LIMIT,
   EXTRA_KG_EGP,
+  PREP_SERVICE_FEE_EGP,
   type DestinationZone,
 } from "./constants";
 import { governorateToZone } from "./constants";
@@ -20,10 +22,16 @@ export type Phase1ShippingBreakdown = {
   baseShippingEGP: number;
   extraWeightChargeEGP: number;
   insuranceFeeEGP: number;
+  /** 10% of (base + extra), min 5 EGP — not in carrier fee */
   marginAmountEGP: number;
-  subtotalBeforeVatEGP: number;
-  vatAmountEGP: number;
-  finalShippingEGP: number;
+  prepServiceFeeEGP: number;
+  /** Carrier: (base + extra + insurance) before VAT */
+  carrierSubtotalBeforeVatEGP: number;
+  carrierVatAmountEGP: number;
+  carrierShippingEGP: number;
+  carrierFeePiastres: number;
+  /** Customer shipping = carrier + margin + prep (no extra VAT on surcharges) */
+  customerShippingEGP: number;
   feePiastres: number;
 };
 
@@ -32,7 +40,7 @@ export type Phase1ShippingResult =
   | { ok: false; reason: "MISSING_WEIGHT" | "MISSING_GOVERNORATE" | "UNKNOWN_ZONE" | "MANUAL_REVIEW" };
 
 /**
- * Calculate extra weight charge: 0 for first 2 kg, then ceil(weightKg - 2) * 6 EGP.
+ * Calculate extra weight charge: 0 for first 2 kg, then ceil(weightKg - 2) * 7 EGP.
  */
 export function calculateExtraWeightCharge(weightKg: number): number {
   if (weightKg <= FIRST_KG_LIMIT) return 0;
@@ -41,16 +49,45 @@ export function calculateExtraWeightCharge(weightKg: number): number {
 }
 
 /**
- * Calculate margin: max(10% of (base + extra weight), 5 EGP).
+ * Calculate margin: max(10% of (base + extra weight), 5 EGP). Excluded from courier fee.
  */
 export function calculateMargin(baseShippingEGP: number, extraWeightChargeEGP: number): number {
   const fromPercent = (baseShippingEGP + extraWeightChargeEGP) * MARGIN_PERCENT;
   return Math.max(fromPercent, MARGIN_FLOOR_EGP);
 }
 
+function buildBreakdown(
+  zone: DestinationZone,
+  baseShippingEGP: number,
+  extraWeightChargeEGP: number
+): Phase1ShippingBreakdown {
+  const marginAmountEGP = calculateMargin(baseShippingEGP, extraWeightChargeEGP);
+  const prepServiceFeeEGP = PREP_SERVICE_FEE_EGP;
+
+  const carrierSubtotalBeforeVatEGP =
+    baseShippingEGP + extraWeightChargeEGP + INSURANCE_FEE_EGP;
+  const carrierVatAmountEGP = carrierSubtotalBeforeVatEGP * VAT_RATE;
+  const carrierShippingEGP = carrierSubtotalBeforeVatEGP + carrierVatAmountEGP;
+  const customerShippingEGP = carrierShippingEGP + marginAmountEGP + prepServiceFeeEGP;
+
+  return {
+    zone,
+    baseShippingEGP,
+    extraWeightChargeEGP,
+    insuranceFeeEGP: INSURANCE_FEE_EGP,
+    marginAmountEGP,
+    prepServiceFeeEGP,
+    carrierSubtotalBeforeVatEGP,
+    carrierVatAmountEGP,
+    carrierShippingEGP,
+    carrierFeePiastres: Math.round(carrierShippingEGP * 100),
+    customerShippingEGP,
+    feePiastres: Math.round(customerShippingEGP * 100),
+  };
+}
+
 /**
  * Full Phase 1 shipping calculation from governorate and weight (kg).
- * Returns result with breakdown or error reason.
  */
 export function calculateShippingPhase1(
   weightKg: number,
@@ -74,27 +111,9 @@ export function calculateShippingPhase1(
   }
 
   const extraWeightChargeEGP = calculateExtraWeightCharge(weightKg);
-  const marginAmountEGP = calculateMargin(baseShippingEGP, extraWeightChargeEGP);
-
-  const subtotalBeforeVatEGP =
-    baseShippingEGP + extraWeightChargeEGP + INSURANCE_FEE_EGP + marginAmountEGP;
-  const vatAmountEGP = subtotalBeforeVatEGP * VAT_RATE;
-  const finalShippingEGP = subtotalBeforeVatEGP + vatAmountEGP;
-  const feePiastres = Math.round(finalShippingEGP * 100);
-
   return {
     ok: true,
-    breakdown: {
-      zone,
-      baseShippingEGP,
-      extraWeightChargeEGP,
-      insuranceFeeEGP: INSURANCE_FEE_EGP,
-      marginAmountEGP,
-      subtotalBeforeVatEGP,
-      vatAmountEGP,
-      finalShippingEGP,
-      feePiastres,
-    },
+    breakdown: buildBreakdown(zone, baseShippingEGP, extraWeightChargeEGP),
   };
 }
 
@@ -113,24 +132,8 @@ export function calculateShippingPhase1ByZone(
     return { ok: false, reason: "MANUAL_REVIEW" };
   }
   const extraWeightChargeEGP = calculateExtraWeightCharge(weightKg);
-  const marginAmountEGP = calculateMargin(baseShippingEGP, extraWeightChargeEGP);
-  const subtotalBeforeVatEGP =
-    baseShippingEGP + extraWeightChargeEGP + INSURANCE_FEE_EGP + marginAmountEGP;
-  const vatAmountEGP = subtotalBeforeVatEGP * VAT_RATE;
-  const finalShippingEGP = subtotalBeforeVatEGP + vatAmountEGP;
-  const feePiastres = Math.round(finalShippingEGP * 100);
   return {
     ok: true,
-    breakdown: {
-      zone: destinationZone,
-      baseShippingEGP,
-      extraWeightChargeEGP,
-      insuranceFeeEGP: INSURANCE_FEE_EGP,
-      marginAmountEGP,
-      subtotalBeforeVatEGP,
-      vatAmountEGP,
-      finalShippingEGP,
-      feePiastres,
-    },
+    breakdown: buildBreakdown(destinationZone, baseShippingEGP, extraWeightChargeEGP),
   };
 }

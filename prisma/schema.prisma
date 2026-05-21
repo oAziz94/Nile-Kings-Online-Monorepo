@@ -321,8 +321,9 @@ model Order {
   subtotalPiastres      Int
   discountPiastres      Int          @default(0)   // coupon discount
   seniorFreeValuePiastres Int        @default(0)   // senior buy-2-get-1-free value
-  shippingPiastres      Int          @default(0)
-  codFeePiastres        Int          @default(0)
+  shippingPiastres        Int          @default(0) // customer-facing (carrier + shop surcharges)
+  carrierShippingPiastres Int          @default(0) // Wasalha only; courier/partner messages
+  codFeePiastres          Int          @default(0)
   totalPiastres         Int
   shippingAddress       Json         // governorate, city, area, street, building, floor, apartment, notes, phone
   shippingProvider      String       // Phase 1: "Egypt Post" only

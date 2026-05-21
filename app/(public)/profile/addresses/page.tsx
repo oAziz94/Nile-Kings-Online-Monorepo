@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { parseJsonResponse } from "@/lib/api/parse-json";
+import { isSavedAddressIncomplete } from "@/lib/addresses/completeness";
 import { MapPin, Plus, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -61,7 +62,14 @@ export default function ProfileAddressesPage() {
         return parseJsonResponse<{ success?: boolean; data?: SavedAddress[] }>(res);
       })
       .then((json) => {
-        if (json?.success && json.data) setList(json.data);
+        if (json?.success && json.data) {
+          const sorted = [...json.data].sort((a, b) => {
+            const aIncomplete = isSavedAddressIncomplete(a) ? 0 : 1;
+            const bIncomplete = isSavedAddressIncomplete(b) ? 0 : 1;
+            return aIncomplete - bIncomplete;
+          });
+          setList(sorted);
+        }
       })
       .finally(() => setLoading(false));
   };
@@ -286,9 +294,14 @@ export default function ProfileAddressesPage() {
               className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border bg-card p-4 sm:p-5"
             >
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {a.label && (
                     <span className="font-medium text-foreground">{a.label}</span>
+                  )}
+                  {isSavedAddressIncomplete(a) && (
+                    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                      يحتاج المدينة
+                    </span>
                   )}
                   {a.isDefault && (
                     <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">

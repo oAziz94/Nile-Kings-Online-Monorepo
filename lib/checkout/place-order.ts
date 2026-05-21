@@ -211,6 +211,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
             discountPiastres: summary.couponDiscount,
             seniorFreeValuePiastres: summary.seniorFreeValue,
             shippingPiastres: summary.shippingFee,
+            carrierShippingPiastres: summary.carrierShippingFee,
             codFeePiastres: summary.codFee,
             totalPiastres: summary.finalTotal,
             shippingAddress: input.address as object,

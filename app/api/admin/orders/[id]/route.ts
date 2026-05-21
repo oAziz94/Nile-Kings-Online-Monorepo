@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { getPhase1ShippingFee, PHASE1_SHIPPING_PROVIDER_DISPLAY } from "@/lib/services/shipping";
 import { getCodFeePercent } from "@/lib/settings";
+import { computeCodFeePiastres } from "@/lib/checkout/cod-fee";
 import { computePricing } from "@/lib/services/pricing";
 import { isSeniorPromoEnabled } from "@/lib/settings";
 import {
@@ -228,9 +229,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
 
     const beforeCod = pricing.totalPiastres + shippingOption.feePiastres;
     const codFeePercent = await getCodFeePercent();
-    const codFee = existing.paymentMethod === "COD" ? Math.round((beforeCod * codFeePercent) / 100) : 0;
+    const codFee =
+      existing.paymentMethod === "COD"
+        ? computeCodFeePiastres(beforeCod, codFeePercent)
+        : 0;
     const finalTotal = beforeCod + codFee;
-    if ([pricing.subtotalPiastres, pricing.couponDiscountPiastres, pricing.seniorDiscountPiastres, shippingOption.feePiastres, codFee, finalTotal].some((n) => n < 0 || n > INT32_MAX)) {
+    if ([pricing.subtotalPiastres, pricing.couponDiscountPiastres, pricing.seniorDiscountPiastres, shippingOption.feePiastres, shippingOption.carrierFeePiastres, codFee, finalTotal].some((n) => n < 0 || n > INT32_MAX)) {
       return apiBadRequest("قيمة الطلب تتجاوز الحد المسموح");
     }
 
@@ -239,6 +243,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     data.seniorFreeValuePiastres = pricing.seniorDiscountPiastres;
     data.shippingProvider = PHASE1_SHIPPING_PROVIDER_DISPLAY;
     data.shippingPiastres = shippingOption.feePiastres;
+    data.carrierShippingPiastres = shippingOption.carrierFeePiastres;
     data.codFeePiastres = codFee;
     data.totalPiastres = finalTotal;
     data.couponCode = pricing.appliedCouponCode ?? null;
@@ -324,11 +329,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       const codFeePercent = await getCodFeePercent();
       const codFee =
         existing.paymentMethod === "COD"
-          ? Math.round((beforeCod * codFeePercent) / 100)
+          ? computeCodFeePiastres(beforeCod, codFeePercent)
           : 0;
 
       data.shippingProvider = PHASE1_SHIPPING_PROVIDER_DISPLAY;
       data.shippingPiastres = shippingOption.feePiastres;
+      data.carrierShippingPiastres = shippingOption.carrierFeePiastres;
       data.codFeePiastres = codFee;
       data.totalPiastres = beforeCod + codFee;
     }

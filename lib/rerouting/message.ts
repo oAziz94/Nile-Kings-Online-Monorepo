@@ -25,7 +25,8 @@ type OrderForMessage = {
   id: string;
   createdAt: Date;
   paymentMethod: string;
-  shippingPiastres: number;
+  /** Courier-facing Wasalha fee (piastres). */
+  courierShippingPiastres: number;
   totalPiastres: number;
   shippingAddress: unknown;
   user: { name: string | null; phone: string };
@@ -71,7 +72,7 @@ export function buildOrderAssignmentMessage(order: OrderForMessage): string {
   const area = addr.area || "—";
   const fullAddress = buildAddressLine(addr);
   const customerNotes = addr.notes?.trim();
-  const shippingFee = (order.shippingPiastres / 100).toFixed(0);
+  const shippingFee = (order.courierShippingPiastres / 100).toFixed(0);
   const totalEgp = (order.totalPiastres / 100).toFixed(0);
 
   const lines: string[] = [

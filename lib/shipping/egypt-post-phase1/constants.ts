@@ -42,6 +42,9 @@ export const MARGIN_FLOOR_EGP = 5;
 export const FIRST_KG_LIMIT = 2;
 export const EXTRA_KG_EGP = 7;
 
+/** Flat prep service fee (EGP); charged to customer, hidden from courier-facing shipping */
+export const PREP_SERVICE_FEE_EGP = 8;
+
 /**
  * Base shipping price from CAIRO_METRO to each zone (EGP).
  * Origin is always Cairo for Phase 1.

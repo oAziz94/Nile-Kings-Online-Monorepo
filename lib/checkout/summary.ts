@@ -8,6 +8,7 @@ import { computePricing } from "@/lib/services/pricing";
 import { isSeniorPromoEnabled } from "@/lib/settings";
 import type { CheckoutAddress, CheckoutSummary } from "./types";
 import { getCodFeePercent } from "@/lib/settings";
+import { computeCodFeePiastres } from "@/lib/checkout/cod-fee";
 
 export type SummaryInput = {
   userId: string;
@@ -54,7 +55,7 @@ async function buildSummaryFromPricingLines(
   const codFeePercent = await getCodFeePercent();
   const codFee =
     input.paymentMethod === "COD"
-      ? Math.round((orderBeforeCodPiastres * codFeePercent) / 100)
+      ? computeCodFeePiastres(orderBeforeCodPiastres, codFeePercent)
       : 0;
   const finalTotal = pricing.totalPiastres + shippingOption.feePiastres + codFee;
 
@@ -63,6 +64,7 @@ async function buildSummaryFromPricingLines(
     couponDiscount: pricing.couponDiscountPiastres,
     seniorFreeValue: pricing.seniorDiscountPiastres,
     shippingFee: shippingOption.feePiastres,
+    carrierShippingFee: shippingOption.carrierFeePiastres,
     codFee,
     finalTotal,
     appliedCouponCode: pricing.appliedCouponCode,

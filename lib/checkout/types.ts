@@ -31,7 +31,10 @@ export type CheckoutSummary = {
   subtotal: number;
   couponDiscount: number;
   seniorFreeValue: number;
+  /** Customer shipping (carrier + margin + prep). */
   shippingFee: number;
+  /** Wasalha carrier fee only (courier-facing). */
+  carrierShippingFee: number;
   codFee: number;
   finalTotal: number;
   appliedCouponCode: string | null;
