@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/shared/skeleton";
+import { AdminTableScroll } from "@/components/admin/admin-table-scroll";
 import {
   Dialog,
   DialogContent,
@@ -212,6 +213,7 @@ export default function AdminReroutingRuleDetailPage() {
           {rule.partners.length === 0 ? (
             <p className="text-muted-foreground py-4">لا يوجد شركاء. أضف شركاء لتفعيل التوجيه التلقائي.</p>
           ) : (
+            <AdminTableScroll>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -249,6 +251,7 @@ export default function AdminReroutingRuleDetailPage() {
                 ))}
               </TableBody>
             </Table>
+            </AdminTableScroll>
           )}
         </CardContent>
       </Card>

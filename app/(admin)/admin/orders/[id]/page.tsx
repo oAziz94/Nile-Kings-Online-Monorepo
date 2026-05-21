@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
+import { AdminTableScroll } from "@/components/admin/admin-table-scroll";
 
 const STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
 const STATUS_LABELS: Record<string, string> = {
@@ -405,11 +406,11 @@ export default function AdminOrderDetailPage() {
 
   return (
     <div dir="rtl" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" asChild>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Button variant="ghost" size="sm" asChild className="self-start">
           <Link href="/admin/orders">← الطلبات</Link>
         </Button>
-        <h1 className="text-2xl font-bold">طلب #{order.id.slice(0, 8)}</h1>
+        <h1 className="text-xl font-bold sm:text-2xl">طلب #{order.id.slice(0, 8)}</h1>
       </div>
 
       <Card>
@@ -420,7 +421,7 @@ export default function AdminOrderDetailPage() {
         <CardContent className="flex flex-wrap items-end gap-4">
           <div className="grid gap-2">
             <Label>الحالة</Label>
-            <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-48">
+            <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full sm:w-48">
               {STATUSES.map((s) => (
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
@@ -551,6 +552,7 @@ export default function AdminOrderDetailPage() {
           <CardTitle>البنود</CardTitle>
         </CardHeader>
         <CardContent>
+          <AdminTableScroll>
           <Table>
             <TableHeader>
               <TableRow>
@@ -598,6 +600,7 @@ export default function AdminOrderDetailPage() {
               ))}
             </TableBody>
           </Table>
+          </AdminTableScroll>
           <div className="mt-4 space-y-2 rounded-2xl border p-3">
             <Label>إضافة بند</Label>
             <input
