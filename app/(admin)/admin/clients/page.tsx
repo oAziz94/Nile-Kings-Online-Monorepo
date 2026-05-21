@@ -19,7 +19,7 @@ import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminPanelCard } from "@/components/admin/admin-panel-card";
 import { AdminSearchInput } from "@/components/admin/admin-search-input";
-import { Users, Loader2 } from "lucide-react";
+import { Users, Loader2, UserPlus } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
 
@@ -95,6 +95,14 @@ export default function AdminClientsPage() {
       <AdminPageHeader
         title="العملاء والمسؤولون"
         description="البحث بالهاتف أو الاسم أو البريد، وعرض الملفات والطلبات."
+        actions={
+          <Button asChild className="rounded-xl">
+            <Link href="/admin/clients/new">
+              <UserPlus className="h-4 w-4" />
+              عميل جديد
+            </Link>
+          </Button>
+        }
       />
       <AdminPanelCard
         title="قائمة المستخدمين"
