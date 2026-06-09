@@ -21,15 +21,13 @@ import { cn } from "@/lib/utils";
 import { discountPercentFromPrices } from "@/lib/catalog";
 import type { ProductDetail, VariantPublic } from "@/lib/catalog";
 import {
-  getDisplaySizeLabel,
+  getVariantSizeOptions,
   isKidsCategory,
   normalizeSizeName,
 } from "@/lib/size-display";
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&h=800&fit=crop";
-
-const SIZE_ORDER = ["S", "M", "L", "XL", "XXL", "XXXL"];
 
 function variantColorHex(v: VariantPublic): string {
   if (v.colorHex?.trim()) return v.colorHex.trim();
@@ -124,18 +122,7 @@ export function QuickShopModal({
       .finally(() => setLoading(false));
   }, [open, productSlug]);
 
-  const sizeOptions =
-    product?.variants == null
-      ? []
-      : SIZE_ORDER.filter((name) =>
-          product.variants.some((v) => normalizeSizeName(v.name) === name)
-        ).map((name) => ({
-          id: name,
-          label: getDisplaySizeLabel(name, forKids),
-          disabled: !product.variants.some(
-            (v) => normalizeSizeName(v.name) === name && v.inStock
-          ),
-        }));
+  const sizeOptions = product ? getVariantSizeOptions(product.variants, forKids) : [];
 
   const variantsForSelectedSize =
     product && selectedSize

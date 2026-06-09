@@ -14,7 +14,7 @@ import { ChevronRight, ShoppingCart, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { discountPercentFromPrices } from "@/lib/catalog";
 import {
-  getDisplaySizeLabel,
+  getVariantSizeOptions,
   isKidsCategory,
   normalizeSizeName,
 } from "@/lib/size-display";
@@ -34,13 +34,6 @@ type Variant = {
   colorName?: string | null;
   imageUrl?: string | null;
 };
-
-const SIZE_ORDER = ["S", "M", "L", "XL", "XXL", "XXXL"];
-
-function sizeSortIndex(name: string): number {
-  const i = SIZE_ORDER.indexOf(name.toUpperCase());
-  return i === -1 ? SIZE_ORDER.length : i;
-}
 
 function variantColorHex(v: Variant): string {
   if (v.colorHex?.trim()) return v.colorHex.trim();
@@ -132,14 +125,7 @@ export function ProductPageContent({
     }
   };
 
-  // Always show full size list (smallest → largest, RTL). Disabled when no variant for that size.
-  const sizeOptions = SIZE_ORDER.map((name) => ({
-    id: name,
-    label: getDisplaySizeLabel(name, forKids),
-    disabled: !product.variants.some(
-      (v) => normalizeSizeName(v.name) === name && v.inStock
-    ),
-  }));
+  const sizeOptions = getVariantSizeOptions(product.variants, forKids);
 
   // Variants for the selected size (for selectedVariant and per-size disabled state).
   const variantsForSelectedSize =
