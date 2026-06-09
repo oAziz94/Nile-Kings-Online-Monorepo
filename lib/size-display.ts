@@ -8,7 +8,7 @@ const KIDS_SIZE_LABEL_MAP: Record<string, string> = {
   "3XL": "12",
 };
 
-const SIZE_ORDER = ["S", "M", "L", "XL", "XXL", "XXXL"];
+const SIZE_ORDER = ["S", "M", "L", "XL", "XXL", "XXXL", "4XL"];
 
 type VariantSizeSource = {
   name: string;
@@ -17,7 +17,9 @@ type VariantSizeSource = {
 
 export function normalizeSizeName(sizeName: string): string {
   const key = sizeName.trim().toUpperCase();
-  return key === "3XL" ? "XXXL" : key;
+  if (key === "3XL") return "XXXL";
+  if (key === "4X") return "4XL";
+  return key;
 }
 
 export function isKidsCategory(categorySlug?: string | null): boolean {

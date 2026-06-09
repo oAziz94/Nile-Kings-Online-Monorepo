@@ -62,11 +62,13 @@ type Category = { id: string; name: string; slug: string };
 
 type ProductVariant = Product["variants"][number];
 
-const SIZE_ORDER = ["S", "M", "L", "XL", "XXL", "XXXL"];
+const SIZE_ORDER = ["S", "M", "L", "XL", "XXL", "XXXL", "4XL"];
 
 function normalizeSizeName(sizeName: string): string {
   const key = sizeName.trim().toUpperCase();
-  return key === "3XL" ? "XXXL" : key;
+  if (key === "3XL") return "XXXL";
+  if (key === "4X") return "4XL";
+  return key;
 }
 
 function sizeSortIndex(sizeName: string): number {
