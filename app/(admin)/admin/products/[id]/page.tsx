@@ -60,6 +60,44 @@ type Product = {
 
 type Category = { id: string; name: string; slug: string };
 
+type ProductVariant = Product["variants"][number];
+
+const SIZE_ORDER = ["S", "M", "L", "XL", "XXL", "XXXL"];
+
+function normalizeSizeName(sizeName: string): string {
+  const key = sizeName.trim().toUpperCase();
+  return key === "3XL" ? "XXXL" : key;
+}
+
+function sizeSortIndex(sizeName: string): number {
+  const index = SIZE_ORDER.indexOf(normalizeSizeName(sizeName));
+  return index === -1 ? SIZE_ORDER.length : index;
+}
+
+function variantColorHexSortKey(v: Pick<ProductVariant, "colorHex" | "colorName">): string {
+  const colorHex = v.colorHex?.trim().toLocaleLowerCase();
+  return colorHex || variantSwatchHex(v).toLocaleLowerCase();
+}
+
+function sortVariants(variants: ProductVariant[]): ProductVariant[] {
+  return [...variants].sort((a, b) => {
+    const colorHexDelta = variantColorHexSortKey(a).localeCompare(variantColorHexSortKey(b), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+    if (colorHexDelta !== 0) return colorHexDelta;
+
+    const sizeDelta = sizeSortIndex(a.name) - sizeSortIndex(b.name);
+    if (sizeDelta !== 0) return sizeDelta;
+
+    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+  });
+}
+
+function sortProductVariants<T extends Product>(product: T): T {
+  return { ...product, variants: sortVariants(product.variants) };
+}
+
 /** Admin swatch: use variant colorHex, or infer from colorName so أسود/أبيض show correctly. */
 function variantSwatchHex(v: { colorHex: string | null; colorName: string | null }): string {
   if (v.colorHex?.trim()) return v.colorHex.trim();
@@ -113,6 +151,10 @@ export default function AdminProductDetailPage() {
 
   const defaultOriginalEgp = product ? (product.basePricePiastres != null ? product.basePricePiastres / 100 : "") : "";
   const defaultDiscountEgp = product ? (product.discountPricePiastres != null ? product.discountPricePiastres / 100 : "") : "";
+  const sortedVariants = React.useMemo(
+    () => (product ? sortVariants(product.variants) : []),
+    [product]
+  );
 
   const load = React.useCallback(() => {
     if (!id) return;
@@ -123,7 +165,7 @@ export default function AdminProductDetailPage() {
     ])
       .then(([prodJson, catJson]) => {
         if (prodJson?.success && prodJson.data) {
-          setProduct(prodJson.data);
+          setProduct(sortProductVariants(prodJson.data));
           setTagsInput((prodJson.data.tags ?? []).join(" - "));
         }
         if (catJson?.success && Array.isArray(catJson.data)) setCategories(catJson.data);
@@ -162,7 +204,7 @@ export default function AdminProductDetailPage() {
       const json = await res.json();
       const updated = json?.data;
       if (res.ok && updated) {
-        setProduct(updated);
+        setProduct(sortProductVariants(updated));
         setTagsInput((updated.tags ?? []).join(" - "));
         toast({ title: "تم حفظ المنتج" });
       } else {
@@ -312,7 +354,7 @@ export default function AdminProductDetailPage() {
       if (res.ok && updated) {
         setProduct((p) =>
           p
-            ? { ...p, variants: p.variants.map((v) => (v.id === updated.id ? updated : v)) }
+            ? { ...p, variants: sortVariants(p.variants.map((v) => (v.id === updated.id ? updated : v))) }
             : p
         );
         setEditingVariant(null);
@@ -475,7 +517,7 @@ export default function AdminProductDetailPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {product.variants.length === 0 ? (
+          {sortedVariants.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-12 text-center">
               <Package className="h-10 w-10 text-muted-foreground mb-2" />
               <p className="text-muted-foreground mb-2">لا توجد متغيرات. أضِ متغيراً (مقاس + لون).</p>
@@ -495,7 +537,7 @@ export default function AdminProductDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {product.variants.map((v) => (
+                {sortedVariants.map((v) => (
                   <TableRow key={v.id}>
                     <TableCell className="font-medium">{v.name}</TableCell>
                     <TableCell>

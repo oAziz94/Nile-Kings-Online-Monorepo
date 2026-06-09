@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
     where: { id },
     include: {
       category: { select: { id: true, name: true, slug: true } },
-      variants: true,
+      variants: { orderBy: [{ colorHex: "asc" }, { name: "asc" }] },
     },
   });
   if (!product) return apiNotFound("المنتج غير موجود");
@@ -88,7 +88,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     },
     include: {
       category: { select: { id: true, name: true, slug: true } },
-      variants: true,
+      variants: { orderBy: [{ colorHex: "asc" }, { name: "asc" }] },
     },
   });
   return apiSuccess(product);

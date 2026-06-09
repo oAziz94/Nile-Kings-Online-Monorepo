@@ -31,7 +31,7 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
   if (!product) return apiNotFound("المنتج غير موجود");
   const variants = await prisma.variant.findMany({
     where: { productId: id },
-    orderBy: [{ name: "asc" }],
+    orderBy: [{ colorHex: "asc" }, { name: "asc" }],
   });
   return apiSuccess(variants);
 }
