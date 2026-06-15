@@ -134,7 +134,7 @@ export default function NewAdminOrderPage() {
     const ac = new AbortController();
     const t = setTimeout(async () => {
       try {
-        const params = new URLSearchParams({ limit: "20", offset: "0" });
+        const params = new URLSearchParams({ limit: "20", offset: "0", active: "true" });
         if (variantSearch.trim()) params.set("q", variantSearch.trim());
         const res = await fetch(`/api/admin/products?${params}`, {
           credentials: "include",

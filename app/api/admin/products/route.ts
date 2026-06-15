@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/admin/slug";
+import { sortVariants } from "@/lib/admin/variant-sort";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiConflict } from "@/lib/api/response";
 
 export async function GET(req: NextRequest) {
@@ -19,15 +20,18 @@ export async function GET(req: NextRequest) {
   const q = qRaw.length > 0 ? qRaw : undefined;
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10) || 20));
   const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0", 10) || 0);
+  const active = searchParams.get("active");
 
-  const where: Prisma.ProductWhereInput = q
-    ? {
-        OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { slug: { contains: q, mode: "insensitive" } },
-        ],
-      }
-    : {};
+  const where: Prisma.ProductWhereInput = {
+    ...(active === "true" && { active: true }),
+    ...(active === "false" && { active: false }),
+    ...(q && {
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { slug: { contains: q, mode: "insensitive" } },
+      ],
+    }),
+  };
 
   const [products, total] = await Promise.all([
     prisma.product.findMany({
@@ -43,7 +47,7 @@ export async function GET(req: NextRequest) {
     prisma.product.count({ where }),
   ]);
 
-  return apiSuccess({ products, total, limit, offset });
+  return apiSuccess({ products: products.map((p) => ({ ...p, variants: sortVariants(p.variants) })), total, limit, offset });
 }
 
 export async function POST(req: NextRequest) {

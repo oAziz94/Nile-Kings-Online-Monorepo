@@ -30,6 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ImageUpload } from "@/components/admin/image-upload";
 import { Skeleton } from "@/components/shared/skeleton";
+import { sortVariants } from "@/lib/admin/variant-sort";
 import { Package, Pencil, Plus, Trash2 } from "lucide-react";
 
 type Product = {
@@ -59,42 +60,6 @@ type Product = {
 };
 
 type Category = { id: string; name: string; slug: string };
-
-type ProductVariant = Product["variants"][number];
-
-const SIZE_ORDER = ["S", "M", "L", "XL", "XXL", "XXXL", "4XL"];
-
-function normalizeSizeName(sizeName: string): string {
-  const key = sizeName.trim().toUpperCase();
-  if (key === "3XL") return "XXXL";
-  if (key === "4X") return "4XL";
-  return key;
-}
-
-function sizeSortIndex(sizeName: string): number {
-  const index = SIZE_ORDER.indexOf(normalizeSizeName(sizeName));
-  return index === -1 ? SIZE_ORDER.length : index;
-}
-
-function variantColorHexSortKey(v: Pick<ProductVariant, "colorHex" | "colorName">): string {
-  const colorHex = v.colorHex?.trim().toLocaleLowerCase();
-  return colorHex || variantSwatchHex(v).toLocaleLowerCase();
-}
-
-function sortVariants(variants: ProductVariant[]): ProductVariant[] {
-  return [...variants].sort((a, b) => {
-    const colorHexDelta = variantColorHexSortKey(a).localeCompare(variantColorHexSortKey(b), undefined, {
-      numeric: true,
-      sensitivity: "base",
-    });
-    if (colorHexDelta !== 0) return colorHexDelta;
-
-    const sizeDelta = sizeSortIndex(a.name) - sizeSortIndex(b.name);
-    if (sizeDelta !== 0) return sizeDelta;
-
-    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
-  });
-}
 
 function sortProductVariants<T extends Product>(product: T): T {
   return { ...product, variants: sortVariants(product.variants) };
