@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
+import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 
 type Params = Promise<{ id: string; addressId: string }>;
 
@@ -63,6 +64,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     return apiBadRequest("العنوان بالتفصيل مطلوب");
   if (body.phone !== undefined && !String(body.phone ?? "").trim())
     return apiBadRequest("رقم الهاتف مطلوب");
+  const normalizedPhone =
+    body.phone !== undefined ? normalizeEgyptMobilePhone(String(body.phone ?? "")) ?? undefined : undefined;
+  if (body.phone !== undefined && !normalizedPhone) {
+    return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
+  }
 
   const makeNullableText = (value: string | null | undefined) =>
     value == null ? null : String(value).trim() || null;
@@ -100,7 +106,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       ...(body.floor !== undefined && { floor: makeNullableText(body.floor) }),
       ...(body.apartment !== undefined && { apartment: makeNullableText(body.apartment) }),
       ...(body.notes !== undefined && { notes: makeNullableText(body.notes) }),
-      ...(body.phone !== undefined && { phone: String(body.phone).trim() }),
+      ...(body.phone !== undefined && { phone: normalizedPhone }),
       ...(body.isDefault !== undefined && { isDefault }),
     },
   });

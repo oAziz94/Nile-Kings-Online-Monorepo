@@ -5,6 +5,7 @@ import { withApiHandler } from "@/lib/api/with-api-handler";
 import { invalidateAnalyticsCache } from "@/lib/cache/analytics";
 import { PAYMENT_METHODS } from "@/lib/checkout/types";
 import { assignOrderToGovernorate } from "@/lib/rerouting/assign";
+import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 
 const addressSchema = {
   governorate: (v: unknown) => typeof v === "string" && v.trim().length > 0,
@@ -52,6 +53,10 @@ async function postHandler(req: Request) {
   if (!addressSchema.phone(address.phone)) {
     return apiBadRequest("رقم هاتف التوصيل مطلوب");
   }
+  const normalizedPhone = normalizeEgyptMobilePhone(String(address.phone));
+  if (!normalizedPhone) {
+    return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
+  }
 
   const paymentMethod = body.paymentMethod;
   if (!paymentMethod || !PAYMENT_METHODS.includes(paymentMethod as "COD" | "PAYMOB" | "INSTAPAY_PREPAID")) {
@@ -68,7 +73,7 @@ async function postHandler(req: Request) {
       floor: address.floor != null ? String(address.floor) : null,
       apartment: address.apartment != null ? String(address.apartment) : null,
       notes: address.notes != null ? String(address.notes) : null,
-      phone: String(address.phone).trim(),
+      phone: normalizedPhone,
     },
     paymentMethod: paymentMethod as "COD" | "PAYMOB" | "INSTAPAY_PREPAID",
     couponCode: body.couponCode ?? null,

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { apiSuccess, apiBadRequest, apiTooManyRequests } from "@/lib/api/response";
 import { requestOtp } from "@/lib/auth/otp";
+import { EGYPT_MOBILE_ERROR_MESSAGE } from "@/lib/phone";
 
 function getClientIp(req: NextRequest): string | null {
   return (
@@ -47,6 +48,8 @@ export async function POST(req: NextRequest) {
       return apiTooManyRequests(
         `الحساب مؤقتاً مقفل. حاول بعد ${"lockMinutes" in result ? result.lockMinutes : 0} دقيقة`
       );
+    case "invalid_phone":
+      return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
     case "twilio_error":
       return apiBadRequest("فشل إرسال الرسالة. حاول لاحقاً.");
     default:

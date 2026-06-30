@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
+import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 
 type Params = Promise<{ id: string }>;
 
@@ -31,6 +32,8 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
   }
 
   const partnerType = partnerRequest.requestType === "AGENT" ? "AGENT" : "DISTRIBUTOR";
+  const normalizedPhone = normalizeEgyptMobilePhone(partnerRequest.phone);
+  if (!normalizedPhone) return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
 
   const [partner] = await prisma.$transaction([
     prisma.partner.create({
@@ -38,7 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
         partnerType,
         name: partnerRequest.name,
         governorate: partnerRequest.governorate,
-        phone: partnerRequest.phone,
+        phone: normalizedPhone,
         facebookUrl: partnerRequest.facebookUrl,
         instagramUrl: partnerRequest.instagramUrl,
         tiktokUrl: partnerRequest.tiktokUrl,

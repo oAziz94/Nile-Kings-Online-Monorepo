@@ -3,6 +3,8 @@
  * Uses Meta WhatsApp Cloud API. No Twilio dependency.
  */
 
+import { normalizeEgyptMobilePhoneForWhatsApp } from "@/lib/phone";
+
 export type SendResult = { ok: true } | { ok: false; error: string };
 
 export interface IWhatsAppService {
@@ -21,17 +23,7 @@ const DEFAULT_WHATSAPP_API_URL = "https://graph.facebook.com/v18.0";
  * - Other: digits only; add 20 if not already present.
  */
 export function normalizePhoneForWhatsApp(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("01") && digits.length === 11) {
-    return "20" + digits.slice(1); // 01001519873 -> 201001519873 (country code + number without leading 0)
-  }
-  if (digits.startsWith("20") && digits.length >= 11) {
-    return digits;
-  }
-  if (digits.length > 0) {
-    return digits.startsWith("20") ? digits : "20" + digits.replace(/^0+/, "");
-  }
-  return phone.replace(/^\+/, "");
+  return normalizeEgyptMobilePhoneForWhatsApp(phone) ?? "";
 }
 
 function getConfig(): {
@@ -125,6 +117,7 @@ class MetaWhatsAppService implements IWhatsAppService {
 
   async sendOrderAssignment(phone: string, message: string): Promise<SendResult> {
     const to = normalizePhoneForWhatsApp(phone);
+    if (!to) return { ok: false, error: "رقم واتساب غير صالح" };
     const url = `${this.config.apiUrl}/${this.config.phoneNumberId}/messages`;
     const payload = buildTextPayload(to, message);
     return this.send(url, payload);
@@ -137,6 +130,7 @@ class MetaWhatsAppService implements IWhatsAppService {
     bodyParams: string[]
   ): Promise<SendResult> {
     const to = normalizePhoneForWhatsApp(phone);
+    if (!to) return { ok: false, error: "رقم واتساب غير صالح" };
     const url = `${this.config.apiUrl}/${this.config.phoneNumberId}/messages`;
     const payload = buildTemplatePayload(to, templateName, languageCode, bodyParams);
     return this.send(url, payload);

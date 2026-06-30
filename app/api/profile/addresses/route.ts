@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireCustomer } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized } from "@/lib/api/response";
+import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 
 const addressBodySchema = {
   label: (v: unknown) => v == null || typeof v === "string",
@@ -56,6 +57,9 @@ export async function POST(req: NextRequest) {
   if (!addressBodySchema.street(body.street)) return apiBadRequest("العنوان بالتفصيل مطلوب");
   if (!addressBodySchema.phone(body.phone)) return apiBadRequest("رقم الهاتف مطلوب");
 
+  const normalizedPhone = normalizeEgyptMobilePhone(String(body.phone));
+  if (!normalizedPhone) return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
+
   const isDefault = addressBodySchema.isDefault(body.isDefault) ? !!body.isDefault : false;
 
   if (isDefault) {
@@ -77,7 +81,7 @@ export async function POST(req: NextRequest) {
       floor: body.floor != null ? String(body.floor).trim() || null : null,
       apartment: body.apartment != null ? String(body.apartment).trim() || null : null,
       notes: body.notes != null ? String(body.notes).trim() || null : null,
-      phone: String(body.phone).trim(),
+      phone: normalizedPhone,
       isDefault,
     },
   });

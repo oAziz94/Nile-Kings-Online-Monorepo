@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { apiSuccess, apiBadRequest, apiUnauthorized } from "@/lib/api/response";
-import { normalizePhone } from "@/lib/auth/otp";
 import { createSession, sessionCookieOptions } from "@/lib/auth/session";
 import { verifyPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/db";
+import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 
 export async function POST(req: NextRequest) {
   let body: { phone?: string; password?: string };
@@ -20,7 +20,10 @@ export async function POST(req: NextRequest) {
     return apiBadRequest("رقم الجوال وكلمة المرور مطلوبان");
   }
 
-  const normalized = normalizePhone(phone);
+  const normalized = normalizeEgyptMobilePhone(phone);
+  if (!normalized) {
+    return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
+  }
   const user = await prisma.user.findUnique({
     where: { phone: normalized },
   });

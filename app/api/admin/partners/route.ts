@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/api/response";
+import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 
 export async function GET(req: NextRequest) {
   try {
@@ -92,6 +93,8 @@ export async function POST(req: NextRequest) {
   if (!body.name?.trim()) return apiBadRequest("الاسم مطلوب");
   if (!body.governorate?.trim()) return apiBadRequest("المحافظة مطلوبة");
   if (!body.phone?.trim()) return apiBadRequest("رقم التليفون مطلوب");
+  const normalizedPhone = normalizeEgyptMobilePhone(body.phone);
+  if (!normalizedPhone) return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
 
   let linkedAgentId: string | null = null;
   if (body.partnerType === "DISTRIBUTOR" && body.linkedAgentId?.trim()) {
@@ -107,7 +110,7 @@ export async function POST(req: NextRequest) {
       partnerType: body.partnerType as "AGENT" | "DISTRIBUTOR",
       name: body.name.trim(),
       governorate: body.governorate.trim(),
-      phone: body.phone.trim(),
+      phone: normalizedPhone,
       facebookUrl: body.facebookUrl?.trim() || null,
       instagramUrl: body.instagramUrl?.trim() || null,
       tiktokUrl: body.tiktokUrl?.trim() || null,

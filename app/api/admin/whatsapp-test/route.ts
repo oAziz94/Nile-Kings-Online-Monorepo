@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { getWhatsAppService, normalizePhoneForWhatsApp } from "@/lib/services/whatsapp";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/api/response";
+import { EGYPT_MOBILE_ERROR_MESSAGE } from "@/lib/phone";
 
 /**
  * POST /api/admin/whatsapp-test
@@ -28,6 +29,8 @@ export async function POST(req: NextRequest) {
   if (!to) return apiBadRequest("الحقل to مطلوب (رقم هاتف للاختبار، مثلاً 01012345678)");
 
   const normalized = normalizePhoneForWhatsApp(to);
+  if (!normalized) return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
+
   const message =
     typeof body?.message === "string" && body.message.trim()
       ? body.message.trim()

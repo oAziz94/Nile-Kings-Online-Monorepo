@@ -20,6 +20,7 @@ import {
   incrementVerifyAttempts,
   clearVerifyAttempts,
 } from "@/lib/redis/otp-limits";
+import { normalizeEgyptMobilePhone } from "@/lib/phone";
 
 const OTP_SALT = env.JWT_SECRET.slice(0, 16); // reuse secret for salt, not the raw JWT
 
@@ -43,13 +44,9 @@ export async function logOtpEvent(
   });
 }
 
-/** Normalize E.164-ish: ensure +20 for Egypt if 0-prefixed. */
+/** Normalize Egyptian mobile numbers to E.164 (+201...). */
 export function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("20") && digits.length >= 11) return `+${digits}`;
-  if (digits.startsWith("0") && digits.length >= 10) return `+20${digits.slice(1)}`;
-  if (digits.length >= 10) return `+${digits}`;
-  return `+20${digits}`;
+  return normalizeEgyptMobilePhone(phone) ?? "";
 }
 
 export type RequestOtpResult =
@@ -58,6 +55,7 @@ export type RequestOtpResult =
   | { success: false; reason: "rate_limit_phone" }
   | { success: false; reason: "rate_limit_ip" }
   | { success: false; reason: "locked"; lockMinutes: number }
+  | { success: false; reason: "invalid_phone" }
   | { success: false; reason: "twilio_error"; message: string };
 
 export type OtpPurpose = "login" | "forgot_password";
@@ -69,6 +67,9 @@ export async function requestOtp(
   purpose: OtpPurpose = "login"
 ): Promise<RequestOtpResult> {
   const normalized = normalizePhone(phone);
+  if (!normalized) {
+    return { success: false, reason: "invalid_phone" };
+  }
   const rules = await getOtpRules();
   const cooldownSec = rules.cooldownSeconds;
   const expiryMs = rules.expiryMinutes * 60 * 1000;
@@ -161,6 +162,9 @@ export async function verifyOtp(
   _ip: string | null
 ): Promise<VerifyOtpResult> {
   const normalized = normalizePhone(phone);
+  if (!normalized) {
+    return { success: false, reason: "invalid" };
+  }
   const rules = await getOtpRules();
   const maxAttempts = rules.maxVerifyAttempts;
   const lockMinutes = rules.lockMinutes;
@@ -267,6 +271,9 @@ export async function verifyOtpForRegistration(
   _ip: string | null
 ): Promise<VerifyOtpForRegistrationResult> {
   const normalized = normalizePhone(phone);
+  if (!normalized) {
+    return { success: false, reason: "invalid" };
+  }
   const rules = await getOtpRules();
   const maxAttempts = rules.maxVerifyAttempts;
   const lockMinutes = rules.lockMinutes;
@@ -364,6 +371,9 @@ export async function verifyOtpForForgotPassword(
   createResetToken: (phone: string) => Promise<string>
 ): Promise<VerifyOtpForForgotPasswordResult> {
   const normalized = normalizePhone(phone);
+  if (!normalized) {
+    return { success: false, reason: "invalid" };
+  }
   const rules = await getOtpRules();
   const maxAttempts = rules.maxVerifyAttempts;
   const lockMinutes = rules.lockMinutes;

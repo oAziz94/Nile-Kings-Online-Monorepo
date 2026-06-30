@@ -47,6 +47,7 @@ export async function verifyResetToken(token: string): Promise<string | null> {
 export type RequestPasswordResetResult =
   | { success: true; cooldownSeconds?: number }
   | { success: false; reason: "admin_phone" }
+  | { success: false; reason: "invalid_phone" }
   | { success: false; reason: "no_account" }
   | { success: false; reason: "cooldown"; cooldownSeconds: number }
   | { success: false; reason: "rate_limit_phone" }
@@ -60,6 +61,9 @@ export async function requestPasswordResetOtp(
   ip: string | null
 ): Promise<RequestPasswordResetResult> {
   const normalized = normalizePhone(phone);
+  if (!normalized) {
+    return { success: false, reason: "invalid_phone" };
+  }
 
   const user = await prisma.user.findUnique({
     where: { phone: normalized },

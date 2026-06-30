@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireCustomer } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiNotFound } from "@/lib/api/response";
+import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 
 const addressBodySchema = {
   label: (v: unknown) => v == null || typeof v === "string",
@@ -79,8 +80,11 @@ export async function PATCH(
   if (body.floor !== undefined) data.floor = body.floor != null ? String(body.floor).trim() || null : null;
   if (body.apartment !== undefined) data.apartment = body.apartment != null ? String(body.apartment).trim() || null : null;
   if (body.notes !== undefined) data.notes = body.notes != null ? String(body.notes).trim() || null : null;
-  if (body.phone !== undefined && addressBodySchema.phone(body.phone))
-    data.phone = String(body.phone).trim();
+  if (body.phone !== undefined && addressBodySchema.phone(body.phone)) {
+    const normalizedPhone = normalizeEgyptMobilePhone(String(body.phone));
+    if (!normalizedPhone) return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
+    data.phone = normalizedPhone;
+  }
   if (body.isDefault !== undefined) data.isDefault = isDefault;
 
   const updated = await prisma.savedAddress.update({

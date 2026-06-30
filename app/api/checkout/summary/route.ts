@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireCustomer } from "@/lib/auth/session";
 import { buildCheckoutSummary } from "@/lib/checkout/summary";
 import { apiSuccess, apiBadRequest, apiUnauthorized } from "@/lib/api/response";
+import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 
 const addressSchema = {
   governorate: (v: unknown) => typeof v === "string" && v.trim().length > 0,
@@ -52,6 +53,10 @@ export async function POST(req: NextRequest) {
   if (!addressSchema.phone(address.phone)) {
     return apiBadRequest("رقم هاتف التوصيل مطلوب");
   }
+  const normalizedPhone = normalizeEgyptMobilePhone(String(address.phone));
+  if (!normalizedPhone) {
+    return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
+  }
 
   const summary = await buildCheckoutSummary({
     userId: user.userId,
@@ -63,7 +68,7 @@ export async function POST(req: NextRequest) {
       floor: address.floor != null ? String(address.floor) : null,
       apartment: address.apartment != null ? String(address.apartment) : null,
       notes: address.notes != null ? String(address.notes) : null,
-      phone: String(address.phone).trim(),
+      phone: normalizedPhone,
     },
     couponCode: body.couponCode ?? null,
     paymentMethod: body.paymentMethod === "COD" || body.paymentMethod === "PAYMOB" || body.paymentMethod === "INSTAPAY_PREPAID" ? body.paymentMethod : undefined,

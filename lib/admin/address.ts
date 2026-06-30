@@ -1,4 +1,5 @@
 import type { CheckoutAddress } from "@/lib/checkout/types";
+import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 
 export type SavedAddressRow = {
   id: string;
@@ -62,6 +63,8 @@ export function parseCreateAddressInput(
   if (!area) return { ok: false, message: "المنطقة مطلوبة" };
   if (!street) return { ok: false, message: "العنوان بالتفصيل مطلوب" };
   if (!phone) return { ok: false, message: "رقم هاتف التوصيل مطلوب" };
+  const normalizedPhone = normalizeEgyptMobilePhone(phone);
+  if (!normalizedPhone) return { ok: false, message: EGYPT_MOBILE_ERROR_MESSAGE };
 
   return {
     ok: true,
@@ -75,7 +78,7 @@ export function parseCreateAddressInput(
       floor: body.floor != null ? String(body.floor).trim() || null : null,
       apartment: body.apartment != null ? String(body.apartment).trim() || null : null,
       notes: body.notes != null ? String(body.notes).trim() || null : null,
-      phone,
+      phone: normalizedPhone,
       isDefault: body.isDefault === true,
     },
   };
@@ -99,6 +102,8 @@ export function parseCheckoutAddressInput(
   if (!area) return { ok: false, message: "المنطقة مطلوبة" };
   if (!street) return { ok: false, message: "العنوان بالتفصيل مطلوب" };
   if (!phone) return { ok: false, message: "رقم هاتف التوصيل مطلوب" };
+  const normalizedPhone = normalizeEgyptMobilePhone(phone);
+  if (!normalizedPhone) return { ok: false, message: EGYPT_MOBILE_ERROR_MESSAGE };
 
   return {
     ok: true,
@@ -110,7 +115,7 @@ export function parseCheckoutAddressInput(
       floor: body.floor != null ? String(body.floor) : null,
       apartment: body.apartment != null ? String(body.apartment) : null,
       notes: body.notes != null ? String(body.notes) : null,
-      phone,
+      phone: normalizedPhone,
     },
   };
 }

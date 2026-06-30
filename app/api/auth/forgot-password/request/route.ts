@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { apiSuccess, apiBadRequest, apiTooManyRequests, apiForbidden } from "@/lib/api/response";
 import { requestPasswordResetOtp } from "@/lib/auth/forgot-password";
+import { EGYPT_MOBILE_ERROR_MESSAGE } from "@/lib/phone";
 
 function getClientIp(req: NextRequest): string | null {
   return (
@@ -37,6 +38,8 @@ export async function POST(req: NextRequest) {
   switch (result.reason) {
     case "admin_phone":
       return apiForbidden("لا يمكن استعادة كلمة المرور لهذا الرقم");
+    case "invalid_phone":
+      return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
     case "no_account":
       return apiBadRequest("لا يوجد حساب بهذا الرقم أو الحساب لا يستخدم كلمة مرور");
     case "cooldown":

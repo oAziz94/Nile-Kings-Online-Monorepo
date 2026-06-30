@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
+import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 
 type Params = Promise<{ id: string }>;
 
@@ -62,6 +63,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   if (body.name !== undefined && !body.name?.trim()) return apiBadRequest("الاسم لا يمكن أن يكون فارغاً");
   if (body.governorate !== undefined && !body.governorate?.trim()) return apiBadRequest("المحافظة مطلوبة");
   if (body.phone !== undefined && !body.phone?.trim()) return apiBadRequest("رقم التليفون مطلوب");
+  const normalizedPhone =
+    body.phone !== undefined ? normalizeEgyptMobilePhone(body.phone) ?? undefined : undefined;
+  if (body.phone !== undefined && !normalizedPhone) {
+    return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
+  }
 
   let linkedAgentId: string | null | undefined = undefined;
   if (body.linkedAgentId !== undefined) {
@@ -81,7 +87,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     data: {
       ...(body.name !== undefined && { name: body.name.trim() }),
       ...(body.governorate !== undefined && { governorate: body.governorate.trim() }),
-      ...(body.phone !== undefined && { phone: body.phone.trim() }),
+      ...(body.phone !== undefined && { phone: normalizedPhone }),
       ...(body.facebookUrl !== undefined && { facebookUrl: body.facebookUrl?.trim() || null }),
       ...(body.instagramUrl !== undefined && { instagramUrl: body.instagramUrl?.trim() || null }),
       ...(body.tiktokUrl !== undefined && { tiktokUrl: body.tiktokUrl?.trim() || null }),

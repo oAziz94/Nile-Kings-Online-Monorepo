@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { apiSuccess, apiBadRequest } from "@/lib/api/response";
-import { normalizePhone } from "@/lib/auth/otp";
 import { hashPassword } from "@/lib/auth/password";
 import { createSession, sessionCookieOptions } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 
 const MIN_PASSWORD_LEN = 8;
 
@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
     return apiBadRequest(`كلمة المرور مطلوبة (${MIN_PASSWORD_LEN} أحرف على الأقل)`);
   }
 
-  const normalizedPhone = normalizePhone(phone);
+  const normalizedPhone = normalizeEgyptMobilePhone(phone);
+  if (!normalizedPhone) {
+    return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
+  }
 
   const existing = await prisma.user.findUnique({
     where: { phone: normalizedPhone },
