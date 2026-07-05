@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 function parseQuery(req: NextRequest): ProductsQuery {
   const { searchParams } = new URL(req.url);
   const categorySlug = searchParams.get("category") ?? undefined;
+  const q = searchParams.get("q") ?? undefined;
   const section = searchParams.get("section") ?? undefined;
   const expandVariants = searchParams.get("expandVariants") === "true";
   const minPrice = searchParams.get("minPrice");
@@ -21,6 +22,7 @@ function parseQuery(req: NextRequest): ProductsQuery {
   const offset = Number(searchParams.get("offset")) || 0;
 
   return {
+    q: q && q.trim() ? q.trim() : undefined,
     categorySlug,
     section: section && section.trim() ? section.trim() : undefined,
     expandVariants,
@@ -37,6 +39,7 @@ function parseQuery(req: NextRequest): ProductsQuery {
 type VariantRow = {
   id: string;
   slug: string | null;
+  name: string;
   pricePiastres: number;
   stockAvailable: number;
   colorHex: string | null;
@@ -160,6 +163,16 @@ export async function GET(req: NextRequest) {
     where.category = { slug: q.categorySlug };
   }
 
+  if (q.q) {
+    where.OR = [
+      { name: { contains: q.q, mode: "insensitive" } },
+      { slug: { contains: q.q, mode: "insensitive" } },
+      { description: { contains: q.q, mode: "insensitive" } },
+      { tags: { has: q.q } },
+      { category: { name: { contains: q.q, mode: "insensitive" } } },
+    ];
+  }
+
   if (q.section) {
     where.tags = { has: q.section };
   }
@@ -203,6 +216,7 @@ export async function GET(req: NextRequest) {
   const variantSelect = {
     id: true,
     slug: true,
+    name: true,
     pricePiastres: true,
     stockAvailable: true,
     colorHex: true,
@@ -227,7 +241,11 @@ export async function GET(req: NextRequest) {
     filtered = products.flatMap((p) =>
       toListItemsByVariant({
         ...p,
-        variants: p.variants as VariantRow[],
+        variants: (p.variants as VariantRow[]).filter((v) => {
+          if (q.sizes?.length && !q.sizes.includes(v.name)) return false;
+          if (q.inStockOnly && v.stockAvailable <= 0) return false;
+          return true;
+        }),
       })
     );
   } else {
@@ -244,11 +262,6 @@ export async function GET(req: NextRequest) {
 
   if (q.sort === "price_asc") filtered.sort((a, b) => a.priceEgp - b.priceEgp);
   else if (q.sort === "price_desc") filtered.sort((a, b) => b.priceEgp - a.priceEgp);
-
-  // Variant-level lists (كل المنتجات + تصنيفات): order by total stock per color, highest first.
-  if (byVariant) {
-    filtered.sort((a, b) => (b.stockAvailable ?? 0) - (a.stockAvailable ?? 0));
-  }
 
   // When byVariant, paginate the variant-level list; total is variant count so frontend can load all.
   const start = hasPriceFilter ? (q.offset ?? 0) : (q.offset ?? 0);

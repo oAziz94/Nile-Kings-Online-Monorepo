@@ -29,6 +29,7 @@ export default function NewProductPage() {
   const [basePricePiastres, setBasePricePiastres] = React.useState("");
   const [discountPricePiastres, setDiscountPricePiastres] = React.useState("");
   const [tagsInput, setTagsInput] = React.useState("");
+  const [sortOrder, setSortOrder] = React.useState("0");
   const [active, setActive] = React.useState(true);
 
   React.useEffect(() => {
@@ -61,6 +62,7 @@ export default function NewProductPage() {
           weightGrams: weightGrams === "" ? null : parseInt(weightGrams, 10),
           basePricePiastres: basePricePiastres === "" ? null : Math.round(parseFloat(basePricePiastres) * 100),
           discountPricePiastres: discountPricePiastres === "" ? null : Math.round(parseFloat(discountPricePiastres) * 100),
+          sortOrder: parseInt(sortOrder, 10) || 0,
           active,
           tags: tagsInput
             .split(/\s*-\s*/)
@@ -167,6 +169,17 @@ export default function NewProductPage() {
                 onChange={(e) => setWeightGrams(e.target.value)}
                 placeholder="للشحن"
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="sortOrder">أولوية العرض</Label>
+              <Input
+                id="sortOrder"
+                type="number"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                placeholder="0"
+              />
+              <p className="text-xs text-muted-foreground">الرقم الأعلى يظهر أولاً في المتجر.</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="tags">الوسوم</Label>

@@ -78,6 +78,7 @@ export type SortOption =
   | "date_desc";
 
 export interface ProductsQuery {
+  q?: string;
   categorySlug?: string;
   /** Section tag (e.g. "اطقم"). When set, filter by product tags and return one item per color variant. */
   section?: string;

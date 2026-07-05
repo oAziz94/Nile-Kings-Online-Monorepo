@@ -28,6 +28,7 @@ type Product = {
   slug: string;
   imageUrl: string | null;
   active: boolean;
+  sortOrder: number;
   weightGrams: number | null;
   basePricePiastres: number | null;
   discountPricePiastres: number | null;
@@ -196,6 +197,7 @@ export default function AdminProductsPage() {
                   <TableHead>الاسم</TableHead>
                   <TableHead>الفئة</TableHead>
                   <TableHead>الوزن (غ)</TableHead>
+                  <TableHead>الأولوية</TableHead>
                   <TableHead>السعر</TableHead>
                   <TableHead>المتغيرات</TableHead>
                   <TableHead>الحالة</TableHead>
@@ -221,6 +223,7 @@ export default function AdminProductsPage() {
                     <TableCell className="font-medium">{p.name}</TableCell>
                     <TableCell>{p.category.name}</TableCell>
                     <TableCell>{p.weightGrams ?? "—"}</TableCell>
+                    <TableCell>{p.sortOrder}</TableCell>
                     <TableCell>
                       {p.discountPricePiastres != null
                         ? `${(p.discountPricePiastres / 100).toFixed(0)} ج.م`

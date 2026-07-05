@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/shared/product-card";
+import { CatalogFilterBar, type CatalogFilterCategory } from "@/components/shared/catalog-filter-bar";
 import { LoadingDots } from "@/components/shared/loading-dots";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -25,16 +27,60 @@ type ProductItem = {
 };
 
 export function ProductsContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [categories, setCategories] = useState<CatalogFilterCategory[]>([]);
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
+  const [category, setCategory] = useState(() => searchParams.get("category") ?? "");
+  const [size, setSize] = useState(() => searchParams.get("size") ?? "");
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (debouncedSearch) params.set("q", debouncedSearch);
+    if (category) params.set("category", category);
+    if (size) params.set("size", size);
+    const next = params.toString() ? `${pathname}?${params}` : pathname;
+    router.replace(next, { scroll: false });
+  }, [category, debouncedSearch, pathname, router, size]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    fetch(`/api/products/filters?${params}`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((json) => {
+        if (!json.success || !json.data) return;
+        const nextSizes = json.data.sizes ?? [];
+        setCategories(json.data.categories ?? []);
+        setSizes(nextSizes);
+        if (size && !nextSizes.includes(size)) setSize("");
+      })
+      .catch(() => {
+        setCategories([]);
+        setSizes([]);
+      });
+  }, [category, size]);
+
   const fetchPage = useCallback(
     async (offset: number, append: boolean) => {
       const params = new URLSearchParams();
       params.set("expandVariants", "true");
+      if (debouncedSearch) params.set("q", debouncedSearch);
+      if (category) params.set("category", category);
+      if (size) params.set("sizes", size);
       params.set("limit", String(PAGE_SIZE));
       params.set("offset", String(offset));
       const res = await fetch(`/api/products?${params}`, { cache: "no-store" });
@@ -51,13 +97,19 @@ export function ProductsContent() {
         setTotal(0);
       }
     },
-    []
+    [category, debouncedSearch, size]
   );
 
   useEffect(() => {
     setLoading(true);
     fetchPage(0, false).finally(() => setLoading(false));
   }, [fetchPage]);
+
+  const clearFilters = () => {
+    setSearch("");
+    setCategory("");
+    setSize("");
+  };
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -88,12 +140,23 @@ export function ProductsContent() {
         <h1 className="text-2xl font-bold text-foreground md:text-3xl">
           كل المنتجات
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          مرتبة حسب المخزون المتاح (الأعلى أولاً)
-        </p>
       </div>
 
       <div>
+        <CatalogFilterBar
+          search={search}
+          category={category}
+          size={size}
+          categories={categories}
+          sizes={sizes}
+          total={total}
+          loading={loading}
+          onSearchChange={setSearch}
+          onCategoryChange={setCategory}
+          onSizeChange={setSize}
+          onClear={clearFilters}
+        />
+
         {loading ? (
           <div className="flex min-h-[200px] items-center justify-center py-12">
             <LoadingDots className="scale-150" />
@@ -102,7 +165,7 @@ export function ProductsContent() {
           <EmptyState
             icon={<Package className="h-8 w-8" />}
             title="لا توجد منتجات"
-            description="لم يتم إضافة منتجات بعد."
+            description="جرّب تغيير البحث أو الفلاتر المختارة."
             action={
               <Button variant="outline" asChild>
                 <Link href="/">العودة للرئيسية</Link>

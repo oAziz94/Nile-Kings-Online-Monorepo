@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/shared/product-card";
+import { CatalogFilterBar } from "@/components/shared/catalog-filter-bar";
 import { LoadingDots } from "@/components/shared/loading-dots";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,13 @@ export function CategoryContent({
   categoryName: string;
 }) {
   const search = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [query, setQuery] = useState(() => search.get("q") ?? "");
+  const [size, setSize] = useState(() => search.get("size") ?? "");
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -41,11 +48,40 @@ export function CategoryContent({
 
   const sectionParam = search.get("section") ?? "";
 
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedQuery(query.trim()), 250);
+    return () => window.clearTimeout(handle);
+  }, [query]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (sectionParam) params.set("section", sectionParam);
+    if (debouncedQuery) params.set("q", debouncedQuery);
+    if (size) params.set("size", size);
+    const next = params.toString() ? `${pathname}?${params}` : pathname;
+    router.replace(next, { scroll: false });
+  }, [debouncedQuery, pathname, router, sectionParam, size]);
+
+  useEffect(() => {
+    const params = new URLSearchParams({ category: categorySlug });
+    fetch(`/api/products/filters?${params}`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((json) => {
+        if (!json.success || !json.data) return;
+        const nextSizes = json.data.sizes ?? [];
+        setSizes(nextSizes);
+        if (size && !nextSizes.includes(size)) setSize("");
+      })
+      .catch(() => setSizes([]));
+  }, [categorySlug, size]);
+
   const fetchPage = useCallback(
     async (offset: number, append: boolean) => {
       const params = new URLSearchParams();
       params.set("category", categorySlug);
       if (sectionParam) params.set("section", sectionParam);
+      if (debouncedQuery) params.set("q", debouncedQuery);
+      if (size) params.set("sizes", size);
       params.set("limit", String(PAGE_SIZE));
       params.set("offset", String(offset));
       const res = await fetch(`/api/products?${params}`, { cache: "no-store" });
@@ -62,13 +98,18 @@ export function CategoryContent({
         setTotal(0);
       }
     },
-    [categorySlug, sectionParam]
+    [categorySlug, debouncedQuery, sectionParam, size]
   );
 
   useEffect(() => {
     setLoading(true);
     fetchPage(0, false).finally(() => setLoading(false));
   }, [fetchPage]);
+
+  const clearFilters = () => {
+    setQuery("");
+    setSize("");
+  };
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -102,12 +143,21 @@ export function CategoryContent({
         {sectionParam ? (
           <p className="mt-1 text-muted-foreground">{sectionParam}</p>
         ) : null}
-        <p className="mt-2 text-sm text-muted-foreground">
-          مرتبة حسب المخزون المتاح (الأعلى أولاً)
-        </p>
       </div>
 
       <div>
+        <CatalogFilterBar
+          search={query}
+          size={size}
+          sizes={sizes}
+          total={total}
+          loading={loading}
+          showCategory={false}
+          onSearchChange={setQuery}
+          onSizeChange={setSize}
+          onClear={clearFilters}
+        />
+
         {loading ? (
           <div className="flex min-h-[200px] items-center justify-center py-12">
             <LoadingDots className="scale-150" />
@@ -116,7 +166,7 @@ export function CategoryContent({
           <EmptyState
             icon={<Package className="h-8 w-8" />}
             title="لا توجد منتجات"
-            description="لا توجد منتجات في هذا التصنيف حالياً."
+            description="جرّب تغيير البحث أو المقاس المختار."
             action={
               <Button variant="outline" asChild>
                 <Link href="/">العودة للرئيسية</Link>

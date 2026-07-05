@@ -40,6 +40,7 @@ type Product = {
   description: string | null;
   imageUrl: string | null;
   active: boolean;
+  sortOrder: number;
   weightGrams: number | null;
   basePricePiastres: number | null;
   discountPricePiastres: number | null;
@@ -161,6 +162,7 @@ export default function AdminProductDetailPage() {
           weightGrams: product.weightGrams ?? undefined,
           basePricePiastres: product.basePricePiastres ?? undefined,
           discountPricePiastres: product.discountPricePiastres ?? undefined,
+          sortOrder: product.sortOrder,
           active: product.active,
           tags: tagsInput
             .split(/\s*-\s*/)
@@ -416,6 +418,17 @@ export default function AdminProductDetailPage() {
                   setProduct((p) => (p ? { ...p, weightGrams: e.target.value === "" ? null : parseInt(e.target.value, 10) || 0 } : p))
                 }
               />
+            </div>
+            <div className="grid gap-2">
+              <Label>أولوية العرض</Label>
+              <Input
+                type="number"
+                value={product.sortOrder}
+                onChange={(e) =>
+                  setProduct((p) => (p ? { ...p, sortOrder: parseInt(e.target.value, 10) || 0 } : p))
+                }
+              />
+              <p className="text-xs text-muted-foreground">الرقم الأعلى يظهر أولاً في المتجر.</p>
             </div>
             <div className="grid gap-2">
               <Label>الوسوم</Label>
