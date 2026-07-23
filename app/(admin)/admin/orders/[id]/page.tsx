@@ -19,6 +19,7 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
 import { AdminTableScroll } from "@/components/admin/admin-table-scroll";
+import { ItemAssignmentContextImpl } from "twilio/lib/rest/numbers/v2/regulatoryCompliance/bundle/itemAssignment";
 
 const STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
 const STATUS_LABELS: Record<string, string> = {
@@ -118,6 +119,8 @@ export default function AdminOrderDetailPage() {
     return () => clearTimeout(t);
   }, [clientSearch]);
 
+
+
   React.useEffect(() => {
     if (!id) return;
     fetch(`/api/admin/orders/${id}`, { credentials: "include" })
@@ -182,6 +185,10 @@ export default function AdminOrderDetailPage() {
       clearTimeout(t);
     };
   }, [variantSearch]);
+
+  React.useEffect(() => {
+    groupItemsByCategory();
+  }, [editableItems]);
 
   React.useEffect(() => {
     const ac = new AbortController();
@@ -400,9 +407,68 @@ export default function AdminOrderDetailPage() {
     }
   };
 
+  const getSize = (variantName: string) => {
+    const parts = variantName.split("-");
+    if (parts.length < 2) return variantName;
+
+    const lastPart = parts[parts.length - 1];
+    const secondLastPart = parts[parts.length - 2];
+
+    // Regex matching common sizes (e.g. S, M, L, XL, XXL, 3XL, numbers, etc.)
+    const sizePattern = /^(S|M|L|XL|XXL|XXXL|XS|[0-9]+[a-zA-Z]*|[0-9]+[Xx][0-9]+|[0-9]+\/[0-9]+|one\s*size|free\s*size)$/i;
+
+    // If the last part has Arabic characters, it's a color, so size is the second-to-last part
+    const hasArabic = /[\u0600-\u06FF]/.test(lastPart);
+    if (hasArabic && secondLastPart) {
+      return secondLastPart;
+    }
+
+    // If last part matches size pattern directly
+    if (sizePattern.test(lastPart)) {
+      return lastPart;
+    }
+
+    // If second last part matches size pattern
+    if (secondLastPart && sizePattern.test(secondLastPart)) {
+      return secondLastPart;
+    }
+
+    return lastPart;
+  }
+
+  const getColor = (variantName: string) => {
+    const parts = variantName.split("-");
+    const arabicPart = parts.find((part) => /[\u0600-\u06FF]/.test(part));
+    return arabicPart || "—";
+  };
+
+  const groupItemsByCategory = () => {
+    if (!editableItems.length) return;
+
+    const getCategory = (variantName: string) => {
+      const parts = variantName.split("-");
+      if (parts[0] === "nk" && parts.length > 1) {
+        return parts[1]; // e.g. "4444"
+      }
+      return "";
+    };
+
+    const sorted = [...editableItems].sort((a, b) => {
+      const catA = getCategory(a.variantName);
+      const catB = getCategory(b.variantName);
+      return catA.localeCompare(catB);
+    });
+
+    const isSame = editableItems.every((item, idx) => item.variantId === sorted[idx]?.variantId);
+    if (!isSame) {
+      setEditableItems(sorted);
+    }
+  };
+
   if (loading || !order) return <Skeleton className="h-96 w-full rounded-2xl" />;
 
   const addr = order.shippingAddress as Record<string, string> | undefined;
+
 
   return (
     <div dir="rtl" className="space-y-6">
@@ -553,53 +619,61 @@ export default function AdminOrderDetailPage() {
         </CardHeader>
         <CardContent>
           <AdminTableScroll>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>المنتج / المتغير</TableHead>
-                <TableHead>الكمية</TableHead>
-                <TableHead>السعر الوحدة</TableHead>
-                <TableHead>الإجمالي</TableHead>
-                <TableHead>إجراء</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {editableItems.map((item) => (
-                <TableRow key={item.variantId}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt={item.productName}
-                          className="h-12 w-12 rounded-md border object-cover"
-                        />
-                      ) : (
-                        <div className="h-12 w-12 rounded-md border bg-muted" />
-                      )}
-                      <span>{item.productName} – {item.variantName}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      min={1}
-                      value={item.quantity}
-                      onChange={(e) => changeItemQty(item.variantId, Number(e.target.value))}
-                      className="h-9 w-24 rounded-xl border border-input bg-background px-3 text-sm"
-                    />
-                  </TableCell>
-                  <TableCell>{(item.unitPricePiastres / 100).toFixed(0)} ج.م</TableCell>
-                  <TableCell>{((item.quantity * item.unitPricePiastres) / 100).toFixed(0)} ج.م</TableCell>
-                  <TableCell>
-                    <Button variant="destructive" size="sm" onClick={() => removeItem(item.variantId)}>
-                      حذف
-                    </Button>
-                  </TableCell>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>المنتج / المتغير</TableHead>
+                  <TableHead>الكمية</TableHead>
+                  <TableHead>السعر الوحدة</TableHead>
+                  <TableHead>الإجمالي</TableHead>
+                  <TableHead>المقاس</TableHead>
+                  <TableHead>اللون</TableHead>
+                  <TableHead>إجراء</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {editableItems.map((item) => (
+                  <TableRow key={item.variantId}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.productName}
+                            className="h-12 w-12 rounded-md border object-cover"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded-md border bg-muted" />
+                        )}
+                        <span>{item.productName} – {item.variantName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <input
+                        type="number"
+                        min={1}
+                        value={item.quantity}
+                        onChange={(e) => changeItemQty(item.variantId, Number(e.target.value))}
+                        className="h-9 w-24 rounded-xl border border-input bg-background px-3 text-sm"
+                      />
+                    </TableCell>
+                    <TableCell>{(item.unitPricePiastres / 100).toFixed(0)} ج.م</TableCell>
+                    <TableCell>{((item.quantity * item.unitPricePiastres) / 100).toFixed(0)} ج.م</TableCell>
+                    <TableCell>
+                      {getSize(item.variantName)}
+                    </TableCell>
+                    <TableCell>
+                      {getColor(item.variantName)}
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="destructive" size="sm" onClick={() => removeItem(item.variantId)}>
+                        حذف
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </AdminTableScroll>
           <div className="mt-4 space-y-2 rounded-2xl border p-3">
             <Label>إضافة بند</Label>
