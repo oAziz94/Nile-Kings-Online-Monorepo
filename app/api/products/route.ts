@@ -3,7 +3,17 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { apiSuccess } from "@/lib/api/response";
 import type { ProductsQuery, ProductListItem, ColorVariantListItem } from "@/lib/catalog";
-import { piastresToEgp, discountPercentFromPrices } from "@/lib/catalog";
+import {
+  piastresToEgp,
+  discountPercentFromPrices,
+  originalPriceFromExplicitDiscount,
+  originalPriceFromVariant,
+} from "@/lib/catalog";
+import {
+  applyStorefrontPartnerStock,
+  getStorefrontGovernorateFromRequest,
+  getStorefrontStockContext,
+} from "@/lib/storefront-location";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +50,7 @@ type VariantRow = {
   id: string;
   slug: string | null;
   name: string;
+  basePricePiastres: number | null;
   pricePiastres: number;
   stockAvailable: number;
   colorHex: string | null;
@@ -63,14 +74,12 @@ function toListItem(p: {
 }): ProductListItem {
   const prices = p.variants.map((v) => v.pricePiastres);
   const minPrice = prices.length ? Math.min(...prices) : 0;
-  const maxPrice = prices.length ? Math.max(...prices) : 0;
   const currentPiastres = p.discountPricePiastres ?? minPrice;
   const priceEgp = piastresToEgp(currentPiastres);
-  const originalFromProduct = p.basePricePiastres != null && p.basePricePiastres > currentPiastres
-    ? piastresToEgp(p.basePricePiastres)
-    : undefined;
-  const originalFromVariants = maxPrice > minPrice ? piastresToEgp(maxPrice) : undefined;
-  const originalPriceEgp = originalFromProduct ?? originalFromVariants;
+  const originalPriceEgp = originalPriceFromExplicitDiscount(
+    p.basePricePiastres,
+    p.discountPricePiastres
+  );
   const discountPercent = originalPriceEgp != null && originalPriceEgp > priceEgp
     ? discountPercentFromPrices(originalPriceEgp, priceEgp)
     : undefined;
@@ -114,6 +123,7 @@ function toListItemsByVariant(p: {
   basePricePiastres: number | null;
   category: { slug: string; name: string };
   variants: VariantRow[];
+  productInStock: boolean;
 }): ProductListItem[] {
   /** Representative row per color + total units across all sizes for that color (for sorting). */
   const byColor = new Map<string, { rep: VariantRow; totalStock: number }>();
@@ -129,8 +139,7 @@ function toListItemsByVariant(p: {
   const items: ProductListItem[] = [];
   for (const { rep: v, totalStock } of byColor.values()) {
     const priceEgp = piastresToEgp(v.pricePiastres);
-    const baseEgp = p.basePricePiastres != null ? piastresToEgp(p.basePricePiastres) : undefined;
-    const originalPriceEgp = baseEgp != null && baseEgp > priceEgp ? baseEgp : undefined;
+    const originalPriceEgp = originalPriceFromVariant(v.basePricePiastres, v.pricePiastres);
     const discountPercent = originalPriceEgp != null && originalPriceEgp > priceEgp
       ? discountPercentFromPrices(originalPriceEgp, priceEgp)
       : undefined;
@@ -144,7 +153,7 @@ function toListItemsByVariant(p: {
       ...(discountPercent != null && { discountPercent }),
       categorySlug: p.category.slug,
       categoryName: p.category.name,
-      inStock: totalStock > 0,
+      inStock: p.productInStock,
       variantSlug: v.slug,
       stockAvailable: totalStock,
     });
@@ -154,6 +163,7 @@ function toListItemsByVariant(p: {
 
 export async function GET(req: NextRequest) {
   const q = parseQuery(req);
+  const stockContext = await getStorefrontStockContext(getStorefrontGovernorateFromRequest(req));
 
   const where: Prisma.ProductWhereInput = {
     active: true,
@@ -180,7 +190,7 @@ export async function GET(req: NextRequest) {
   if (q.inStockOnly || q.sizes?.length) {
     where.variants = {
       some: {
-        ...(q.inStockOnly && { stockAvailable: { gt: 0 } }),
+        ...(q.inStockOnly && !stockContext.partnerId && { stockAvailable: { gt: 0 } }),
         ...(q.sizes?.length ? { name: { in: q.sizes } } : {}),
       },
     };
@@ -217,6 +227,7 @@ export async function GET(req: NextRequest) {
     id: true,
     slug: true,
     name: true,
+    basePricePiastres: true,
     pricePiastres: true,
     stockAvailable: true,
     colorHex: true,
@@ -235,12 +246,23 @@ export async function GET(req: NextRequest) {
     },
   });
 
+  const stockAdjustedProducts = await Promise.all(
+    products.map(async (product) => ({
+      ...product,
+      variants: await applyStorefrontPartnerStock(
+        product.variants as VariantRow[],
+        stockContext.partnerId
+      ),
+    }))
+  );
+
   let filtered: ProductListItem[];
 
   if (byVariant) {
-    filtered = products.flatMap((p) =>
+    filtered = stockAdjustedProducts.flatMap((p) =>
       toListItemsByVariant({
         ...p,
+        productInStock: (p.variants as VariantRow[]).some((v) => v.stockAvailable > 0),
         variants: (p.variants as VariantRow[]).filter((v) => {
           if (q.sizes?.length && !q.sizes.includes(v.name)) return false;
           if (q.inStockOnly && v.stockAvailable <= 0) return false;
@@ -249,7 +271,7 @@ export async function GET(req: NextRequest) {
       })
     );
   } else {
-    filtered = products.map(toListItem);
+    filtered = stockAdjustedProducts.map(toListItem);
   }
 
   if (q.minPrice != null || q.maxPrice != null) {
@@ -259,6 +281,7 @@ export async function GET(req: NextRequest) {
       return true;
     });
   }
+  if (q.inStockOnly) filtered = filtered.filter((p) => p.inStock);
 
   if (q.sort === "price_asc") filtered.sort((a, b) => a.priceEgp - b.priceEgp);
   else if (q.sort === "price_desc") filtered.sort((a, b) => b.priceEgp - a.priceEgp);

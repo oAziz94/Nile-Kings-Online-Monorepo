@@ -33,18 +33,18 @@ export function AdminKpiCard({
   return (
     <Card
       className={cn(
-        "overflow-hidden rounded-2xl border-border/80 shadow-card transition-shadow hover:shadow-md",
+        "overflow-hidden rounded-lg border-border shadow-none",
         className
       )}
     >
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
             {loading ? (
-              <Skeleton className="mt-3 h-9 w-32" />
+              <Skeleton className="mt-3 h-8 w-32" />
             ) : (
-              <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">{value}</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">{value}</p>
             )}
             {hint && (
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{hint}</p>
@@ -53,7 +53,7 @@ export function AdminKpiCard({
           </div>
           <div
             className={cn(
-              "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ring-1 ring-inset",
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-md ring-1 ring-inset",
               accentStyles[accent]
             )}
           >

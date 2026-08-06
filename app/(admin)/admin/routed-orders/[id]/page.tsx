@@ -310,7 +310,7 @@ export default function AdminRoutedOrderDetailPage() {
           <CardHeader>
             <CardTitle className="text-amber-800 dark:text-amber-200">لم يُرسل إشعار واتساب</CardTitle>
             <CardDescription>
-              تم تعيين الطلب للشريك لكن إرسال رسالة واتساب فشل. تأكد من ضبط WHATSAPP_PHONE_NUMBER_ID و WHATSAPP_ACCESS_TOKEN في الإعدادات (Meta WhatsApp Cloud API).
+              تم تعيين الطلب للشريك لكن إرسال رسالة واتساب فشل. تأكد من ضبط WAPILOT_INSTANCE_ID و WAPILOT_API_TOKEN.
             </CardDescription>
           </CardHeader>
           <CardContent>

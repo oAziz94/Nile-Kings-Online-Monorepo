@@ -2,7 +2,12 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { apiSuccess } from "@/lib/api/response";
 import type { ProductListItem } from "@/lib/catalog";
-import { piastresToEgp, discountPercentFromPrices } from "@/lib/catalog";
+import { piastresToEgp, discountPercentFromPrices, originalPriceFromExplicitDiscount } from "@/lib/catalog";
+import {
+  applyStorefrontPartnerStock,
+  getStorefrontGovernorateFromRequest,
+  getStorefrontStockContext,
+} from "@/lib/storefront-location";
 
 export const dynamic = "force-dynamic";
 
@@ -16,18 +21,16 @@ function toListItem(p: {
   basePricePiastres: number | null;
   discountPricePiastres: number | null;
   category: { slug: string; name: string };
-  variants: { pricePiastres: number; stockAvailable: number }[];
+  variants: { id: string; pricePiastres: number; stockAvailable: number }[];
 }): ProductListItem {
   const prices = p.variants.map((v) => v.pricePiastres);
   const minPrice = prices.length ? Math.min(...prices) : 0;
-  const maxPrice = prices.length ? Math.max(...prices) : 0;
   const currentPiastres = p.discountPricePiastres ?? minPrice;
   const priceEgp = piastresToEgp(currentPiastres);
-  const originalFromProduct = p.basePricePiastres != null && p.basePricePiastres > currentPiastres
-    ? piastresToEgp(p.basePricePiastres)
-    : undefined;
-  const originalFromVariants = maxPrice > minPrice ? piastresToEgp(maxPrice) : undefined;
-  const originalPriceEgp = originalFromProduct ?? originalFromVariants;
+  const originalPriceEgp = originalPriceFromExplicitDiscount(
+    p.basePricePiastres,
+    p.discountPricePiastres
+  );
   const discountPercent = originalPriceEgp != null && originalPriceEgp > priceEgp
     ? discountPercentFromPrices(originalPriceEgp, priceEgp)
     : undefined;
@@ -47,10 +50,11 @@ function toListItem(p: {
   };
 }
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  const stockContext = await getStorefrontStockContext(getStorefrontGovernorateFromRequest(req));
   const include = {
     category: { select: { slug: true, name: true } },
-    variants: { select: { pricePiastres: true, stockAvailable: true } },
+    variants: { select: { id: true, pricePiastres: true, stockAvailable: true } },
   } as const;
 
   const [categories, trendingIds, recommendedIds, newArrivals, allProducts] =
@@ -99,8 +103,23 @@ export async function GET(_req: NextRequest) {
       }),
     ]);
 
+  const [stockAllProducts, stockNewArrivals] = await Promise.all([
+    Promise.all(
+      allProducts.map(async (product) => ({
+        ...product,
+        variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
+      }))
+    ),
+    Promise.all(
+      newArrivals.map(async (product) => ({
+        ...product,
+        variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
+      }))
+    ),
+  ]);
+
   const productMap = new Map(
-    allProducts.map((p) => [p.id, toListItem(p)])
+    stockAllProducts.map((p) => [p.id, toListItem(p)])
   );
 
   const trending = trendingIds
@@ -113,7 +132,7 @@ export async function GET(_req: NextRequest) {
     .map((id) => productMap.get(id))
     .filter(Boolean) as ProductListItem[];
 
-  const newArrivalsList = newArrivals.map(toListItem);
+  const newArrivalsList = stockNewArrivals.map(toListItem);
 
   const categoriesWithCount = categories.map((c) => ({
     id: c.id,

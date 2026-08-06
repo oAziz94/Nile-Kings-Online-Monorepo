@@ -35,7 +35,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     imageUrl?: string | null;
     basePricePiastres?: number | null;
     pricePiastres?: number;
-    stockAvailable?: number;
   };
   try {
     body = await req.json();
@@ -72,7 +71,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       ...(newSlug !== undefined && { slug: newSlug }),
       ...(body.basePricePiastres !== undefined && { basePricePiastres: body.basePricePiastres == null || (typeof body.basePricePiastres === "number" && body.basePricePiastres >= 0) ? body.basePricePiastres : undefined }),
       ...(typeof body.pricePiastres === "number" && body.pricePiastres >= 0 && { pricePiastres: body.pricePiastres }),
-      ...(typeof body.stockAvailable === "number" && body.stockAvailable >= 0 && { stockAvailable: body.stockAvailable }),
     },
   });
   return apiSuccess(variant);

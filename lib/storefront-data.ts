@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/db";
 import type { ProductListItem, ColorVariantListItem } from "@/lib/catalog";
-import { piastresToEgp, discountPercentFromPrices } from "@/lib/catalog";
+import { piastresToEgp, discountPercentFromPrices, originalPriceFromExplicitDiscount } from "@/lib/catalog";
+import {
+  applyStorefrontPartnerStock,
+  getCurrentStorefrontStockContext,
+} from "@/lib/storefront-location";
 
 const HOME_LIMIT = 8;
 
@@ -23,14 +27,12 @@ function toListItem(p: {
 }): ProductListItem {
   const prices = p.variants.map((v) => v.pricePiastres);
   const minPrice = prices.length ? Math.min(...prices) : 0;
-  const maxPrice = prices.length ? Math.max(...prices) : 0;
   const currentPiastres = p.discountPricePiastres ?? minPrice;
   const priceEgp = piastresToEgp(currentPiastres);
-  const originalFromProduct = p.basePricePiastres != null && p.basePricePiastres > currentPiastres
-    ? piastresToEgp(p.basePricePiastres)
-    : undefined;
-  const originalFromVariants = maxPrice > minPrice ? piastresToEgp(maxPrice) : undefined;
-  const originalPriceEgp = originalFromProduct ?? originalFromVariants;
+  const originalPriceEgp = originalPriceFromExplicitDiscount(
+    p.basePricePiastres,
+    p.discountPricePiastres
+  );
   const discountPercent = originalPriceEgp != null && originalPriceEgp > priceEgp
     ? discountPercentFromPrices(originalPriceEgp, priceEgp)
     : undefined;
@@ -96,6 +98,7 @@ export async function getHomeData(): Promise<{
   };
 } | null> {
   try {
+    const stockContext = await getCurrentStorefrontStockContext();
     const [categories, trendingRows, addToCartRows, newArrivals, allProducts, womenProducts, kidsProducts, menProducts] =
       await Promise.all([
         prisma.category.findMany({
@@ -145,7 +148,46 @@ export async function getHomeData(): Promise<{
         }),
       ]);
 
-    const productMap = new Map(allProducts.map((p) => [p.id, toListItem(p)]));
+    const [
+      stockAllProducts,
+      stockNewArrivals,
+      stockWomenProducts,
+      stockKidsProducts,
+      stockMenProducts,
+    ] = await Promise.all([
+      Promise.all(
+        allProducts.map(async (product) => ({
+          ...product,
+          variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
+        }))
+      ),
+      Promise.all(
+        newArrivals.map(async (product) => ({
+          ...product,
+          variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
+        }))
+      ),
+      Promise.all(
+        womenProducts.map(async (product) => ({
+          ...product,
+          variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
+        }))
+      ),
+      Promise.all(
+        kidsProducts.map(async (product) => ({
+          ...product,
+          variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
+        }))
+      ),
+      Promise.all(
+        menProducts.map(async (product) => ({
+          ...product,
+          variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
+        }))
+      ),
+    ]);
+
+    const productMap = new Map(stockAllProducts.map((p) => [p.id, toListItem(p)]));
 
     const trending = trendingRows
       .map((r) => r.productId)
@@ -172,7 +214,7 @@ export async function getHomeData(): Promise<{
       .filter((p): p is ProductListItem => Boolean(p));
 
     // Best sellers: max 4, prefer recommended (add-to-cart) then trending then newArrivals
-    const newArrivalsList = newArrivals.map(toListItem);
+    const newArrivalsList = stockNewArrivals.map(toListItem);
     const fallbackRecommended = recommended.length ? recommended : newArrivalsList.slice(0, HOME_LIMIT);
     const seenIds = new Set<string>();
     const bestSellers: ProductListItem[] = [];
@@ -185,9 +227,9 @@ export async function getHomeData(): Promise<{
     }
 
     const collectionProducts = {
-      women: womenProducts.map(toListItem),
-      kids: kidsProducts.map(toListItem),
-      men: menProducts.map(toListItem),
+      women: stockWomenProducts.map(toListItem),
+      kids: stockKidsProducts.map(toListItem),
+      men: stockMenProducts.map(toListItem),
     };
 
     return {

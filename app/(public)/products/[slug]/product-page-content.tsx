@@ -28,6 +28,8 @@ type Variant = {
   slug?: string | null;
   name: string;
   priceEgp: number;
+  originalPriceEgp?: number;
+  discountPercent?: number;
   stockAvailable: number;
   inStock: boolean;
   colorHex?: string | null;
@@ -187,13 +189,17 @@ export function ProductPageContent({
 
   const displayPrice = selectedVariant?.priceEgp ?? product.priceEgp;
   const displayOriginal =
-    product.originalPriceEgp != null && product.originalPriceEgp > displayPrice
-      ? product.originalPriceEgp
-      : undefined;
+    selectedVariant?.originalPriceEgp != null && selectedVariant.originalPriceEgp > displayPrice
+      ? selectedVariant.originalPriceEgp
+      : product.originalPriceEgp != null && product.originalPriceEgp > displayPrice
+        ? product.originalPriceEgp
+        : undefined;
   const displayDiscountPercent =
-    displayOriginal != null
-      ? discountPercentFromPrices(displayOriginal, displayPrice)
-      : undefined;
+    selectedVariant?.discountPercent != null && selectedVariant.originalPriceEgp != null
+      ? selectedVariant.discountPercent
+      : displayOriginal != null
+        ? discountPercentFromPrices(displayOriginal, displayPrice)
+        : undefined;
 
   const logView = useCallback(() => {
     fetch("/api/analytics/view", {

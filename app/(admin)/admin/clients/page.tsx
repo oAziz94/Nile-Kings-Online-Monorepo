@@ -63,6 +63,7 @@ export default function AdminClientsPage() {
     const ac = new AbortController();
     setFetching(true);
     const params = new URLSearchParams({
+      role: "CUSTOMER",
       limit: String(pageSize),
       offset: String(page * pageSize),
     });
@@ -88,15 +89,15 @@ export default function AdminClientsPage() {
     return () => ac.abort();
   }, [debouncedQ, page, pageSize, toast]);
 
-  if (loading && clients.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
+  if (loading && clients.length === 0) return <Skeleton className="h-64 w-full rounded-lg" />;
 
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        title="العملاء والمسؤولون"
-        description="البحث بالهاتف أو الاسم أو البريد، وعرض الملفات والطلبات."
+        title="العملاء"
+        description="حسابات العملاء فقط، مع العناوين والطلبات المرتبطة بكل عميل."
         actions={
-          <Button asChild className="rounded-xl">
+          <Button asChild className="rounded-md">
             <Link href="/admin/clients/new">
               <UserPlus className="h-4 w-4" />
               عميل جديد
@@ -105,7 +106,7 @@ export default function AdminClientsPage() {
         }
       />
       <AdminPanelCard
-        title="قائمة المستخدمين"
+        title="قائمة العملاء"
         icon={<Users className="h-5 w-5 text-burgundy" />}
         toolbar={
           <AdminSearchInput
@@ -125,16 +126,15 @@ export default function AdminClientsPage() {
           {clients.length === 0 && !fetching ? (
             <AdminEmptyState
               icon={<Users className="h-12 w-12" />}
-              title={debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد مستخدمون"}
+              title={debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد عملاء"}
             />
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-border/60">
+            <div className="overflow-x-auto rounded-lg border border-border">
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead>الهاتف</TableHead>
                   <TableHead>الاسم</TableHead>
-                  <TableHead>النوع</TableHead>
                   <TableHead>البريد</TableHead>
                   <TableHead>العناوين</TableHead>
                   <TableHead>الطلبات</TableHead>
@@ -152,13 +152,6 @@ export default function AdminClientsPage() {
                         <Badge variant="secondary" className="mr-1 text-xs">
                           كبار سن
                         </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {c.role === "ADMIN" ? (
-                        <Badge variant="default">مسؤول</Badge>
-                      ) : (
-                        <Badge variant="outline">عميل</Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>

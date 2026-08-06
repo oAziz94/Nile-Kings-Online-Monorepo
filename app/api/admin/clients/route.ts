@@ -20,17 +20,20 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
+  const roleParam = (searchParams.get("role") ?? "CUSTOMER").toUpperCase();
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10) || 20));
   const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0", 10) || 0);
+  const role: "CUSTOMER" | "ADMIN" =
+    roleParam === "ADMIN" ? "ADMIN" : "CUSTOMER";
 
   const where: {
-    role: { in: ("CUSTOMER" | "ADMIN")[] };
+    role: "CUSTOMER" | "ADMIN";
     OR?: Array<{
       phone?: { contains: string; mode: "insensitive" };
       name?: { contains: string; mode: "insensitive" };
       email?: { contains: string; mode: "insensitive" };
     }>;
-  } = { role: { in: ["CUSTOMER", "ADMIN"] } };
+  } = { role };
   if (q) {
     where.OR = [
       { phone: { contains: q, mode: "insensitive" } },

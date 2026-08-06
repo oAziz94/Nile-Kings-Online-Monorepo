@@ -18,6 +18,13 @@ import {
   InsufficientStockError,
   type StockLine,
 } from "@/lib/services/stock";
+import {
+  commitPartnerReservation,
+  InsufficientPartnerStockError,
+  reconcilePartnerStockForAdminOrderItemEdit,
+  releasePartnerReservation,
+  restorePartnerCommittedStock,
+} from "@/lib/inventory/partner-inventory";
 import { logOrderCancelled, logOrderConfirmed, logOrderStatusChange } from "@/lib/audit/order-audit";
 
 const ORDER_STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
@@ -97,6 +104,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     },
   });
   if (!existing) return apiNotFound("الطلب غير موجود");
+  const existingOrder = existing;
 
   let body: {
     status?: string;
@@ -372,7 +380,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   const isInstaPayPrepaid = existing.paymentMethod === "INSTAPAY_PREPAID";
 
   async function applyLeavingCreatedStock(tx: OrderTx, lines: StockLine[]) {
-    await commitReservation(tx, lines);
+    if (existingOrder.assignedPartnerId) {
+      await commitPartnerReservation(tx, existingOrder.assignedPartnerId, lines, id);
+    } else {
+      await commitReservation(tx, lines);
+    }
     data.reservationExpiresAt = null;
     if (nextStatus === "CONFIRMED") {
       await logOrderConfirmed(tx, id);
@@ -393,7 +405,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       typeof data.cancellationReason === "string" ? data.cancellationReason : "admin";
     const order = await prisma.$transaction(
       async (tx) => {
-        if (orderUsesReservationOnly(existing.status)) {
+        if (existing.assignedPartnerId && orderUsesReservationOnly(existing.status)) {
+          await releasePartnerReservation(tx, existing.assignedPartnerId, stockLines, existing.id);
+        } else if (existing.assignedPartnerId) {
+          await restorePartnerCommittedStock(tx, existing.assignedPartnerId, stockLines, existing.id);
+        } else if (orderUsesReservationOnly(existing.status)) {
           await releaseReservation(tx, stockLines);
         } else {
           await restoreCommittedStock(tx, stockLines);
@@ -415,12 +431,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       const linesAfterEdit = newItemStockLines!;
       const order = await prisma.$transaction(
         async (tx) => {
-          await reconcileStockForAdminOrderItemEdit(
-            tx,
-            existing.status,
-            oldItemStockLines,
-            linesAfterEdit
-          );
+          if (existing.assignedPartnerId) {
+            await reconcilePartnerStockForAdminOrderItemEdit(
+              tx,
+              existing.assignedPartnerId,
+              existing.status,
+              oldItemStockLines,
+              linesAfterEdit,
+              existing.id
+            );
+          } else {
+            await reconcileStockForAdminOrderItemEdit(
+              tx,
+              existing.status,
+              oldItemStockLines,
+              linesAfterEdit
+            );
+          }
           if (leavingCreated) {
             await applyLeavingCreatedStock(tx, linesAfterEdit);
           }
@@ -434,7 +461,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       );
       return apiSuccess(mapOrderDetailApiRow(order));
     } catch (e) {
-      if (e instanceof InsufficientStockError) {
+      if (e instanceof InsufficientStockError || e instanceof InsufficientPartnerStockError) {
         return apiBadRequest("كمية غير متوفرة في المخزون لتعديل الطلب بهذه الأصناف");
       }
       throw e;
@@ -456,7 +483,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       );
       return apiSuccess(mapOrderDetailApiRow(order));
     } catch (e) {
-      if (e instanceof InsufficientStockError) {
+      if (e instanceof InsufficientStockError || e instanceof InsufficientPartnerStockError) {
         return apiBadRequest("كمية غير متوفرة في المخزون لتأكيد الطلب");
       }
       throw e;

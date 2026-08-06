@@ -3,22 +3,20 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  BarChart3,
   Banknote,
+  Boxes,
   CheckCircle2,
-  Folder,
+  ClipboardList,
+  Plus,
   Package,
-  Settings,
   ShoppingBag,
   TrendingUp,
-  Users,
 } from "lucide-react";
 import { AdminKpiCard } from "@/components/admin/admin-kpi-card";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminStatusBadge } from "@/components/admin/admin-page-header";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatNumberEn } from "@/lib/format-en-numbers";
-import { cn } from "@/lib/utils";
 
 type Kpis = {
   totalRevenuePiastres: number;
@@ -27,12 +25,10 @@ type Kpis = {
 };
 
 const QUICK_LINKS = [
-  { href: "/admin/analytics", label: "التقارير", icon: BarChart3, desc: "إيرادات ومبيعات مُسلَّمة" },
-  { href: "/admin/orders", label: "الطلبات", icon: ShoppingBag, desc: "متابعة وتحديث الحالة" },
-  { href: "/admin/products", label: "المنتجات", icon: Package, desc: "الكتالوج والمتغيرات" },
-  { href: "/admin/clients", label: "العملاء", icon: Users, desc: "حسابات المتجر" },
-  { href: "/admin/categories", label: "الفئات", icon: Folder, desc: "تنظيم المنتجات" },
-  { href: "/admin/settings", label: "الإعدادات", icon: Settings, desc: "COD و OTP وغيرها" },
+  { href: "/admin/orders", label: "مراجعة الطلبات", icon: ClipboardList },
+  { href: "/admin/orders/new", label: "طلب جديد", icon: Plus },
+  { href: "/admin/products/new", label: "منتج جديد", icon: Package },
+  { href: "/admin/partner-inventory", label: "مخزون الشركاء", icon: Boxes },
 ] as const;
 
 export default function AdminDashboardPage() {
@@ -54,10 +50,10 @@ export default function AdminDashboardPage() {
   }, []);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <AdminPageHeader
         title="لوحة التحكم"
-        description="نظرة سريعة على أداء المتجر. الأرقام أدناه للطلبات المُسلَّمة (تم التسليم)."
+        description="ملخص سريع للطلبات المُسلَّمة وإجراءات الإدارة اليومية."
         badge={
           <AdminStatusBadge>
             <CheckCircle2 className="h-3 w-3" />
@@ -67,7 +63,7 @@ export default function AdminDashboardPage() {
         actions={
           <Link
             href="/admin/analytics"
-            className="inline-flex h-9 items-center justify-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+            className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 hover:text-primary-foreground"
           >
             التقارير التفصيلية
           </Link>
@@ -108,29 +104,25 @@ export default function AdminDashboardPage() {
         />
       </div>
 
-      <div>
-        <h2 className="mb-4 text-sm font-semibold text-muted-foreground">اختصارات</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {QUICK_LINKS.map(({ href, label, icon: Icon, desc }) => (
+      <section className="rounded-lg border border-border bg-card">
+        <div className="border-b border-border px-4 py-3 sm:px-5">
+          <h2 className="text-base font-semibold text-foreground">إجراءات سريعة</h2>
+        </div>
+        <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+          {QUICK_LINKS.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
-              className={cn(
-                "group flex items-start gap-4 rounded-2xl border border-border/80 bg-card p-4 shadow-subtle",
-                "transition-all hover:border-burgundy/25 hover:shadow-card"
-              )}
+              className="group flex items-center gap-3 bg-card p-4 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-burgundy/10 text-burgundy ring-1 ring-inset ring-burgundy/15 transition-colors group-hover:bg-burgundy/15">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:bg-background group-hover:text-foreground">
                 <Icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-semibold text-foreground">{label}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{desc}</p>
-              </div>
+              </span>
+              <span>{label}</span>
             </Link>
           ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

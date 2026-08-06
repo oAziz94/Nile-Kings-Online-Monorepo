@@ -21,15 +21,15 @@ export function AdminPanelCard({
   noPadding?: boolean;
 }) {
   return (
-    <Card className={cn("rounded-2xl border-border/80 shadow-card", className)}>
+    <Card className={cn("rounded-lg border-border shadow-none", className)}>
       <CardHeader
         className={cn(
-          "gap-4 border-b border-border/60 bg-muted/30",
+          "gap-4 border-b border-border bg-muted/20 px-4 py-3 sm:px-5",
           toolbar ? "flex flex-col sm:flex-row sm:items-center sm:justify-between" : undefined
         )}
       >
         <div>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2 text-base">
             {icon}
             {title}
           </CardTitle>
@@ -37,7 +37,7 @@ export function AdminPanelCard({
         </div>
         {toolbar}
       </CardHeader>
-      <CardContent className={cn(noPadding && "p-0", contentClassName)}>
+      <CardContent className={cn(!noPadding && "p-4 sm:p-5", noPadding && "p-0", contentClassName)}>
         {children}
       </CardContent>
     </Card>

@@ -2,7 +2,17 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiNotFound } from "@/lib/api/response";
 import type { ProductDetail } from "@/lib/catalog";
-import { piastresToEgp, discountPercentFromPrices } from "@/lib/catalog";
+import {
+  piastresToEgp,
+  discountPercentFromPrices,
+  originalPriceFromExplicitDiscount,
+  originalPriceFromVariant,
+} from "@/lib/catalog";
+import {
+  applyStorefrontPartnerStock,
+  getStorefrontGovernorateFromRequest,
+  getStorefrontStockContext,
+} from "@/lib/storefront-location";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +31,7 @@ function toDetail(p: {
     sku: string;
     slug: string | null;
     name: string;
+    basePricePiastres: number | null;
     pricePiastres: number;
     stockAvailable: number;
     colorHex: string | null;
@@ -30,14 +41,12 @@ function toDetail(p: {
 }): ProductDetail {
   const prices = p.variants.map((v) => v.pricePiastres);
   const minPrice = prices.length ? Math.min(...prices) : 0;
-  const maxPrice = prices.length ? Math.max(...prices) : 0;
   const currentPiastres = p.discountPricePiastres ?? minPrice;
   const priceEgp = piastresToEgp(currentPiastres);
-  const originalFromProduct = p.basePricePiastres != null && p.basePricePiastres > currentPiastres
-    ? piastresToEgp(p.basePricePiastres)
-    : undefined;
-  const originalFromVariants = maxPrice > minPrice ? piastresToEgp(maxPrice) : undefined;
-  const originalPriceEgp = originalFromProduct ?? originalFromVariants;
+  const originalPriceEgp = originalPriceFromExplicitDiscount(
+    p.basePricePiastres,
+    p.discountPricePiastres
+  );
   const discountPercent = originalPriceEgp != null && originalPriceEgp > priceEgp
     ? discountPercentFromPrices(originalPriceEgp, priceEgp)
     : undefined;
@@ -56,26 +65,37 @@ function toDetail(p: {
     categoryName: p.category.name,
     inStock,
     tags: p.tags ?? [],
-    variants: p.variants.map((v) => ({
-      id: v.id,
-      sku: v.sku,
-      name: v.name,
-      slug: v.slug,
-      imageUrl: v.imageUrl,
-      priceEgp: piastresToEgp(v.pricePiastres),
-      stockAvailable: v.stockAvailable,
-      inStock: v.stockAvailable > 0,
-      colorHex: v.colorHex,
-      colorName: v.colorName,
-    })),
+    variants: p.variants.map((v) => {
+      const variantPriceEgp = piastresToEgp(v.pricePiastres);
+      const variantOriginalPriceEgp = originalPriceFromVariant(v.basePricePiastres, v.pricePiastres);
+      const variantDiscountPercent =
+        variantOriginalPriceEgp != null
+          ? discountPercentFromPrices(variantOriginalPriceEgp, variantPriceEgp)
+          : undefined;
+      return {
+        id: v.id,
+        sku: v.sku,
+        name: v.name,
+        slug: v.slug,
+        imageUrl: v.imageUrl,
+        priceEgp: variantPriceEgp,
+        ...(variantOriginalPriceEgp && { originalPriceEgp: variantOriginalPriceEgp }),
+        ...(variantDiscountPercent != null && { discountPercent: variantDiscountPercent }),
+        stockAvailable: v.stockAvailable,
+        inStock: v.stockAvailable > 0,
+        colorHex: v.colorHex,
+        colorName: v.colorName,
+      };
+    }),
   };
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
+  const stockContext = await getStorefrontStockContext(getStorefrontGovernorateFromRequest(req));
 
   const product = await prisma.product.findFirst({
     where: { slug, active: true },
@@ -87,6 +107,7 @@ export async function GET(
           sku: true,
           slug: true,
           name: true,
+          basePricePiastres: true,
           pricePiastres: true,
           stockAvailable: true,
           colorHex: true,
@@ -100,5 +121,10 @@ export async function GET(
 
   if (!product) return apiNotFound("المنتج غير موجود");
 
-  return apiSuccess(toDetail(product));
+  const adjustedProduct = {
+    ...product,
+    variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
+  };
+
+  return apiSuccess(toDetail(adjustedProduct));
 }

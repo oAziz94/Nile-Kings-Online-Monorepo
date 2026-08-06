@@ -3,6 +3,7 @@ import { Footer } from "@/components/shared/footer";
 import { CartProvider } from "@/contexts/cart-context";
 import { CartDrawer } from "@/components/cart/cart-drawer";
 import { CouponPromoDialog } from "@/components/promotions/coupon-promo-dialog";
+import { GovernorateSelector } from "@/components/storefront/governorate-selector";
 
 export default function PublicLayout({
   children,
@@ -16,6 +17,7 @@ export default function PublicLayout({
         <main className="flex-1 bg-background pt-[72px] md:pt-[84px]">{children}</main>
         <Footer />
       </div>
+      <GovernorateSelector />
       <CartDrawer />
       <CouponPromoDialog />
     </CartProvider>

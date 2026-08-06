@@ -4,7 +4,13 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { reserveStockForOrder, commitReservation, InsufficientStockError } from "@/lib/services/stock";
+import { InsufficientStockError } from "@/lib/services/stock";
+import {
+  commitPartnerReservation,
+  findFulfillablePartnerForGovernorate,
+  InsufficientPartnerStockError,
+  reservePartnerStockForOrder,
+} from "@/lib/inventory/partner-inventory";
 import { logOrderCreated, logOrderConfirmed } from "@/lib/audit/order-audit";
 import { buildCheckoutSummary, buildCheckoutSummaryFromLines } from "./summary";
 import { PHASE1_SHIPPING_PROVIDER_DISPLAY } from "@/lib/services/shipping";
@@ -53,6 +59,7 @@ export type PlaceOrderInput = {
   /** Admin: do not clear the customer's cart */
   skipCartClear?: boolean;
   adminNotes?: string | null;
+  selectedPartnerId?: string | null;
 };
 
 export type PlaceOrderResult =
@@ -136,7 +143,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
           include: {
             variant: {
               include: {
-                product: { select: { name: true, slug: true } },
+                product: { select: { name: true, slug: true, active: true } },
               },
             },
           },
@@ -149,10 +156,14 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     }
     cartId = cart.id;
 
-    orderLines = cart.items.map((i) => {
+    orderLines = [];
+    for (const i of cart.items) {
       const v = i.variant;
       const p = v.product;
-      return {
+      if (!p.active) {
+        return { success: false, error: "صنف غير متاح في الطلب", code: "INVALID_ITEM" };
+      }
+      orderLines.push({
         variantId: v.id,
         quantity: i.quantity,
         productName: p.name,
@@ -160,8 +171,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         sku: v.sku,
         unitPricePiastres: v.pricePiastres,
         totalPiastres: i.quantity * v.pricePiastres,
-      };
-    });
+      });
+    }
   }
 
   if (!totalsFitDbInt(summary)) {
@@ -191,6 +202,18 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   }
 
   const stockLines = orderLines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }));
+  const selectedPartner = await findFulfillablePartnerForGovernorate({
+    governorate: input.address.governorate,
+    lines: stockLines,
+    preferredPartnerId: input.selectedPartnerId ?? null,
+  });
+  if (!selectedPartner) {
+    return {
+      success: false,
+      error: "الأصناف المطلوبة غير متوفرة لدى شريك واحد في هذه المحافظة",
+      code: "NO_PARTNER_CAN_FULFILL_CART",
+    };
+  }
   const immediateConfirm = input.paymentMethod === "COD" || input.paymentMethod === "PAYMOB";
   const isInstaPayPrepaid = input.paymentMethod === "INSTAPAY_PREPAID";
   const adminNotes =
@@ -201,8 +224,6 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   try {
     const result = await prisma.$transaction(
       async (tx) => {
-        await reserveStockForOrder(tx, stockLines);
-
         const order = await tx.order.create({
           data: {
             userId: input.userId,
@@ -220,8 +241,12 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
             couponCode: summary.appliedCouponCode ?? undefined,
             reservationExpiresAt: null,
             adminNotes: adminNotes ?? undefined,
+            assignedPartnerId: selectedPartner.partnerId,
+            shippingOriginGovernorate: selectedPartner.originGovernorate,
           },
         });
+
+        await reservePartnerStockForOrder(tx, selectedPartner.partnerId, stockLines, order.id);
 
         await tx.orderItem.createMany({
           data: orderLines.map((line) => ({
@@ -240,7 +265,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         if (immediateConfirm) await logOrderConfirmed(tx, order.id);
 
         if (immediateConfirm) {
-          await commitReservation(tx, stockLines);
+          await commitPartnerReservation(tx, selectedPartner.partnerId, stockLines, order.id);
           await tx.paymentAttempt.create({
             data: {
               orderId: order.id,
@@ -299,7 +324,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       status: result.status as "CREATED" | "CONFIRMED",
     };
   } catch (e) {
-    if (e instanceof InsufficientStockError) {
+    if (e instanceof InsufficientStockError || e instanceof InsufficientPartnerStockError) {
       return {
         success: false,
         error: `Insufficient stock for item`,

@@ -173,13 +173,17 @@ export function QuickShopModal({
 
   const displayPrice = selectedVariant?.priceEgp ?? product?.priceEgp ?? 0;
   const displayOriginal =
-    product?.originalPriceEgp != null && product.originalPriceEgp > displayPrice
-      ? product.originalPriceEgp
-      : undefined;
+    selectedVariant?.originalPriceEgp != null && selectedVariant.originalPriceEgp > displayPrice
+      ? selectedVariant.originalPriceEgp
+      : product?.originalPriceEgp != null && product.originalPriceEgp > displayPrice
+        ? product.originalPriceEgp
+        : undefined;
   const displayDiscountPercent =
-    displayOriginal != null
-      ? discountPercentFromPrices(displayOriginal, displayPrice)
-      : undefined;
+    selectedVariant?.discountPercent != null && selectedVariant.originalPriceEgp != null
+      ? selectedVariant.discountPercent
+      : displayOriginal != null
+        ? discountPercentFromPrices(displayOriginal, displayPrice)
+        : undefined;
   const savingsEgp =
     displayOriginal != null && displayOriginal > displayPrice
       ? displayOriginal - displayPrice

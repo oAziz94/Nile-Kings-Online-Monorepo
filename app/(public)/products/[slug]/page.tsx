@@ -2,8 +2,18 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { ProductPageContent } from "./product-page-content";
-import { piastresToEgp, discountPercentFromPrices } from "@/lib/catalog";
+import {
+  piastresToEgp,
+  discountPercentFromPrices,
+  originalPriceFromExplicitDiscount,
+  originalPriceFromVariant,
+} from "@/lib/catalog";
 import { pageMetadata } from "@/lib/seo";
+import {
+  applyStorefrontPartnerStock,
+  getCurrentStorefrontStockContext,
+  type StorefrontStockContext,
+} from "@/lib/storefront-location";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +43,7 @@ export async function generateMetadata({
   });
 }
 
-async function getProduct(slug: string) {
+async function getProduct(slug: string, stockContext: StorefrontStockContext) {
   // Resolve by variant slug first (productSlug_size_colorHexCode), then by product slug
   const variantBySlug = await prisma.variant.findFirst({
     where: { slug },
@@ -47,6 +57,7 @@ async function getProduct(slug: string) {
               sku: true,
               slug: true,
               name: true,
+              basePricePiastres: true,
               pricePiastres: true,
               stockAvailable: true,
               colorHex: true,
@@ -71,6 +82,7 @@ async function getProduct(slug: string) {
             sku: true,
             slug: true,
             name: true,
+            basePricePiastres: true,
             pricePiastres: true,
             stockAvailable: true,
             colorHex: true,
@@ -82,19 +94,20 @@ async function getProduct(slug: string) {
       },
     });
   if (!productRow) return null;
-  const product = productRow;
+  const product = {
+    ...productRow,
+    variants: await applyStorefrontPartnerStock(productRow.variants, stockContext.partnerId),
+  };
   const initialVariantId = variantBySlug?.id ?? null;
 
   const prices = product.variants.map((v) => v.pricePiastres);
   const minP = prices.length ? Math.min(...prices) : 0;
-  const maxP = prices.length ? Math.max(...prices) : 0;
   const currentPiastres = product.discountPricePiastres ?? minP;
   const priceEgp = piastresToEgp(currentPiastres);
-  const originalFromProduct = product.basePricePiastres != null && product.basePricePiastres > currentPiastres
-    ? piastresToEgp(product.basePricePiastres)
-    : undefined;
-  const originalFromVariants = maxP > minP ? piastresToEgp(maxP) : undefined;
-  const originalPriceEgp = originalFromProduct ?? originalFromVariants;
+  const originalPriceEgp = originalPriceFromExplicitDiscount(
+    product.basePricePiastres,
+    product.discountPricePiastres
+  );
   const discountPercent = originalPriceEgp != null && originalPriceEgp > priceEgp
     ? discountPercentFromPrices(originalPriceEgp, priceEgp)
     : undefined;
@@ -114,22 +127,32 @@ async function getProduct(slug: string) {
     discountPercent,
     inStock: product.variants.some((v) => v.stockAvailable > 0),
     initialVariantId,
-    variants: product.variants.map((v) => ({
-      id: v.id,
-      sku: v.sku,
-      slug: v.slug,
-      name: v.name,
-      priceEgp: piastresToEgp(v.pricePiastres),
-      stockAvailable: v.stockAvailable,
-      inStock: v.stockAvailable > 0,
-      colorHex: v.colorHex,
-      colorName: v.colorName,
-      imageUrl: v.imageUrl,
-    })),
+    variants: product.variants.map((v) => {
+      const variantPriceEgp = piastresToEgp(v.pricePiastres);
+      const variantOriginalPriceEgp = originalPriceFromVariant(v.basePricePiastres, v.pricePiastres);
+      const variantDiscountPercent =
+        variantOriginalPriceEgp != null
+          ? discountPercentFromPrices(variantOriginalPriceEgp, variantPriceEgp)
+          : undefined;
+      return {
+        id: v.id,
+        sku: v.sku,
+        slug: v.slug,
+        name: v.name,
+        priceEgp: variantPriceEgp,
+        originalPriceEgp: variantOriginalPriceEgp,
+        discountPercent: variantDiscountPercent,
+        stockAvailable: v.stockAvailable,
+        inStock: v.stockAvailable > 0,
+        colorHex: v.colorHex,
+        colorName: v.colorName,
+        imageUrl: v.imageUrl,
+      };
+    }),
   };
 }
 
-async function getRelated(slug: string, categoryId: string) {
+async function getRelated(slug: string, categoryId: string, stockContext: StorefrontStockContext) {
   const related = await prisma.product.findMany({
     where: { active: true, categoryId, slug: { not: slug } },
     orderBy: { sortOrder: "asc" },
@@ -149,17 +172,22 @@ async function getRelated(slug: string, categoryId: string) {
     },
   });
 
-  return related.map((p) => {
+  const stockAdjustedRelated = await Promise.all(
+    related.map(async (product) => ({
+      ...product,
+      variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
+    }))
+  );
+
+  return stockAdjustedRelated.map((p) => {
     const prices = p.variants.map((v) => v.pricePiastres);
     const minPrice = prices.length ? Math.min(...prices) : 0;
-    const maxPrice = prices.length ? Math.max(...prices) : 0;
     const currentPiastres = p.discountPricePiastres ?? minPrice;
     const priceEgp = piastresToEgp(currentPiastres);
-    const originalFromProduct = p.basePricePiastres != null && p.basePricePiastres > currentPiastres
-      ? piastresToEgp(p.basePricePiastres)
-      : undefined;
-    const originalFromVariants = maxPrice > minPrice ? piastresToEgp(maxPrice) : undefined;
-    const originalPriceEgp = originalFromProduct ?? originalFromVariants;
+    const originalPriceEgp = originalPriceFromExplicitDiscount(
+      p.basePricePiastres,
+      p.discountPricePiastres
+    );
     const discountPercent = originalPriceEgp != null && originalPriceEgp > priceEgp
       ? discountPercentFromPrices(originalPriceEgp, priceEgp)
       : undefined;
@@ -196,10 +224,11 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = await getProduct(slug);
+  const stockContext = await getCurrentStorefrontStockContext();
+  const product = await getProduct(slug, stockContext);
   if (!product) notFound();
 
-  const related = await getRelated(product.slug, product.categoryId);
+  const related = await getRelated(product.slug, product.categoryId, stockContext);
 
   return (
     <div className="container px-4 py-6 md:py-8">
