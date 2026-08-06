@@ -19,13 +19,11 @@ export function AdminPageHeader({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-l from-burgundy/8 via-card to-gold/10 p-4 shadow-card sm:p-6",
+        "border-b border-border pb-4",
         className
       )}
     >
-      <div className="pointer-events-none absolute -left-8 -top-8 h-32 w-32 rounded-full bg-burgundy/10 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-10 -right-6 h-28 w-28 rounded-full bg-gold/15 blur-2xl" />
-      <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-bold text-foreground sm:text-2xl">{title}</h1>
@@ -52,7 +50,7 @@ export function AdminStatusBadge({
   variant?: "success" | "secondary";
 }) {
   return (
-    <Badge variant={variant} className="gap-1 font-normal">
+    <Badge variant={variant} className="gap-1 rounded-md font-normal">
       {children}
     </Badge>
   );

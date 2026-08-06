@@ -184,7 +184,7 @@ export default function AdminClientProfilePage() {
           });
           setGrantAdminOpen(false);
           if (!json.data?.alreadyAdmin) {
-            window.location.href = "/admin/clients";
+            window.location.href = "/admin/admins";
           }
         } else {
           toast({ title: json?.error?.message ?? "فشلت العملية", variant: "destructive" });
@@ -197,14 +197,16 @@ export default function AdminClientProfilePage() {
   if (loading || !client) return <Skeleton className="h-96 w-full rounded-2xl" />;
 
   const displayName = client.name?.trim() || client.phone || "مستخدم";
+  const listHref = client.role === "ADMIN" ? "/admin/admins" : "/admin/clients";
+  const profileTitle = client.role === "ADMIN" ? "ملف المسؤول" : "ملف العميل";
 
   return (
     <div dir="rtl" className="space-y-6">
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/admin/clients">← القائمة</Link>
+          <Link href={listHref}>← القائمة</Link>
         </Button>
-        <h1 className="text-2xl font-bold">ملف المستخدم</h1>
+        <h1 className="text-2xl font-bold">{profileTitle}</h1>
       </div>
 
       <Card>

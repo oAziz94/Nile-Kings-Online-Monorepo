@@ -19,7 +19,7 @@ const MAX_AGE_SEC = 30 * 24 * 60 * 60; // 30 days
 export type SessionUser = {
   userId: string;
   phone: string;
-  role: "CUSTOMER" | "ADMIN";
+  role: "CUSTOMER" | "ADMIN" | "PARTNER";
 };
 
 async function getSecret(): Promise<Uint8Array> {
@@ -84,7 +84,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     return {
       userId: sub,
       phone: dbUser.phone,
-      role: dbUser.role as "CUSTOMER" | "ADMIN",
+      role: dbUser.role as "CUSTOMER" | "ADMIN" | "PARTNER",
     };
   } catch {
     return null;
@@ -148,4 +148,28 @@ export async function requireAdmin(): Promise<SessionUser> {
     phone: resolved.phone,
     role: "ADMIN",
   };
+}
+
+export async function requirePartner(): Promise<SessionUser & { partnerId: string }> {
+  const user = await getCurrentUser();
+  if (!user) {
+    const err = new Error("UNAUTHORIZED");
+    (err as Error & { status?: number }).status = 401;
+    throw err;
+  }
+
+  const partner = await prisma.partner.findFirst({
+    where: {
+      OR: [{ userId: user.userId }, { phone: user.phone }],
+      isActive: true,
+    },
+    select: { id: true },
+  });
+  if (!partner) {
+    const err = new Error("FORBIDDEN");
+    (err as Error & { status?: number }).status = 403;
+    throw err;
+  }
+
+  return { ...user, role: "PARTNER", partnerId: partner.id };
 }

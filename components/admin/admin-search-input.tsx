@@ -20,7 +20,7 @@ export function AdminSearchInput({
         placeholder={placeholder ?? "بحث…"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 rounded-xl pr-10"
+        className="h-10 rounded-md pr-10"
       />
     </div>
   );

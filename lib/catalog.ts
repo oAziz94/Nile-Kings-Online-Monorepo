@@ -20,6 +20,8 @@ export interface VariantPublic {
   sku: string;
   name: string;
   priceEgp: number;
+  originalPriceEgp?: number;
+  discountPercent?: number;
   stockAvailable: number;
   inStock: boolean;
   colorHex?: string | null;
@@ -59,6 +61,23 @@ export interface ProductListItem {
 export function discountPercentFromPrices(original: number, price: number): number | undefined {
   if (original <= 0 || price >= original) return undefined;
   return Math.round(((original - price) / original) * 100);
+}
+
+export function originalPriceFromExplicitDiscount(
+  basePricePiastres: number | null,
+  discountPricePiastres: number | null
+): number | undefined {
+  if (discountPricePiastres == null) return undefined;
+  if (basePricePiastres == null || basePricePiastres <= discountPricePiastres) return undefined;
+  return piastresToEgp(basePricePiastres);
+}
+
+export function originalPriceFromVariant(
+  basePricePiastres: number | null,
+  pricePiastres: number
+): number | undefined {
+  if (basePricePiastres == null || basePricePiastres <= pricePiastres) return undefined;
+  return piastresToEgp(basePricePiastres);
 }
 
 export interface ProductDetail extends ProductListItem {

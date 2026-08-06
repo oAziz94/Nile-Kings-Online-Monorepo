@@ -8,6 +8,10 @@ import { prisma } from "@/lib/db";
 import { getOrCreateGuestToken, getGuestToken } from "@/lib/cart/guest";
 import { getCurrentUser } from "@/lib/auth/session";
 import { piastresToEgp } from "@/lib/catalog";
+import {
+  getCurrentStorefrontStockContext,
+  getStorefrontSellableQuantityForVariant,
+} from "@/lib/storefront-location";
 
 export type CartItemPayload = {
   id: string;
@@ -31,6 +35,36 @@ export type CartPayload = {
   itemCount: number;
   subtotalEgp: number;
 };
+
+async function getSellableQuantitiesByVariant(variantIds: string[]): Promise<Map<string, number>> {
+  if (variantIds.length === 0) return new Map();
+  const context = await getCurrentStorefrontStockContext();
+  if (!context.partnerId) {
+    const variants = await prisma.variant.findMany({
+      where: { id: { in: variantIds } },
+      select: { id: true, stockAvailable: true, stockReserved: true },
+    });
+    return new Map(
+      variants.map((variant) => [
+        variant.id,
+        Math.max(0, variant.stockAvailable - variant.stockReserved),
+      ])
+    );
+  }
+  const rows = await prisma.partnerInventory.findMany({
+    where: {
+      partnerId: context.partnerId,
+      variantId: { in: variantIds },
+    },
+    select: { variantId: true, stockAvailable: true, stockReserved: true },
+  });
+  return new Map(
+    rows.map((row) => [
+      row.variantId,
+      Math.max(0, row.stockAvailable - row.stockReserved),
+    ])
+  );
+}
 
 /** Resolve cart: prefer user cart, else guest cart. Creates cart if missing. */
 export async function getOrCreateCart(): Promise<{
@@ -83,6 +117,7 @@ export async function getCartPayload(cartId: string): Promise<CartPayload | null
                   name: true,
                   slug: true,
                   imageUrl: true,
+                  active: true,
                 },
               },
             },
@@ -94,6 +129,14 @@ export async function getCartPayload(cartId: string): Promise<CartPayload | null
 
   if (!cart) return null;
 
+  const inactiveItemIds = cart.items
+    .filter((item) => !item.variant.product.active)
+    .map((item) => item.id);
+  if (inactiveItemIds.length > 0) {
+    await prisma.cartItem.deleteMany({ where: { id: { in: inactiveItemIds } } });
+  }
+  const activeItems = cart.items.filter((item) => item.variant.product.active);
+
   /** Item display: productSlug-size-colorName (e.g. test-M-اسود) */
   function variantDisplayName(
     productSlug: string,
@@ -104,10 +147,14 @@ export async function getCartPayload(cartId: string): Promise<CartPayload | null
     return colorName?.trim() ? `${base}-${colorName.trim()}` : base;
   }
 
-  const items: CartItemPayload[] = cart.items.map((item) => {
+  const sellableByVariant = await getSellableQuantitiesByVariant(
+    activeItems.map((item) => item.variantId)
+  );
+
+  const items: CartItemPayload[] = activeItems.map((item) => {
     const v = item.variant;
     const p = v.product;
-    const maxQty = Math.max(0, v.stockAvailable - v.stockReserved);
+    const maxQty = sellableByVariant.get(v.id) ?? 0;
     return {
       id: item.id,
       variantId: v.id,
@@ -137,14 +184,16 @@ export async function getCartPayload(cartId: string): Promise<CartPayload | null
   };
 }
 
-/** Max quantity allowed for a variant (stockAvailable - stockReserved). */
+/** Max quantity allowed for a variant from active partner inventory. */
 export async function getMaxQuantityForVariant(variantId: string): Promise<number> {
   const v = await prisma.variant.findUnique({
     where: { id: variantId },
-    select: { stockAvailable: true, stockReserved: true },
+    select: {
+      product: { select: { active: true } },
+    },
   });
-  if (!v) return 0;
-  return Math.max(0, v.stockAvailable - v.stockReserved);
+  if (!v || !v.product.active) return 0;
+  return getStorefrontSellableQuantityForVariant(variantId);
 }
 
 /** Merge guest cart into user cart (sum quantities by variantId). Clear guest cart and cookie. */

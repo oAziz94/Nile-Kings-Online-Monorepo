@@ -57,7 +57,6 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
     imageUrl?: string | null;
     basePricePiastres?: number | null;
     pricePiastres?: number;
-    stockAvailable?: number;
   };
   try {
     body = await req.json();
@@ -122,7 +121,7 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
         imageUrl: body.imageUrl?.trim() || null,
         basePricePiastres: variantBase,
         pricePiastres: variantPrice,
-        stockAvailable: typeof body.stockAvailable === "number" && body.stockAvailable >= 0 ? body.stockAvailable : 0,
+        stockAvailable: 0,
         stockReserved: 0,
       },
     });

@@ -13,10 +13,13 @@ function parseRange(from?: string | null, to?: string | null): { from: Date; to:
   return { from: fromDate, to: toDate };
 }
 
-function orderWhere(fromDate: Date, toDate: Date) {
+type AnalyticsScope = { partnerId?: string | null };
+
+function orderWhere(fromDate: Date, toDate: Date, scope: AnalyticsScope = {}) {
   return {
     status: REPORT_ORDER_STATUS,
     createdAt: { gte: fromDate, lte: toDate },
+    ...(scope.partnerId ? { assignedPartnerId: scope.partnerId } : {}),
   } as const;
 }
 
@@ -38,9 +41,13 @@ export type Kpis = {
   period: { from: Date; to: Date };
 };
 
-export async function getKpis(from?: string | null, to?: string | null): Promise<Kpis> {
+export async function getKpis(
+  from?: string | null,
+  to?: string | null,
+  scope: AnalyticsScope = {}
+): Promise<Kpis> {
   const { from: fromDate, to: toDate } = parseRange(from, to);
-  const where = orderWhere(fromDate, toDate);
+  const where = orderWhere(fromDate, toDate, scope);
 
   const [revenueRow, orders] = await Promise.all([
     prisma.order.aggregate({
@@ -81,12 +88,13 @@ export type RevenueBucket = {
 export async function getRevenueOverTime(
   granularity: DateGranularity,
   from?: string | null,
-  to?: string | null
+  to?: string | null,
+  scope: AnalyticsScope = {}
 ): Promise<RevenueBucket[]> {
   const { from: fromDate, to: toDate } = parseRange(from, to);
 
   const orders = await prisma.order.findMany({
-    where: orderWhere(fromDate, toDate),
+    where: orderWhere(fromDate, toDate, scope),
     select: {
       createdAt: true,
       totalPiastres: true,
@@ -155,19 +163,26 @@ export type ProductVariantReportRow = {
 
 export async function getProductVariantReport(
   from?: string | null,
-  to?: string | null
+  to?: string | null,
+  scope: AnalyticsScope = {}
 ): Promise<ProductVariantReportRow[]> {
   const { from: fromDate, to: toDate } = parseRange(from, to);
 
   const [variants, salesGroups] = await Promise.all([
     prisma.variant.findMany({
       where: { product: { active: true } },
-      include: { product: { select: { id: true, name: true } } },
+      include: {
+        product: { select: { id: true, name: true } },
+        partnerInventories: {
+          where: { partnerId: scope.partnerId ?? "__no_partner_scope__" },
+          select: { stockAvailable: true, stockReserved: true },
+        },
+      },
       orderBy: [{ product: { name: "asc" } }, { sku: "asc" }],
     }),
     prisma.orderItem.groupBy({
       by: ["variantId"],
-      where: { order: orderWhere(fromDate, toDate) },
+      where: { order: orderWhere(fromDate, toDate, scope) },
       _sum: { quantity: true, totalPiastres: true },
     }),
   ]);
@@ -184,6 +199,7 @@ export async function getProductVariantReport(
 
   return variants.map((v) => {
     const sold = soldMap.get(v.id);
+    const partnerInventory = v.partnerInventories[0] ?? null;
     return {
       productId: v.product.id,
       productName: v.product.name,
@@ -192,8 +208,8 @@ export async function getProductVariantReport(
       colorName: v.colorName,
       sku: v.sku,
       pricePiastres: v.pricePiastres,
-      stockAvailable: v.stockAvailable,
-      stockReserved: v.stockReserved,
+      stockAvailable: partnerInventory?.stockAvailable ?? v.stockAvailable,
+      stockReserved: partnerInventory?.stockReserved ?? v.stockReserved,
       quantitySold: sold?.quantitySold ?? 0,
       lineRevenuePiastres: sold?.lineRevenuePiastres ?? 0,
     };

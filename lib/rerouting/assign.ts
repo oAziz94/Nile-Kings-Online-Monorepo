@@ -23,6 +23,7 @@ export async function assignOrderToGovernorate(orderId: string): Promise<AssignR
     include: {
       user: { select: { name: true, phone: true } },
       items: { select: { productName: true, variantName: true, quantity: true } },
+      assignedPartner: { select: { id: true, phone: true, governorate: true } },
     },
   });
 
@@ -68,11 +69,13 @@ export async function assignOrderToGovernorate(orderId: string): Promise<AssignR
   }
 
   const partnerIds = rule.partners.map((p) => p.partnerId);
-  const lastId = rule.lastAssignedPartnerId;
-  const currentIndex = lastId ? partnerIds.indexOf(lastId) : -1;
-  const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % partnerIds.length;
-  const selectedPartnerId = partnerIds[nextIndex]!;
-  const sequence = (rule.partners.length ?? 0) > 0 ? nextIndex + 1 : 0;
+  const assignedPartnerId = order.assignedPartnerId;
+  const selectedPartnerId =
+    assignedPartnerId && partnerIds.includes(assignedPartnerId)
+      ? assignedPartnerId
+      : partnerIds[0]!;
+  const selectedIndex = partnerIds.indexOf(selectedPartnerId);
+  const sequence = selectedIndex >= 0 ? selectedIndex + 1 : 0;
 
   const { routedOrderId, partnerId, alreadyExisted } = await prisma.$transaction(async (tx) => {
     const existing = await tx.routedOrder.findUnique({ where: { orderId } });

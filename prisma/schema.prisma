@@ -19,6 +19,7 @@ datasource db {
 enum UserRole {
   CUSTOMER
   ADMIN
+  PARTNER
 }
 
 enum OrderStatus {
@@ -58,6 +59,7 @@ model User {
   couponUsages       CouponUsage[]
   savedAddresses     SavedAddress[]
   seniorVerification SeniorVerification?
+  partner            Partner?
 
   @@index([phone])
   @@index([role])
@@ -198,6 +200,9 @@ model Variant {
   product    Product @relation(fields: [productId], references: [id], onDelete: Restrict)
   cartItems  CartItem[]
   orderItems OrderItem[]
+  partnerInventories PartnerInventory[]
+  inventoryLedgerEntries InventoryLedger[]
+  restockRequestItems RestockRequestItem[]
 
   @@index([productId])
   @@index([sku])
@@ -333,10 +338,13 @@ model Order {
   cancellationReason   String?      // e.g. "admin" when cancelled manually
   adminNotes            String?      // internal admin notes (not customer shipping notes)
   exportedToCourierAt   DateTime?    // set when order is included in a courier export (prevents duplicate export)
+  assignedPartnerId      String?
+  shippingOriginGovernorate String?
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
 
   user           User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  assignedPartner Partner?        @relation("OrderAssignedPartner", fields: [assignedPartnerId], references: [id], onDelete: SetNull)
   items          OrderItem[]
   paymentAttempts PaymentAttempt[]
   routedOrder    RoutedOrder?
@@ -349,6 +357,8 @@ model Order {
   @@index([status, exportedToCourierAt, createdAt])
   @@index([paymentMethod])
   @@index([shippingProvider])
+  @@index([assignedPartnerId])
+  @@index([shippingOriginGovernorate])
 }
 
 // Audit trail for order lifecycle (create, confirm, cancel, etc.)
@@ -480,6 +490,7 @@ model PartnerRequest {
 
 model Partner {
   id            String      @id @default(cuid())
+  userId        String?     @unique
   partnerType   PartnerType
   name          String
   governorate   String
@@ -496,15 +507,130 @@ model Partner {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
+  user           User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   linkedAgent    Partner?   @relation("AgentDistributors", fields: [linkedAgentId], references: [id], onDelete: SetNull)
   distributors   Partner[]  @relation("AgentDistributors")
   rulePartners   ReroutingRulePartner[]
   routedOrdersAsPartner RoutedOrder[] @relation("RoutedOrderPartner")
+  assignedOrders Order[] @relation("OrderAssignedPartner")
   lastAssignedInRules   ReroutingRule[] @relation("ReroutingRuleLastPartner")
+  inventories PartnerInventory[]
+  inventoryLedgerEntries InventoryLedger[]
+  sourceRestockRequests RestockRequest[] @relation("RestockRequestSourcePartner")
+  destinationRestockRequests RestockRequest[] @relation("RestockRequestDestinationPartner")
 
+  @@index([userId])
+  @@index([phone])
   @@index([partnerType])
   @@index([linkedAgentId])
   @@index([isActive])
+  @@index([governorate])
+}
+
+// ---------------------------------------------------------------------------
+// Partner-owned inventory and restock requests
+// ---------------------------------------------------------------------------
+
+enum InventoryLedgerReason {
+  MANUAL_ADJUSTMENT
+  ORDER_RESERVE
+  ORDER_COMMIT
+  ORDER_RELEASE
+  ORDER_RESTORE
+  TRANSFER_IN
+  TRANSFER_OUT
+  RESTOCK_REQUEST_CREATE
+  RESTOCK_REQUEST_FULFILL
+  LEGACY_BACKFILL
+}
+
+model PartnerInventory {
+  id             String   @id @default(cuid())
+  partnerId      String
+  variantId      String
+  stockAvailable Int      @default(0)
+  stockReserved  Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  variant Variant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@unique([partnerId, variantId])
+  @@index([partnerId])
+  @@index([variantId])
+  @@index([stockAvailable])
+}
+
+model InventoryLedger {
+  id                 String                @id @default(cuid())
+  partnerId          String
+  variantId          String
+  reason             InventoryLedgerReason
+  quantityAvailableDelta Int              @default(0)
+  quantityReservedDelta  Int              @default(0)
+  orderId            String?
+  routedOrderId      String?
+  restockRequestId   String?
+  notes              String?
+  createdAt          DateTime              @default(now())
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  variant Variant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@index([partnerId])
+  @@index([variantId])
+  @@index([orderId])
+  @@index([routedOrderId])
+  @@index([restockRequestId])
+  @@index([reason])
+  @@index([createdAt])
+}
+
+enum RestockRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+  CANCELLED
+}
+
+model RestockRequest {
+  id                   String               @id @default(cuid())
+  sourcePartnerId      String
+  destinationPartnerId String
+  status               RestockRequestStatus @default(PENDING)
+  notes                String?
+  responseNotes        String?
+  requestedAt          DateTime             @default(now())
+  approvedAt           DateTime?
+  rejectedAt           DateTime?
+  fulfilledAt          DateTime?
+  cancelledAt          DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  sourcePartner Partner @relation("RestockRequestSourcePartner", fields: [sourcePartnerId], references: [id], onDelete: Restrict)
+  destinationPartner Partner @relation("RestockRequestDestinationPartner", fields: [destinationPartnerId], references: [id], onDelete: Restrict)
+  items RestockRequestItem[]
+
+  @@index([sourcePartnerId])
+  @@index([destinationPartnerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RestockRequestItem {
+  id               String @id @default(cuid())
+  restockRequestId String
+  variantId        String
+  quantity         Int
+
+  restockRequest RestockRequest @relation(fields: [restockRequestId], references: [id], onDelete: Cascade)
+  variant Variant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@unique([restockRequestId, variantId])
+  @@index([variantId])
 }
 
 // ---------------------------------------------------------------------------
