@@ -14,6 +14,14 @@ function fullPhone(countryCode: string, national: string): string {
   return countryCode + digits;
 }
 
+/** Only allow same-origin relative paths; reject protocol-relative ("//evil.com") and backslash tricks. */
+function safeRedirect(target: string | null): string {
+  if (!target) return "/";
+  if (!target.startsWith("/")) return "/";
+  if (target.startsWith("//") || target.startsWith("/\\")) return "/";
+  return target;
+}
+
 function LoginContent() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect");
@@ -54,8 +62,7 @@ function LoginContent() {
         return;
       }
       toast({ title: "تم تسجيل الدخول", variant: "success" });
-      const path = redirectTo?.startsWith("/") ? redirectTo : "/";
-      router.push(path);
+      router.push(safeRedirect(redirectTo));
       router.refresh();
     } catch {
       toast({ title: "خطأ في الاتصال", variant: "destructive" });
