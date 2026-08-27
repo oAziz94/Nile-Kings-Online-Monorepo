@@ -79,6 +79,37 @@ export async function applyStorefrontPartnerStock<T extends { id: string; stockA
   }));
 }
 
+/**
+ * Batched partner-stock lookup: one query for however many variant ids are
+ * passed in, instead of one query per product. Returns null when there's no
+ * partner override to apply (caller should keep each variant's own stock).
+ */
+export async function getPartnerStockOverrides(
+  variantIds: string[],
+  partnerId: string | null
+): Promise<Map<string, number> | null> {
+  if (!partnerId || variantIds.length === 0) return null;
+
+  const rows = await prisma.partnerInventory.findMany({
+    where: { partnerId, variantId: { in: variantIds } },
+    select: { variantId: true, stockAvailable: true, stockReserved: true },
+  });
+
+  return new Map(rows.map((row) => [row.variantId, Math.max(0, row.stockAvailable - row.stockReserved)]));
+}
+
+/** Apply a lookup map from getPartnerStockOverrides. A null map means: use each variant's own stock as-is. */
+export function applyPartnerStockOverrides<T extends { id: string; stockAvailable: number }>(
+  variants: T[],
+  overrides: Map<string, number> | null
+): T[] {
+  if (!overrides) return variants;
+  return variants.map((variant) => ({
+    ...variant,
+    stockAvailable: overrides.get(variant.id) ?? 0,
+  }));
+}
+
 export async function getStorefrontSellableQuantityForVariant(variantId: string): Promise<number> {
   const context = await getCurrentStorefrontStockContext();
   if (!context.partnerId) {
