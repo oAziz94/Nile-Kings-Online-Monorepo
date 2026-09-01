@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Loader2, Package, RefreshCw } from "lucide-react";
+import { ProductImagePreview } from "@/components/shared/product-image-preview";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminPageHeader, AdminStatusBadge } from "@/components/admin/admin-page-header";
 import { AdminPaginationBar } from "@/components/admin/admin-pagination";
@@ -173,7 +174,12 @@ export default function PartnerProductsPage() {
                     <TableRow key={product.id}>
                       <TableCell>
                         {product.imageUrl ? (
-                          <img src={product.imageUrl} alt="" className="h-12 w-12 rounded-xl object-cover" />
+                          <ProductImagePreview
+                            src={product.imageUrl}
+                            title={product.name}
+                            code={product.slug}
+                            className="overflow-hidden rounded-xl"
+                          />
                         ) : (
                           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
                             <Package className="h-6 w-6 text-muted-foreground" />

@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowRight, Boxes, Loader2, Package, RefreshCw, Save, Warehouse } from "lucide-react";
+import { ProductImagePreview } from "@/components/shared/product-image-preview";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminKpiCard } from "@/components/admin/admin-kpi-card";
 import { AdminPageHeader, AdminStatusBadge } from "@/components/admin/admin-page-header";
@@ -262,10 +263,11 @@ export default function PartnerProductVariantsPage() {
                     <TableRow key={variant.id}>
                       <TableCell>
                         {variant.imageUrl || product.imageUrl ? (
-                          <img
+                          <ProductImagePreview
                             src={variant.imageUrl ?? product.imageUrl ?? ""}
-                            alt={variantName(variant)}
-                            className="h-12 w-12 rounded-md border border-border object-cover"
+                            title={variantName(variant)}
+                            code={variant.sku}
+                            className="overflow-hidden rounded-md border border-border"
                           />
                         ) : (
                           <div className="flex h-12 w-12 items-center justify-center rounded-md border border-dashed border-border bg-muted text-muted-foreground">

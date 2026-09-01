@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { ProductImagePreview } from "@/components/shared/product-image-preview";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -209,10 +210,11 @@ export default function AdminProductsPage() {
                   <TableRow key={p.id}>
                     <TableCell>
                       {p.imageUrl ? (
-                        <img
+                        <ProductImagePreview
                           src={p.imageUrl}
-                          alt=""
-                          className="h-12 w-12 rounded-xl object-cover"
+                          title={p.name}
+                          code={p.slug}
+                          className="overflow-hidden rounded-xl"
                         />
                       ) : (
                         <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
