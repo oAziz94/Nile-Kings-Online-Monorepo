@@ -1,0 +1,1609 @@
+Active products scanned: 285
+Color groups scanned: 426
+Color groups missing at least one rung: 401
+Total variants that would be created: 1326
+
+- أندر شيرت رجالى [nk-9192] — color: ابيض #FFFFFF
+    has:     XXL, S, M, L, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9192_XXL_CSV8P9 price=16500 base=16500
+- أندر شيرت رجالى [nk-9192] — color: نبيتي #673340
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9192_S_CPBY53C price=16500 base=16500
+- أندر شيرت رجالى [nk-9192] — color: اسود #000000
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9192_S_CSVGSZ price=16500 base=16500
+- بانتى حريمى دانتيلا [nk-5687] — color: زهري #FFC0CB
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5687_S_CT2VYM price=8500 base=8500
+- بانتى حريمى دانتيلا [nk-5687] — color: بنفسجي #800080
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5687_S_C9SULKI price=8500 base=8500
+- بانتي حريمي سادة [nk-5555] — color: Sky Blue #ABBFD0
+    has:     XXL, XL, S, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5555_XXL_SKY_BLUE price=7000 base=7000
+- بانتي حريمي سادة [nk-5555] — color: نبيتي #770F05
+    has:     XXL, L, XL, S, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5555_XXL_CPBY53C price=7000 base=9300
+- بانتي حريمي سادة [nk-5555] — color: Royal Purple #7E2667
+    has:     XL, XXL, S, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5555_XL_ROYAL_PURPLE price=7000 base=7000
+- بانتي حريمي سادة [nk-5555] — color: Pink #D2A2B3
+    has:     S, M, L, XXL, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5555_S_PINK price=7000 base=7000
+- بانتي حريمي مشجر [nk-6666-1] — color: ابيض #FFFFFF
+    has:     M, L, S, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6666_1_M_CSV8P9 price=7500 base=7500
+- بانتي حريمي مشجر [nk-6666-7] — color: ازرق #ADC6DF
+    has:     L, XL, XXL, S, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6666_7_L_CSVFJ0 price=7500 base=7500
+- بانتي حريمي مشجر [nk-6666-5] — color: pink #f5d3d8
+    has:     XL, XXL, S, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6666_5_XL_PINK price=7500 base=7500
+- بانتي حريمي مشجر [nk-6666-2] — color: اخضر #8EAA90
+    has:     XXL, XL, M, S, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6666_2_XXL_CSVCO2 price=7500 base=7500
+- بانتي حريمي مشجر [nk-6666-2] — color: ازرق #9BB3E4
+    has:     M, XL, L, S, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6666_2_M_CSVFJ0 price=7500 base=7500
+- بانتي حريمي مشجر [nk-6666-2] — color: pink #A97D9A
+    has:     L, XL, S, XXL, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6666_2_L_PINK price=7500 base=7500
+- بانتي حريمي مشجر [nk-6666-3] — color: ابيض #FFFFFF
+    has:     L, XL, M, XXL, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6666_3_L_CSV8P9 price=7500 base=7500
+- بانتي حريمي مشجر [nk-6666-4] — color: اخضر #8ABAA7
+    has:     M, XL, L, XXL, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6666_4_M_CSVCO2 price=7500 base=7500
+- بانتي حريمي مشجر [nk-6666-8] — color: ابيض #FFFFFF
+    has:     XL, M, L, XXL, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6666_8_XL_CSV8P9 price=7500 base=7500
+- بانتي حريمي مشجر [nk-6666-11] — color: ازرق #ADD8E6
+    has:     XXL, S
+    MISSING: M, L, XL, XXXL, 4XL
+    price ref: sku=NK_6666_11_XXL_CSVFJ0 price=7500 base=7500
+- بانتي حريمي مشجر [nk-6666-10] — color: ابيض #FFFFF0
+    has:     S, M, XXL, L
+    MISSING: XL, XXXL, 4XL
+    price ref: sku=NK_6666_10_S_CSV8P9 price=7500 base=7500
+- بانتي حريمي مشجر [nk-6666-6] — color: ابيض #FFFFFF
+    has:     S, L, XL, M, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6666_6_S_CSV8P9 price=7500 base=7500
+- بانتي حريمي مشجر [nk-6666-9] — color: بيج فاتح #C3C3CC
+    has:     XXL, S, M, XL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6666_9_XXL_CI0XRTT price=7500 base=7500
+- برا حريمى سادة أستك [nk-8080] — color: اسود #000000
+    has:     XL, M, L, XXL, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_8080_XL_CSVGSZ price=7500 base=7500
+- برا حريمى سادة أستك [nk-8080] — color: زهري #FFC0CB
+    has:     XXL, L, M, XL, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_8080_XXL_CT2VYM price=7500 base=7500
+- برا حريمى سادة أستك [nk-8080] — color: ابيض #FFFFFF
+    has:     M, XXL, XL, L, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_8080_M_CSV8P9 price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-11] — color: Navy blue #000080
+    has:     L, M, XXL
+    MISSING: S, XL, XXXL, 4XL
+    price ref: sku=NK_9090_11_L_NAVY_BLUE price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-11] — color: اسود #000000
+    has:     S, XL, L, XXL, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9090_11_S_CSVGSZ price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-9] — color: ابيض #FFFFFF
+    has:     XL, S, L, XXL, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9090_9_XL_CSV8P9 price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-5] — color: pink #D0A8C0
+    has:     XXL, M, XL, S, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9090_5_XXL_PINK price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-5] — color: لبني #9BBEDA
+    has:     XL, S, M, L, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9090_5_XL_CTDR8O price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-3] — color: pink #D0A8C0
+    has:     L, M, S, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9090_3_L_PINK price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-10] — color: ازرق #9DB6D9
+    has:     XXL, XL, S, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9090_10_XXL_CSVFJ0 price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-7] — color: ابيض #FFFFFF
+    has:     M, L, S, XXL, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9090_7_M_CSV8P9 price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-8] — color: pink #D0A8C0
+    has:     XL, XXL, L, S, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9090_8_XL_PINK price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-1] — color: ابيض #FFFFFF
+    has:     L, S, XXL, XL, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9090_1_L_CSV8P9 price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-2] — color: ابيض #FFFFFF
+    has:     XL, M, XXL, L, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9090_2_XL_CSV8P9 price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-6] — color: ازرق #A5B5CE
+    has:     M, XXL, XL, L, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9090_6_M_CSVFJ0 price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-6] — color: اخضر #008000
+    has:     XXL, XL
+    MISSING: S, M, L, XXXL, 4XL
+    price ref: sku=NK_9090_6_XXL_CSVCO2 price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-6] — color: pink #D0A8C0
+    has:     M, XL, S, XXL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9090_6_M_PINK price=7500 base=7500
+- برا حريمي مشجر استك [nk-9090-4] — color: ابيض #FFFFFF
+    has:     S, M, XXL, XL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9090_4_S_CSV8P9 price=7500 base=7500
+- بنطلون ديربي بناتي [nk-0090] — color: Lavender #E6E6FA
+    has:     L, XL
+    MISSING: S, M, XXL, XXXL, 4XL
+    price ref: sku=NK_0090_L_LAVENDER price=16000 base=16000
+- بنطلون ديربي بناتي [nk-0090] — color: Salmon Orange #F48B5D
+    has:     L, XL
+    MISSING: S, M, XXL, XXXL, 4XL
+    price ref: sku=NK_0090_L_SALMON_ORANGE price=16000 base=16000
+- بنطلون ديربي بناتي [nk-0090] — color: Mint Green #58C5A8
+    has:     L, XL
+    MISSING: S, M, XXL, XXXL, 4XL
+    price ref: sku=NK_0090_L_MINT_GREEN price=16000 base=16000
+- بنطلون ديربي بناتي [nk-0090] — color: Black #000000
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0090_XL_BLACK price=16000 base=16000
+- بنطلون ديربي بناتي [nk-0090] — color: Red #FF0000
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0090_XL_RED price=16000 base=16000
+- بنطلون ديربي بناتي [nk-0090] — color: Baby Blue #ADD8E6
+    has:     XL, L
+    MISSING: S, M, XXL, XXXL, 4XL
+    price ref: sku=NK_0090_XL_BABY_BLUE price=16000 base=16000
+- بنطلون ديربي حريمي واسع [nk-0067] — color: #D61A22 #D61A22
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0067_S_D61A22 price=35000 base=35000
+- بنطلون ديربي حريمي واسع [nk-0067] — color: Lavender #E6E6FA
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0067_S_LAVENDER price=35000 base=35000
+- بنطلون ديربي حريمي واسع [nk-0067] — color: Salmon Orange #F48B5D
+    has:     S, L
+    MISSING: M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0067_S_SALMON_ORANGE price=35000 base=35000
+- بنطلون ديربي حريمي واسع [nk-0067] — color: Baby Blue #B0E0E6
+    has:     S, L
+    MISSING: M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0067_S_BABY_BLUE price=35000 base=35000
+- بنطلون ديربي حريمي واسع [nk-0067] — color: Light Green #D7F7D0
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0067_L_LIGHT_GREEN price=35000 base=35000
+- بنطلون ليجن ديربي حريمي [nk-0078] — color: RED #b01217
+    has:     L, S
+    MISSING: M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0078_L_RED price=28500 base=28500
+- بنطلون ليجن ديربي حريمي [nk-0078] — color: Mint Green #58C5A8
+    has:     L, S
+    MISSING: M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0078_L_MINT_GREEN price=28500 base=28500
+- بنطلون ليجن ديربي حريمي [nk-0078] — color: Light Green #D7F7D0
+    has:     L, S
+    MISSING: M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0078_L_LIGHT_GREEN price=28500 base=28500
+- بنطلون ليجن ديربي حريمي [nk-0078] — color: Salmon Orange #F48B5D
+    has:     L, S
+    MISSING: M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0078_L_SALMON_ORANGE price=28500 base=28500
+- بنطلون ليجن ديربي حريمي [nk-0078] — color: Baby Blue #B0E0E6
+    has:     L, S
+    MISSING: M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0078_L_BABY_BLUE price=28500 base=28500
+- بنطلون ليجن ديربي حريمي [nk-0078] — color: Lavender #E6E6FA
+    has:     L, S
+    MISSING: M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0078_L_LAVENDER price=28500 base=28500
+- بوكسر أطفال أولاد مطبوع [nk-0789-1] — color: Off-White #F6F1E3
+    has:     M, L, XL, XXL, XXXL, 4XL
+    MISSING: S
+    price ref: sku=NK_0789_1_M_OFFWHITE price=8000 base=8000
+- بوكسر أطفال أولاد مطبوع [nk-0789] — color: اسود #000000
+    has:     XL, XXL
+    MISSING: S, M, L, XXXL, 4XL
+    price ref: sku=NK_0789_XL_CSVGSZ price=8000 base=8000
+- بوكسر أطفال أولاد مطبوع [nk-0789] — color: ازرق #154785
+    has:     M, L, XL, XXL, 4XL
+    MISSING: S, XXXL
+    price ref: sku=NK_0789_M_CSVFJ0 price=8000 base=8000
+- بوكسر أطفال أولاد مطبوع [nk-0789-2] — color: اسود #000000
+    has:     M, L, XL, XXL
+    MISSING: S, XXXL, 4XL
+    price ref: sku=NK_0789_2_M_CSVGSZ price=8000 base=8000
+- بوكسر أطفال أولاد مطبوع [nk-0789-3] — color: Baby Blue #ADD8E6
+    has:     XL, XXL
+    MISSING: S, M, L, XXXL, 4XL
+    price ref: sku=NK_0789_3_XL_BABY_BLUE price=8000 base=8000
+- بوكسر أطفال أولاد مطبوع [nk-0789-3] — color: Gray #77797C
+    has:     M, L, XXL, XXXL, 4XL
+    MISSING: S, XL
+    price ref: sku=NK_0789_3_M_GRAY price=8000 base=8000
+- بوكسر رجالى مطبوع [nk-4444-2] — color: ازرق #0A48B0
+    has:     L, S, M, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_4444_2_L_CSVFJ0 price=12500 base=12500
+- بوكسر رجالى مطبوع [nk-4444-7] — color: ابيض #FFFFFF
+    has:     XL, S, M, XXL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_4444_7_XL_CSV8P9 price=12500 base=12500
+- بوكسر رجالى مطبوع [nk-4444-5] — color: رمادي فاتح d3d3d3#
+    has:     XXL, L, XL, S, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_4444_5_XXL_CI65TN price=14500 base=14500
+- بوكسر رجالى مطبوع [nk-4444-5] — color: sky blue #82c8e5
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_4444_5_S_SKY_BLUE price=12500 base=12500
+- بوكسر رجالى مطبوع [nk-4444-4] — color: رمادي #808080
+    has:     XXL, XL, S, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_4444_4_XXL_CP0W9F2 price=12500 base=12500
+- بوكسر رجالى مطبوع [nk-4444-6] — color: offwhite #FAF9F6
+    has:     XL, XXL, S, L, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_4444_6_XL_OFFWHITE price=12500 base=12500
+- بوكسر رجالى مطبوع [nk-4444-3] — color: اسود #000000
+    has:     XXL, L, M, S, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_4444_3_XXL_CSVGSZ price=14500 base=14500
+- بوكسر رجالى مطبوع [nk-4444-3] — color: ازرق #0A48B0
+    has:     XXL, XL, S, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_4444_3_XXL_CSVFJ0 price=12500 base=12500
+- بوكسر رجالي سادة [nk-3333-1] — color: لبني #0196AF
+    has:     L, XL, XXL, S, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3333_1_L_CTDR8O price=12000 base=12000
+- بوكسر رجالي سادة [nk-3333-1] — color: نبيتي #B80F0A
+    has:     S, M, XXL, L, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3333_1_S_CPBY53C price=12000 base=12000
+- بوكسر رجالي سادة [nk-3333-1] — color: Baby Blue #ADD8E6
+    has:     L, XL
+    MISSING: S, M, XXL, XXXL, 4XL
+    price ref: sku=NK_3333_1_L_BABY_BLUE price=12000 base=12000
+- بوكسر رجالي سادة [nk-3333-2] — color: اسود #000000
+    has:     M, S, L, XXL, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3333_2_M_CSVGSZ price=12000 base=12000
+- بيجامة حريمي سادة [nk-4040] — color: فوشيا فاتح #DB64A4
+    has:     XXL, S, M, L, XL, XXXL
+    MISSING: 4XL
+    price ref: sku=NK_4040_XXL_CQ0WSYP price=39500 base=39500
+- بيجامة حريمي سادة [nk-4040] — color: Pale Pink #F5C3C3
+    has:     S, M, L, XL, XXL, XXXL
+    MISSING: 4XL
+    price ref: sku=NK_4040_S_PALE_PINK price=39500 base=39500
+- بيجامة حريمي مشجر بنطلون+كروب توب دانتيل [nk-7809] — color: ابيض #FFFFFF
+    has:     S, L, XL, XXL, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7809_S_CSV8P9 price=35000 base=35000
+- بيجامة حريمي مشجر بنطلون+كروب توب دانتيل [nk-7809] — color: ازرق #000080
+    has:     XL, L, M, XXL, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7809_XL_CSVFJ0 price=35000 base=35000
+- بيجامة حريمي مشجر بنطلون+كروب توب دانتيل [nk-7809] — color: احمر #FF0000
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7809_S_CSVCAA price=35000 base=35000
+- بيجامة حريمي نصف كم مشجر [nk-9697-3] — color: ازرق #5C9CE2
+    has:     XXXL, XXL, M
+    MISSING: S, L, XL, 4XL
+    price ref: sku=NK_9697_3_XXXL_CSVFJ0 price=44500 base=44500
+- بيجامة حريمي نصف كم مشجر [nk-9697-3] — color: ابيض #5C9CE2
+    has:     4X
+    MISSING: S, M, L, XL, XXL, XXXL
+    price ref: sku=NK_9697_3_4X_CSV8P9 price=44500 base=44500
+- بيجامة حريمي نصف كم مشجر [nk-9697-1] — color: ابيض #FFFFFF
+    has:     XXXL, XL, L, XXL, 4X
+    MISSING: S, M
+    price ref: sku=NK_9697_1_XXXL_CSV8P9 price=44500 base=44500
+- بيجامة حريمي نصف كم مشجر [nk-9697-2] — color: بينك #FAADD8
+    has:     M, 4X, XXXL, XXL, XL
+    MISSING: S, L
+    price ref: sku=NK_9697_2_M_CSWKTB price=44500 base=44500
+- بيجامة حريمي نصف كم مشجر [nk-9697-4] — color: موف فاتح #C07397
+    has:     L, XXXL, 4XL
+    MISSING: S, M, XL, XXL
+    price ref: sku=NK_9697_4_L_CH32V1N price=44500 base=44500
+- بيجامة حريمي نصف كم مشجر [nk-9697-5] — color: ازرق فاتح #C1DCF1
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_9697_5_XL_C1OSJQR price=44500 base=44500
+- بيجامه حريمى سادة بنطلون + كروب توب دانتيل [nk-6798] — color: زهري #FFC0CB
+    has:     XL, S, M, L, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6798_XL_CT2VYM price=33000 base=44000
+- بيجامه حريمى سادة بنطلون + كروب توب دانتيل [nk-6798] — color: ازرق #87CEEB
+    has:     L, S, M, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6798_L_CSVFJ0 price=33000 base=44000
+- بيجامه حريمى صيفى سادة كروب توب + شورت [nk-3456] — color: زهري #FFC0CB
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3456_S_CT2VYM price=22000 base=22000
+- بيجامه حريمى صيفى سادة كروب توب + شورت [nk-3456] — color: ابيض #FFFFFF
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3456_S_CSV8P9 price=22000 base=22000
+- بيجامه حريمى مشجر كم طويل [nk-5050-4] — color: موف فاتح #C07397
+    has:     XL, M, L, S, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5050_4_XL_CH32V1N price=44500 base=44500
+- بيجامه حريمى مشجر كم طويل [nk-5050-4] — color: اخضر #008000
+    has:     S, XL, XXL, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5050_4_S_CSVCO2 price=44500 base=44500
+- بيجامه حريمى مشجر كم طويل [nk-5050-6] — color: ابيض #FFFFFF
+    has:     L, XL, XXL, S, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5050_6_L_CSV8P9 price=44500 base=44500
+- بيجامه حريمى مشجر كم طويل [nk-5050-5] — color: Ivory #FFFFF0
+    has:     XXL, L, M, S, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5050_5_XXL_IVORY price=44500 base=44500
+- بيجامه حريمى مشجر كم طويل [nk-5050-8] — color: ازرق #5C9CE2
+    has:     L, XL, XXL, S, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5050_8_L_CSVFJ0 price=44500 base=44500
+- بيجامه حريمى مشجر كم طويل [nk-5050-7] — color: pink مشجر #FAADD8
+    has:     S, XL, M, XXL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5050_7_S_PINK_ price=44500 base=44500
+- بيجامه حريمى مشجر كم طويل [nk-5050] — color: ازرق #000080
+    has:     XL, L, XXL, M, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5050_XL_CSVFJ0 price=44500 base=44500
+- بيجامه حريمى مشجر كم طويل [nk-5050] — color: اسود #000000
+    has:     XXL, L, S, M, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5050_XXL_CSVGSZ price=44500 base=44500
+- بيجامه حريمى مشجر كم طويل [nk-5050-10] — color: Ivory #FFFFF0
+    has:     S, M, L, XL
+    MISSING: XXL, XXXL, 4XL
+    price ref: sku=NK_5050_10_S_IVORY price=44500 base=44500
+- بيجامه حريمى مشجر كم طويل [nk-5050-2] — color: ابيض #FFFFFF
+    has:     XXL, L, XL, S, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5050_2_XXL_CSV8P9 price=44500 base=44500
+- بيجامه حريمى مشجر كم طويل [nk-5050-9] — color: ازرق فاتح #C1DCF1
+    has:     XL, M, XXL, S, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5050_9_XL_C1OSJQR price=44500 base=44500
+- بيجامه حريمي صيفى مشجر كروب توب + شورت [nk-7890] — color: ابيض #FFFFFF
+    has:     XXL, XL, S, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7890_XXL_CSV8P9 price=23000 base=30600
+- بيجامه رجالى سادة [nk-6060] — color: رماضي
+    has:     S, XXL, M, XL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6060_S_CP0W9L3 price=39500 base=52600
+- بيجامه رجالي مشجر نصف كم [nk-8908] — color: ازرق غامق #0000FF
+    has:     S, XXL, XL, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_8908_S_C1OWZZM price=42500 base=42500
+- بيحامه حريمى مشجر كم طويل [nk-5050-3] — color: ابيض #FFFFFF
+    has:     S, XXL, M, L, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5050_3_S_CSV8P9 price=44500 base=44500
+- تي شيرت اطفال مطبوع [nk-0089-13] — color: اسود #000000
+    has:     L, 14
+    MISSING: S, M, XL, XXL, XXXL
+    price ref: sku=NK_0089_13_L_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-4] — color: اسود #000000
+    has:     L, XL, XXL, XXXL
+    MISSING: S, M, 4XL
+    price ref: sku=NK_0089_4_L_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-4] — color: احمر #b01217
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_4_XL_CSVCAA price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-20] — color: ابيض #FFFFFF
+    has:     XXL, XXXL
+    MISSING: S, M, L, XL, 4XL
+    price ref: sku=NK_0089_20_XXL_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-3] — color: ابيض #FFFFFF
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_3_S_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-3] — color: اسود #000000
+    has:     M, 14
+    MISSING: S, L, XL, XXL, XXXL
+    price ref: sku=NK_0089_3_M_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-3] — color: رمادي #8D8B9F
+    has:     XXXL
+    MISSING: S, M, L, XL, XXL, 4XL
+    price ref: sku=NK_0089_3_XXXL_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-2] — color: ابيض #FFFFFF.
+    has:     4XL
+    MISSING: S, M, L, XL, XXL, XXXL
+    price ref: sku=NK_0089_2_4XL_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-2] — color: رمادي #8D8B9F
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_2_L_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-14] — color: نبيتي #800000
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_14_M_CPBY53C price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-5] — color: رمادي #808080
+    has:     S, M, L, XXL, XXXL
+    MISSING: XL, 4XL
+    price ref: sku=NK_0089_5_S_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-5] — color: اسود #000000
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_5_XL_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-6] — color: احمر #b01217
+    has:     M, 14
+    MISSING: S, L, XL, XXL, XXXL
+    price ref: sku=NK_0089_6_M_CSVCAA price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-6] — color: نبيتي #800000
+    has:     14
+    MISSING: S, M, L, XL, XXL, XXXL
+    price ref: sku=NK_0089_6_14_CPBY53C price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-7] — color: رمادي #8D8B9F
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_7_S_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-7] — color: احمر #b01217
+    has:     XXXL
+    MISSING: S, M, L, XL, XXL, 4XL
+    price ref: sku=NK_0089_7_XXXL_CSVCAA price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-8] — color: رمادي #8D8B9F
+    has:     14
+    MISSING: S, M, L, XL, XXL, XXXL
+    price ref: sku=NK_0089_8_14_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-9] — color: اسود #000000
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_9_L_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-10] — color: رمادي #8D8B9F
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_10_M_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-11] — color: رمادي #8D8B9F
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_11_XL_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-15] — color: رمادي #8D8B9F
+    has:     XXL
+    MISSING: S, M, L, XL, XXXL, 4XL
+    price ref: sku=NK_0089_15_XXL_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-15] — color: ابيض #FFFFFF.
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_15_S_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-18] — color: احمر #b01217
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_18_XL_CSVCAA price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-16] — color: نبيتي #800000
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_16_S_CPBY53C price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-16] — color: احمر #b01217
+    has:     M, XXL
+    MISSING: S, L, XL, XXXL, 4XL
+    price ref: sku=NK_0089_16_M_CSVCAA price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-12] — color: اسود #000000
+    has:     XXXL
+    MISSING: S, M, L, XL, XXL, 4XL
+    price ref: sku=NK_0089_12_XXXL_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-19] — color: نبيتي #800000
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_19_M_CPBY53C price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-19] — color: رمادي #8D8B9F
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_19_L_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-17] — color: احمر #b01217
+    has:     XXXL, 4XL
+    MISSING: S, M, L, XL, XXL
+    price ref: sku=NK_0089_17_XXXL_CSVCAA price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-17] — color: رمادي #8D8B9F
+    has:     XXL
+    MISSING: S, M, L, XL, XXXL, 4XL
+    price ref: sku=NK_0089_17_XXL_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-17] — color: اسود #000000
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_17_S_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-21] — color: ابيض #FFFFFF
+    has:     L, XL, XXL, 4XL
+    MISSING: S, M, XXXL
+    price ref: sku=NK_0089_21_L_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-22] — color: ابيض #FFFFFF
+    has:     S, L
+    MISSING: M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_22_S_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-34] — color: رمادي #585A5E
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_34_XL_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-23] — color: ابيض #FFFFFF
+    has:     XL, XXL
+    MISSING: S, M, L, XXXL, 4XL
+    price ref: sku=NK_0089_23_XL_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-24] — color: بيج #D2B48C
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_24_L_CXKCQ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-24] — color: ابيض #FFFFFF
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_24_L_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-25] — color: نبيتي #800000
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_25_XL_CPBY53C price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-26] — color: رمادي #585A5E
+    has:     XXL
+    MISSING: S, M, L, XL, XXXL, 4XL
+    price ref: sku=NK_0089_26_XXL_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-26] — color: احمر #b01217
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_26_S_CSVCAA price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-27] — color: اسود #000000
+    has:     XXXL
+    MISSING: S, M, L, XL, XXL, 4XL
+    price ref: sku=NK_0089_27_XXXL_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-28] — color: رمادي #585A5E
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_28_M_CP0W9F2 price=16497 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-29] — color: ابيض #FFFFFF
+    has:     4XL, XL
+    MISSING: S, M, L, XXL, XXXL
+    price ref: sku=NK_0089_29_4XL_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-35] — color: نبيتي #800000
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_35_M_CPBY53C price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-35] — color: احمر #b01217
+    has:     4XL
+    MISSING: S, M, L, XL, XXL, XXXL
+    price ref: sku=NK_0089_35_4XL_CSVCAA price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-30] — color: نبيتي #800000
+    has:     M, L
+    MISSING: S, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_30_M_CPBY53C price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-30] — color: اسود #000000
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_30_S_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-31] — color: رمادي #585A5E
+    has:     XXXL, 4XL
+    MISSING: S, M, L, XL, XXL
+    price ref: sku=NK_0089_31_XXXL_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-32] — color: اسود #000000
+    has:     XXL
+    MISSING: S, M, L, XL, XXXL, 4XL
+    price ref: sku=NK_0089_32_XXL_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-33] — color: بيج #F5F5DC
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_33_S_CXKCQ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-33] — color: رمادي #585A5E
+    has:     XXXL, 4XL
+    MISSING: S, M, L, XL, XXL
+    price ref: sku=NK_0089_33_XXXL_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-36] — color: نبيتي #800000
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_36_S_CPBY53C price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-40] — color: ابيض #FFFFFF
+    has:     XXL
+    MISSING: S, M, L, XL, XXXL, 4XL
+    price ref: sku=NK_0089_40_XXL_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-41] — color: ابيض #FFFFFF
+    has:     4XL
+    MISSING: S, M, L, XL, XXL, XXXL
+    price ref: sku=NK_0089_41_4XL_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-37] — color: احمر #b01217
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_37_M_CSVCAA price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-38] — color: اسود #000000
+    has:     XXL
+    MISSING: S, M, L, XL, XXXL, 4XL
+    price ref: sku=NK_0089_38_XXL_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-39] — color: نبيتي #800000
+    has:     XXL
+    MISSING: S, M, L, XL, XXXL, 4XL
+    price ref: sku=NK_0089_39_XXL_CPBY53C price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-42] — color: ابيض #FFFFFF
+    has:     4XL
+    MISSING: S, M, L, XL, XXL, XXXL
+    price ref: sku=NK_0089_42_4XL_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-43] — color: اسود #000000
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_43_S_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-46] — color: اسود #000000
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_46_S_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-47] — color: اسود #000000
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_47_M_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-48] — color: اسود #000000
+    has:     4XL
+    MISSING: S, M, L, XL, XXL, XXXL
+    price ref: sku=NK_0089_48_4XL_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-49] — color: اسود #000000
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_49_S_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-50] — color: اسود #000000
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0089_50_XL_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-54] — color: رمادي #585A5E
+    has:     XXL
+    MISSING: S, M, L, XL, XXXL, 4XL
+    price ref: sku=NK_0089_54_XXL_CP0W9F2 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-55] — color: ابيض #FFFFFF
+    has:     4XL
+    MISSING: S, M, L, XL, XXL, XXXL
+    price ref: sku=NK_0089_55_4XL_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-57] — color: اسود #000000
+    has:     4XL
+    MISSING: S, M, L, XL, XXL, XXXL
+    price ref: sku=NK_0089_57_4XL_CSVGSZ price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-58] — color: ابيض #FFFFFF
+    has:     XXXL
+    MISSING: S, M, L, XL, XXL, 4XL
+    price ref: sku=NK_0089_58_XXXL_CSV8P9 price=16500 base=16500
+- تي شيرت اطفال مطبوع [nk-0089-59] — color: رمادي #585A5E
+    has:     XXXL
+    MISSING: S, M, L, XL, XXL, 4XL
+    price ref: sku=NK_0089_59_XXXL_CP0W9F2 price=16500 base=16500
+- تي شيرت حريمي مطبوع [nk-0056-20] — color: Light Mint Green #BFF2D4
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_20_XL_LIGHT_MINT_GREEN price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-8] — color: Pink #EAA3B8
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_8_M_PINK price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-8] — color: Beige #D2B48C
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_8_M_BEIGE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-19] — color: Light Pink #F49AC2
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_19_L_LIGHT_PINK price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-21] — color: Light Pink #F49AC2
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_21_XL_LIGHT_PINK price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-23] — color: Light Pink #F49AC2
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_23_XL_LIGHT_PINK price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-22] — color: Red #D31329
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_22_XL_RED price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-18] — color: Fuchsia #C71585
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_18_L_FUCHSIA price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-17] — color: Light Sky Blue #95DDFC
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_17_XL_LIGHT_SKY_BLUE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-14] — color: Light Orange #FBA07A
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_14_M_LIGHT_ORANGE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-14] — color: magenta #c14aab
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_14_M_MAGENTA price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-13] — color: Light Orange #FBA07A
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_13_S_LIGHT_ORANGE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-13] — color: Beige #D2B48C
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_13_S_BEIGE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-25] — color: برتقالي #FF9A76
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_25_M_CU086HG price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-4] — color: Beige #D2B48C
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_4_S_BEIGE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-4] — color: Light Orange #FBA07A
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_4_S_LIGHT_ORANGE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-4] — color: magenta #c14aab
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_4_S_MAGENTA price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-12] — color: Sky Blue #A4E2F7
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_12_L_SKY_BLUE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-12] — color: Beige #D2B48C
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_12_L_BEIGE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-2] — color: Red #D61A22
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_2_XL_RED price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-2] — color: Pink #EAA3B8
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_2_XL_PINK price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-2] — color: Light Orange #FBA07A
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_2_XL_LIGHT_ORANGE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-11] — color: Sky Blue #A4E2F7
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_11_L_SKY_BLUE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-11] — color: magenta #c14aab
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_11_L_MAGENTA price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-1] — color: Light Pink #F49AC2
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_1_M_LIGHT_PINK price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-1] — color: Pistachio Green #ACECCF
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_1_M_PISTACHIO_GREEN price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-1] — color: Light Orange #FBA07A
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_1_M_LIGHT_ORANGE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-3] — color: Pistachio Green #ACECCF
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_3_M_PISTACHIO_GREEN price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-10] — color: Light Orange #FBA07A
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_10_S_LIGHT_ORANGE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-10] — color: Pink #EAA3B8
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_10_S_PINK price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-5] — color: Sky Blue #A4E2F7
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_5_S_SKY_BLUE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-5] — color: Pink #EAA3B8
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_5_S_PINK price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-9] — color: magenta #c14aab
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_9_XL_MAGENTA price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-9] — color: Pink #EAA3B8
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_9_XL_PINK price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-6] — color: Sky Blue #A4E2F7
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_6_L_SKY_BLUE price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-6] — color: magenta #c14aab
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_6_L_MAGENTA price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-7] — color: Pink #EAA3B8
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_7_L_PINK price=28500 base=28500
+- تي شيرت حريمي مطبوع [nk-0056-7] — color: magenta #c14aab
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0056_7_L_MAGENTA price=28500 base=28500
+- تي شيرت رجالي نصف كم [nk-3030-1] — color: sea blue #A8D0DC
+    has:     L, XL, M, S, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_1_L_SEA_BLUE price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-1] — color: warm beige #E5C7AF
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_1_S_WARM_BEIGE price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-2] — color: brown #785341
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_2_S_BROWN price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-24] — color: brown #433127
+    has:     M, S, L, XXL, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_24_M_BROWN price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-17] — color: Hazelnut #CCB59E
+    has:     S, L, XL, XXL, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_17_S_HAZELNUT price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-3] — color: blue #9EC8F2
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_3_S_BLUE price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-14] — color: Hazelnut #CCB59E
+    has:     S, L, XL, M, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_14_S_HAZELNUT price=19500 base=19500
+- تي شيرت رجالي نصف كم [3030-29] — color: brown #433127
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=3030_29_S_BROWN price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-15] — color: Hazelnut #CCB59E
+    has:     S, XL, XXL, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_15_S_HAZELNUT price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-16] — color: brown #433127
+    has:     S, L, XL, XXL, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_16_S_BROWN price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-6] — color: Orange #E76018
+    has:     L, XXL, S, M, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_6_L_ORANGE price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-26] — color: Slate Gray #87CEFA
+    has:     XXL, S, M, L, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_26_XXL_SLATE_GRAY price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-26] — color: بني غامق #545143
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_3030_26_S_C8HTCU6 price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-23] — color: Dusty Brown #9C8C85
+    has:     S, M, L, XXL, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_23_S_DUSTY_BROWN price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-22] — color: cyan #00FFFF
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_22_S_CYAN price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-21] — color: Acadia #9D867C
+    has:     S, M, XL, XXL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_21_S_ACADIA price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-20] — color: Cyan #9ECCD9
+    has:     S, M, XL, XXL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_20_S_CYAN price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-19] — color: Dark Silver #B1B0B0
+    has:     S, L, XL, XXL, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_19_S_DARK_SILVER price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-18] — color: Dark Silver #B1B0B0
+    has:     S, L, XL, XXL, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_18_S_DARK_SILVER price=19500 base=19500
+- تي شيرت رجالي نصف كم [3030-30] — color: بني فاتح #A67C52
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=3030_30_S_C8HXT31 price=19500 base=19500
+- تي شيرت رجالي نصف كم [3030-30] — color: جملي #C19A6B
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=3030_30_S_CSZ10F price=19500 base=19500
+- تي شيرت رجالي نصف كم [3030-31] — color: اسود #000000
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=3030_31_M_CSVGSZ price=19500 base=19500
+- تي شيرت رجالي نصف كم [3030-33] — color: رمادي
+    has:     XXL
+    MISSING: S, M, L, XL, XXXL, 4XL
+    price ref: sku=3030_33_XXL_CP0W9F2 price=19500 base=19500
+- تي شيرت رجالي نصف كم [3030-34] — color: بني
+    has:     M
+    MISSING: S, L, XL, XXL, XXXL, 4XL
+    price ref: sku=3030_34_M_CXKA4 price=19500 base=19500
+- تي شيرت رجالي نصف كم [3030-35] — color: جملي
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=3030_35_S_CSZ10F price=19500 base=19500
+- تي شيرت رجالي نصف كم [3030-36] — color: بني
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=3030_36_L_CXKA4 price=19500 base=19500
+- تي شيرت رجالي نصف كم [3030-37] — color: sky blue
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=3030_37_XL_SKY_BLUE price=19500 base=19500
+- تي شيرت رجالي نصف كم [3030-38] — color: برتقالي
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=3030_38_L_CU086HG price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-27] — color: Dusty Brown #9C8C85
+    has:     S, L, M, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_27_S_DUSTY_BROWN price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-11] — color: Dusty Brown #9C8C85
+    has:     L, XL, S, XXL, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_11_L_DUSTY_BROWN price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-13] — color: brown #433127
+    has:     XL, XXL, S, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_13_XL_BROWN price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-8] — color: Salty #C3CBD5
+    has:     XXL, S, M, XL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_8_XXL_SALTY price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-9] — color: Orange #E76018
+    has:     L, XL, XXL, S, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_9_L_ORANGE price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-28] — color: بني فاتح #A39A92
+    has:     XXL, M
+    MISSING: S, L, XL, XXXL, 4XL
+    price ref: sku=NK_3030_28_XXL_C8HXT31 price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-28] — color: brown #433127
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_28_S_BROWN price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-4] — color: brown #785341
+    has:     M, L, XL, XXL, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_4_M_BROWN price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-5] — color: Pink-Gray #C2B6B8
+    has:     XL, XXL, S, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_5_XL_PINKGRAY price=19500 base=19500
+- تي شيرت رجالي نصف كم [nk-3030-10] — color: brown #433127
+    has:     XL, M, L, S, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_3030_10_XL_BROWN price=19500 base=19500
+- تي شيرت رجالي نصف كم سادة [3030-01] — color: اسود #000000
+    has:     L, XL, XXL, S
+    MISSING: M, XXXL, 4XL
+    price ref: sku=3030_01_L_CSVGSZ price=19500 base=19500
+- تي شيرت رجالي نصف كم سادة [3030-01] — color: Sky Blue #A4E2F7
+    has:     M, S, L, XXL, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=3030_01_M_SKY_BLUE price=19500 base=19500
+- تي شيرت رجالي نصف كم سادة [3030-01] — color: بيج #D2B48C
+    has:     S, M, L, XXL, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=3030_01_S_CXKCQ price=19500 base=19500
+- تي شيرت رجالي نصف كم سادة [3030-01] — color: رمادي #585A5E
+    has:     S, M, L, XXL, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=3030_01_S_CP0W9F2 price=19500 base=19500
+- تي شيرت رجالي نصف كم سادة [3030-01] — color: ابيض #FFFFFF
+    has:     M, L, S, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=3030_01_M_CSV8P9 price=19500 base=19500
+- شورت أطفال [nk-8905-5] — color: ازرق #9BBEDA
+    has:     XXXL, XL, S, L, XXL, M
+    MISSING: 4XL
+    price ref: sku=NK_8905_5_XXXL_CSVFJ0 price=4000 base=4000
+- شورت أطفال [nk-8905-2] — color: بينك #FFC0CB
+    has:     XXL, S, M, L, XXXL, XL
+    MISSING: 4XL
+    price ref: sku=NK_8905_2_XXL_CSWKTB price=4000 base=4000
+- شورت أطفال [nk-8905-6] — color: بينك #FFC0CB
+    has:     XXXL, XXL, L, M, S, XL
+    MISSING: 4XL
+    price ref: sku=NK_8905_6_XXXL_CSWKTB price=4000 base=4000
+- شورت أطفال [nk-8905-4] — color: ابيض #FFFFFF
+    has:     XXXL, XL, S, XXL, M, L
+    MISSING: 4XL
+    price ref: sku=NK_8905_4_XXXL_CSV8P9 price=4000 base=4000
+- شورت أطفال [nk-8905-3] — color: رمادي #808080
+    has:     XL, XXL, M, L, S, XXXL
+    MISSING: 4XL
+    price ref: sku=NK_8905_3_XL_CP0W9F2 price=4000 base=4000
+- شورت أطفال [nk-8905-7] — color: بينك #FFC0CB
+    has:     S, XXL, XL, L, M, XXXL
+    MISSING: 4XL
+    price ref: sku=NK_8905_7_S_CSWKTB price=4000 base=4000
+- شورت أطفال [nk-8905-11] — color: ابيض #FFFFFF
+    has:     L, S, M, XL, XXXL, XXL
+    MISSING: 4XL
+    price ref: sku=NK_8905_11_L_CSV8P9 price=4000 base=4000
+- شورت أطفال [nk-8905-10] — color: ابيض #FFFFFF
+    has:     S, L, XXL, M, XL, XXXL
+    MISSING: 4XL
+    price ref: sku=NK_8905_10_S_CSV8P9 price=4000 base=4000
+- شورت أطفال [nk-8905-1] — color: ابيض #FFFFFF
+    has:     M, S, L, XXL, XXXL, XL
+    MISSING: 4XL
+    price ref: sku=NK_8905_1_M_CSV8P9 price=4000 base=4000
+- شورت أطفال [nk-8905-8] — color: ازرق #9BBEDA
+    has:     S, M, L, XXL, XL, XXXL
+    MISSING: 4XL
+    price ref: sku=NK_8905_8_S_CSVFJ0 price=4000 base=4000
+- شورت أطفال [nk-8905-9] — color: ابيض #FFFFFF
+    has:     XL, S, M, L, XXL, XXXL
+    MISSING: 4XL
+    price ref: sku=NK_8905_9_XL_CSV8P9 price=4000 base=4000
+- شورت أطفال سادة [nk-0034] — color: Red #D61A22
+    has:     L, M, S, XXL, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_0034_L_RED price=5000 base=5000
+- شورت أطفال سادة [nk-0034] — color: Fuchsia #B261AF
+    has:     S, XXXL, L, M
+    MISSING: XL, XXL, 4XL
+    price ref: sku=NK_0034_S_FUCHSIA price=5000 base=5000
+- شورت أطفال سادة [nk-0034] — color: Beige #D2B48C
+    has:     L, S, XXL, M, XL, XXXL
+    MISSING: 4XL
+    price ref: sku=NK_0034_L_BEIGE price=5000 base=5000
+- شورت أطفال سادة [nk-0034] — color: Pistachio Green #ACECCF
+    has:     S, XXL, XXXL, M, XL
+    MISSING: L, 4XL
+    price ref: sku=NK_0034_S_PISTACHIO_GREEN price=5000 base=5000
+- شورت أطفال سادة [nk-0034] — color: Light Orange #FBA07A
+    has:     S, XXL, XXXL, XL
+    MISSING: M, L, 4XL
+    price ref: sku=NK_0034_S_LIGHT_ORANGE price=5000 base=5000
+- شورت أطفال سادة [nk-0034] — color: Pink #EAA3B8
+    has:     S, XXL, XXXL, M, L
+    MISSING: XL, 4XL
+    price ref: sku=NK_0034_S_PINK price=5000 base=5000
+- شورت أطفال سادة [nk-0034] — color: Sky Blue #A4E2F7
+    has:     XXL
+    MISSING: S, M, L, XL, XXXL, 4XL
+    price ref: sku=NK_0034_XXL_SKY_BLUE price=5000 base=5000
+- شورت أطفال سادة [nk-0034-1] — color: اسود #000000
+    has:     S, M, L, XL, XXL, 3XL
+    MISSING: 4XL
+    price ref: sku=NK_0034_1_S_CSVGSZ price=8000 base=8000
+- شورت أطفال سادة [nk-0034-1] — color: ابيض #FFFFFF
+    has:     S, M, L, XL, 3XL
+    MISSING: XXL, 4XL
+    price ref: sku=NK_0034_1_S_CSV8P9 price=8000 base=8000
+- شورت أطفال سادة [nk-0034-1] — color: رمادي #585A5E
+    has:     S, L, XXL, 3XL, XL, M
+    MISSING: 4XL
+    price ref: sku=NK_0034_1_S_CP0W9F2 price=8000 base=8000
+- شورت حريمى كمر عريض مشجر [nk-5678] — color: ابيض #FFFFFF
+    has:     M, L, XL, XXL, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_5678_M_CSV8P9 price=12000 base=12000
+- شورت حريمي سادة [nk-7777-1] — color: Sky Blue #87CEEB
+    has:     XL, L, M, S, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7777_1_XL_SKY_BLUE price=8000 base=8000
+- شورت حريمي سادة [nk-7777-1] — color: Royal Purple #BB2BB1
+    has:     XL, XXL, M, S, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7777_1_XL_ROYAL_PURPLE price=8000 base=8000
+- شورت حريمي سادة [nk-7777-1] — color: Pink #FFB6C1
+    has:     XXL, M, S, L, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7777_1_XXL_PINK price=8000 base=8000
+- شورت حريمي سادة [nk-7777-1] — color: اسود #000000
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7777_1_S_CSVGSZ price=8000 base=8000
+- شورت حريمي سادة [nk-7777] — color: wisteria #C9A0DC
+    has:     XXL, XL, M, S, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7777_XXL_WISTERIA price=8000 base=8000
+- شورت حريمي سادة [nk-7777] — color: off-white #f2f0ef
+    has:     XL, L, XXL, M, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7777_XL_OFFWHITE price=8000 base=8000
+- شورت حريمي سادة [nk-7777] — color: boysenberry #873260
+    has:     XL, L, S, M, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7777_XL_BOYSENBERRY price=8000 base=8000
+- شورت حريمي سادة [nk-7777] — color: orchid pink #F2BDCD
+    has:     XL, M, S, L, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7777_XL_ORCHID_PINK price=8000 base=8000
+- شورت حريمي سادة [nk-7777] — color: sky blue #82c8e5
+    has:     XL, XXL, L, S, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7777_XL_SKY_BLUE price=8000 base=8000
+- شورت حريمي سادة [nk-7777] — color: اسود #000000
+    has:     XXL, L, S, M, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_7777_XXL_CSVGSZ price=8000 base=8000
+- شورت حريمي مشجر [nk-8888-1] — color: ابيض #FFFFFF
+    has:     XL, S, M, XXL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_8888_1_XL_CSV8P9 price=8500 base=8500
+- شورت حريمي مشجر [nk-8888-3] — color: ازرق #9BBEDA
+    has:     S, L, XL, XXL, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_8888_3_S_CSVFJ0 price=8500 base=8500
+- شورت حريمي مشجر [nk-8888-6] — color: ابيض #FFFFFF
+    has:     M, S, L
+    MISSING: XL, XXL, XXXL, 4XL
+    price ref: sku=NK_8888_6_M_CSV8P9 price=8500 base=8500
+- شورت حريمي مشجر [nk-8888-5] — color: ابيض #FFFFFF
+    has:     S
+    MISSING: M, L, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_8888_5_S_CSV8P9 price=8500 base=8500
+- شورت حريمي مشجر [nk-8888-4] — color: ازرق #9BBEDA
+    has:     M, S, XL, XXL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_8888_4_M_CSVFJ0 price=8500 base=8500
+- شورت حريمي مشجر [nk-8888] — color: اسود #000000
+    has:     XXL, XL, M, L, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_8888_XXL_CSVGSZ price=8500 base=8500
+- شورت حريمي مشجر [nk-8888-2] — color: ابيض #FFFFFF
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_8888_2_S_CSV8P9 price=8500 base=8500
+- شورت رجالي مطبوع [nk-0890-4] — color: اسود #000000
+    has:     M, L
+    MISSING: S, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_0890_4_M_CSVGSZ price=14500 base=14500
+- شورت رجالي مطبوع [nk-0890-3] — color: بيج غامق #D2B48C
+    has:     XL
+    MISSING: S, M, L, XXL, XXXL, 4XL
+    price ref: sku=NK_0890_3_XL_CI1282O price=14500 base=14500
+- شورت رجالي مطبوع [nk-0890] — color: Off-White #F9F8F6
+    has:     L, XL, XXXL, M, XXL
+    MISSING: S, 4XL
+    price ref: sku=NK_0890_L_OFFWHITE price=14500 base=14500
+- شورت رجالي مطبوع [nk-0890-1] — color: اسود #000000
+    has:     M, L, XL, XXXL
+    MISSING: S, XXL, 4XL
+    price ref: sku=NK_0890_1_M_CSVGSZ price=14500 base=14500
+- شورت رجالي مطبوع [nk-0890-1] — color: ازرق غامق #172F67
+    has:     L, XL, XXXL
+    MISSING: S, M, XXL, 4XL
+    price ref: sku=NK_0890_1_L_C1OWZZM price=14500 base=14500
+- شورت رجالي مطبوع [nk-0890-2] — color: رمادي #77797C
+    has:     XXL, XXXL, XL, L
+    MISSING: S, M, 4XL
+    price ref: sku=NK_0890_2_XXL_CP0W9F2 price=16500 base=16500
+- شورت رجالي مطبوع [nk-0890-2] — color: بيبي بلو #ADD8E6
+    has:     XXL, XL
+    MISSING: S, M, L, XXXL, 4XL
+    price ref: sku=NK_0890_2_XXL_C3EP9W0 price=16500 base=16500
+- طقم اطفال فانلة كت وشورت [8902-6] — color: بينك #FFC0CB
+    has:     XXXL, L, S, M, XL, XXL
+    MISSING: 4XL
+    price ref: sku=8902_6_XXXL_CSWKTB price=10000 base=10000
+- طقم اطفال فانلة كت وشورت [8902-1] — color: ابيض #FFFFFF
+    has:     S, M, L, XXL, XXXL, XL
+    MISSING: 4XL
+    price ref: sku=8902_1_S_CSV8P9 price=10000 base=10000
+- طقم اطفال فانلة كت وشورت [8902-2] — color: بينك #FFC0CB
+    has:     XXL, XXXL, S, M, L, XL
+    MISSING: 4XL
+    price ref: sku=8902_2_XXL_CSWKTB price=10000 base=10000
+- طقم اطفال فانلة كت وشورت [8902-10] — color: ابيض #FFFFFF
+    has:     M, L, S, XXL, XL, XXXL
+    MISSING: 4XL
+    price ref: sku=8902_10_M_CSV8P9 price=10000 base=10000
+- طقم اطفال فانلة كت وشورت [8902-4] — color: ابيض #FFFFFF
+    has:     XL, XXL, L, XXXL, S, M
+    MISSING: 4XL
+    price ref: sku=8902_4_XL_CSV8P9 price=10000 base=10000
+- طقم اطفال فانلة كت وشورت [8902-9] — color: ابيض #FFFFFF
+    has:     L, S, M, XL, XXL, XXXL
+    MISSING: 4XL
+    price ref: sku=8902_9_L_CSV8P9 price=10000 base=10000
+- طقم اطفال فانلة كت وشورت [8902-7] — color: بينك #FFC0CB
+    has:     L, XXL, S, M, XL, XXXL
+    MISSING: 4XL
+    price ref: sku=8902_7_L_CSWKTB price=10000 base=10000
+- طقم اطفال فانلة كت وشورت [8902-5] — color: ازرق #9BBEDA
+    has:     XL, XXXL, S, M, L, XXL
+    MISSING: 4XL
+    price ref: sku=8902_5_XL_CSVFJ0 price=10000 base=10000
+- طقم اطفال فانلة كت وشورت [nk-8902-8] — color: ازرق #87CEEB
+    has:     XL, XXL, M, S, XXXL, L
+    MISSING: 4XL
+    price ref: sku=NK_8902_XL_CSVFJ0 price=10000 base=13300
+- طقم حريمى أستك [nk-2020-3] — color: ابيض #FFFFFF
+    has:     XL, S, M, L, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2020_3_XL_CSV8P9 price=15000 base=15000
+- طقم حريمى أستك [nk-2020-9] — color: ازرق #ADD8E6
+    has:     M, S, XXL
+    MISSING: L, XL, XXXL, 4XL
+    price ref: sku=NK_2020_9_M_CSVFJ0 price=15000 base=15000
+- طقم حريمى أستك [nk-2020-2] — color: ابيض #FFFFFF
+    has:     XXL, L, XL, S, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2020_2_XXL_CSV8P9 price=15000 base=15000
+- طقم حريمى أستك [nk-2020-8] — color: ابيض #FFFFFF
+    has:     XXL, M, L, XL, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2020_8_XXL_CSV8P9 price=15000 base=15000
+- طقم حريمى أستك [nk-2020-5] — color: pink #D07BA4
+    has:     XXL, M, XL, S, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2020_5_XXL_PINK price=15000 base=15000
+- طقم حريمى أستك [nk-2020-5] — color: green #93dbb5
+    has:     M, XL, L, XXL, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2020_5_M_GREEN price=15000 base=15000
+- طقم حريمى أستك [nk-2020-5] — color: ازرق #76adf5
+    has:     XL, XXL, L, M, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2020_5_XL_CSVFJ0 price=15000 base=15000
+- طقم حريمى أستك [nk-2020-1] — color: ابيض #FFFFFF
+    has:     XXL, M, S, L, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2020_1_XXL_CSV8P9 price=15000 base=15000
+- طقم حريمى أستك [nk-2020-4] — color: ازرق #C0CDDD
+    has:     XXL, S, L, XL, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2020_4_XXL_CSVFJ0 price=15000 base=15000
+- طقم حريمى أستك [nk-2020-4] — color: ابيض #FFFFFF
+    has:     XL, XXL, M, S, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2020_4_XL_CSV8P9 price=15000 base=15000
+- طقم حريمى أستك [nk-2020-7] — color: ابيض #FFFFFF
+    has:     L, S, M, XXL, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2020_7_L_CSV8P9 price=15000 base=15000
+- طقم حريمى أستك [nk-2020-6] — color: pink #E2C8D7
+    has:     XL, S, M, L, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2020_6_XL_PINK price=15000 base=15000
+- طقم حريمى برا وبانتى مشجر دانتيلا [nk-6789] — color: اسود #000000
+    has:     XXL, S, M, XL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6789_XXL_CSVGSZ price=19000 base=19000
+- طقم حريمى برا وبانتى مشجر دانتيلا [nk-6789] — color: بنفسجي #800080
+    has:     XXL, S, M, L, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6789_XXL_C9SULKI price=19000 base=19000
+- طقم حريمى برا وبانتى مشجر دانتيلا [nk-6789] — color: كحلي #000080
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6789_S_CTD7WW price=19000 base=19000
+- طقم حريمى برا وبانتى مشجر دانتيلا [nk-6789] — color: ازرق غامق #0000FF
+    has:     S, M, L, XXL, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6789_S_C1OWZZM price=19000 base=19000
+- طقم حريمى برا وبانتى مشجر دانتيلا [nk-6789] — color: لبني #89CFF0
+    has:     S, L, M, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_6789_S_CTDR8O price=19000 base=19000
+- طقم حريمى قطعتين دانتيللا [nk-1010] — color: زهري #FFC0CB
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_1010_S_CT2VYM price=19000 base=19000
+- طقم حريمى قطعتين كمر عريض [nk-9999-8] — color: Navy Blue
+    has:     XXL
+    MISSING: S, M, L, XL, XXXL, 4XL
+    price ref: sku=NK_9999_8_XXL_NAVY_BLUE price=18500 base=18500
+- طقم حريمى قطعتين كمر عريض [nk-9999-8] — color: اسود #000000
+    has:     XL, M, L, XXL, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9999_8_XL_CSVGSZ price=18500 base=18500
+- طقم حريمى قطعتين كمر عريض [nk-9999-7] — color: ابيض #FFFFFF
+    has:     M, S, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9999_7_M_CSV8P9 price=18500 base=18500
+- طقم حريمى قطعتين كمر عريض [nk-9999-2-1] — color: pink #D0A8C0
+    has:     XL, XXL, L, M, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9999_2_1_XL_PINK price=18500 base=18500
+- طقم حريمى قطعتين كمر عريض [nk-9999-2-1] — color: اخضر #BBC4A6
+    has:     L, XL, M, XXL, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9999_2_1_L_CSVCO2 price=18500 base=18500
+- طقم حريمى قطعتين كمر عريض [nk-9999-2-1] — color: ازرق #B2C6ED
+    has:     S, L, M, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9999_2_1_S_CSVFJ0 price=18500 base=18500
+- طقم حريمى قطعتين كمر عريض [nk-9999-9] — color: لبني #9BBEDA
+    has:     XL, L, XXL, S, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9999_9_XL_CTDR8O price=18500 base=18500
+- طقم حريمى قطعتين كمر عريض [nk-9999-10] — color: ابيض #FFFFFF
+    has:     L, M, S, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9999_10_L_CSV8P9 price=18500 base=18500
+- طقم حريمى قطعتين كمر عريض [nk-9999-5] — color: ابيض #FFFFFF
+    has:     XXL, L, S, XL, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9999_5_XXL_CSV8P9 price=18500 base=18500
+- طقم حريمى قطعتين كمر عريض [nk-9999-3] — color: pink #D0A8C0
+    has:     XXL, M, L, S, XL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9999_3_XXL_PINK price=18500 base=18500
+- طقم حريمى قطعتين كمر عريض [nk-9999-11] — color: اخضر #008000
+    has:     M, XL, XXL, L, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9999_11_M_CSVCO2 price=18500 base=18500
+- طقم حريمى قطعتين كمر عريض [nk-9999-4] — color: ابيض #FFFFFF
+    has:     XXL, M, XL, S, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9999_4_XXL_CSV8P9 price=18500 base=18500
+- طقم حريمى قطعتين كمر عريض [nk-9999-1] — color: ابيض #FFFFFF
+    has:     S, XXL, XL, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9999_1_S_CSV8P9 price=18500 base=18500
+- طقم حريمى قطعتين كمر عريض [nk-9999-6] — color: pink #D0A8C0
+    has:     S, M, XL, L, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9999_6_S_PINK price=18500 base=18500
+- طقم داخلي اطفال فانلة حمالات و شورت [8901-4] — color: ابيض #FFFFFF
+    has:     XXXL, M, S, L, XXL, XL
+    MISSING: 4XL
+    price ref: sku=8901_4_XXXL_CSV8P9 price=10000 base=10000
+- طقم داخلي اطفال فانلة حمالات و شورت [8901-3] — color: رمادي #808080
+    has:     S, L, XXXL, XXL, M, XL
+    MISSING: 4XL
+    price ref: sku=8901_3_S_CP0W9F2 price=10000 base=10000
+- طقم داخلي اطفال فانلة حمالات و شورت [8901-10] — color: ابيض #FFFFFF
+    has:     XL, S, M, L, XXL, XXXL
+    MISSING: 4XL
+    price ref: sku=8901_10_XL_CSV8P9 price=10000 base=10000
+- طقم داخلي اطفال فانلة حمالات و شورت [8901-7] — color: ابيض #FFC0CB
+    has:     L
+    MISSING: S, M, XL, XXL, XXXL, 4XL
+    price ref: sku=8901_7_L_CSV8P9 price=10000 base=10000
+- طقم داخلي اطفال فانلة حمالات و شورت [8901-7] — color: بينك #FFC0CB
+    has:     XL, XXL, XXXL, S, M
+    MISSING: L, 4XL
+    price ref: sku=8901_7_XL_CSWKTB price=10000 base=10000
+- طقم داخلي اطفال فانلة حمالات و شورت [8901-5] — color: ازرق #9BBEDA
+    has:     S, XL, M, L, XXL, XXXL
+    MISSING: 4XL
+    price ref: sku=8901_5_S_CSVFJ0 price=10000 base=10000
+- طقم داخلي اطفال فانلة حمالات و شورت [8901-9] — color: ابيض #FFFFFF
+    has:     S, M, L, XL, XXL, XXXL
+    MISSING: 4XL
+    price ref: sku=8901_9_S_CSV8P9 price=10000 base=10000
+- طقم داخلي اطفال فانلة حمالات و شورت [8901-6] — color: بينك #FFC0CB
+    has:     XXL, S, M, L, XL, XXXL
+    MISSING: 4XL
+    price ref: sku=8901_6_XXL_CSWKTB price=10000 base=10000
+- طقم داخلي اطفال فانلة حمالات و شورت [8901-1] — color: ابيض #FFFFFF
+    has:     S, L, XXXL, M, XL, XXL
+    MISSING: 4XL
+    price ref: sku=8901_1_S_CSV8P9 price=10000 base=10000
+- طقم داخلي اطفال فانلة حمالات و شورت [8901-2] — color: بينك #FFC0CB
+    has:     S, XL, L, M, XXL, XXXL
+    MISSING: 4XL
+    price ref: sku=8901_2_S_CSWKTB price=10000 base=10000
+- فانلة حمالة رجالي حوض ضيق [nk-2222] — color: نبيتي #7F1734
+    has:     XXL, M, XL, L, S
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2222_XXL_CPBY53C price=12500 base=12500
+- فانلة حمالة رجالي حوض ضيق [nk-2222] — color: ابيض #FFFFFF
+    has:     XXL, L, XL, S, M
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2222_XXL_CSV8P9 price=12500 base=12500
+- فانلة حمالة رجالي حوض ضيق [nk-2222] — color: اسود #000000
+    has:     XXL, XL, S, M, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2222_XXL_CSVGSZ price=12500 base=12500
+- فانلة حمالة رجالي حوض ضيق [nk-2222] — color: سكاي بلو #7ECFFA
+    has:     M, L, S, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_2222_M_C45EPOF price=12500 base=12500
+- فانلة حماله رجالى حوض واسع [nk-1111] — color: ازرق فاتح #B0C4DE
+    has:     XXL, L, M, XL
+    MISSING: S, XXXL, 4XL
+    price ref: sku=NK_1111_XXL_C1OSJQR price=14000 base=14000
+- فانلة حماله رجالى حوض واسع [nk-1111] — color: بني فاتح #A39A92
+    has:     M, XXL, XXXL, S, XL, L
+    MISSING: 4XL
+    price ref: sku=NK_1111_M_C8HXT31 price=12000 base=12000
+- فانلة حماله رجالى حوض واسع [nk-1111] — color: رمادي فاتح #D3D3D3
+    has:     XXL, M, 4 XL, L
+    MISSING: S, XL, XXXL
+    price ref: sku=NK_1111_XXL_CI65TN price=14000 base=14000
+- فانلة حماله رجالى حوض واسع [nk-1111] — color: بني غامق #635E5D
+    has:     XL, XXL, M, S, L, XXXL
+    MISSING: 4XL
+    price ref: sku=NK_1111_XL_C8HTCU6 price=12000 base=12000
+- فانلة داخلية اطفال  كت [nk-8904-6] — color: بينك #FFC0CB
+    has:     S, M, L, XL, XXL, XXXL
+    MISSING: 4XL
+    price ref: sku=NK_8904_5_S_CSWKTB price=6000 base=6000
+- فانلة داخلية اطفال حمالات [8903-10] — color: ابيض #FFFFFF
+    has:     S, M, L, XXL, XXXL, XL
+    MISSING: 4XL
+    price ref: sku=8903_10_S_CSV8P9 price=6000 base=6000
+- فانلة داخلية اطفال حمالات [8903-9] — color: ابيض #FFFFFF
+    has:     M, L, S, XXL, XXXL, XL
+    MISSING: 4XL
+    price ref: sku=8903_9_M_CSV8P9 price=6000 base=6000
+- فانلة داخلية اطفال حمالات [nk-8903-1] — color: ابيض #FAF9F6
+    has:     XXXL, S, M, XL, XXL, L
+    MISSING: 4XL
+    price ref: sku=NK_8903_1_XXXL_CSV8P9 price=6000 base=6000
+- فانلة داخلية اطفال حمالات [8903-7] — color: بينك #FFC0CB
+    has:     S, M, L, XL, XXL, XXXL
+    MISSING: 4XL
+    price ref: sku=8903_7_S_CSWKTB price=6000 base=6000
+- فانلة داخلية اطفال حمالات [nk-8903-3] — color: رمادي #808080
+    has:     XL, M, S, XXXL, XXL, L
+    MISSING: 4XL
+    price ref: sku=NK_8903_3_XL_CP0W9F2 price=6000 base=6000
+- فانلة داخلية اطفال حمالات [nk-8903-2] — color: بينك #FFC0CB
+    has:     XL, S, M, XXXL, XXL, L
+    MISSING: 4XL
+    price ref: sku=NK_8903_2_XL_CSWKTB price=6000 base=6000
+- فانلة داخلية اطفال حمالات [nk-8903-4] — color: ابيض #FFFFFF
+    has:     M, XL, L, XXL, XXXL, S
+    MISSING: 4XL
+    price ref: sku=NK_8903_4_M_CSV8P9 price=6000 base=6000
+- فانلة داخلية اطفال كت [nk-8904-10] — color: ابيض #FFFFFF
+    has:     XXXL, S, M, L, XL, XXL
+    MISSING: 4XL
+    price ref: sku=NK_8904_10_XXXL_CSV8P9 price=6000 base=6000
+- فانلة داخلية اطفال كت [nk-8904-4] — color: ابيض #FAF9F6
+    has:     S, M, L, XL, XXXL, XXL
+    MISSING: 4XL
+    price ref: sku=NK_8904_4_S_CSV8P9 price=6000 base=6000
+- فانلة داخلية اطفال كت [nk-8904-3] — color: رمادي #808080
+    has:     S, M, L, XL, XXXL, XXL
+    MISSING: 4XL
+    price ref: sku=NK_8904_3_S_CP0W9F2 price=6000 base=6000
+- فانلة داخلية اطفال كت [nk-8904-5] — color: ازرق #9BBEDA
+    has:     XL, S, M, L, XXL, XXXL
+    MISSING: 4XL
+    price ref: sku=NK_8904_5_XL_CSVFJ0 price=6000 base=6000
+- فانلة داخلية اطفال كت [nk-8904-7] — color: بينك #FFC0CB
+    has:     XL, XXXL, S, M, L, XXL
+    MISSING: 4XL
+    price ref: sku=NK_8904_7_XL_CSWKTB price=6000 base=6000
+- فانلة داخلية اطفال كت [nk-8904-1] — color: ابيض #FAF9F6
+    has:     XXL, XL, M, L, XXXL, S
+    MISSING: 4XL
+    price ref: sku=NK_8904_1_XXL_CSV8P9 price=6000 base=6000
+- فانلة داخلية اطفال كت [nk-8904-2] — color: بينك #FFC0CB
+    has:     S, M, L, XXXL, XL, XXL
+    MISSING: 4XL
+    price ref: sku=NK_8904_2_S_CSWKTB price=6000 base=6000
+- فانلة داخلية اطفال كت [nk-8904-9] — color: ابيض #FFFFFF
+    has:     XL, S, M, L, XXXL, XXL
+    MISSING: 4XL
+    price ref: sku=NK_8904_9_XL_CSV8P9 price=6000 base=6000
+- فانلة كت أطفال سادة [nk-0567] — color: ابيض #FFFFFF
+    has:     L, XL, XXL, 3XL, S, 4XL
+    MISSING: M
+    price ref: sku=NK_0023_L_CSV8P9 price=9000 base=9000
+- فستان اطفال مطبوع [nk-8906] — color: orchid pink #F2BDCD
+    has:     M, XXXL, L, XXL, S, XL
+    MISSING: 4XL
+    price ref: sku=NK_8906_M_ORCHID_PINK price=16500 base=16500
+- فستان اطفال مطبوع [nk-8906] — color: Gray Coral #928E8B
+    has:     S, M, L, XL, XXL, XXXL
+    MISSING: 4XL
+    price ref: sku=NK_8906_S_GRAY_CORAL price=16500 base=16500
+- قميص حريمى سادة طويل [nk-9899] — color: برتقالي #FFA500
+    has:     XXXL, M, L, S, XL, XXL
+    MISSING: 4XL
+    price ref: sku=NK_9899_XXXL_CU086HG price=37500 base=37500
+- قميص حريمى سادة طويل [nk-9899] — color: بينك #FFB6C1
+    has:     XXXL, S, XL, M, L, XXL
+    MISSING: 4XL
+    price ref: sku=NK_9899_XXXL_CSWKTB price=37500 base=37500
+- قميص حريمى سادة طويل [nk-9899] — color: نبيتي #800000
+    has:     XXXL, L, XL, S, M, XXL
+    MISSING: 4XL
+    price ref: sku=NK_9899_XXXL_CPBY53C price=37500 base=37500
+- قميص حريمى سادة طويل [nk-9899] — color: اخضر فستقي فاتح #D6EFD8
+    has:     S, XXL, M, XXXL, XL, L
+    MISSING: 4XL
+    price ref: sku=NK_9899_S___ price=37500 base=37500
+- قميص حريمى سادة طويل [nk-9899] — color: بنفسجي #8E4585
+    has:     L, XXXL, S, M, XL, XXL
+    MISSING: 4XL
+    price ref: sku=NK_9899_L_C9SULKI price=37500 base=37500
+- قميص حريمى مشجر طويل [nk-9293-1] — color: ابيض #F5F5F5
+    has:     S, M, L, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_9293_1_S_CSV8P9 price=38500 base=38500
+- قميص حريمى مشجر طويل [nk-9293-3] — color: Red-Violet #D188A6
+    has:     L, S, XXXL, XXL, M, XL
+    MISSING: 4XL
+    price ref: sku=NK_9293_3_L_REDVIOLET price=38500 base=38500
+- قميص حريمى مشجر طويل [nk-9293-3] — color: ازرق #86B0DB
+    has:     XXL, M, L, S, XXXL, XL
+    MISSING: 4XL
+    price ref: sku=NK_9293_3_XXL_CSVFJ0 price=38500 base=38500
+- قميص حريمى مشجر طويل [nk-9293-3] — color: Glade Green #889E7A
+    has:     L, M, S, XXXL, XL, XXL
+    MISSING: 4XL
+    price ref: sku=NK_9293_3_L_GLADE_GREEN price=38500 base=38500
+- قميص حريمى مشجر طويل [nk-9293-6] — color: ازرق #86B0DB
+    has:     3XL, 4XL
+    MISSING: S, M, L, XL, XXL
+    price ref: sku=NK_9293_6_3XL_CSVFJ0 price=39500 base=39500
+- قميص حريمي مشجر قصير حمالة [nk-8909-2] — color: Glade Green #889E7A
+    has:     L, XXL, S, XXXL, M, XL
+    MISSING: 4XL
+    price ref: sku=NK_8909_2_L_GLADE_GREEN price=15000 base=15000
+- قميص حريمي مشجر قصير حمالة [nk-8909-2] — color: Polo Blue #86B0DB
+    has:     XL, S, M, L, XXXL, XXL
+    MISSING: 4XL
+    price ref: sku=NK_8909_2_XL_POLO_BLUE price=15000 base=15000
+- قميص حريمي مشجر قصير حمالة [nk-8909-2] — color: Red-Violet #D188A6
+    has:     S, M, L, XXL, XXXL, XL
+    MISSING: 4XL
+    price ref: sku=NK_8909_2_S_REDVIOLET price=15000 base=15000
+- قميص حريمي مشجر قصير حمالة [nk-8909-3] — color: ابيض #ffffff
+    has:     XL, S, L, M, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_8909_3_XL_CSV8P9 price=15000 base=15000
+- قميص حريمي مشجر قصير حمالة [nk-8909-7] — color: Off-White #F6F1E3
+    has:     M, L, S, XL
+    MISSING: XXL, XXXL, 4XL
+    price ref: sku=NK_8909_7_M_OFFWHITE price=15000 base=15000
+- قميص حريمي مشجر قصير حمالة [nk-8909-6] — color: Soft White #F7F7F8
+    has:     S, L
+    MISSING: M, XL, XXL, XXXL, 4XL
+    price ref: sku=NK_8909_6_S_SOFT_WHITE price=15000 base=15000
+- قميص حريمي مشجر قصير حمالة [nk-8909-4] — color: Pink #DCB2C8
+    has:     L, M, S, XL, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_8909_4_L_PINK price=15000 base=15000
+- قميص حريمي مشجر قصير حمالة [8909-1] — color: اخضر #AFC4A6
+    has:     XL, S, M, XXL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=8909_1_XL_CSVCO2 price=15000 base=15000
+- قميص حريمي مشجر قصير حمالة [8909-1] — color: ازرق #4169e1
+    has:     XL, L, M, S, XXL
+    MISSING: XXXL, 4XL
+    price ref: sku=8909_1_XL_CSVFJ0 price=15000 base=15000
+- قميص حريمي مشجر قصير حمالة [nk-8909-5] — color: بينك فاتح #F4D3E5
+    has:     S, L, M, XL
+    MISSING: XXL, XXXL, 4XL
+    price ref: sku=NK_8909_5_S_CPK4DNA price=15000 base=15000
+- قميص حريمي مشجر قصير حمالة [nk-8909-5] — color: Light Blue #D1E2F5
+    has:     S, M, XL, XXL, L
+    MISSING: XXXL, 4XL
+    price ref: sku=NK_8909_5_S_LIGHT_BLUE price=15000 base=15000
+- قميص حريمي مشجر قصير حمالة [8909-8] — color: Off-White #F9F8F6
+    has:     S, L, XL
+    MISSING: M, XXL, XXXL, 4XL
+    price ref: sku=8909_8_S_OFFWHITE price=15000 base=15000

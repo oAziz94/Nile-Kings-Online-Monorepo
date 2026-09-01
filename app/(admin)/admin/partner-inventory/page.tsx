@@ -1,9 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Boxes, Loader2, PackageSearch, Save, Search } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Boxes, Loader2, Package, RefreshCw, Save, Warehouse } from "lucide-react";
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminKpiCard } from "@/components/admin/admin-kpi-card";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminPaginationBar } from "@/components/admin/admin-pagination";
 import { AdminPanelCard } from "@/components/admin/admin-panel-card";
+import { AdminSearchInput } from "@/components/admin/admin-search-input";
 import { AdminTableScroll } from "@/components/admin/admin-table-scroll";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +23,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
+import { cn } from "@/lib/utils";
 
 type PartnerOption = {
   id: string;
@@ -27,318 +34,373 @@ type PartnerOption = {
   governorate: string;
 };
 
-type ProductOption = {
+type VariantRow = {
+  id: string;
+  sku: string;
+  name: string;
+  colorName: string | null;
+  colorHex: string | null;
+  inventoryId: string | null;
+  stockAvailable: number;
+  stockReserved: number;
+  sellable: number;
+  updatedAt: string | null;
+};
+
+type ProductRow = {
   id: string;
   name: string;
   slug: string;
-  variants: {
-    id: string;
-    sku: string;
-    name: string;
-    colorName: string | null;
-  }[];
+  category: { id: string; name: string; slug: string };
+  variants: VariantRow[];
 };
 
-type InventoryRow = {
-  id: string;
-  partnerId: string;
-  variantId: string;
-  stockAvailable: number;
-  stockReserved: number;
-  partner: PartnerOption;
-  variant: {
-    id: string;
-    sku: string;
-    name: string;
-    colorName: string | null;
-    product: { id: string; name: string; slug: string };
-  };
-};
-
-function variantLabel(v: { sku: string; name: string; colorName: string | null }) {
-  return `${v.sku} · ${v.name}${v.colorName ? ` · ${v.colorName}` : ""}`;
+function variantLabel(v: VariantRow) {
+  return `${v.name}${v.colorName ? ` · ${v.colorName}` : ""}`;
 }
 
 export default function AdminPartnerInventoryPage() {
-  const { toast } = useToast();
-  const [partners, setPartners] = React.useState<PartnerOption[]>([]);
-  const [products, setProducts] = React.useState<ProductOption[]>([]);
-  const [inventory, setInventory] = React.useState<InventoryRow[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [saving, setSaving] = React.useState(false);
-  const [partnerId, setPartnerId] = React.useState("");
-  const [productId, setProductId] = React.useState("");
-  const [variantId, setVariantId] = React.useState("");
-  const [available, setAvailable] = React.useState("");
-  const [reserved, setReserved] = React.useState("");
-  const [notes, setNotes] = React.useState("");
-  const [query, setQuery] = React.useState("");
-
-  const selectedProduct = products.find((product) => product.id === productId);
-  const variants = selectedProduct?.variants ?? [];
-
-  const loadOptions = React.useCallback(async () => {
-    const [agentsRes, distributorsRes, productsRes] = await Promise.all([
-      fetch("/api/admin/partners?partnerType=AGENT&limit=200", { credentials: "include" }),
-      fetch("/api/admin/partners?partnerType=DISTRIBUTOR&limit=200", { credentials: "include" }),
-      fetch("/api/admin/products?limit=100&active=true", { credentials: "include" }),
-    ]);
-    const [agentsJson, distributorsJson, productsJson] = await Promise.all([
-      agentsRes.json(),
-      distributorsRes.json(),
-      productsRes.json(),
-    ]);
-    setPartners([
-      ...(agentsJson?.data?.partners ?? []),
-      ...(distributorsJson?.data?.partners ?? []),
-    ]);
-    setProducts(productsJson?.data?.products ?? []);
-  }, []);
-
-  const loadInventory = React.useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams({ limit: "200" });
-    if (partnerId) params.set("partnerId", partnerId);
-    if (variantId) params.set("variantId", variantId);
-    const res = await fetch(`/api/admin/partner-inventory?${params}`, { credentials: "include" });
-    const json = await res.json();
-    if (json?.success) setInventory(json.data.inventory ?? []);
-    setLoading(false);
-  }, [partnerId, variantId]);
-
-  React.useEffect(() => {
-    loadOptions().catch(() => toast({ title: "فشل تحميل الاختيارات", variant: "destructive" }));
-  }, [loadOptions, toast]);
-
-  React.useEffect(() => {
-    loadInventory().catch(() => toast({ title: "فشل تحميل المخزون", variant: "destructive" }));
-  }, [loadInventory, toast]);
-
-  React.useEffect(() => {
-    setVariantId("");
-  }, [productId]);
-
-  const filteredInventory = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return inventory;
-    return inventory.filter((row) => {
-      const haystack = [
-        row.partner.name,
-        row.partner.phone,
-        row.partner.governorate,
-        row.variant.sku,
-        row.variant.product.name,
-        row.variant.name,
-        row.variant.colorName ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [inventory, query]);
-
-  const selectedInventory = inventory.find(
-    (row) => row.partnerId === partnerId && row.variantId === variantId
+  return (
+    <React.Suspense fallback={null}>
+      <AdminPartnerInventoryPageInner />
+    </React.Suspense>
   );
+}
+
+function AdminPartnerInventoryPageInner() {
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const [partners, setPartners] = React.useState<PartnerOption[]>([]);
+  const [partnerId, setPartnerId] = React.useState("");
+  const [products, setProducts] = React.useState<ProductRow[]>([]);
+  const [total, setTotal] = React.useState(0);
+  const [loading, setLoading] = React.useState(false);
+  const [fetching, setFetching] = React.useState(false);
+  const [search, setSearch] = React.useState(() => searchParams.get("q") ?? "");
+  const [debouncedQ, setDebouncedQ] = React.useState(search);
+  const [lowOnly, setLowOnly] = React.useState(false);
+  const [needsSetupOnly, setNeedsSetupOnly] = React.useState(false);
+  const [page, setPage] = React.useState(0);
+  const [pageSize, setPageSize] = React.useState(20);
+  const [drafts, setDrafts] = React.useState<Record<string, string>>({});
+  const [savingVariantId, setSavingVariantId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (selectedInventory) {
-      setAvailable(String(selectedInventory.stockAvailable));
-      setReserved(String(selectedInventory.stockReserved));
-    } else {
-      setAvailable("");
-      setReserved("");
-    }
-  }, [selectedInventory?.id, selectedInventory?.stockAvailable, selectedInventory?.stockReserved]);
+    Promise.all([
+      fetch("/api/admin/partners?partnerType=AGENT&limit=200", { credentials: "include" }).then((r) => r.json()),
+      fetch("/api/admin/partners?partnerType=DISTRIBUTOR&limit=200", { credentials: "include" }).then((r) => r.json()),
+    ])
+      .then(([agentsJson, distributorsJson]) => {
+        setPartners([
+          ...(agentsJson?.data?.partners ?? []),
+          ...(distributorsJson?.data?.partners ?? []),
+        ]);
+      })
+      .catch(() => toast({ title: "فشل تحميل الشركاء", variant: "destructive" }));
+  }, [toast]);
 
-  const saveAdjustment = async () => {
-    const stockAvailable = Number.parseInt(available, 10);
-    const stockReserved = reserved.trim() ? Number.parseInt(reserved, 10) : 0;
-    if (!partnerId || !variantId || !Number.isFinite(stockAvailable) || stockAvailable < 0) {
-      toast({ title: "اختر الشريك والمتغير وأدخل المتاح", variant: "destructive" });
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQ(search.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedQ, lowOnly, needsSetupOnly, partnerId]);
+
+  const load = React.useCallback(async () => {
+    if (!partnerId) {
+      setProducts([]);
+      setTotal(0);
       return;
     }
-    setSaving(true);
+    setFetching(true);
+    const params = new URLSearchParams({
+      partnerId,
+      limit: String(pageSize),
+      offset: String(page * pageSize),
+    });
+    if (debouncedQ) params.set("q", debouncedQ);
+    if (lowOnly) params.set("lowOnly", "true");
+    if (needsSetupOnly) params.set("needsSetupOnly", "true");
+
+    try {
+      const res = await fetch(`/api/admin/partner-inventory?${params}`, { credentials: "include" });
+      const json = await res.json();
+      if (res.ok && json?.success) {
+        setProducts(json.data.products ?? []);
+        setTotal(json.data.total ?? 0);
+        setDrafts({});
+      } else {
+        toast({ title: json?.error?.message ?? "فشل تحميل المخزون", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({
+        title: "فشل تحميل المخزون",
+        description: error instanceof Error ? error.message : "خطأ غير متوقع",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+      setFetching(false);
+    }
+  }, [partnerId, debouncedQ, lowOnly, needsSetupOnly, page, pageSize, toast]);
+
+  React.useEffect(() => {
+    setLoading(true);
+    load();
+  }, [load]);
+
+  const rows = React.useMemo(
+    () =>
+      products.flatMap((product) =>
+        product.variants.map((variant) => ({ product, variant }))
+      ),
+    [products]
+  );
+
+  const totals = rows.reduce(
+    (acc, { variant }) => {
+      acc.available += variant.stockAvailable;
+      acc.reserved += variant.stockReserved;
+      if (variant.sellable <= 3) acc.low += 1;
+      if (variant.inventoryId === null) acc.needsSetup += 1;
+      return acc;
+    },
+    { available: 0, reserved: 0, low: 0, needsSetup: 0 }
+  );
+
+  async function saveStock(variant: VariantRow) {
+    const raw = drafts[variant.id] ?? String(variant.stockAvailable);
+    const stockAvailable = Number.parseInt(raw, 10);
+    if (!Number.isInteger(stockAvailable) || stockAvailable < 0) {
+      toast({ title: "أدخل رقم مخزون صحيح", variant: "destructive" });
+      return;
+    }
+    if (stockAvailable < variant.stockReserved) {
+      toast({
+        title: `لا يمكن أن يكون المخزون أقل من المحجوز (${variant.stockReserved})`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSavingVariantId(variant.id);
     try {
       const res = await fetch("/api/admin/partner-inventory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          partnerId,
-          variantId,
-          stockAvailable,
-          stockReserved,
-          notes: notes.trim() || null,
-        }),
+        body: JSON.stringify({ partnerId, variantId: variant.id, stockAvailable }),
       });
       const json = await res.json();
       if (res.ok && json?.success) {
+        const row = json.data as { id: string; stockAvailable: number; stockReserved: number; updatedAt: string };
+        setProducts((current) =>
+          current.map((product) => ({
+            ...product,
+            variants: product.variants.map((item) =>
+              item.id === variant.id
+                ? {
+                    ...item,
+                    inventoryId: row.id,
+                    stockAvailable: row.stockAvailable,
+                    stockReserved: row.stockReserved,
+                    sellable: Math.max(0, row.stockAvailable - row.stockReserved),
+                    updatedAt: row.updatedAt,
+                  }
+                : item
+            ),
+          }))
+        );
+        setDrafts((current) => {
+          const next = { ...current };
+          delete next[variant.id];
+          return next;
+        });
         toast({ title: "تم حفظ المخزون" });
-        setNotes("");
-        await loadInventory();
       } else {
         toast({ title: json?.error?.message ?? "فشل حفظ المخزون", variant: "destructive" });
       }
     } finally {
-      setSaving(false);
+      setSavingVariantId(null);
     }
-  };
+  }
 
-  const totals = filteredInventory.reduce(
-    (acc, row) => {
-      acc.available += row.stockAvailable;
-      acc.reserved += row.stockReserved;
-      return acc;
-    },
-    { available: 0, reserved: 0 }
-  );
+  const selectedPartner = partners.find((p) => p.id === partnerId) ?? null;
 
   return (
     <div className="space-y-6">
       <AdminPageHeader
         title="مخزون الشركاء"
-        description="إدارة المخزون الحقيقي لكل وكيل أو موزع، مع بقاء مخزون المتغيرات القديم للقراءة التوافقية فقط."
+        description="اختر شريكاً لعرض وتعديل مخزونه الحقيقي مباشرة من الجدول."
+        actions={
+          partnerId ? (
+            <Button type="button" variant="outline" className="rounded-md" onClick={load} disabled={fetching}>
+              <RefreshCw className={cn("h-4 w-4", fetching && "animate-spin")} />
+              تحديث
+            </Button>
+          ) : undefined
+        }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <AdminPanelCard
-          title="المخزون"
-          icon={<Boxes className="h-5 w-5 text-burgundy" />}
-          toolbar={
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="بحث بالشريك أو SKU"
-                className="pr-9"
+      <AdminPanelCard title="الشريك" icon={<Warehouse className="h-5 w-5 text-burgundy" />}>
+        <div className="max-w-md">
+          <Select value={partnerId} onChange={(e) => setPartnerId(e.target.value)}>
+            <option value="">اختر الشريك لعرض مخزونه</option>
+            {partners.map((partner) => (
+              <option key={partner.id} value={partner.id}>
+                {partner.name} · {partner.partnerType === "AGENT" ? "وكيل" : "موزع"} · {partner.governorate}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </AdminPanelCard>
+
+      {!partnerId ? (
+        <AdminEmptyState
+          icon={<Warehouse className="h-12 w-12" />}
+          title="اختر شريكاً للبدء"
+          description="سيظهر هنا كل منتج ومتغير مع مخزون هذا الشريك الفعلي، وتقدر تعدّله مباشرة من الجدول."
+        />
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+            <AdminKpiCard title="إجمالي المتاح" value={formatNumberEn(totals.available)} icon={<Boxes className="h-5 w-5" />} accent="burgundy" />
+            <AdminKpiCard title="إجمالي المحجوز" value={formatNumberEn(totals.reserved)} icon={<Boxes className="h-5 w-5" />} />
+            <AdminKpiCard title="مخزون منخفض" value={formatNumberEn(totals.low)} hint="≤ 3 قطع قابلة للبيع" icon={<Boxes className="h-5 w-5" />} accent="burgundy" />
+            <AdminKpiCard title="يحتاج إعداد" value={formatNumberEn(totals.needsSetup)} hint="لا يوجد سجل مخزون بعد" icon={<Boxes className="h-5 w-5" />} />
+          </div>
+
+          <AdminPanelCard
+            title={`مخزون ${selectedPartner?.name ?? ""}`}
+            icon={<Package className="h-5 w-5 text-burgundy" />}
+            toolbar={
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={lowOnly ? "default" : "outline"}
+                  className="rounded-md"
+                  onClick={() => setLowOnly((v) => !v)}
+                >
+                  مخزون منخفض فقط
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={needsSetupOnly ? "default" : "outline"}
+                  className="rounded-md"
+                  onClick={() => setNeedsSetupOnly((v) => !v)}
+                >
+                  يحتاج إعداد فقط
+                </Button>
+                <AdminSearchInput value={search} onChange={setSearch} placeholder="بحث بالمنتج أو SKU…" />
+              </div>
+            }
+          >
+            {loading ? (
+              <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                جاري التحميل
+              </div>
+            ) : rows.length === 0 ? (
+              <AdminEmptyState
+                icon={<Package className="h-12 w-12" />}
+                title={debouncedQ || lowOnly || needsSetupOnly ? "لا توجد نتائج مطابقة" : "لا توجد منتجات"}
               />
-            </div>
-          }
-        >
-          <div className="mb-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">صفوف ظاهرة</p>
-              <p className="mt-1 text-xl font-bold">{filteredInventory.length}</p>
-            </div>
-            <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">إجمالي المتاح</p>
-              <p className="mt-1 text-xl font-bold">{totals.available}</p>
-            </div>
-            <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">إجمالي المحجوز</p>
-              <p className="mt-1 text-xl font-bold">{totals.reserved}</p>
-            </div>
-          </div>
+            ) : (
+              <AdminTableScroll>
+                <Table className={cn(fetching && "opacity-70")}>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <TableHead>المنتج</TableHead>
+                      <TableHead>المتغير</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead>المتاح</TableHead>
+                      <TableHead>المحجوز</TableHead>
+                      <TableHead>قابل للبيع</TableHead>
+                      <TableHead>آخر تحديث</TableHead>
+                      <TableHead className="text-left">حفظ</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map(({ product, variant }) => {
+                      const draft = drafts[variant.id] ?? String(variant.stockAvailable);
+                      const dirty = draft !== String(variant.stockAvailable);
+                      return (
+                        <TableRow key={variant.id}>
+                          <TableCell className="font-medium">{product.name}</TableCell>
+                          <TableCell>
+                            <div className="flex min-w-32 items-center gap-2">
+                              {variant.colorHex && (
+                                <span
+                                  className="h-4 w-4 shrink-0 rounded-full border border-border"
+                                  style={{ backgroundColor: variant.colorHex }}
+                                />
+                              )}
+                              <span>{variantLabel(variant)}</span>
+                              {variant.inventoryId === null && (
+                                <Badge variant="outline" className="text-[11px]">يحتاج إعداد</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{variant.sku}</TableCell>
+                          <TableCell>
+                            <Input
+                              inputMode="numeric"
+                              value={draft}
+                              onChange={(e) => setDrafts((current) => ({ ...current, [variant.id]: e.target.value }))}
+                              className={cn("h-9 w-24 rounded-md", dirty && "border-amber-400 bg-amber-50")}
+                            />
+                          </TableCell>
+                          <TableCell>{formatNumberEn(variant.stockReserved)}</TableCell>
+                          <TableCell>
+                            <Badge variant={variant.sellable > 0 ? "default" : "destructive"}>
+                              {formatNumberEn(variant.sellable)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                            {variant.updatedAt ? formatDateEn(variant.updatedAt) : "لم يسجل"}
+                          </TableCell>
+                          <TableCell className="text-left">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={dirty ? "default" : "outline"}
+                              className="rounded-md"
+                              disabled={!dirty || savingVariantId === variant.id}
+                              onClick={() => saveStock(variant)}
+                            >
+                              {savingVariantId === variant.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Save className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </AdminTableScroll>
+            )}
 
-          {loading ? (
-            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-              جاري التحميل
-            </div>
-          ) : (
-            <AdminTableScroll>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>الشريك</TableHead>
-                    <TableHead>المنتج</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>متاح</TableHead>
-                    <TableHead>محجوز</TableHead>
-                    <TableHead>قابل للبيع</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredInventory.map((row) => {
-                    const sellable = Math.max(0, row.stockAvailable - row.stockReserved);
-                    return (
-                      <TableRow key={row.id}>
-                        <TableCell>
-                          <div className="font-medium">{row.partner.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {row.partner.partnerType === "AGENT" ? "وكيل" : "موزع"} · {row.partner.governorate}
-                          </div>
-                        </TableCell>
-                        <TableCell>{row.variant.product.name}</TableCell>
-                        <TableCell className="font-mono text-xs">{row.variant.sku}</TableCell>
-                        <TableCell>{row.stockAvailable}</TableCell>
-                        <TableCell>{row.stockReserved}</TableCell>
-                        <TableCell>
-                          <Badge variant={sellable > 0 ? "default" : "destructive"}>{sellable}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </AdminTableScroll>
-          )}
-        </AdminPanelCard>
-
-        <AdminPanelCard title="تعديل سريع" icon={<PackageSearch className="h-5 w-5 text-burgundy" />}>
-          <div className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium">الشريك</label>
-              <Select value={partnerId} onChange={(e) => setPartnerId(e.target.value)}>
-                <option value="">اختر الشريك</option>
-                {partners.map((partner) => (
-                  <option key={partner.id} value={partner.id}>
-                    {partner.name} · {partner.partnerType === "AGENT" ? "وكيل" : "موزع"}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">المنتج</label>
-              <Select value={productId} onChange={(e) => setProductId(e.target.value)}>
-                <option value="">اختر المنتج</option>
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>{product.name}</option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">المتغير</label>
-              <Select value={variantId} onChange={(e) => setVariantId(e.target.value)} disabled={!productId}>
-                <option value="">اختر المتغير</option>
-                {variants.map((variant) => (
-                  <option key={variant.id} value={variant.id}>{variantLabel(variant)}</option>
-                ))}
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium">المتاح</label>
-                <Input
-                  inputMode="numeric"
-                  value={available}
-                  onChange={(e) => setAvailable(e.target.value)}
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">المحجوز</label>
-                <Input
-                  inputMode="numeric"
-                  value={reserved}
-                  onChange={(e) => setReserved(e.target.value)}
-                  placeholder="0"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">ملاحظة دفتر الحركة</label>
-              <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="سبب التعديل" />
-            </div>
-            <Button onClick={saveAdjustment} disabled={saving} className="w-full gap-2">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              حفظ التعديل
-            </Button>
-          </div>
-        </AdminPanelCard>
-      </div>
+            {total > 0 && (
+              <AdminPaginationBar
+                className="mt-6"
+                page={page}
+                pageSize={pageSize}
+                total={total}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                disabled={fetching}
+              />
+            )}
+          </AdminPanelCard>
+        </>
+      )}
     </div>
   );
 }
