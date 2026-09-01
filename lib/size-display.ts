@@ -6,6 +6,7 @@ const KIDS_SIZE_LABEL_MAP: Record<string, string> = {
   XXL: "10",
   XXXL: "12",
   "3XL": "12",
+  "4XL": "14",
 };
 
 const SIZE_ORDER = ["S", "M", "L", "XL", "XXL", "XXXL", "4XL"];

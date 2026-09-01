@@ -55,7 +55,6 @@ type Product = {
     imageUrl: string | null;
     basePricePiastres: number | null;
     pricePiastres: number;
-    stockAvailable: number;
     stockReserved: number;
   }[];
 };
@@ -102,7 +101,6 @@ export default function AdminProductDetailPage() {
     imageUrl: "",
     originalEgp: "",
     discountedEgp: "",
-    stockAvailable: "0",
   });
   const [editingVariant, setEditingVariant] = React.useState<Product["variants"][number] | null>(null);
   const [editForm, setEditForm] = React.useState({
@@ -112,7 +110,6 @@ export default function AdminProductDetailPage() {
     imageUrl: "",
     originalEgp: "",
     priceEgp: "",
-    stockAvailable: "",
   });
   const [savingVariant, setSavingVariant] = React.useState(false);
   const [tagsInput, setTagsInput] = React.useState("");
@@ -212,7 +209,6 @@ export default function AdminProductDetailPage() {
       imageUrl: "",
       originalEgp: product ? (product.basePricePiastres != null ? (product.basePricePiastres / 100).toString() : "") : "",
       discountedEgp: product ? (product.discountPricePiastres != null ? (product.discountPricePiastres / 100).toString() : "") : "",
-      stockAvailable: "0",
     });
     setAddVariantOpen(true);
   };
@@ -247,7 +243,6 @@ export default function AdminProductDetailPage() {
           imageUrl: addForm.imageUrl.trim() || null,
           basePricePiastres: originalPiastres,
           pricePiastres: discountedPiastres,
-          stockAvailable: parseInt(addForm.stockAvailable, 10) || 0,
         }),
       });
       const text = await res.text();
@@ -281,7 +276,6 @@ export default function AdminProductDetailPage() {
       imageUrl: v.imageUrl ?? "",
       originalEgp: v.basePricePiastres != null ? (v.basePricePiastres / 100).toString() : "",
       priceEgp: (v.pricePiastres / 100).toString(),
-      stockAvailable: String(v.stockAvailable),
     });
   };
 
@@ -289,17 +283,12 @@ export default function AdminProductDetailPage() {
     if (!editingVariant) return;
     const pricePiastres = Math.round(parseFloat(editForm.priceEgp || "0") * 100);
     const basePricePiastres = editForm.originalEgp === "" ? null : Math.round(parseFloat(editForm.originalEgp) * 100);
-    const stockAvailable = parseInt(editForm.stockAvailable, 10);
     if (isNaN(pricePiastres) || pricePiastres < 0) {
       toast({ title: "أدخل سعر التخفيض صحيحاً", variant: "destructive" });
       return;
     }
     if (basePricePiastres !== null && (isNaN(basePricePiastres) || basePricePiastres < 0)) {
       toast({ title: "السعر الأساسي يجب أن يكون غير سالب", variant: "destructive" });
-      return;
-    }
-    if (isNaN(stockAvailable) || stockAvailable < 0) {
-      toast({ title: "أدخل كمية مخزون صحيحة", variant: "destructive" });
       return;
     }
     setSavingVariant(true);
@@ -315,7 +304,6 @@ export default function AdminProductDetailPage() {
           imageUrl: editForm.imageUrl.trim() || null,
           basePricePiastres,
           pricePiastres,
-          stockAvailable,
         }),
       });
       const json = await res.json();
@@ -488,12 +476,22 @@ export default function AdminProductDetailPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>المتغيرات (المقاس + اللون)</CardTitle>
-              <CardDescription>أسعار المنتج تُنسخ تلقائياً؛ يمكنك تعديل أسعار كل متغير.</CardDescription>
+              <CardDescription>
+                أسعار المنتج تُنسخ تلقائياً؛ يمكنك تعديل أسعار كل متغير. المخزون يُدار من صفحة مخزون الشركاء لكل شريك على حدة.
+              </CardDescription>
             </div>
-            <Button type="button" variant="default" onClick={openAddVariant}>
-              <Plus className="h-4 w-4" />
-              إضافة متغير
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" asChild>
+                <Link href={`/admin/partner-inventory?q=${encodeURIComponent(product.slug)}`}>
+                  <Package className="h-4 w-4" />
+                  إدارة المخزون
+                </Link>
+              </Button>
+              <Button type="button" variant="default" onClick={openAddVariant}>
+                <Plus className="h-4 w-4" />
+                إضافة متغير
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -512,7 +510,6 @@ export default function AdminProductDetailPage() {
                   <TableHead>اللون</TableHead>
                   <TableHead>السعر الأساسي (ج.م)</TableHead>
                   <TableHead>سعر التخفيض (ج.م)</TableHead>
-                  <TableHead>المخزون</TableHead>
                   <TableHead className="w-24 text-left">إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
@@ -526,7 +523,6 @@ export default function AdminProductDetailPage() {
                     </TableCell>
                     <TableCell>{v.basePricePiastres != null ? (v.basePricePiastres / 100).toFixed(2) : "—"}</TableCell>
                     <TableCell>{(v.pricePiastres / 100).toFixed(2)}</TableCell>
-                    <TableCell>{v.stockAvailable} (محجوز: {v.stockReserved})</TableCell>
                     <TableCell className="text-left">
                       <div className="flex items-center gap-1">
                         <Button
@@ -647,15 +643,6 @@ export default function AdminProductDetailPage() {
                 />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label>الكمية المتاحة</Label>
-              <Input
-                type="number"
-                min={0}
-                value={addForm.stockAvailable}
-                onChange={(e) => setAddForm((f) => ({ ...f, stockAvailable: e.target.value }))}
-              />
-            </div>
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -737,15 +724,6 @@ export default function AdminProductDetailPage() {
                     onChange={(e) => setEditForm((f) => ({ ...f, priceEgp: e.target.value }))}
                   />
                 </div>
-              </div>
-              <div className="grid gap-2">
-                <Label>الكمية المتاحة *</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={editForm.stockAvailable}
-                  onChange={(e) => setEditForm((f) => ({ ...f, stockAvailable: e.target.value }))}
-                />
               </div>
               <p className="text-xs text-muted-foreground">SKU: {editingVariant.sku}</p>
             </div>
