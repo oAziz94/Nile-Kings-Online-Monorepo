@@ -9,6 +9,7 @@ import {
   Folder,
   Handshake,
   LayoutDashboard,
+  LogOut,
   Menu,
   Package,
   Route,
@@ -110,6 +111,30 @@ function AdminNavLinks({
           })}
         </div>
       ))}
+      <div className="space-y-1">
+        <p className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          الحساب
+        </p>
+        <Link
+          href="/"
+          onClick={onNavigate}
+          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <LayoutDashboard className="h-4 w-4 shrink-0" />
+          المتجر
+        </Link>
+        <button
+          type="button"
+          onClick={async () => {
+            await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+            window.location.href = "/login";
+          }}
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          تسجيل الخروج
+        </button>
+      </div>
     </div>
   );
 }

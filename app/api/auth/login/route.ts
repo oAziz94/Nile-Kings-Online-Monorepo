@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   const sessionToken = await createSession({
     userId: user.id,
     phone: user.phone,
-    role: user.role as "CUSTOMER" | "ADMIN",
+    role: user.role,
   });
 
   const opts = sessionCookieOptions();
