@@ -62,9 +62,16 @@ export type PlaceOrderInput = {
   selectedPartnerId?: string | null;
 };
 
+export type OutOfStockItem = {
+  variantId: string;
+  sku: string;
+  productName: string;
+  variantName: string;
+};
+
 export type PlaceOrderResult =
   | { success: true; orderId: string; status: "CREATED" | "CONFIRMED" }
-  | { success: false; error: string; code?: string };
+  | { success: false; error: string; code?: string; outOfStockItems?: OutOfStockItem[] };
 
 type OrderLineRow = {
   variantId: string;
@@ -207,7 +214,26 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     lines: stockLines,
     preferredPartnerId: input.selectedPartnerId ?? null,
   });
-  if (!selectedPartner) {
+  if (!selectedPartner.ok) {
+    if (selectedPartner.reason === "INSUFFICIENT_STOCK") {
+      const insufficientIds = new Set(selectedPartner.insufficientVariantIds);
+      const outOfStockItems: OutOfStockItem[] = orderLines
+        .filter((line) => insufficientIds.has(line.variantId))
+        .map((line) => ({
+          variantId: line.variantId,
+          sku: line.sku,
+          productName: line.productName,
+          variantName: line.variantName,
+        }));
+      return {
+        success: false,
+        error: `الأصناف التالية غير متوفرة حالياً، برجاء إزالتها من السلة: ${outOfStockItems
+          .map((item) => item.variantName)
+          .join("، ")}`,
+        code: "INSUFFICIENT_STOCK",
+        outOfStockItems,
+      };
+    }
     return {
       success: false,
       error: "الأصناف المطلوبة غير متوفرة لدى شريك واحد في هذه المحافظة",

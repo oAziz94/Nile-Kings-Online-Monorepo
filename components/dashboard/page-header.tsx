@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export function AdminPageHeader({
+export function PageHeader({
   title,
   description,
   badge,
@@ -42,7 +42,7 @@ export function AdminPageHeader({
   );
 }
 
-export function AdminStatusBadge({
+export function StatusBadge({
   children,
   variant = "success",
 }: {

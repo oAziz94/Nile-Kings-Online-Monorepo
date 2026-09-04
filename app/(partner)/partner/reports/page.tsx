@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BarChart3, Banknote, CalendarRange, CheckCircle2, Download, Package, ShoppingCart, TrendingUp } from "lucide-react";
-import { AdminKpiCard } from "@/components/admin/admin-kpi-card";
-import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { KpiCard } from "@/components/dashboard/kpi-card";
+import { SearchInput } from "@/components/dashboard/search-input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -244,9 +244,9 @@ export default function PartnerReportsPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <AdminKpiCard title="إجمالي الإيراد" value={kpis ? `${formatNumberEn(piastresToEgp(kpis.totalRevenuePiastres))} ج.م` : "-"} hint="شامل الشحن ورسوم COD" icon={<TrendingUp className="h-6 w-6" />} accent="burgundy" loading={loading} footer={<Button variant="link" size="sm" className="mt-2 h-auto p-0 text-xs text-burgundy" onClick={() => exportCsv("summary")}><Download className="ml-1 h-3 w-3" />تصدير الملخص</Button>} />
-        <AdminKpiCard title="صافي المنتجات" value={kpis ? `${formatNumberEn(piastresToEgp(kpis.netMerchandisePiastres))} ج.م` : "-"} hint="بعد الخصومات، بدون الشحن ورسوم COD" icon={<Banknote className="h-6 w-6" />} accent="gold" loading={loading} />
-        <AdminKpiCard title="طلبات مُسلَّمة" value={kpis ? formatNumberEn(kpis.orderCount) : "-"} hint="عدد طلباتك في الفترة" icon={<ShoppingCart className="h-6 w-6" />} accent="emerald" loading={loading} />
+        <KpiCard title="إجمالي الإيراد" value={kpis ? `${formatNumberEn(piastresToEgp(kpis.totalRevenuePiastres))} ج.م` : "-"} hint="شامل الشحن ورسوم COD" icon={<TrendingUp className="h-6 w-6" />} accent="burgundy" loading={loading} footer={<Button variant="link" size="sm" className="mt-2 h-auto p-0 text-xs text-burgundy" onClick={() => exportCsv("summary")}><Download className="ml-1 h-3 w-3" />تصدير الملخص</Button>} />
+        <KpiCard title="صافي المنتجات" value={kpis ? `${formatNumberEn(piastresToEgp(kpis.netMerchandisePiastres))} ج.م` : "-"} hint="بعد الخصومات، بدون الشحن ورسوم COD" icon={<Banknote className="h-6 w-6" />} accent="gold" loading={loading} />
+        <KpiCard title="طلبات مُسلَّمة" value={kpis ? formatNumberEn(kpis.orderCount) : "-"} hint="عدد طلباتك في الفترة" icon={<ShoppingCart className="h-6 w-6" />} accent="emerald" loading={loading} />
       </div>
 
       <Card className="rounded-2xl border-border/80 shadow-card">
@@ -318,7 +318,7 @@ export default function PartnerReportsPage() {
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <AdminSearchInput value={productSearch} onChange={setProductSearch} placeholder="بحث منتج، مقاس، SKU..." />
+            <SearchInput value={productSearch} onChange={setProductSearch} placeholder="بحث منتج، مقاس، SKU..." />
             <ExportButton onClick={() => exportCsv("products")} />
           </div>
         </CardHeader>
@@ -341,7 +341,7 @@ export default function PartnerReportsPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredProducts.map((row) => (
-                    <TableRow key={row.variantId} className={cn(row.quantitySold > 0 && "bg-emerald-500/[0.03]")}>
+                    <TableRow key={row.variantId} className={cn(row.quantitySold > 0 && "bg-emerald-500/5")}>
                       <TableCell className="font-medium">{row.productName}</TableCell>
                       <TableCell>{row.variantName}</TableCell>
                       <TableCell className="text-muted-foreground">{row.colorName ?? "-"}</TableCell>

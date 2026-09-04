@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export function AdminEmptyState({
+export function EmptyState({
   icon,
   title,
   description,

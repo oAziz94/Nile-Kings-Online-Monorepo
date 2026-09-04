@@ -4,11 +4,11 @@ import * as React from "react";
 import Link from "next/link";
 import { Loader2, Package, RefreshCw } from "lucide-react";
 import { ProductImagePreview } from "@/components/shared/product-image-preview";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminPageHeader, AdminStatusBadge } from "@/components/admin/admin-page-header";
-import { AdminPaginationBar } from "@/components/admin/admin-pagination";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
-import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader, StatusBadge } from "@/components/dashboard/page-header";
+import { PaginationBar } from "@/components/dashboard/pagination";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { SearchInput } from "@/components/dashboard/search-input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -113,10 +113,10 @@ export default function PartnerProductsPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="المنتجات"
         description="نفس جدول المنتجات في لوحة الإدارة مع صلاحية تعديل مخزون المتغيرات فقط."
-        badge={<AdminStatusBadge>تعديل المخزون فقط</AdminStatusBadge>}
+        badge={<StatusBadge>تعديل المخزون فقط</StatusBadge>}
         actions={
           <Button type="button" variant="outline" className="rounded-xl" onClick={load} disabled={fetching}>
             <RefreshCw className={cn("h-4 w-4", fetching && "animate-spin")} />
@@ -125,11 +125,11 @@ export default function PartnerProductsPage() {
         }
       />
 
-      <AdminPanelCard
+      <PanelCard
         title="قائمة المنتجات"
         icon={<Package className="h-5 w-5 text-burgundy" />}
         toolbar={
-          <AdminSearchInput
+          <SearchInput
             value={search}
             onChange={setSearch}
             placeholder="بحث بالاسم أو SKU…"
@@ -144,7 +144,7 @@ export default function PartnerProductsPage() {
         )}
 
         {products.length === 0 && !fetching ? (
-          <AdminEmptyState
+          <EmptyState
             icon={<Package className="h-12 w-12" />}
             title={debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد منتجات متاحة"}
           />
@@ -211,7 +211,7 @@ export default function PartnerProductsPage() {
         )}
 
         {total > 0 && (
-          <AdminPaginationBar
+          <PaginationBar
             className="mt-6"
             page={page}
             pageSize={pageSize}
@@ -221,7 +221,7 @@ export default function PartnerProductsPage() {
             disabled={fetching}
           />
         )}
-      </AdminPanelCard>
+      </PanelCard>
     </div>
   );
 }

@@ -25,11 +25,11 @@ import {
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import { AdminPaginationBar } from "@/components/admin/admin-pagination";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
-import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { PaginationBar } from "@/components/dashboard/pagination";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { SearchInput } from "@/components/dashboard/search-input";
 import { Ticket, Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -492,7 +492,7 @@ export default function AdminCouponsPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="الكوبونات"
         description="إنشاء وتعديل أكواد الخصم والعروض الترويجية."
         actions={
@@ -557,11 +557,11 @@ export default function AdminCouponsPage() {
         </DialogContent>
       </Dialog>
 
-      <AdminPanelCard
+      <PanelCard
         title="قائمة الكوبونات"
         icon={<Ticket className="h-5 w-5 text-burgundy" />}
         toolbar={
-          <AdminSearchInput
+          <SearchInput
             value={search}
             onChange={setSearch}
             placeholder="بحث بكود الكوبون…"
@@ -575,7 +575,7 @@ export default function AdminCouponsPage() {
             </div>
           )}
           {list.length === 0 && !fetching ? (
-            <AdminEmptyState
+            <EmptyState
               icon={<Ticket className="h-12 w-12" />}
               title={debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد كوبونات"}
             />
@@ -645,7 +645,7 @@ export default function AdminCouponsPage() {
             </div>
           )}
           {total > 0 && (
-            <AdminPaginationBar
+            <PaginationBar
               className="mt-6"
               page={page}
               pageSize={pageSize}
@@ -655,7 +655,7 @@ export default function AdminCouponsPage() {
               disabled={fetching}
             />
           )}
-      </AdminPanelCard>
+      </PanelCard>
     </div>
   );
 }

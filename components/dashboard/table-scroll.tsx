@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /** Horizontal scroll wrapper for wide admin tables on small screens. */
-export function AdminTableScroll({
+export function TableScroll({
   children,
   className,
 }: {

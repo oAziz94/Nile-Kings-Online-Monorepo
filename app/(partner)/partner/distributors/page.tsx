@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { Loader2, RefreshCw, Users } from "lucide-react";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminPageHeader, AdminStatusBadge } from "@/components/admin/admin-page-header";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader, StatusBadge } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -88,10 +88,10 @@ export default function PartnerDistributorsPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="الموزعون"
         description="الموزعون المرتبطون بحسابك وبيانات التواصل والمخزون المختصر."
-        badge={<AdminStatusBadge>وكلاء فقط</AdminStatusBadge>}
+        badge={<StatusBadge>وكلاء فقط</StatusBadge>}
         actions={
           <Button type="button" variant="outline" className="rounded-xl" onClick={load} disabled={fetching}>
             <RefreshCw className={cn("h-4 w-4", fetching && "animate-spin")} />
@@ -100,9 +100,9 @@ export default function PartnerDistributorsPage() {
         }
       />
 
-      <AdminPanelCard title="الموزعون المرتبطون" icon={<Users className="h-5 w-5 text-burgundy" />}>
+      <PanelCard title="الموزعون المرتبطون" icon={<Users className="h-5 w-5 text-burgundy" />}>
         {distributors.length === 0 ? (
-          <AdminEmptyState icon={<Users className="h-12 w-12" />} title="لا يوجد موزعون مرتبطون بعد" />
+          <EmptyState icon={<Users className="h-12 w-12" />} title="لا يوجد موزعون مرتبطون بعد" />
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border/60">
             <Table className={cn(fetching && "opacity-70")}>
@@ -163,7 +163,7 @@ export default function PartnerDistributorsPage() {
             </Table>
           </div>
         )}
-      </AdminPanelCard>
+      </PanelCard>
     </div>
   );
 }

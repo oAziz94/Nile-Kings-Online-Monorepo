@@ -14,11 +14,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import { AdminPaginationBar } from "@/components/admin/admin-pagination";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
-import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { PaginationBar } from "@/components/dashboard/pagination";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { SearchInput } from "@/components/dashboard/search-input";
 import { Users, Loader2, UserPlus } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
@@ -93,7 +93,7 @@ export default function AdminClientsPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="العملاء"
         description="حسابات العملاء فقط، مع العناوين والطلبات المرتبطة بكل عميل."
         actions={
@@ -105,11 +105,11 @@ export default function AdminClientsPage() {
           </Button>
         }
       />
-      <AdminPanelCard
+      <PanelCard
         title="قائمة العملاء"
         icon={<Users className="h-5 w-5 text-burgundy" />}
         toolbar={
-          <AdminSearchInput
+          <SearchInput
             value={search}
             onChange={setSearch}
             placeholder="بحث بالهاتف أو الاسم…"
@@ -124,7 +124,7 @@ export default function AdminClientsPage() {
             </div>
           )}
           {clients.length === 0 && !fetching ? (
-            <AdminEmptyState
+            <EmptyState
               icon={<Users className="h-12 w-12" />}
               title={debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد عملاء"}
             />
@@ -170,7 +170,7 @@ export default function AdminClientsPage() {
             </div>
           )}
           {total > 0 && (
-            <AdminPaginationBar
+            <PaginationBar
               className="mt-6"
               page={page}
               pageSize={pageSize}
@@ -180,7 +180,7 @@ export default function AdminClientsPage() {
               disabled={fetching}
             />
           )}
-      </AdminPanelCard>
+      </PanelCard>
     </div>
   );
 }

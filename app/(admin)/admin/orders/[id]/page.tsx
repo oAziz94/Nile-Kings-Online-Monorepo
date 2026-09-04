@@ -3,9 +3,9 @@
 import * as React from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight, Link2, MapPin, Package, Save, ShoppingBag, UserRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -18,19 +18,15 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import { AdminTableScroll } from "@/components/admin/admin-table-scroll";
-import { ItemAssignmentContextImpl } from "twilio/lib/rest/numbers/v2/regulatoryCompliance/bundle/itemAssignment";
-
-const STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
-const STATUS_LABELS: Record<string, string> = {
-  CREATED: "قيد الانشاء",
-  CONFIRMED: "مؤكد",
-  PROCESSING: "قيد التجهيز",
-  READY_TO_SHIP: "جاهز للشحن",
-  SHIPPED: "تم الشحن",
-  DELIVERED: "تم التسليم",
-  CANCELLED: "ملغي",
-};
+import { PageHeader } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { TableScroll } from "@/components/dashboard/table-scroll";
+import {
+  ORDER_STATUSES as STATUSES,
+  ORDER_STATUS_BADGE_CLASSES as STATUS_BADGE_CLASSES,
+  ORDER_STATUS_LABELS as STATUS_LABELS,
+} from "@/lib/constants/order-status";
+import { cn } from "@/lib/utils";
 
 type Order = {
   id: string;
@@ -469,22 +465,27 @@ export default function AdminOrderDetailPage() {
 
   const addr = order.shippingAddress as Record<string, string> | undefined;
 
-
   return (
-    <div dir="rtl" className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Button variant="ghost" size="sm" asChild className="self-start">
-          <Link href="/admin/orders">← الطلبات</Link>
-        </Button>
-        <h1 className="text-xl font-bold sm:text-2xl">طلب #{order.id.slice(0, 8)}</h1>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={`طلب #${order.id.slice(0, 8)}`}
+        badge={
+          <Badge variant="outline" className={cn("rounded-md font-normal", STATUS_BADGE_CLASSES[order.status] ?? "")}>
+            {STATUS_LABELS[order.status] ?? order.status}
+          </Badge>
+        }
+        actions={
+          <Button asChild type="button" variant="outline" className="rounded-md">
+            <Link href="/admin/orders">
+              <ArrowRight className="h-4 w-4" />
+              رجوع للطلبات
+            </Link>
+          </Button>
+        }
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>الحالة</CardTitle>
-          <CardDescription>تحديث حالة الطلب.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-end gap-4">
+      <PanelCard title="الحالة" description="تحديث حالة الطلب." icon={<Save className="h-5 w-5 text-burgundy" />}>
+        <div className="flex flex-wrap items-end gap-4">
           <div className="grid gap-2">
             <Label>الحالة</Label>
             <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full sm:w-48">
@@ -493,24 +494,24 @@ export default function AdminOrderDetailPage() {
               ))}
             </Select>
           </div>
-          <Button onClick={updateStatus} disabled={updating || status === order.status}>
+          <Button onClick={updateStatus} disabled={updating || status === order.status} className="rounded-md">
             {updating ? "جاري…" : "تحديث الحالة"}
           </Button>
-          <Badge variant="outline" className="mr-2">{STATUS_LABELS[order.status] ?? order.status}</Badge>
-        </CardContent>
-      </Card>
+        </div>
+      </PanelCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>ملاحظات الإدارة</CardTitle>
-          <CardDescription>ملاحظات داخلية للفريق — لا تظهر للعميل ولا تُرسل لشركة الشحن.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <PanelCard
+        title="ملاحظات الإدارة"
+        description="ملاحظات داخلية للفريق — لا تظهر للعميل ولا تُرسل لشركة الشحن."
+        icon={<Save className="h-5 w-5 text-burgundy" />}
+      >
+        <div className="space-y-3">
           <div className="grid gap-2">
             <Label htmlFor="admin-notes">ملاحظات</Label>
             <textarea
               id="admin-notes"
-              className="flex min-h-[100px] w-full max-w-lg rounded-2xl border border-input bg-background px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              rows={3}
+              className="flex w-full resize-none rounded-lg border border-input bg-background px-4 py-3 text-sm leading-6 shadow-subtle transition-colors placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-burgundy/40 focus-visible:border-burgundy/40"
               placeholder="أضف ملاحظة عن هذا الطلب…"
               value={adminNotes}
               onChange={(e) => setAdminNotes(e.target.value)}
@@ -519,40 +520,45 @@ export default function AdminOrderDetailPage() {
           <Button
             variant="outline"
             size="sm"
+            className="rounded-md"
             onClick={saveAdminNotes}
             disabled={savingNotes || adminNotes === (order.adminNotes ?? "")}
           >
             {savingNotes ? "جاري…" : "حفظ الملاحظات"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </PanelCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>العميل والعنوان</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <p><strong>الهاتف:</strong> {order.user?.phone}</p>
-          {order.user?.name && <p><strong>الاسم:</strong> {order.user.name}</p>}
-          {addr && (
-            <p className="text-muted-foreground">
-              {addr.governorate} {addr.city ? `، ${addr.city}` : ""} {addr.area ? `، ${addr.area}` : ""} – {addr.street}
-            </p>
-          )}
-          {addr?.notes && (
-            <p className="text-sm text-muted-foreground">
-              <strong>ملاحظات العميل على العنوان:</strong> {addr.notes}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <PanelCard title="العميل" icon={<UserRound className="h-5 w-5 text-burgundy" />}>
+          <div className="space-y-2 text-sm">
+            <p className="font-medium">{order.user?.name ?? "عميل بدون اسم"}</p>
+            <p className="text-muted-foreground">{order.user?.phone}</p>
+          </div>
+        </PanelCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>ربط الطلب بحساب عميل</CardTitle>
-          <CardDescription>يمكنك تغيير الحساب المرتبط بالطلب ثم اختيار عنوان من عناوين هذا الحساب.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <PanelCard title="عنوان الشحن" icon={<MapPin className="h-5 w-5 text-burgundy" />}>
+          <div className="space-y-2 text-sm">
+            {addr && (
+              <p className="font-medium">
+                {addr.governorate} {addr.city ? `، ${addr.city}` : ""} {addr.area ? `، ${addr.area}` : ""} – {addr.street}
+              </p>
+            )}
+            {addr?.notes && (
+              <p className="text-muted-foreground">
+                <strong>ملاحظات العميل على العنوان:</strong> {addr.notes}
+              </p>
+            )}
+          </div>
+        </PanelCard>
+      </div>
+
+      <PanelCard
+        title="ربط الطلب بحساب عميل"
+        description="يمكنك تغيير الحساب المرتبط بالطلب ثم اختيار عنوان من عناوين هذا الحساب."
+        icon={<Link2 className="h-5 w-5 text-burgundy" />}
+      >
+        <div className="space-y-4">
           <div className="grid gap-2">
             <Label>بحث عن عميل</Label>
             <input
@@ -607,18 +613,14 @@ export default function AdminOrderDetailPage() {
             {loadingSelectedClient && <p className="text-xs text-muted-foreground">جاري تحميل عناوين الحساب…</p>}
           </div>
 
-          <Button onClick={updateLinkedAccount} disabled={linking || !selectedClientId || !selectedAddressId}>
+          <Button onClick={updateLinkedAccount} disabled={linking || !selectedClientId || !selectedAddressId} className="rounded-md">
             {linking ? "جاري…" : "تحديث الحساب والعنوان"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </PanelCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>البنود</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AdminTableScroll>
+      <PanelCard title="بنود الطلب" icon={<Package className="h-5 w-5 text-burgundy" />}>
+          <TableScroll>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -674,7 +676,7 @@ export default function AdminOrderDetailPage() {
                 ))}
               </TableBody>
             </Table>
-          </AdminTableScroll>
+          </TableScroll>
           <div className="mt-4 space-y-2 rounded-2xl border p-3">
             <Label>إضافة بند</Label>
             <input
@@ -712,8 +714,7 @@ export default function AdminOrderDetailPage() {
             {order.codFeePiastres > 0 && <p>رسوم الدفع عند الاستلام: {(order.codFeePiastres / 100).toFixed(0)} ج.م</p>}
             <p className="font-semibold">الإجمالي: {(order.totalPiastres / 100).toFixed(0)} ج.م</p>
           </div>
-        </CardContent>
-      </Card>
+      </PanelCard>
     </div>
   );
 }

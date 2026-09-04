@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { UserPlus, Loader2 } from "lucide-react";
 
@@ -83,7 +83,7 @@ export default function NewClientPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="عميل جديد"
         description="إنشاء حساب عميل بكلمة مرور وعنوان توصيل افتراضي."
         actions={

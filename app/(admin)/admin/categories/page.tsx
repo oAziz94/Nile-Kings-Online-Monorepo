@@ -23,9 +23,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/shared/skeleton";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
 import { Folder, Plus, Pencil, Trash2 } from "lucide-react";
 
 type Category = { id: string; name: string; slug: string; sortOrder: number; productCount: number };
@@ -157,7 +157,7 @@ export default function AdminCategoriesPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="الفئات"
         description="تنظيم المنتجات في فئات بدون تصنيفات فرعية."
         actions={
@@ -267,12 +267,12 @@ export default function AdminCategoriesPage() {
         }
       />
 
-      <AdminPanelCard
+      <PanelCard
         title="قائمة الفئات"
         icon={<Folder className="h-5 w-5 text-burgundy" />}
       >
           {categories.length === 0 ? (
-            <AdminEmptyState
+            <EmptyState
               icon={<Folder className="h-12 w-12" />}
               title="لا توجد فئات"
               description="أضف فئة لتنظيم المنتجات."
@@ -327,7 +327,7 @@ export default function AdminCategoriesPage() {
             </Table>
             </div>
           )}
-      </AdminPanelCard>
+      </PanelCard>
     </div>
   );
 }

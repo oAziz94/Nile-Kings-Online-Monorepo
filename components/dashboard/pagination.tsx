@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-type AdminPaginationBarProps = {
+type PaginationBarProps = {
   page: number;
   pageSize: number;
   total: number;
@@ -15,7 +15,7 @@ type AdminPaginationBarProps = {
   className?: string;
 };
 
-export function AdminPaginationBar({
+export function PaginationBar({
   page,
   pageSize,
   total,
@@ -24,7 +24,7 @@ export function AdminPaginationBar({
   disabled,
   pageSizeOptions = [10, 20, 50],
   className,
-}: AdminPaginationBarProps) {
+}: PaginationBarProps) {
   const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages - 1);
   const from = total === 0 ? 0 : safePage * pageSize + 1;

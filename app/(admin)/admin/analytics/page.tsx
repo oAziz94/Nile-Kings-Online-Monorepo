@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { AdminKpiCard } from "@/components/admin/admin-kpi-card";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { SearchInput } from "@/components/dashboard/search-input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   clampEndDate,
@@ -322,7 +322,7 @@ export default function AdminAnalyticsPage() {
 
       {/* KPIs */}
       <div className="grid gap-4 md:grid-cols-3">
-        <AdminKpiCard
+        <KpiCard
           title="إجمالي الإيراد"
           value={kpis ? `${formatNumberEn(piastresToEgp(kpis.totalRevenuePiastres))} ج.م` : "—"}
           hint="إجمالي محصل (شامل الشحن ورسوم COD)"
@@ -341,7 +341,7 @@ export default function AdminAnalyticsPage() {
             </Button>
           }
         />
-        <AdminKpiCard
+        <KpiCard
           title="صافي المنتجات"
           value={
             kpis ? `${formatNumberEn(piastresToEgp(kpis.netMerchandisePiastres))} ج.م` : "—"
@@ -351,7 +351,7 @@ export default function AdminAnalyticsPage() {
           accent="gold"
           loading={loading}
         />
-        <AdminKpiCard
+        <KpiCard
           title="طلبات مُسلَّمة"
           value={kpis ? formatNumberEn(kpis.orderCount) : "—"}
           hint="عدد الطلبات في الفترة"
@@ -453,7 +453,7 @@ export default function AdminAnalyticsPage() {
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <AdminSearchInput
+            <SearchInput
               value={productSearch}
               onChange={setProductSearch}
               placeholder="بحث منتج، مقاس، SKU..."
@@ -484,7 +484,7 @@ export default function AdminAnalyticsPage() {
                       key={r.variantId}
                       className={cn(
                         "transition-colors hover:bg-muted/25",
-                        r.quantitySold > 0 && "bg-emerald-500/[0.03]"
+                        r.quantitySold > 0 && "bg-emerald-500/5"
                       )}
                     >
                       <TableCell className="font-medium">{r.productName}</TableCell>

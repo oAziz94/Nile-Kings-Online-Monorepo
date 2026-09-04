@@ -15,35 +15,19 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
 import { Select } from "@/components/ui/select";
-import { AdminPaginationBar } from "@/components/admin/admin-pagination";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
-import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { PaginationBar } from "@/components/dashboard/pagination";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { SearchInput } from "@/components/dashboard/search-input";
 import { ShoppingBag, FileDown, FileText, Loader2, ChevronDown, Plus } from "lucide-react";
 import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
 import { piastresToEgp } from "@/lib/catalog";
+import {
+  ORDER_STATUS_BADGE_CLASSES as STATUS_BADGE_CLASSES,
+  ORDER_STATUS_LABELS as STATUS_LABELS,
+} from "@/lib/constants/order-status";
 import { cn } from "@/lib/utils";
-
-const STATUS_LABELS: Record<string, string> = {
-  CREATED: "قيد الانشاء",
-  CONFIRMED: "مؤكد",
-  PROCESSING: "قيد التجهيز",
-  READY_TO_SHIP: "جاهز للشحن",
-  SHIPPED: "تم الشحن",
-  DELIVERED: "تم التسليم",
-  CANCELLED: "ملغي",
-};
-
-const STATUS_BADGE_CLASSES: Record<string, string> = {
-  CREATED: "border-slate-300 bg-slate-100 text-slate-700",
-  CONFIRMED: "border-blue-300 bg-blue-100 text-blue-700",
-  PROCESSING: "border-amber-300 bg-amber-100 text-amber-700",
-  READY_TO_SHIP: "border-violet-300 bg-violet-100 text-violet-700",
-  SHIPPED: "border-cyan-300 bg-cyan-100 text-cyan-700",
-  DELIVERED: "border-emerald-300 bg-emerald-100 text-emerald-700",
-  CANCELLED: "border-rose-300 bg-rose-100 text-rose-700",
-};
 
 const PAYMENT_LABELS: Record<string, string> = {
   COD: "الدفع عند الاستلام",
@@ -274,7 +258,7 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="الطلبات"
         description="عرض الطلبات، التصدير، وتحديث الحالة من صفحة التفاصيل."
         actions={
@@ -286,13 +270,13 @@ export default function AdminOrdersPage() {
           </Button>
         }
       />
-      <AdminPanelCard
+      <PanelCard
         title="قائمة الطلبات"
         description="حدّد الطلبات للتصدير أو ابحث بالعميل والمنتج."
         icon={<ShoppingBag className="h-5 w-5 text-burgundy" />}
         toolbar={
           <div className="flex w-full flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-end">
-            <AdminSearchInput
+            <SearchInput
               value={search}
               onChange={setSearch}
               placeholder="بحث برقم الطلب أو العميل…"
@@ -348,7 +332,7 @@ export default function AdminOrdersPage() {
             </div>
           )}
           {orders.length === 0 && !fetching ? (
-            <AdminEmptyState
+            <EmptyState
               icon={<ShoppingBag className="h-12 w-12" />}
               title={debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات"}
             />
@@ -447,7 +431,7 @@ export default function AdminOrdersPage() {
             </div>
           ) : null}
           {total > 0 && (
-            <AdminPaginationBar
+            <PaginationBar
               className="mt-6"
               page={page}
               pageSize={pageSize}
@@ -457,7 +441,7 @@ export default function AdminOrdersPage() {
               disabled={fetching}
             />
           )}
-      </AdminPanelCard>
+      </PanelCard>
     </div>
   );
 }
