@@ -4,6 +4,7 @@
  * Merge: combine guest cart into user cart on login (sum by variantId).
  */
 
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getOrCreateGuestToken, getGuestToken } from "@/lib/cart/guest";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -225,36 +226,51 @@ export async function mergeGuestCartIntoUser(userId: string): Promise<void> {
     userCart.items.map((i) => [i.variantId, { id: i.id, quantity: i.quantity }])
   );
 
+  // Batch max-quantity lookups (active check + sellable stock) instead of 2 queries per item.
+  const guestVariantIds = guestCart.items.map((i) => i.variantId);
+  const [activeVariants, sellableByVariant] = await Promise.all([
+    prisma.variant.findMany({
+      where: { id: { in: guestVariantIds } },
+      select: { id: true, product: { select: { active: true } } },
+    }),
+    getSellableQuantitiesByVariant(guestVariantIds),
+  ]);
+  const activeVariantIds = new Set(
+    activeVariants.filter((v) => v.product.active).map((v) => v.id)
+  );
+
+  // Cart items are unique per (cartId, variantId), so each guestItem's variantId is distinct —
+  // safe to build all writes up front and run them in one batched transaction.
+  const ops: Prisma.PrismaPromise<unknown>[] = [];
   for (const guestItem of guestCart.items) {
-    const maxQty = await getMaxQuantityForVariant(guestItem.variantId);
+    const maxQty = activeVariantIds.has(guestItem.variantId)
+      ? sellableByVariant.get(guestItem.variantId) ?? 0
+      : 0;
     const existing = existingByVariant.get(guestItem.variantId);
     const addQty = Math.min(guestItem.quantity, maxQty);
     if (addQty <= 0) continue;
 
     if (existing) {
       const newQty = Math.min(existing.quantity + addQty, maxQty);
-      await prisma.cartItem.update({
-        where: { id: existing.id },
-        data: { quantity: newQty },
-      });
-      existingByVariant.set(guestItem.variantId, {
-        id: existing.id,
-        quantity: newQty,
-      });
+      ops.push(
+        prisma.cartItem.update({
+          where: { id: existing.id },
+          data: { quantity: newQty },
+        })
+      );
     } else {
-      const created = await prisma.cartItem.create({
-        data: {
-          cartId: userCart.id,
-          variantId: guestItem.variantId,
-          quantity: addQty,
-        },
-      });
-      existingByVariant.set(guestItem.variantId, {
-        id: created.id,
-        quantity: addQty,
-      });
+      ops.push(
+        prisma.cartItem.create({
+          data: {
+            cartId: userCart.id,
+            variantId: guestItem.variantId,
+            quantity: addQty,
+          },
+        })
+      );
     }
   }
+  if (ops.length > 0) await prisma.$transaction(ops);
 
   await prisma.cart.delete({ where: { id: guestCart.id } });
   const { clearGuestCookie } = await import("@/lib/cart/guest");

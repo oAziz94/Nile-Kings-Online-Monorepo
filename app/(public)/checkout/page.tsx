@@ -264,41 +264,46 @@ export default function CheckoutPage() {
 
     setSummaryLoading(true);
     let cancelled = false;
-    fetch("/api/checkout/summary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        address: addressToPayload(addr),
-        couponCode: appliedCouponCode.trim() || null,
-        paymentMethod,
-      }),
-    })
-      .then(async (res) => {
-        if (res.status === 401) {
-          router.replace("/login?redirect=/checkout");
-          return { json: null, res };
-        }
-        const json = await parseJsonResponse<{ success?: boolean; data?: Summary; error?: { message?: string } }>(res);
-        return { json, res };
+    const timer = setTimeout(() => {
+      fetch("/api/checkout/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: addressToPayload(addr),
+          couponCode: appliedCouponCode.trim() || null,
+          paymentMethod,
+        }),
       })
-      .then(({ json, res }) => {
-        if (cancelled) return;
-        if (json?.success && json.data) setSummary(json.data);
-        else {
-          setSummary(null);
-          if (res && !res.ok && res.status !== 401) toast({ title: json?.error?.message ?? "تعذر حساب الملخص", variant: "destructive" });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setSummary(null);
-          toast({ title: "خطأ في الاتصال", variant: "destructive" });
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setSummaryLoading(false);
-      });
-    return () => { cancelled = true; };
+        .then(async (res) => {
+          if (res.status === 401) {
+            router.replace("/login?redirect=/checkout");
+            return { json: null, res };
+          }
+          const json = await parseJsonResponse<{ success?: boolean; data?: Summary; error?: { message?: string } }>(res);
+          return { json, res };
+        })
+        .then(({ json, res }) => {
+          if (cancelled) return;
+          if (json?.success && json.data) setSummary(json.data);
+          else {
+            setSummary(null);
+            if (res && !res.ok && res.status !== 401) toast({ title: json?.error?.message ?? "تعذر حساب الملخص", variant: "destructive" });
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setSummary(null);
+            toast({ title: "خطأ في الاتصال", variant: "destructive" });
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setSummaryLoading(false);
+        });
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [
     authChecked,
     isGuest,

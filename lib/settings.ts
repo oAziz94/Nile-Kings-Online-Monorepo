@@ -2,7 +2,11 @@
  * Site settings (key-value). Used for senior promo enabled, etc.
  */
 
+import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
+
+/** Tag for settings read on the checkout hot path, so admin writes invalidate the cache immediately. */
+const CHECKOUT_SETTINGS_TAG = "checkout-settings";
 
 export const SITE_SETTING_KEYS = {
   SENIOR_PROMO_ENABLED: "senior_promo_enabled",
@@ -38,13 +42,26 @@ export async function setSiteSetting(key: string, value: string): Promise<void> 
   });
 }
 
+/**
+ * Read on every checkout summary calculation, so cached briefly instead of hitting the DB
+ * on every keystroke/address change. Invalidated immediately on admin write via revalidateTag.
+ */
+const getCachedSeniorPromoEnabled = unstable_cache(
+  async (): Promise<boolean> => {
+    const v = await getSiteSetting(SITE_SETTING_KEYS.SENIOR_PROMO_ENABLED);
+    return v === "true";
+  },
+  ["senior-promo-enabled"],
+  { revalidate: 60, tags: [CHECKOUT_SETTINGS_TAG] }
+);
+
 export async function isSeniorPromoEnabled(): Promise<boolean> {
-  const v = await getSiteSetting(SITE_SETTING_KEYS.SENIOR_PROMO_ENABLED);
-  return v === "true";
+  return getCachedSeniorPromoEnabled();
 }
 
 export async function setSeniorPromoEnabled(enabled: boolean): Promise<void> {
   await setSiteSetting(SITE_SETTING_KEYS.SENIOR_PROMO_ENABLED, enabled ? "true" : "false");
+  revalidateTag(CHECKOUT_SETTINGS_TAG);
 }
 
 /** COD fee in piastres (admin-configurable, used when percent is 0). Default 0. */
@@ -60,17 +77,31 @@ export async function setCodFeePiastres(piastres: number): Promise<void> {
   await setSiteSetting(SITE_SETTING_KEYS.COD_FEE_PIASTRES, String(n));
 }
 
-/** COD fee as percentage of order (subtotal after discounts + shipping). If > 0, used instead of fixed piastres. Default 0. */
+/**
+ * COD fee as percentage of order (subtotal after discounts + shipping). If > 0, used instead of
+ * fixed piastres. Default 0. Read on every checkout summary calculation, so cached briefly
+ * instead of hitting the DB on every keystroke/address change. Invalidated immediately on admin
+ * write via revalidateTag.
+ */
+const getCachedCodFeePercent = unstable_cache(
+  async (): Promise<number> => {
+    const v = await getSiteSetting(SITE_SETTING_KEYS.COD_FEE_PERCENT);
+    if (v == null || v === "") return 0;
+    const n = parseFloat(v);
+    return Number.isFinite(n) && n >= 0 && n <= 100 ? n : 0;
+  },
+  ["cod-fee-percent"],
+  { revalidate: 60, tags: [CHECKOUT_SETTINGS_TAG] }
+);
+
 export async function getCodFeePercent(): Promise<number> {
-  const v = await getSiteSetting(SITE_SETTING_KEYS.COD_FEE_PERCENT);
-  if (v == null || v === "") return 0;
-  const n = parseFloat(v);
-  return Number.isFinite(n) && n >= 0 && n <= 100 ? n : 0;
+  return getCachedCodFeePercent();
 }
 
 export async function setCodFeePercent(percent: number): Promise<void> {
   const n = Math.max(0, Math.min(100, percent));
   await setSiteSetting(SITE_SETTING_KEYS.COD_FEE_PERCENT, String(n));
+  revalidateTag(CHECKOUT_SETTINGS_TAG);
 }
 
 export type OtpRules = {

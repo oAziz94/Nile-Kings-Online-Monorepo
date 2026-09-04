@@ -102,7 +102,7 @@ export function ProductPageContent({
   initialVariantId?: string | null;
 }) {
   const { toast } = useToast();
-  const { openDrawer, refreshCart } = useCart();
+  const { openDrawer, setCart } = useCart();
   const forKids = isKidsCategory(product.categorySlug);
   const initialVariant = initialVariantId ? product.variants.find((v) => v.id === initialVariantId) : null;
   const [selectedSize, setSelectedSizeState] = useState<string | null>(
@@ -256,7 +256,7 @@ export function ProductPageContent({
       });
       const json = await res.json();
       if (res.ok) {
-        await refreshCart();
+        if (json?.data) setCart(json.data);
         const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
         if (!isMobile) {
           toast({ title: ARABIC_VALIDATION.added });

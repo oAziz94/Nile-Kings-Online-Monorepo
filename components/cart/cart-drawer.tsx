@@ -13,7 +13,7 @@ const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=200&h=200&fit=crop";
 
 export function CartDrawer() {
-  const { cart, isDrawerOpen, closeDrawer, refreshCart } = useCart();
+  const { cart, isDrawerOpen, closeDrawer, setCart } = useCart();
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
 
   const updateQty = async (itemId: string, quantity: number) => {
@@ -24,7 +24,10 @@ export function CartDrawer() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quantity }),
       });
-      if (res.ok) await refreshCart();
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.data) setCart(json.data);
+      }
     } finally {
       setUpdatingId(null);
     }
@@ -34,7 +37,10 @@ export function CartDrawer() {
     setUpdatingId(itemId);
     try {
       const res = await fetch(`/api/cart/items/${itemId}`, { method: "DELETE" });
-      if (res.ok) await refreshCart();
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.data) setCart(json.data);
+      }
     } finally {
       setUpdatingId(null);
     }

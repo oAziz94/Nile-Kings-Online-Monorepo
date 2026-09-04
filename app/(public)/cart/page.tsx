@@ -17,7 +17,7 @@ const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=200&h=200&fit=crop";
 
 export default function CartPage() {
-  const { cart, refreshCart } = useCart();
+  const { cart, refreshCart, setCart } = useCart();
   const { toast } = useToast();
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<ProductListItem[]>([]);
@@ -47,7 +47,7 @@ export default function CartPage() {
       });
       const json = await res.json();
       if (res.ok) {
-        await refreshCart();
+        if (json?.data) setCart(json.data);
       } else {
         toast({
           title: json?.error?.message ?? "حدث خطأ",
@@ -66,7 +66,8 @@ export default function CartPage() {
     try {
       const res = await fetch(`/api/cart/items/${itemId}`, { method: "DELETE" });
       if (res.ok) {
-        await refreshCart();
+        const json = await res.json();
+        if (json?.data) setCart(json.data);
         toast({ title: "تم حذف المنتج من السلة" });
       }
     } catch {

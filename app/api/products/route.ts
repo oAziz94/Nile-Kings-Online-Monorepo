@@ -10,7 +10,8 @@ import {
   originalPriceFromVariant,
 } from "@/lib/catalog";
 import {
-  applyStorefrontPartnerStock,
+  applyPartnerStockOverrides,
+  getPartnerStockOverrides,
   getStorefrontGovernorateFromRequest,
   getStorefrontStockContext,
 } from "@/lib/storefront-location";
@@ -246,15 +247,12 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  const stockAdjustedProducts = await Promise.all(
-    products.map(async (product) => ({
-      ...product,
-      variants: await applyStorefrontPartnerStock(
-        product.variants as VariantRow[],
-        stockContext.partnerId
-      ),
-    }))
-  );
+  const allVariantIds = products.flatMap((p) => (p.variants as VariantRow[]).map((v) => v.id));
+  const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);
+  const stockAdjustedProducts = products.map((product) => ({
+    ...product,
+    variants: applyPartnerStockOverrides(product.variants as VariantRow[], overrides),
+  }));
 
   let filtered: ProductListItem[];
 
