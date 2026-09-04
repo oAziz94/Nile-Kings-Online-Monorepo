@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-export function AdminPanelCard({
+export function PanelCard({
   title,
   description,
   icon,
@@ -21,7 +21,7 @@ export function AdminPanelCard({
   noPadding?: boolean;
 }) {
   return (
-    <Card className={cn("rounded-lg border-border shadow-none", className)}>
+    <Card className={cn("rounded-lg border-border shadow-card", className)}>
       <CardHeader
         className={cn(
           "gap-4 border-b border-border bg-muted/20 px-4 py-3 sm:px-5",

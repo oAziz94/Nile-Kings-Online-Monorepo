@@ -15,11 +15,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import { AdminPaginationBar } from "@/components/admin/admin-pagination";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
-import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { PaginationBar } from "@/components/dashboard/pagination";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { SearchInput } from "@/components/dashboard/search-input";
 import { FileDown, Package, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -141,7 +141,7 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="المنتجات"
         description="إدارة الكتالوج، المتغيرات، الأسعار، والتصدير إلى Excel."
         actions={
@@ -166,11 +166,11 @@ export default function AdminProductsPage() {
         }
       />
 
-      <AdminPanelCard
+      <PanelCard
         title="قائمة المنتجات"
         icon={<Package className="h-5 w-5 text-burgundy" />}
         toolbar={
-          <AdminSearchInput
+          <SearchInput
             value={search}
             onChange={setSearch}
             placeholder="بحث بالاسم أو slug…"
@@ -184,7 +184,7 @@ export default function AdminProductsPage() {
             </div>
           )}
           {empty ? (
-            <AdminEmptyState
+            <EmptyState
               icon={<Package className="h-12 w-12" />}
               title={debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد منتجات بعد"}
               description="ابدأ بإضافة أول منتج إلى الكتالوج."
@@ -251,7 +251,7 @@ export default function AdminProductsPage() {
             </div>
           )}
           {total > 0 && (
-            <AdminPaginationBar
+            <PaginationBar
               className="mt-6"
               page={page}
               pageSize={pageSize}
@@ -261,7 +261,7 @@ export default function AdminProductsPage() {
               disabled={fetching}
             />
           )}
-      </AdminPanelCard>
+      </PanelCard>
     </div>
   );
 }

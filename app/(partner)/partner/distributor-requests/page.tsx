@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { ClipboardList, Loader2, RefreshCw } from "lucide-react";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -89,7 +89,7 @@ export default function PartnerDistributorRequestsPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="طلبات الموزعين"
         description="مراجعة طلبات إعادة التوريد القادمة من الموزعين وتنفيذها من مخزونك."
         actions={
@@ -100,14 +100,14 @@ export default function PartnerDistributorRequestsPage() {
         }
       />
 
-      <AdminPanelCard title="طلبات إعادة التوريد" icon={<ClipboardList className="h-5 w-5 text-burgundy" />}>
+      <PanelCard title="طلبات إعادة التوريد" icon={<ClipboardList className="h-5 w-5 text-burgundy" />}>
         {loading ? (
           <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
             <Loader2 className="ml-2 h-4 w-4 animate-spin" />
             جاري التحميل
           </div>
         ) : requests.length === 0 ? (
-          <AdminEmptyState icon={<ClipboardList className="h-12 w-12" />} title="لا توجد طلبات موزعين" />
+          <EmptyState icon={<ClipboardList className="h-12 w-12" />} title="لا توجد طلبات موزعين" />
         ) : (
           <div className="space-y-3">
             {requests.map((request) => (
@@ -194,7 +194,7 @@ export default function PartnerDistributorRequestsPage() {
             ))}
           </div>
         )}
-      </AdminPanelCard>
+      </PanelCard>
     </div>
   );
 }

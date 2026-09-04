@@ -3,12 +3,15 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowRight, Loader2, MapPin, Package, RefreshCw, Save, ShoppingBag, UserRound } from "lucide-react";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
+import { ArrowRight, Loader2, MapPin, Package, ShoppingBag, UserRound } from "lucide-react";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { TableScroll } from "@/components/dashboard/table-scroll";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -18,37 +21,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { piastresToEgp } from "@/lib/catalog";
-import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
+import {
+  ORDER_STATUSES,
+  ORDER_STATUS_BADGE_CLASSES as STATUS_BADGE_CLASSES,
+  ORDER_STATUS_LABELS as STATUS_LABELS,
+} from "@/lib/constants/order-status";
 import { cn } from "@/lib/utils";
-
-const ORDER_STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
-
-const STATUS_LABELS: Record<string, string> = {
-  CREATED: "قيد الانشاء",
-  CONFIRMED: "مؤكد",
-  PROCESSING: "قيد التجهيز",
-  READY_TO_SHIP: "جاهز للشحن",
-  SHIPPED: "تم الشحن",
-  DELIVERED: "تم التسليم",
-  CANCELLED: "ملغي",
-};
-
-const STATUS_BADGE_CLASSES: Record<string, string> = {
-  CREATED: "border-slate-300 bg-slate-100 text-slate-700",
-  CONFIRMED: "border-blue-300 bg-blue-100 text-blue-700",
-  PROCESSING: "border-amber-300 bg-amber-100 text-amber-700",
-  READY_TO_SHIP: "border-violet-300 bg-violet-100 text-violet-700",
-  SHIPPED: "border-cyan-300 bg-cyan-100 text-cyan-700",
-  DELIVERED: "border-emerald-300 bg-emerald-100 text-emerald-700",
-  CANCELLED: "border-rose-300 bg-rose-100 text-rose-700",
-};
-
-const PAYMENT_LABELS: Record<string, string> = {
-  COD: "الدفع عند الاستلام",
-  INSTAPAY_PREPAID: "الدفع عبر InstaPay",
-  PAYMOB: "بطاقة",
-};
 
 type ShippingAddress = {
   governorate?: string;
@@ -72,16 +50,18 @@ type OrderDetail = {
   shippingPiastres: number;
   codFeePiastres: number;
   totalPiastres: number;
+  shippingProvider: string;
   paymentMethod: string;
+  couponCode: string | null;
   adminNotes: string | null;
   shippingAddress: ShippingAddress;
-  shippingProvider: string;
   shippingOriginGovernorate: string | null;
   createdAt: string;
   updatedAt: string;
   user: { id: string; phone: string; name: string | null; email: string | null };
   items: {
     id: string;
+    variantId: string;
     productName: string;
     variantName: string;
     sku: string;
@@ -92,9 +72,20 @@ type OrderDetail = {
   }[];
 };
 
-function egp(piastres: number): string {
-  return `${formatNumberEn(piastresToEgp(piastres))} ج.م`;
-}
+type EditableItem = {
+  variantId: string;
+  productName: string;
+  variantName: string;
+  unitPricePiastres: number;
+  quantity: number;
+  imageUrl: string | null;
+};
+
+type VariantOption = {
+  id: string;
+  label: string;
+  pricePiastres: number;
+};
 
 function addressLines(address: ShippingAddress) {
   return [
@@ -114,64 +105,263 @@ export default function PartnerOrderDetailPage() {
   const { toast } = useToast();
   const [order, setOrder] = React.useState<OrderDetail | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [fetching, setFetching] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
+  const [updating, setUpdating] = React.useState(false);
+  const [savingNotes, setSavingNotes] = React.useState(false);
   const [status, setStatus] = React.useState("");
   const [adminNotes, setAdminNotes] = React.useState("");
+  const [editableItems, setEditableItems] = React.useState<EditableItem[]>([]);
+  const [savingItems, setSavingItems] = React.useState(false);
+  const [variantSearch, setVariantSearch] = React.useState("");
+  const [variantOptions, setVariantOptions] = React.useState<VariantOption[]>([]);
+  const [selectedVariantId, setSelectedVariantId] = React.useState("");
+  const [newItemQty, setNewItemQty] = React.useState(1);
 
-  const load = React.useCallback(async () => {
-    setFetching(true);
-    try {
-      const res = await fetch(`/api/partner/orders/${orderId}`, { credentials: "include" });
-      const json = await res.json();
-      if (res.ok && json?.success) {
-        const row = json.data as OrderDetail;
-        setOrder(row);
-        setStatus(row.status);
-        setAdminNotes(row.adminNotes ?? "");
-      } else {
-        toast({ title: json?.error?.message ?? "فشل تحميل الطلب", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({
-        title: "فشل تحميل الطلب",
-        description: error instanceof Error ? error.message : "خطأ غير متوقع",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-      setFetching(false);
-    }
+  React.useEffect(() => {
+    if (!orderId) return;
+    fetch(`/api/partner/orders/${orderId}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((json: { success?: boolean; data?: OrderDetail }) => {
+        if (json?.success && json.data) {
+          setOrder(json.data);
+          setStatus(json.data.status);
+          setAdminNotes(json.data.adminNotes ?? "");
+          setEditableItems(
+            json.data.items.map((item) => ({
+              variantId: item.variantId,
+              productName: item.productName,
+              variantName: item.variantName,
+              unitPricePiastres: item.unitPricePiastres,
+              quantity: item.quantity,
+              imageUrl: item.imageUrl,
+            }))
+          );
+        }
+      })
+      .catch(() => toast({ title: "فشل تحميل الطلب", variant: "destructive" }))
+      .finally(() => setLoading(false));
   }, [orderId, toast]);
 
   React.useEffect(() => {
-    load();
-  }, [load]);
+    const ac = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ limit: "20", offset: "0" });
+        if (variantSearch.trim()) params.set("q", variantSearch.trim());
+        const res = await fetch(`/api/partner/inventory?${params.toString()}`, {
+          credentials: "include",
+          signal: ac.signal,
+        });
+        const json = await res.json();
+        if (!res.ok || !json?.success) {
+          if (!ac.signal.aborted) setVariantOptions([]);
+          return;
+        }
+        const options: VariantOption[] = (json.data?.products ?? []).flatMap(
+          (p: { name: string; variants?: { id: string; name: string; colorName: string | null; pricePiastres: number }[] }) =>
+            (p.variants ?? []).map((v) => ({
+              id: v.id,
+              label: `${p.name} - ${v.name}${v.colorName ? ` - ${v.colorName}` : ""}`,
+              pricePiastres: v.pricePiastres,
+            }))
+        );
+        if (!ac.signal.aborted) setVariantOptions(options);
+      } catch {
+        if (!ac.signal.aborted) setVariantOptions([]);
+      }
+    }, 300);
+    return () => {
+      ac.abort();
+      clearTimeout(t);
+    };
+  }, [variantSearch]);
 
-  async function saveChanges() {
+  React.useEffect(() => {
+    groupItemsByCategory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editableItems]);
+
+  const saveAdminNotes = async () => {
     if (!order) return;
-    setSaving(true);
+    setSavingNotes(true);
     try {
       const res = await fetch(`/api/partner/orders/${order.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ status, adminNotes }),
+        body: JSON.stringify({ adminNotes: adminNotes.trim() || null }),
       });
       const json = await res.json();
       if (res.ok && json?.success) {
-        const row = json.data as OrderDetail;
-        setOrder(row);
-        setStatus(row.status);
-        setAdminNotes(row.adminNotes ?? "");
-        toast({ title: "تم حفظ الطلب" });
-      } else {
-        toast({ title: json?.error?.message ?? "فشل حفظ الطلب", variant: "destructive" });
-      }
+        setOrder(json.data);
+        setAdminNotes(json.data.adminNotes ?? "");
+        toast({ title: "تم حفظ الملاحظات" });
+      } else toast({ title: json?.error?.message ?? "فشل", variant: "destructive" });
+    } catch {
+      toast({ title: "خطأ في الاتصال", variant: "destructive" });
     } finally {
-      setSaving(false);
+      setSavingNotes(false);
     }
-  }
+  };
+
+  const updateStatus = async () => {
+    if (!order || status === order.status) return;
+    setUpdating(true);
+    try {
+      const res = await fetch(`/api/partner/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status }),
+      });
+      const json = await res.json();
+      if (res.ok && json?.success) {
+        setOrder(json.data);
+        toast({ title: "تم تحديث الحالة" });
+      } else toast({ title: json?.error?.message ?? "فشل التحديث", variant: "destructive" });
+    } catch {
+      toast({ title: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const changeItemQty = (variantId: string, nextQty: number) => {
+    setEditableItems((prev) =>
+      prev.map((item) =>
+        item.variantId === variantId
+          ? { ...item, quantity: Number.isFinite(nextQty) ? Math.max(1, Math.trunc(nextQty)) : 1 }
+          : item
+      )
+    );
+  };
+
+  const removeItem = (variantId: string) => {
+    setEditableItems((prev) => prev.filter((item) => item.variantId !== variantId));
+  };
+
+  const addSelectedVariant = () => {
+    if (!selectedVariantId) return;
+    const option = variantOptions.find((o) => o.id === selectedVariantId);
+    if (!option) return;
+    setEditableItems((prev) => {
+      const existing = prev.find((i) => i.variantId === option.id);
+      if (existing) {
+        return prev.map((i) =>
+          i.variantId === option.id ? { ...i, quantity: i.quantity + Math.max(1, Math.trunc(newItemQty || 1)) } : i
+        );
+      }
+      return [
+        ...prev,
+        {
+          variantId: option.id,
+          productName: option.label.split(" - ")[0],
+          variantName: option.label.replace(`${option.label.split(" - ")[0]} - `, ""),
+          unitPricePiastres: option.pricePiastres,
+          quantity: Math.max(1, Math.trunc(newItemQty || 1)),
+          imageUrl: null,
+        },
+      ];
+    });
+    setSelectedVariantId("");
+    setNewItemQty(1);
+  };
+
+  const saveItems = async () => {
+    if (!order) return;
+    if (editableItems.length === 0) {
+      toast({ title: "لا يمكن حفظ طلب بدون بنود", variant: "destructive" });
+      return;
+    }
+    setSavingItems(true);
+    try {
+      const res = await fetch(`/api/partner/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          items: editableItems.map((item) => ({
+            variantId: item.variantId,
+            quantity: Math.max(1, Math.trunc(item.quantity)),
+          })),
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json?.success) {
+        setOrder(json.data);
+        setEditableItems(
+          json.data.items.map((item: OrderDetail["items"][number]) => ({
+            variantId: item.variantId,
+            productName: item.productName,
+            variantName: item.variantName,
+            unitPricePiastres: item.unitPricePiastres,
+            quantity: item.quantity,
+            imageUrl: item.imageUrl,
+          }))
+        );
+        toast({ title: "تم تحديث بنود الطلب وإعادة حساب الإجمالي والشحن" });
+      } else {
+        toast({ title: json?.error?.message ?? "فشل تحديث البنود", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setSavingItems(false);
+    }
+  };
+
+  const getSize = (variantName: string) => {
+    const parts = variantName.split("-");
+    if (parts.length < 2) return variantName;
+
+    const lastPart = parts[parts.length - 1];
+    const secondLastPart = parts[parts.length - 2];
+
+    const sizePattern = /^(S|M|L|XL|XXL|XXXL|XS|[0-9]+[a-zA-Z]*|[0-9]+[Xx][0-9]+|[0-9]+\/[0-9]+|one\s*size|free\s*size)$/i;
+
+    const hasArabic = /[؀-ۿ]/.test(lastPart);
+    if (hasArabic && secondLastPart) {
+      return secondLastPart;
+    }
+
+    if (sizePattern.test(lastPart)) {
+      return lastPart;
+    }
+
+    if (secondLastPart && sizePattern.test(secondLastPart)) {
+      return secondLastPart;
+    }
+
+    return lastPart;
+  };
+
+  const getColor = (variantName: string) => {
+    const parts = variantName.split("-");
+    const arabicPart = parts.find((part) => /[؀-ۿ]/.test(part));
+    return arabicPart || "—";
+  };
+
+  const groupItemsByCategory = () => {
+    if (!editableItems.length) return;
+
+    const getCategory = (variantName: string) => {
+      const parts = variantName.split("-");
+      if (parts[0] === "nk" && parts.length > 1) {
+        return parts[1];
+      }
+      return "";
+    };
+
+    const sorted = [...editableItems].sort((a, b) => {
+      const catA = getCategory(a.variantName);
+      const catB = getCategory(b.variantName);
+      return catA.localeCompare(catB);
+    });
+
+    const isSame = editableItems.every((item, idx) => item.variantId === sorted[idx]?.variantId);
+    if (!isSame) {
+      setEditableItems(sorted);
+    }
+  };
 
   if (loading) {
     return (
@@ -184,7 +374,7 @@ export default function PartnerOrderDetailPage() {
 
   if (!order) {
     return (
-      <AdminEmptyState
+      <EmptyState
         icon={<ShoppingBag className="h-12 w-12" />}
         title="الطلب غير موجود"
         description="ارجع إلى قائمة الطلبات واختر طلباً آخر."
@@ -192,168 +382,190 @@ export default function PartnerOrderDetailPage() {
     );
   }
 
-  const dirty = status !== order.status || adminNotes !== (order.adminNotes ?? "");
-  const address = order.shippingAddress ?? {};
+  const addr = order.shippingAddress ?? {};
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title={`طلب #${order.id.slice(0, 8)}`}
-        description={`تم الإنشاء ${formatDateEn(order.createdAt)} · ${PAYMENT_LABELS[order.paymentMethod] ?? order.paymentMethod}`}
         badge={
           <Badge variant="outline" className={cn("rounded-md font-normal", STATUS_BADGE_CLASSES[order.status] ?? "")}>
             {STATUS_LABELS[order.status] ?? order.status}
           </Badge>
         }
         actions={
-          <>
-            <Button asChild type="button" variant="outline" className="rounded-md">
-              <Link href="/partner/routed-orders">
-                <ArrowRight className="h-4 w-4" />
-                رجوع للطلبات
-              </Link>
-            </Button>
-            <Button type="button" variant="outline" className="rounded-md" onClick={load} disabled={fetching}>
-              <RefreshCw className={cn("h-4 w-4", fetching && "animate-spin")} />
-              تحديث
-            </Button>
-          </>
+          <Button asChild type="button" variant="outline" className="rounded-md">
+            <Link href="/partner/routed-orders">
+              <ArrowRight className="h-4 w-4" />
+              رجوع للطلبات
+            </Link>
+          </Button>
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <AdminPanelCard
-          title="تعديل حالة الطلب والملاحظات"
-          description="يمكن للوكيل تعديل حالة الطلب والملاحظات الداخلية فقط."
-          icon={<Save className="h-5 w-5 text-burgundy" />}
-        >
-          <div className="grid gap-4 md:grid-cols-[14rem_1fr]">
-            <label className="space-y-1.5">
-              <span className="text-xs font-medium text-muted-foreground">حالة الطلب</span>
-              <select
-                value={status}
-                onChange={(event) => setStatus(event.target.value)}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                {ORDER_STATUSES.map((value) => (
-                  <option key={value} value={value}>
-                    {STATUS_LABELS[value]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="space-y-1.5">
-              <span className="text-xs font-medium text-muted-foreground">ملاحظات الطلب</span>
-              <textarea
-                value={adminNotes}
-                onChange={(event) => setAdminNotes(event.target.value)}
-                rows={4}
-                className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-6"
-              />
-            </label>
+      <PanelCard title="الحالة" description="تحديث حالة الطلب." icon={<Package className="h-5 w-5 text-burgundy" />}>
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="grid gap-2">
+            <Label>الحالة</Label>
+            <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full sm:w-48">
+              {ORDER_STATUSES.map((s) => (
+                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+              ))}
+            </Select>
           </div>
-          <div className="mt-4 flex justify-end">
-            <Button type="button" className="rounded-md" disabled={!dirty || saving} onClick={saveChanges}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              حفظ التعديلات
-            </Button>
-          </div>
-        </AdminPanelCard>
+          <Button onClick={updateStatus} disabled={updating || status === order.status} className="rounded-md">
+            {updating ? "جاري…" : "تحديث الحالة"}
+          </Button>
+        </div>
+      </PanelCard>
 
-        <AdminPanelCard title="ملخص الطلب" icon={<ShoppingBag className="h-5 w-5 text-burgundy" />}>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between gap-3">
-              <span className="text-muted-foreground">المجموع الفرعي</span>
-              <span>{egp(order.subtotalPiastres)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-muted-foreground">الخصومات</span>
-              <span>{egp(order.discountPiastres + order.seniorFreeValuePiastres)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-muted-foreground">الشحن</span>
-              <span>{egp(order.shippingPiastres)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-muted-foreground">رسوم COD</span>
-              <span>{egp(order.codFeePiastres)}</span>
-            </div>
-            <div className="flex justify-between gap-3 border-t border-border pt-3 text-base font-bold">
-              <span>الإجمالي</span>
-              <span>{egp(order.totalPiastres)}</span>
-            </div>
+      <PanelCard
+        title="ملاحظات الطلب"
+        description="ملاحظات داخلية للفريق — لا تظهر للعميل ولا تُرسل لشركة الشحن."
+        icon={<Package className="h-5 w-5 text-burgundy" />}
+      >
+        <div className="space-y-3">
+          <div className="grid gap-2">
+            <Label htmlFor="partner-notes">ملاحظات</Label>
+            <textarea
+              id="partner-notes"
+              rows={3}
+              className="flex w-full resize-none rounded-lg border border-input bg-background px-4 py-3 text-sm leading-6 shadow-subtle transition-colors placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-burgundy/40 focus-visible:border-burgundy/40"
+              placeholder="أضف ملاحظة عن هذا الطلب…"
+              value={adminNotes}
+              onChange={(e) => setAdminNotes(e.target.value)}
+            />
           </div>
-        </AdminPanelCard>
-      </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-md"
+            onClick={saveAdminNotes}
+            disabled={savingNotes || adminNotes === (order.adminNotes ?? "")}
+          >
+            {savingNotes ? "جاري…" : "حفظ الملاحظات"}
+          </Button>
+        </div>
+      </PanelCard>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <AdminPanelCard title="بيانات العميل" icon={<UserRound className="h-5 w-5 text-burgundy" />}>
+        <PanelCard title="العميل" icon={<UserRound className="h-5 w-5 text-burgundy" />}>
           <div className="space-y-2 text-sm">
-            <p className="font-medium">{order.user.name ?? "عميل بدون اسم"}</p>
-            <p className="text-muted-foreground">{order.user.phone}</p>
-            {order.user.email && <p className="text-muted-foreground">{order.user.email}</p>}
+            <p className="font-medium">{order.user?.name ?? "عميل بدون اسم"}</p>
+            <p className="text-muted-foreground">{order.user?.phone}</p>
           </div>
-        </AdminPanelCard>
+        </PanelCard>
 
-        <AdminPanelCard title="عنوان الشحن" icon={<MapPin className="h-5 w-5 text-burgundy" />}>
+        <PanelCard title="عنوان الشحن" icon={<MapPin className="h-5 w-5 text-burgundy" />}>
           <div className="space-y-2 text-sm">
-            <p className="font-medium">{addressLines(address).join("، ") || "لا يوجد عنوان"}</p>
-            {address.phone && <p className="text-muted-foreground">هاتف الشحن: {address.phone}</p>}
-            {address.notes && <p className="whitespace-pre-wrap text-muted-foreground">{address.notes}</p>}
-            {order.shippingOriginGovernorate && (
-              <p className="text-xs text-muted-foreground">مصدر الشحن: {order.shippingOriginGovernorate}</p>
+            <p className="font-medium">{addressLines(addr).join("، ") || "لا يوجد عنوان"}</p>
+            {addr.notes && (
+              <p className="text-muted-foreground">
+                <strong>ملاحظات العميل على العنوان:</strong> {addr.notes}
+              </p>
             )}
           </div>
-        </AdminPanelCard>
+        </PanelCard>
       </div>
 
-      <AdminPanelCard title="بنود الطلب" icon={<Package className="h-5 w-5 text-burgundy" />}>
-        <div className="overflow-x-auto rounded-xl border border-border/60">
+      <PanelCard title="بنود الطلب" icon={<Package className="h-5 w-5 text-burgundy" />}>
+        <TableScroll>
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/40 hover:bg-muted/40">
-                <TableHead>الصورة</TableHead>
-                <TableHead>المنتج</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead className="text-center">الكمية</TableHead>
-                <TableHead>سعر الوحدة</TableHead>
+              <TableRow>
+                <TableHead>المنتج / المتغير</TableHead>
+                <TableHead>الكمية</TableHead>
+                <TableHead>السعر الوحدة</TableHead>
                 <TableHead>الإجمالي</TableHead>
+                <TableHead>المقاس</TableHead>
+                <TableHead>اللون</TableHead>
+                <TableHead>إجراء</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {order.items.map((item) => (
-                <TableRow key={item.id}>
+              {editableItems.map((item) => (
+                <TableRow key={item.variantId}>
                   <TableCell>
-                    {item.imageUrl ? (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.variantName}
-                        className="h-12 w-12 rounded-md border border-border object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-md border border-dashed border-border bg-muted text-muted-foreground">
-                        <Package className="h-5 w-5" />
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="min-w-44">
-                      <p className="font-medium">{item.productName}</p>
-                      <p className="text-xs text-muted-foreground">{item.variantName}</p>
+                    <div className="flex items-center gap-3">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.productName}
+                          className="h-12 w-12 rounded-md border object-cover"
+                        />
+                      ) : (
+                        <div className="h-12 w-12 rounded-md border bg-muted" />
+                      )}
+                      <span>{item.productName} – {item.variantName}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-xs">{item.sku}</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="secondary">{formatNumberEn(item.quantity)}</Badge>
+                  <TableCell>
+                    <input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) => changeItemQty(item.variantId, Number(e.target.value))}
+                      className="h-9 w-24 rounded-xl border border-input bg-background px-3 text-sm"
+                    />
                   </TableCell>
-                  <TableCell>{egp(item.unitPricePiastres)}</TableCell>
-                  <TableCell className="font-semibold">{egp(item.totalPiastres)}</TableCell>
+                  <TableCell>{(item.unitPricePiastres / 100).toFixed(0)} ج.م</TableCell>
+                  <TableCell>{((item.quantity * item.unitPricePiastres) / 100).toFixed(0)} ج.م</TableCell>
+                  <TableCell>
+                    {getSize(item.variantName)}
+                  </TableCell>
+                  <TableCell>
+                    {getColor(item.variantName)}
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="destructive" size="sm" onClick={() => removeItem(item.variantId)}>
+                      حذف
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        </TableScroll>
+        <div className="mt-4 space-y-2 rounded-2xl border p-3">
+          <Label>إضافة بند من مخزونك</Label>
+          <input
+            className="flex h-10 w-full rounded-2xl border border-input bg-background px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            placeholder="ابحث عن منتج"
+            value={variantSearch}
+            onChange={(e) => setVariantSearch(e.target.value)}
+          />
+          <div className="flex flex-wrap items-end gap-2">
+            <Select value={selectedVariantId} onChange={(e) => setSelectedVariantId(e.target.value)} className="min-w-64">
+              <option value="">اختر متغيرًا</option>
+              {variantOptions.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.label} - {(v.pricePiastres / 100).toFixed(0)} ج.م
+                </option>
+              ))}
+            </Select>
+            <input
+              type="number"
+              min={1}
+              value={newItemQty}
+              onChange={(e) => setNewItemQty(Math.max(1, Number(e.target.value) || 1))}
+              className="h-10 w-24 rounded-xl border border-input bg-background px-3 text-sm"
+            />
+            <Button onClick={addSelectedVariant} disabled={!selectedVariantId}>إضافة</Button>
+          </div>
         </div>
-      </AdminPanelCard>
+        <Button className="mt-4" onClick={saveItems} disabled={savingItems || editableItems.length === 0}>
+          {savingItems ? "جاري…" : "حفظ البنود وإعادة الحساب"}
+        </Button>
+        <div className="mt-4 flex flex-col gap-1 text-sm">
+          <p>المجموع الفرعي: {(order.subtotalPiastres / 100).toFixed(0)} ج.م</p>
+          {order.discountPiastres + order.seniorFreeValuePiastres > 0 && (
+            <p>الخصم: {((order.discountPiastres + order.seniorFreeValuePiastres) / 100).toFixed(0)} ج.م {order.couponCode && `(${order.couponCode})`}</p>
+          )}
+          <p>الشحن: {(order.shippingPiastres / 100).toFixed(0)} ج.م ({order.shippingProvider})</p>
+          {order.codFeePiastres > 0 && <p>رسوم الدفع عند الاستلام: {(order.codFeePiastres / 100).toFixed(0)} ج.م</p>}
+          <p className="font-semibold">الإجمالي: {(order.totalPiastres / 100).toFixed(0)} ج.م</p>
+        </div>
+      </PanelCard>
     </div>
   );
 }

@@ -12,9 +12,9 @@ import {
   ShoppingBag,
   TrendingUp,
 } from "lucide-react";
-import { AdminKpiCard } from "@/components/admin/admin-kpi-card";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminStatusBadge } from "@/components/admin/admin-page-header";
+import { KpiCard } from "@/components/dashboard/kpi-card";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { StatusBadge } from "@/components/dashboard/page-header";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatNumberEn } from "@/lib/format-en-numbers";
 
@@ -51,14 +51,14 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="لوحة التحكم"
         description="ملخص سريع للطلبات المُسلَّمة وإجراءات الإدارة اليومية."
         badge={
-          <AdminStatusBadge>
+          <StatusBadge>
             <CheckCircle2 className="h-3 w-3" />
             تم التسليم
-          </AdminStatusBadge>
+          </StatusBadge>
         }
         actions={
           <Link
@@ -71,7 +71,7 @@ export default function AdminDashboardPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <AdminKpiCard
+        <KpiCard
           title="إجمالي الإيراد"
           value={
             kpis
@@ -83,7 +83,7 @@ export default function AdminDashboardPage() {
           accent="burgundy"
           loading={loading}
         />
-        <AdminKpiCard
+        <KpiCard
           title="صافي المنتجات"
           value={
             kpis
@@ -95,7 +95,7 @@ export default function AdminDashboardPage() {
           accent="gold"
           loading={loading}
         />
-        <AdminKpiCard
+        <KpiCard
           title="طلبات مُسلَّمة"
           value={kpis != null ? formatNumberEn(kpis.orderCount) : "—"}
           icon={<ShoppingBag className="h-6 w-6" />}

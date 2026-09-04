@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowRight, Boxes, Loader2, Package, RefreshCw, Save, Warehouse } from "lucide-react";
 import { ProductImagePreview } from "@/components/shared/product-image-preview";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminKpiCard } from "@/components/admin/admin-kpi-card";
-import { AdminPageHeader, AdminStatusBadge } from "@/components/admin/admin-page-header";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
-import { AdminTableScroll } from "@/components/admin/admin-table-scroll";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { KpiCard } from "@/components/dashboard/kpi-card";
+import { PageHeader, StatusBadge } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { TableScroll } from "@/components/dashboard/table-scroll";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -178,7 +178,7 @@ export default function PartnerProductVariantsPage() {
 
   if (!product) {
     return (
-      <AdminEmptyState
+      <EmptyState
         icon={<Package className="h-12 w-12" />}
         title="المنتج غير موجود"
         description="ارجع إلى قائمة المنتجات واختر منتجاً آخر."
@@ -188,10 +188,10 @@ export default function PartnerProductVariantsPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title={product.name}
         description={`${product.category.name} · تعديل مخزون متغيرات هذا المنتج فقط.`}
-        badge={<AdminStatusBadge>متغيرات المنتج</AdminStatusBadge>}
+        badge={<StatusBadge>متغيرات المنتج</StatusBadge>}
         actions={
           <>
             <Button asChild type="button" variant="outline" className="rounded-md">
@@ -209,21 +209,21 @@ export default function PartnerProductVariantsPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <AdminKpiCard
+        <KpiCard
           title="عدد المتغيرات"
           value={formatNumberEn(product.variants.length)}
           hint="مقاسات وألوان"
           icon={<Boxes className="h-5 w-5" />}
           accent="burgundy"
         />
-        <AdminKpiCard
+        <KpiCard
           title="إجمالي المتاح"
           value={formatNumberEn(totals.available)}
           hint={`${formatNumberEn(totals.reserved)} محجوز`}
           icon={<Warehouse className="h-5 w-5" />}
           accent="emerald"
         />
-        <AdminKpiCard
+        <KpiCard
           title="مخزون منخفض"
           value={formatNumberEn(totals.low)}
           hint="متغيرات 3 أو أقل"
@@ -232,15 +232,15 @@ export default function PartnerProductVariantsPage() {
         />
       </div>
 
-      <AdminPanelCard
+      <PanelCard
         title="متغيرات المنتج"
         description="الخانة الوحيدة القابلة للتعديل هي المتاح. المحجوز والقابل للبيع للقراءة فقط."
         icon={<Boxes className="h-5 w-5 text-burgundy" />}
       >
         {product.variants.length === 0 ? (
-          <AdminEmptyState icon={<Boxes className="h-12 w-12" />} title="لا توجد متغيرات لهذا المنتج" />
+          <EmptyState icon={<Boxes className="h-12 w-12" />} title="لا توجد متغيرات لهذا المنتج" />
         ) : (
-          <AdminTableScroll>
+          <TableScroll>
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -293,7 +293,7 @@ export default function PartnerProductVariantsPage() {
                           inputMode="numeric"
                           value={draft}
                           onChange={(e) => setDrafts((current) => ({ ...current, [variant.id]: e.target.value }))}
-                          className={cn("h-9 w-24 rounded-md", dirty && "border-amber-400 bg-amber-50")}
+                          className={cn("h-9 w-24 rounded-md", dirty && "border-gold/50 bg-gold/10")}
                         />
                       </TableCell>
                       <TableCell>{formatNumberEn(variant.stockReserved)}</TableCell>
@@ -327,9 +327,9 @@ export default function PartnerProductVariantsPage() {
                 })}
               </TableBody>
             </Table>
-          </AdminTableScroll>
+          </TableScroll>
         )}
-      </AdminPanelCard>
+      </PanelCard>
     </div>
   );
 }

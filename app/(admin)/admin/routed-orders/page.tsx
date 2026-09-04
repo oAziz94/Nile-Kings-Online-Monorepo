@@ -15,11 +15,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
 import { Select } from "@/components/ui/select";
-import { AdminPaginationBar } from "@/components/admin/admin-pagination";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
-import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { PaginationBar } from "@/components/dashboard/pagination";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { SearchInput } from "@/components/dashboard/search-input";
 import { Truck, Loader2 } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
@@ -113,16 +113,16 @@ export default function AdminRoutedOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="الطلبات الموجهة"
         description="متابعة التوجيه للشركاء، الحالة، وإثبات التسليم."
       />
-      <AdminPanelCard
+      <PanelCard
         title="قائمة الطلبات الموجهة"
         icon={<Truck className="h-5 w-5 text-burgundy" />}
         toolbar={
           <div className="flex flex-wrap gap-3">
-            <AdminSearchInput
+            <SearchInput
               value={search}
               onChange={setSearch}
               placeholder="بحث برقم الطلب…"
@@ -149,7 +149,7 @@ export default function AdminRoutedOrdersPage() {
             </div>
           )}
           {rows.length === 0 && !fetching ? (
-            <AdminEmptyState
+            <EmptyState
               icon={<Truck className="h-12 w-12" />}
               title={debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات موجهة"}
             />
@@ -194,7 +194,7 @@ export default function AdminRoutedOrdersPage() {
             </div>
           ) : null}
           {total > 0 && (
-            <AdminPaginationBar
+            <PaginationBar
               className="mt-6"
               page={page}
               pageSize={pageSize}
@@ -204,7 +204,7 @@ export default function AdminRoutedOrdersPage() {
               disabled={fetching}
             />
           )}
-      </AdminPanelCard>
+      </PanelCard>
     </div>
   );
 }

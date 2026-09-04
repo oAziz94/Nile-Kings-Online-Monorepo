@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { ClipboardList, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminPageHeader, AdminStatusBadge } from "@/components/admin/admin-page-header";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
-import { AdminSearchInput } from "@/components/admin/admin-search-input";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader, StatusBadge } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { SearchInput } from "@/components/dashboard/search-input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -177,10 +177,10 @@ export default function PartnerRestockRequestsPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="طلب إعادة توريد"
         description="اطلب متغيرات من الوكيل المرتبط بحسابك وتابع حالة الطلب."
-        badge={<AdminStatusBadge>موزعون فقط</AdminStatusBadge>}
+        badge={<StatusBadge>موزعون فقط</StatusBadge>}
         actions={
           <Button type="button" variant="outline" className="rounded-xl" onClick={loadRequests} disabled={fetching}>
             <RefreshCw className={cn("h-4 w-4", fetching && "animate-spin")} />
@@ -189,9 +189,9 @@ export default function PartnerRestockRequestsPage() {
         }
       />
 
-      <AdminPanelCard title="طلب جديد" icon={<Plus className="h-5 w-5 text-burgundy" />}>
+      <PanelCard title="طلب جديد" icon={<Plus className="h-5 w-5 text-burgundy" />}>
         <div className="grid gap-4">
-          <AdminSearchInput
+          <SearchInput
             value={productQuery}
             onChange={setProductQuery}
             placeholder="بحث عن منتج أو SKU"
@@ -270,16 +270,16 @@ export default function PartnerRestockRequestsPage() {
             إرسال الطلب
           </Button>
         </div>
-      </AdminPanelCard>
+      </PanelCard>
 
-      <AdminPanelCard title="طلبات سابقة" icon={<ClipboardList className="h-5 w-5 text-burgundy" />}>
+      <PanelCard title="طلبات سابقة" icon={<ClipboardList className="h-5 w-5 text-burgundy" />}>
         {loading ? (
           <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
             <Loader2 className="ml-2 h-4 w-4 animate-spin" />
             جاري التحميل
           </div>
         ) : requests.length === 0 ? (
-          <AdminEmptyState icon={<ClipboardList className="h-12 w-12" />} title="لا توجد طلبات إعادة توريد" />
+          <EmptyState icon={<ClipboardList className="h-12 w-12" />} title="لا توجد طلبات إعادة توريد" />
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border/60">
             <Table className={cn(fetching && "opacity-70")}>
@@ -320,7 +320,7 @@ export default function PartnerRestockRequestsPage() {
             </Table>
           </div>
         )}
-      </AdminPanelCard>
+      </PanelCard>
     </div>
   );
 }

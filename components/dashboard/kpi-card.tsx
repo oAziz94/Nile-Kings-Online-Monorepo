@@ -2,16 +2,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/shared/skeleton";
 import { cn } from "@/lib/utils";
 
-export type AdminKpiAccent = "burgundy" | "gold" | "emerald" | "slate";
+export type KpiAccent = "burgundy" | "gold" | "emerald" | "slate";
 
-const accentStyles: Record<AdminKpiAccent, string> = {
+const accentStyles: Record<KpiAccent, string> = {
   burgundy: "bg-burgundy/10 text-burgundy ring-burgundy/20",
   gold: "bg-gold/15 text-amber-800 ring-gold/25",
   emerald: "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20",
   slate: "bg-muted text-muted-foreground ring-border",
 };
 
-export function AdminKpiCard({
+export function KpiCard({
   title,
   value,
   hint,
@@ -25,7 +25,7 @@ export function AdminKpiCard({
   value: string;
   hint?: string;
   icon: React.ReactNode;
-  accent?: AdminKpiAccent;
+  accent?: KpiAccent;
   loading?: boolean;
   footer?: React.ReactNode;
   className?: string;
@@ -33,7 +33,7 @@ export function AdminKpiCard({
   return (
     <Card
       className={cn(
-        "overflow-hidden rounded-lg border-border shadow-none",
+        "overflow-hidden rounded-lg border-border shadow-card",
         className
       )}
     >

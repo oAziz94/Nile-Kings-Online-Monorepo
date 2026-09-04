@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/shared/skeleton";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { MessageCircle, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -151,7 +151,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="الإعدادات"
         description="رسوم COD، قواعد OTP، واختبار إشعارات واتساب."
         badge={

@@ -15,8 +15,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import { AdminPaginationBar } from "@/components/admin/admin-pagination";
-import { AdminTableScroll } from "@/components/admin/admin-table-scroll";
+import { PaginationBar } from "@/components/dashboard/pagination";
+import { TableScroll } from "@/components/dashboard/table-scroll";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -39,7 +39,7 @@ import {
   Search,
 } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 
 type TabId = "requests" | "agents" | "distributors" | "new";
@@ -92,7 +92,7 @@ export default function AdminPartnersPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="شركاؤنا"
         description="طلبات الشراكة، الوكلاء، الموزعون، وإدخال شركاء جدد."
       />
@@ -293,7 +293,7 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
               <p className="text-muted-foreground">{debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات شراكة"}</p>
             </div>
           ) : (
-            <AdminTableScroll>
+            <TableScroll>
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
@@ -350,10 +350,10 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
                 ))}
               </TableBody>
             </Table>
-            </AdminTableScroll>
+            </TableScroll>
           )}
           {total > 0 && (
-            <AdminPaginationBar
+            <PaginationBar
               className="mt-6"
               page={page}
               pageSize={pageSize}
@@ -594,7 +594,7 @@ function AgentsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
               <p className="text-muted-foreground">{debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد وكلاء"}</p>
             </div>
           ) : (
-            <AdminTableScroll>
+            <TableScroll>
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
@@ -623,10 +623,10 @@ function AgentsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
                 ))}
               </TableBody>
             </Table>
-            </AdminTableScroll>
+            </TableScroll>
           )}
           {total > 0 && (
-            <AdminPaginationBar
+            <PaginationBar
               className="mt-6"
               page={page}
               pageSize={pageSize}
@@ -770,7 +770,7 @@ function DistributorsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"
               <p className="text-muted-foreground">{debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد موزعين"}</p>
             </div>
           ) : (
-            <AdminTableScroll>
+            <TableScroll>
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow>
@@ -799,10 +799,10 @@ function DistributorsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"
                 ))}
               </TableBody>
             </Table>
-            </AdminTableScroll>
+            </TableScroll>
           )}
           {total > 0 && (
-            <AdminPaginationBar
+            <PaginationBar
               className="mt-6"
               page={page}
               pageSize={pageSize}

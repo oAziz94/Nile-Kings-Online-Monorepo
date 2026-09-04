@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function AdminSearchInput({
+export function SearchInput({
   value,
   onChange,
   placeholder,

@@ -17,23 +17,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import { AdminTableScroll } from "@/components/admin/admin-table-scroll";
+import { TableScroll } from "@/components/dashboard/table-scroll";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { User, MapPin, Package, Loader2, Pencil, ShieldPlus } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatNumberEn } from "@/lib/format-en-numbers";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
-
-const STATUS_LABELS: Record<string, string> = {
-  CREATED: "قيد الانشاء",
-  CONFIRMED: "مؤكد",
-  PROCESSING: "قيد التجهيز",
-  READY_TO_SHIP: "جاهز للشحن",
-  SHIPPED: "تم الشحن",
-  DELIVERED: "تم التسليم",
-  CANCELLED: "ملغي",
-};
+import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/constants/order-status";
 
 type SavedAddress = {
   id: string;
@@ -311,7 +302,7 @@ export default function AdminClientProfilePage() {
           {client.orders.length === 0 ? (
             <p className="text-muted-foreground">لا توجد طلبات.</p>
           ) : (
-            <AdminTableScroll>
+            <TableScroll>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -342,7 +333,7 @@ export default function AdminClientProfilePage() {
                 ))}
               </TableBody>
             </Table>
-            </AdminTableScroll>
+            </TableScroll>
           )}
           {client._count.orders > client.orders.length && (
             <p className="mt-4 text-sm text-muted-foreground">

@@ -3,13 +3,13 @@
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { Boxes, Loader2, Package, RefreshCw, Save, Warehouse } from "lucide-react";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminKpiCard } from "@/components/admin/admin-kpi-card";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminPaginationBar } from "@/components/admin/admin-pagination";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
-import { AdminSearchInput } from "@/components/admin/admin-search-input";
-import { AdminTableScroll } from "@/components/admin/admin-table-scroll";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { KpiCard } from "@/components/dashboard/kpi-card";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { PaginationBar } from "@/components/dashboard/pagination";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { SearchInput } from "@/components/dashboard/search-input";
+import { TableScroll } from "@/components/dashboard/table-scroll";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -231,7 +231,7 @@ function AdminPartnerInventoryPageInner() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="مخزون الشركاء"
         description="اختر شريكاً لعرض وتعديل مخزونه الحقيقي مباشرة من الجدول."
         actions={
@@ -244,7 +244,7 @@ function AdminPartnerInventoryPageInner() {
         }
       />
 
-      <AdminPanelCard title="الشريك" icon={<Warehouse className="h-5 w-5 text-burgundy" />}>
+      <PanelCard title="الشريك" icon={<Warehouse className="h-5 w-5 text-burgundy" />}>
         <div className="max-w-md">
           <Select value={partnerId} onChange={(e) => setPartnerId(e.target.value)}>
             <option value="">اختر الشريك لعرض مخزونه</option>
@@ -255,10 +255,10 @@ function AdminPartnerInventoryPageInner() {
             ))}
           </Select>
         </div>
-      </AdminPanelCard>
+      </PanelCard>
 
       {!partnerId ? (
-        <AdminEmptyState
+        <EmptyState
           icon={<Warehouse className="h-12 w-12" />}
           title="اختر شريكاً للبدء"
           description="سيظهر هنا كل منتج ومتغير مع مخزون هذا الشريك الفعلي، وتقدر تعدّله مباشرة من الجدول."
@@ -266,13 +266,13 @@ function AdminPartnerInventoryPageInner() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-            <AdminKpiCard title="إجمالي المتاح" value={formatNumberEn(totals.available)} icon={<Boxes className="h-5 w-5" />} accent="burgundy" />
-            <AdminKpiCard title="إجمالي المحجوز" value={formatNumberEn(totals.reserved)} icon={<Boxes className="h-5 w-5" />} />
-            <AdminKpiCard title="مخزون منخفض" value={formatNumberEn(totals.low)} hint="≤ 3 قطع قابلة للبيع" icon={<Boxes className="h-5 w-5" />} accent="burgundy" />
-            <AdminKpiCard title="يحتاج إعداد" value={formatNumberEn(totals.needsSetup)} hint="لا يوجد سجل مخزون بعد" icon={<Boxes className="h-5 w-5" />} />
+            <KpiCard title="إجمالي المتاح" value={formatNumberEn(totals.available)} icon={<Boxes className="h-5 w-5" />} accent="burgundy" />
+            <KpiCard title="إجمالي المحجوز" value={formatNumberEn(totals.reserved)} icon={<Boxes className="h-5 w-5" />} />
+            <KpiCard title="مخزون منخفض" value={formatNumberEn(totals.low)} hint="≤ 3 قطع قابلة للبيع" icon={<Boxes className="h-5 w-5" />} accent="burgundy" />
+            <KpiCard title="يحتاج إعداد" value={formatNumberEn(totals.needsSetup)} hint="لا يوجد سجل مخزون بعد" icon={<Boxes className="h-5 w-5" />} />
           </div>
 
-          <AdminPanelCard
+          <PanelCard
             title={`مخزون ${selectedPartner?.name ?? ""}`}
             icon={<Package className="h-5 w-5 text-burgundy" />}
             toolbar={
@@ -295,7 +295,7 @@ function AdminPartnerInventoryPageInner() {
                 >
                   يحتاج إعداد فقط
                 </Button>
-                <AdminSearchInput value={search} onChange={setSearch} placeholder="بحث بالمنتج أو SKU…" />
+                <SearchInput value={search} onChange={setSearch} placeholder="بحث بالمنتج أو SKU…" />
               </div>
             }
           >
@@ -305,12 +305,12 @@ function AdminPartnerInventoryPageInner() {
                 جاري التحميل
               </div>
             ) : rows.length === 0 ? (
-              <AdminEmptyState
+              <EmptyState
                 icon={<Package className="h-12 w-12" />}
                 title={debouncedQ || lowOnly || needsSetupOnly ? "لا توجد نتائج مطابقة" : "لا توجد منتجات"}
               />
             ) : (
-              <AdminTableScroll>
+              <TableScroll>
                 <Table className={cn(fetching && "opacity-70")}>
                   <TableHeader>
                     <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -351,7 +351,7 @@ function AdminPartnerInventoryPageInner() {
                               inputMode="numeric"
                               value={draft}
                               onChange={(e) => setDrafts((current) => ({ ...current, [variant.id]: e.target.value }))}
-                              className={cn("h-9 w-24 rounded-md", dirty && "border-amber-400 bg-amber-50")}
+                              className={cn("h-9 w-24 rounded-md", dirty && "border-gold/50 bg-gold/10")}
                             />
                           </TableCell>
                           <TableCell>{formatNumberEn(variant.stockReserved)}</TableCell>
@@ -384,11 +384,11 @@ function AdminPartnerInventoryPageInner() {
                     })}
                   </TableBody>
                 </Table>
-              </AdminTableScroll>
+              </TableScroll>
             )}
 
             {total > 0 && (
-              <AdminPaginationBar
+              <PaginationBar
                 className="mt-6"
                 page={page}
                 pageSize={pageSize}
@@ -398,7 +398,7 @@ function AdminPartnerInventoryPageInner() {
                 disabled={fetching}
               />
             )}
-          </AdminPanelCard>
+          </PanelCard>
         </>
       )}
     </div>

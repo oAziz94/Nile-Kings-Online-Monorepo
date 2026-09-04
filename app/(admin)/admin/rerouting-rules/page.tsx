@@ -14,9 +14,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminPanelCard } from "@/components/admin/admin-panel-card";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
 import { Route, Plus } from "lucide-react";
 
 type Rule = {
@@ -52,7 +52,7 @@ export default function AdminReroutingRulesPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         title="قواعد التوجيه"
         description="تعيين الطلبات للشركاء حسب المحافظة (round-robin)."
         actions={
@@ -64,12 +64,12 @@ export default function AdminReroutingRulesPage() {
           </Button>
         }
       />
-      <AdminPanelCard
+      <PanelCard
         title="قواعد التوجيه حسب المحافظة"
         icon={<Route className="h-5 w-5 text-burgundy" />}
       >
           {rules.length === 0 ? (
-            <AdminEmptyState
+            <EmptyState
               icon={<Route className="h-12 w-12" />}
               title="لا توجد قواعد توجيه"
               description="أنشئ قاعدة لربط المحافظات بالشركاء."
@@ -112,7 +112,7 @@ export default function AdminReroutingRulesPage() {
             </Table>
             </div>
           )}
-      </AdminPanelCard>
+      </PanelCard>
     </div>
   );
 }
