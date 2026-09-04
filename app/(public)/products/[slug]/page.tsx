@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
@@ -17,33 +18,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
-  const { slug } = await params;
-  const variant = await prisma.variant.findFirst({
-    where: { slug },
-    select: { productId: true, product: { select: { name: true, description: true, imageUrl: true } } },
-  });
-  const product = variant?.product ?? await prisma.product.findFirst({
-    where: { slug, active: true },
-    select: { name: true, description: true, imageUrl: true },
-  });
-  if (!product) return { title: "منتج | نايل كينجز" };
-  const desc = product.description
-    ? product.description.slice(0, 160).replace(/\n/g, " ")
-    : undefined;
-  return pageMetadata({
-    title: product.name,
-    description: desc ?? `اشتري ${product.name} من نايل كينجز`,
-    path: `products/${slug}`,
-    imageUrl: product.imageUrl,
-  });
-}
-
-async function getProduct(slug: string, stockContext: StorefrontStockContext) {
+/**
+ * Cached per-request (keyed by slug + partnerId, both primitives) so generateMetadata and the
+ * page component share one DB round trip instead of each fetching the product independently.
+ */
+const getProductRow = cache(async (slug: string, partnerId: string | null) => {
   // Resolve by variant slug first (productSlug_size_colorHexCode), then by product slug
   const variantBySlug = await prisma.variant.findFirst({
     where: { slug },
@@ -94,11 +73,37 @@ async function getProduct(slug: string, stockContext: StorefrontStockContext) {
       },
     });
   if (!productRow) return null;
-  const product = {
-    ...productRow,
-    variants: await applyStorefrontPartnerStock(productRow.variants, stockContext.partnerId),
-  };
-  const initialVariantId = variantBySlug?.id ?? null;
+
+  const variants = await applyStorefrontPartnerStock(productRow.variants, partnerId);
+  return { productRow, variants, initialVariantId: variantBySlug?.id ?? null };
+});
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const stockContext = await getCurrentStorefrontStockContext();
+  const row = await getProductRow(slug, stockContext.partnerId);
+  if (!row) return { title: "منتج | نايل كينجز" };
+  const product = row.productRow;
+  const desc = product.description
+    ? product.description.slice(0, 160).replace(/\n/g, " ")
+    : undefined;
+  return pageMetadata({
+    title: product.name,
+    description: desc ?? `اشتري ${product.name} من نايل كينجز`,
+    path: `products/${slug}`,
+    imageUrl: product.imageUrl,
+  });
+}
+
+async function getProduct(slug: string, partnerId: string | null) {
+  const row = await getProductRow(slug, partnerId);
+  if (!row) return null;
+  const product = { ...row.productRow, variants: row.variants };
+  const initialVariantId = row.initialVariantId;
 
   const prices = product.variants.map((v) => v.pricePiastres);
   const minP = prices.length ? Math.min(...prices) : 0;
@@ -225,7 +230,7 @@ export default async function ProductPage({
 }) {
   const { slug } = await params;
   const stockContext = await getCurrentStorefrontStockContext();
-  const product = await getProduct(slug, stockContext);
+  const product = await getProduct(slug, stockContext.partnerId);
   if (!product) notFound();
 
   const related = await getRelated(product.slug, product.categoryId, stockContext);

@@ -115,12 +115,10 @@ export async function getSellableQuantityForPartnerVariant(
   return row ? Math.max(0, row.stockAvailable - row.stockReserved) : 0;
 }
 
-export async function canPartnerFulfillLines(
-  partnerId: string,
-  lines: StockLine[]
-): Promise<boolean> {
+/** Variant IDs among `lines` that this partner cannot fully cover (empty array = can fulfill everything). */
+async function getInsufficientVariantIds(partnerId: string, lines: StockLine[]): Promise<string[]> {
   const aggregated = aggregateStockLines(lines);
-  if (aggregated.length === 0) return false;
+  if (aggregated.length === 0) return [];
   const rows = await prisma.partnerInventory.findMany({
     where: {
       partnerId,
@@ -129,40 +127,80 @@ export async function canPartnerFulfillLines(
     select: { variantId: true, stockAvailable: true, stockReserved: true },
   });
   const byVariant = new Map(rows.map((row) => [row.variantId, row]));
-  return aggregated.every((line) => {
-    const row = byVariant.get(line.variantId);
-    const sellable = row ? row.stockAvailable - row.stockReserved : 0;
-    return sellable >= line.quantity;
-  });
+  return aggregated
+    .filter((line) => {
+      const row = byVariant.get(line.variantId);
+      const sellable = row ? row.stockAvailable - row.stockReserved : 0;
+      return sellable < line.quantity;
+    })
+    .map((line) => line.variantId);
 }
+
+export async function canPartnerFulfillLines(
+  partnerId: string,
+  lines: StockLine[]
+): Promise<boolean> {
+  const aggregated = aggregateStockLines(lines);
+  if (aggregated.length === 0) return false;
+  return (await getInsufficientVariantIds(partnerId, lines)).length === 0;
+}
+
+export type PartnerFulfillmentResult =
+  | { ok: true; partnerId: string; ruleId: string; sequence: number; originGovernorate: string }
+  | { ok: false; reason: "NO_PARTNER" }
+  | { ok: false; reason: "INSUFFICIENT_STOCK"; insufficientVariantIds: string[] };
 
 export async function findFulfillablePartnerForGovernorate(input: {
   governorate: string;
   lines: StockLine[];
+  /**
+   * Storefront's already-resolved partner (from the customer's chosen governorate cookie,
+   * the same partner whose stock was shown while browsing/cart). When set, this partner is
+   * authoritative — checked in isolation instead of re-deriving a partner from the delivery
+   * address's governorate, which may differ (e.g. shipping to a relative in another
+   * governorate) and would otherwise silently swap to a different partner than the one whose
+   * stock the customer saw. It is NOT a hint with fallback: if this partner can't fully cover
+   * the cart, the order fails hard naming the short items instead of silently trying other
+   * partners the customer never saw stock for.
+   */
   preferredPartnerId?: string | null;
-}): Promise<{ partnerId: string; ruleId: string; sequence: number; originGovernorate: string } | null> {
+}): Promise<PartnerFulfillmentResult> {
+  if (input.preferredPartnerId) {
+    const partner = await prisma.partner.findFirst({
+      where: { id: input.preferredPartnerId, isActive: true },
+      select: { id: true, governorate: true },
+    });
+    if (!partner) {
+      return { ok: false, reason: "NO_PARTNER" };
+    }
+    const insufficientVariantIds = await getInsufficientVariantIds(partner.id, input.lines);
+    if (insufficientVariantIds.length > 0) {
+      return { ok: false, reason: "INSUFFICIENT_STOCK", insufficientVariantIds };
+    }
+    return {
+      ok: true,
+      partnerId: partner.id,
+      ruleId: "",
+      sequence: 0,
+      originGovernorate: partner.governorate,
+    };
+  }
+
   const eligible = await getEligiblePartnersForGovernorate(input.governorate);
-  if (eligible.length === 0) return null;
+  if (eligible.length === 0) return { ok: false, reason: "NO_PARTNER" };
 
   const ordered = [...eligible];
-  if (input.preferredPartnerId) {
-    ordered.sort((a, b) => {
-      if (a.partner.id === input.preferredPartnerId) return -1;
-      if (b.partner.id === input.preferredPartnerId) return 1;
-      return 0;
-    });
-  } else {
-    const lastId = eligible[0]?.rule.lastAssignedPartnerId;
-    const lastIndex = lastId ? ordered.findIndex((entry) => entry.partner.id === lastId) : -1;
-    if (lastIndex >= 0) {
-      ordered.push(...ordered.splice(0, lastIndex + 1));
-    }
+  const lastId = eligible[0]?.rule.lastAssignedPartnerId;
+  const lastIndex = lastId ? ordered.findIndex((entry) => entry.partner.id === lastId) : -1;
+  if (lastIndex >= 0) {
+    ordered.push(...ordered.splice(0, lastIndex + 1));
   }
 
   for (const entry of ordered) {
     if (await canPartnerFulfillLines(entry.partner.id, input.lines)) {
       const sequence = eligible.findIndex((item) => item.partner.id === entry.partner.id) + 1;
       return {
+        ok: true,
         partnerId: entry.partner.id,
         ruleId: entry.rule.id,
         sequence: Math.max(1, sequence),
@@ -171,7 +209,31 @@ export async function findFulfillablePartnerForGovernorate(input: {
     }
   }
 
-  return null;
+  return { ok: false, reason: "NO_PARTNER" };
+}
+
+/** One multi-row ledger insert instead of one round trip per line. */
+async function writeLedgerBatch(
+  tx: PrismaTx,
+  partnerId: string,
+  lines: StockLine[],
+  reason: InventoryLedgerReason,
+  orderId: string | null | undefined,
+  deltasForLine: (quantity: number) => { availableDelta: number; reservedDelta: number }
+): Promise<void> {
+  await tx.inventoryLedger.createMany({
+    data: lines.map((line) => {
+      const { availableDelta, reservedDelta } = deltasForLine(line.quantity);
+      return {
+        partnerId,
+        variantId: line.variantId,
+        reason,
+        quantityAvailableDelta: availableDelta,
+        quantityReservedDelta: reservedDelta,
+        orderId: orderId ?? null,
+      };
+    }),
+  });
 }
 
 export async function reservePartnerStockForOrder(
@@ -181,6 +243,7 @@ export async function reservePartnerStockForOrder(
   orderId?: string | null
 ): Promise<void> {
   const aggregated = aggregateStockLines(lines);
+  if (aggregated.length === 0) return;
   const variantIds = aggregated.map((line) => line.variantId);
   await lockPartnerInventories(tx, [partnerId], variantIds);
 
@@ -196,19 +259,22 @@ export async function reservePartnerStockForOrder(
     if (!row || available < line.quantity) {
       throw new InsufficientPartnerStockError(partnerId, line.variantId, line.quantity, Math.max(0, available));
     }
-    await tx.partnerInventory.update({
-      where: { id: row.id },
-      data: { stockReserved: { increment: line.quantity } },
-    });
-    row.stockReserved += line.quantity;
-    await writeLedger(tx, {
-      partnerId,
-      variantId: line.variantId,
-      reason: "ORDER_RESERVE",
-      reservedDelta: line.quantity,
-      orderId,
-    });
   }
+
+  await tx.$executeRaw(
+    Prisma.sql`
+      UPDATE "PartnerInventory" AS pi
+      SET "stockReserved" = pi."stockReserved" + v.qty
+      FROM (VALUES ${Prisma.join(
+        aggregated.map((line) => Prisma.sql`(${line.variantId}::text, ${line.quantity}::int)`)
+      )}) AS v(variant_id, qty)
+      WHERE pi."partnerId" = ${partnerId} AND pi."variantId" = v.variant_id
+    `
+  );
+  await writeLedgerBatch(tx, partnerId, aggregated, "ORDER_RESERVE", orderId, (quantity) => ({
+    availableDelta: 0,
+    reservedDelta: quantity,
+  }));
 }
 
 export async function commitPartnerReservation(
@@ -217,31 +283,39 @@ export async function commitPartnerReservation(
   lines: StockLine[],
   orderId?: string | null
 ): Promise<void> {
-  for (const line of aggregateStockLines(lines)) {
-    const row = await tx.partnerInventory.findUnique({
-      where: { partnerId_variantId: { partnerId, variantId: line.variantId } },
-      select: { id: true, stockAvailable: true, stockReserved: true },
-    });
+  const aggregated = aggregateStockLines(lines);
+  if (aggregated.length === 0) return;
+  const variantIds = aggregated.map((line) => line.variantId);
+
+  const rows = await tx.partnerInventory.findMany({
+    where: { partnerId, variantId: { in: variantIds } },
+    select: { id: true, variantId: true, stockReserved: true },
+  });
+  const byVariant = new Map(rows.map((row) => [row.variantId, row]));
+
+  for (const line of aggregated) {
+    const row = byVariant.get(line.variantId);
     const reserved = row?.stockReserved ?? 0;
     if (!row || reserved < line.quantity) {
       throw new InsufficientPartnerStockError(partnerId, line.variantId, line.quantity, reserved);
     }
-    await tx.partnerInventory.update({
-      where: { id: row.id },
-      data: {
-        stockAvailable: { decrement: line.quantity },
-        stockReserved: { decrement: line.quantity },
-      },
-    });
-    await writeLedger(tx, {
-      partnerId,
-      variantId: line.variantId,
-      reason: "ORDER_COMMIT",
-      availableDelta: -line.quantity,
-      reservedDelta: -line.quantity,
-      orderId,
-    });
   }
+
+  await tx.$executeRaw(
+    Prisma.sql`
+      UPDATE "PartnerInventory" AS pi
+      SET "stockAvailable" = pi."stockAvailable" - v.qty,
+          "stockReserved" = pi."stockReserved" - v.qty
+      FROM (VALUES ${Prisma.join(
+        aggregated.map((line) => Prisma.sql`(${line.variantId}::text, ${line.quantity}::int)`)
+      )}) AS v(variant_id, qty)
+      WHERE pi."partnerId" = ${partnerId} AND pi."variantId" = v.variant_id
+    `
+  );
+  await writeLedgerBatch(tx, partnerId, aggregated, "ORDER_COMMIT", orderId, (quantity) => ({
+    availableDelta: -quantity,
+    reservedDelta: -quantity,
+  }));
 }
 
 export async function releasePartnerReservation(

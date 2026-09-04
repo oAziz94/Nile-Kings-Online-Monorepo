@@ -139,7 +139,10 @@ export async function POST(req: NextRequest) {
   });
 
   if (!result.success) {
-    return apiBadRequest(result.error, { code: result.code });
+    return apiBadRequest(result.error, {
+      code: result.code,
+      ...(result.outOfStockItems ? { outOfStockItems: result.outOfStockItems } : {}),
+    });
   }
 
   try {

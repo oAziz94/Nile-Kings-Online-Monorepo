@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
@@ -49,9 +50,15 @@ export async function getStorefrontStockContext(
   };
 }
 
-export async function getCurrentStorefrontStockContext(): Promise<StorefrontStockContext> {
-  return getStorefrontStockContext(await getStorefrontGovernorateFromCookies());
-}
+/**
+ * Cached per-request: multiple components/route handlers (e.g. generateMetadata + the page,
+ * or several sections on one page) can call this without each re-querying the rerouting rule.
+ */
+export const getCurrentStorefrontStockContext = cache(
+  async (): Promise<StorefrontStockContext> => {
+    return getStorefrontStockContext(await getStorefrontGovernorateFromCookies());
+  }
+);
 
 export async function applyStorefrontPartnerStock<T extends { id: string; stockAvailable: number }>(
   variants: T[],

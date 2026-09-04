@@ -6,6 +6,7 @@ import { invalidateAnalyticsCache } from "@/lib/cache/analytics";
 import { PAYMENT_METHODS } from "@/lib/checkout/types";
 import { assignOrderToGovernorate } from "@/lib/rerouting/assign";
 import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
+import { getCurrentStorefrontStockContext } from "@/lib/storefront-location";
 
 const addressSchema = {
   governorate: (v: unknown) => typeof v === "string" && v.trim().length > 0,
@@ -63,6 +64,11 @@ async function postHandler(req: Request) {
     return apiBadRequest("طريقة الدفع مطلوبة (COD أو PAYMOB أو InstaPay)");
   }
 
+  // Authoritative partner: the one resolved from the customer's chosen governorate (cookie),
+  // same partner whose stock was shown throughout browsing/cart — not re-derived from the
+  // delivery address's governorate, which may point elsewhere (e.g. shipping to a relative).
+  const stockContext = await getCurrentStorefrontStockContext();
+
   const result = await placeOrder({
     userId: user.userId,
     address: {
@@ -77,10 +83,14 @@ async function postHandler(req: Request) {
     },
     paymentMethod: paymentMethod as "COD" | "PAYMOB" | "INSTAPAY_PREPAID",
     couponCode: body.couponCode ?? null,
+    selectedPartnerId: stockContext.partnerId,
   });
 
   if (!result.success) {
-    return apiBadRequest(result.error, { code: result.code });
+    return apiBadRequest(result.error, {
+      code: result.code,
+      ...(result.outOfStockItems ? { outOfStockItems: result.outOfStockItems } : {}),
+    });
   }
 
   try {
