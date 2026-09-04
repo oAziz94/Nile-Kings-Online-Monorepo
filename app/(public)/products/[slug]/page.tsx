@@ -12,7 +12,9 @@ import {
 import { pageMetadata } from "@/lib/seo";
 import {
   applyStorefrontPartnerStock,
+  applyPartnerStockOverrides,
   getCurrentStorefrontStockContext,
+  getPartnerStockOverrides,
   type StorefrontStockContext,
 } from "@/lib/storefront-location";
 
@@ -177,12 +179,12 @@ async function getRelated(slug: string, categoryId: string, stockContext: Storef
     },
   });
 
-  const stockAdjustedRelated = await Promise.all(
-    related.map(async (product) => ({
-      ...product,
-      variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
-    }))
-  );
+  const allVariantIds = related.flatMap((p) => p.variants.map((v) => v.id));
+  const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);
+  const stockAdjustedRelated = related.map((product) => ({
+    ...product,
+    variants: applyPartnerStockOverrides(product.variants, overrides),
+  }));
 
   return stockAdjustedRelated.map((p) => {
     const prices = p.variants.map((v) => v.pricePiastres);

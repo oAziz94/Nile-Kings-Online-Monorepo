@@ -4,7 +4,8 @@ import { apiSuccess } from "@/lib/api/response";
 import type { ProductListItem } from "@/lib/catalog";
 import { piastresToEgp, discountPercentFromPrices, originalPriceFromExplicitDiscount } from "@/lib/catalog";
 import {
-  applyStorefrontPartnerStock,
+  applyPartnerStockOverrides,
+  getPartnerStockOverrides,
   getStorefrontGovernorateFromRequest,
   getStorefrontStockContext,
 } from "@/lib/storefront-location";
@@ -80,12 +81,12 @@ export async function GET(
     },
   });
 
-  const stockAdjustedRelated = await Promise.all(
-    related.map(async (product) => ({
-      ...product,
-      variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
-    }))
-  );
+  const allVariantIds = related.flatMap((p) => p.variants.map((v) => v.id));
+  const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);
+  const stockAdjustedRelated = related.map((product) => ({
+    ...product,
+    variants: applyPartnerStockOverrides(product.variants, overrides),
+  }));
 
   return apiSuccess({ products: stockAdjustedRelated.map(toListItem) });
 }

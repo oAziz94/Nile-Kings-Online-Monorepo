@@ -65,8 +65,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const openDrawer = useCallback(() => {
     setIsDrawerOpen(true);
-    refreshCart();
-  }, [refreshCart]);
+  }, []);
 
   const closeDrawer = useCallback(() => {
     setIsDrawerOpen(false);

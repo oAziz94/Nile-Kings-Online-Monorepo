@@ -74,7 +74,7 @@ export function QuickShopModal({
   productSlug,
 }: QuickShopModalProps) {
   const { toast } = useToast();
-  const { openDrawer, refreshCart } = useCart();
+  const { openDrawer, setCart } = useCart();
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -224,7 +224,7 @@ export function QuickShopModal({
       });
       const json = await res.json();
       if (res.ok) {
-        await refreshCart();
+        if (json?.data) setCart(json.data);
         toast({ title: ARABIC.added });
         openDrawer();
         onOpenChange(false);
@@ -263,7 +263,8 @@ export function QuickShopModal({
         body: JSON.stringify({ variantId: selectedVariant!.id, quantity }),
       });
       if (res.ok) {
-        await refreshCart();
+        const json = await res.json();
+        if (json?.data) setCart(json.data);
         onOpenChange(false);
         window.location.href = "/cart";
       } else {

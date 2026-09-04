@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
@@ -6,28 +7,26 @@ import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
+/** Cached per-request so generateMetadata and the page share one DB round trip. */
+const getCategory = cache(async (slug: string) => {
+  return prisma.category.findFirst({
+    where: { slug },
+    select: { id: true, name: true, slug: true },
+  });
+});
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const category = await prisma.category.findFirst({
-    where: { slug },
-    select: { name: true },
-  });
+  const category = await getCategory(slug);
   if (!category) return { title: "تصنيف | نايل كينجز" };
   return pageMetadata({
     title: category.name,
     description: `تصفح منتجات ${category.name} من نايل كينجز`,
     path: `categories/${slug}`,
-  });
-}
-
-async function getCategory(slug: string) {
-  return prisma.category.findFirst({
-    where: { slug },
-    select: { id: true, name: true, slug: true },
   });
 }
 

@@ -4,7 +4,8 @@ import { apiSuccess } from "@/lib/api/response";
 import type { ProductListItem } from "@/lib/catalog";
 import { piastresToEgp, discountPercentFromPrices, originalPriceFromExplicitDiscount } from "@/lib/catalog";
 import {
-  applyStorefrontPartnerStock,
+  applyPartnerStockOverrides,
+  getPartnerStockOverrides,
   getStorefrontGovernorateFromRequest,
   getStorefrontStockContext,
 } from "@/lib/storefront-location";
@@ -59,68 +60,65 @@ export async function GET(req: NextRequest) {
     variants: { select: { id: true, pricePiastres: true, stockAvailable: true } },
   } as const;
 
-  const [trendingIds, recommendedIds, newArrivals, allProducts] =
-    await Promise.all([
-      prisma.viewLog.groupBy({
-        by: ["productId"],
-        where: { productId: { not: null } },
-        _count: { productId: true },
-        orderBy: { _count: { productId: "desc" } },
-        take: RECOMMENDATIONS_LIMIT,
-      }),
-      prisma.addToCartLog
-        .groupBy({
-          by: ["variantId"],
-          _count: { variantId: true },
-          orderBy: { _count: { variantId: "desc" } },
-          take: RECOMMENDATIONS_LIMIT * 3,
+  const [trendingIds, recommendedIds, newArrivals] = await Promise.all([
+    prisma.viewLog.groupBy({
+      by: ["productId"],
+      where: { productId: { not: null } },
+      _count: { productId: true },
+      orderBy: { _count: { productId: "desc" } },
+      take: RECOMMENDATIONS_LIMIT,
+    }),
+    prisma.addToCartLog
+      .groupBy({
+        by: ["variantId"],
+        _count: { variantId: true },
+        orderBy: { _count: { variantId: "desc" } },
+        take: RECOMMENDATIONS_LIMIT * 3,
+      })
+      .then((rows) =>
+        prisma.variant.findMany({
+          where: { id: { in: rows.map((r) => r.variantId) } },
+          select: { productId: true },
         })
-        .then((rows) =>
-          prisma.variant.findMany({
-            where: { id: { in: rows.map((r) => r.variantId) } },
-            select: { productId: true },
+      )
+      .then((variants) => {
+        const seen = new Set<string>();
+        return variants
+          .map((v) => v.productId)
+          .filter((id) => {
+            if (seen.has(id)) return false;
+            seen.add(id);
+            return true;
           })
-        )
-        .then((variants) => {
-          const seen = new Set<string>();
-          return variants
-            .map((v) => v.productId)
-            .filter((id) => {
-              if (seen.has(id)) return false;
-              seen.add(id);
-              return true;
-            })
-            .slice(0, RECOMMENDATIONS_LIMIT);
-        }),
-      prisma.product.findMany({
-        where: { active: true },
-        orderBy: { createdAt: "desc" },
-        take: RECOMMENDATIONS_LIMIT,
-        include,
+          .slice(0, RECOMMENDATIONS_LIMIT);
       }),
-      prisma.product.findMany({
-        where: { active: true },
-        include,
-      }),
-    ]);
-
-  const [stockAllProducts, stockNewArrivals] = await Promise.all([
-    Promise.all(
-      allProducts.map(async (product) => ({
-        ...product,
-        variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
-      }))
-    ),
-    Promise.all(
-      newArrivals.map(async (product) => ({
-        ...product,
-        variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
-      }))
-    ),
+    prisma.product.findMany({
+      where: { active: true },
+      orderBy: { createdAt: "desc" },
+      take: RECOMMENDATIONS_LIMIT,
+      include,
+    }),
   ]);
 
+  const relevantIds = Array.from(
+    new Set([
+      ...trendingIds.map((r) => r.productId).filter((id): id is string => id != null),
+      ...recommendedIds,
+    ])
+  );
+  const relevantProducts = relevantIds.length
+    ? await prisma.product.findMany({ where: { id: { in: relevantIds }, active: true }, include })
+    : [];
+
+  const allVariantIds = [...relevantProducts, ...newArrivals].flatMap((p) => p.variants.map((v) => v.id));
+  const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);
+  const withStock = <T extends { variants: { id: string; pricePiastres: number; stockAvailable: number }[] }>(
+    products: T[]
+  ) => products.map((p) => ({ ...p, variants: applyPartnerStockOverrides(p.variants, overrides) }));
+
+  const stockNewArrivals = withStock(newArrivals);
   const productMap = new Map(
-    stockAllProducts.map((p) => [p.id, toListItem(p)])
+    withStock(relevantProducts).map((p) => [p.id, toListItem(p)])
   );
 
   const trending = trendingIds
