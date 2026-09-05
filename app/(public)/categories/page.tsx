@@ -1,8 +1,6 @@
 import { pageMetadata } from "@/lib/seo";
 import { CategoriesContent } from "./categories-content";
 
-export const dynamic = "force-dynamic";
-
 export const metadata = pageMetadata({
   title: "التصنيفات",
   description: "تصفح تصنيفات المنتجات في متجر نايل كينجز",

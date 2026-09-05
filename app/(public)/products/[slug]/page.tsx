@@ -1,4 +1,5 @@
-import { cache } from "react";
+import { cache as reactCache } from "react";
+import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
@@ -11,25 +12,54 @@ import {
 } from "@/lib/catalog";
 import { pageMetadata } from "@/lib/seo";
 import {
-  applyStorefrontPartnerStock,
   applyPartnerStockOverrides,
   getCurrentStorefrontStockContext,
   getPartnerStockOverrides,
   type StorefrontStockContext,
 } from "@/lib/storefront-location";
 
+/** The page still reads the governorate cookie to price/stock per partner, so it can't be
+ *  fully static — but the DB round trip below is cached, so that per-request cost is only
+ *  a cheap partner-stock lookup instead of the whole product+variants query. */
 export const dynamic = "force-dynamic";
 
 /**
- * Cached per-request (keyed by slug + partnerId, both primitives) so generateMetadata and the
- * page component share one DB round trip instead of each fetching the product independently.
+ * Cached across requests, keyed by slug only (no partnerId) — the expensive product/variant
+ * query runs at most once per revalidate window. Partner stock overrides are applied
+ * separately, after the cache read, so they always reflect the current visitor.
  */
-const getProductRow = cache(async (slug: string, partnerId: string | null) => {
-  // Resolve by variant slug first (productSlug_size_colorHexCode), then by product slug
-  const variantBySlug = await prisma.variant.findFirst({
-    where: { slug },
-    include: {
-      product: {
+const getProductRowCatalog = unstable_cache(
+  async (slug: string) => {
+    // Resolve by variant slug first (productSlug_size_colorHexCode), then by product slug
+    const variantBySlug = await prisma.variant.findFirst({
+      where: { slug },
+      include: {
+        product: {
+          include: {
+            category: { select: { slug: true, name: true } },
+            variants: {
+              select: {
+                id: true,
+                sku: true,
+                slug: true,
+                name: true,
+                basePricePiastres: true,
+                pricePiastres: true,
+                stockAvailable: true,
+                colorHex: true,
+                colorName: true,
+                imageUrl: true,
+              },
+              orderBy: { name: "asc" },
+            },
+          },
+        },
+      },
+    });
+    const productRow = variantBySlug?.product
+      ? variantBySlug.product
+      : await prisma.product.findFirst({
+        where: { slug, active: true },
         include: {
           category: { select: { slug: true, name: true } },
           variants: {
@@ -48,36 +78,26 @@ const getProductRow = cache(async (slug: string, partnerId: string | null) => {
             orderBy: { name: "asc" },
           },
         },
-      },
-    },
-  });
-  const productRow = variantBySlug?.product
-    ? variantBySlug.product
-    : await prisma.product.findFirst({
-      where: { slug, active: true },
-      include: {
-        category: { select: { slug: true, name: true } },
-        variants: {
-          select: {
-            id: true,
-            sku: true,
-            slug: true,
-            name: true,
-            basePricePiastres: true,
-            pricePiastres: true,
-            stockAvailable: true,
-            colorHex: true,
-            colorName: true,
-            imageUrl: true,
-          },
-          orderBy: { name: "asc" },
-        },
-      },
-    });
-  if (!productRow) return null;
+      });
+    if (!productRow) return null;
 
-  const variants = await applyStorefrontPartnerStock(productRow.variants, partnerId);
-  return { productRow, variants, initialVariantId: variantBySlug?.id ?? null };
+    return { productRow, initialVariantId: variantBySlug?.id ?? null };
+  },
+  ["product-detail-by-slug"],
+  { revalidate: 60 }
+);
+
+/** Memoized per-request so generateMetadata and the page share one call. */
+const getProductRow = reactCache(async (slug: string, partnerId: string | null) => {
+  const cached = await getProductRowCatalog(slug);
+  if (!cached) return null;
+
+  const overrides = await getPartnerStockOverrides(
+    cached.productRow.variants.map((v) => v.id),
+    partnerId
+  );
+  const variants = applyPartnerStockOverrides(cached.productRow.variants, overrides);
+  return { productRow: cached.productRow, variants, initialVariantId: cached.initialVariantId };
 });
 
 export async function generateMetadata({
@@ -159,25 +179,33 @@ async function getProduct(slug: string, partnerId: string | null) {
   };
 }
 
-async function getRelated(slug: string, categoryId: string, stockContext: StorefrontStockContext) {
-  const related = await prisma.product.findMany({
-    where: { active: true, categoryId, slug: { not: slug } },
-    orderBy: { sortOrder: "asc" },
-    take: 4,
-    include: {
-      category: { select: { slug: true, name: true } },
-      variants: {
-        select: {
-          id: true,
-          pricePiastres: true,
-          stockAvailable: true,
-          colorHex: true,
-          colorName: true,
-          imageUrl: true,
+const getRelatedCatalog = unstable_cache(
+  async (slug: string, categoryId: string) => {
+    return prisma.product.findMany({
+      where: { active: true, categoryId, slug: { not: slug } },
+      orderBy: { sortOrder: "asc" },
+      take: 4,
+      include: {
+        category: { select: { slug: true, name: true } },
+        variants: {
+          select: {
+            id: true,
+            pricePiastres: true,
+            stockAvailable: true,
+            colorHex: true,
+            colorName: true,
+            imageUrl: true,
+          },
         },
       },
-    },
-  });
+    });
+  },
+  ["product-detail-related"],
+  { revalidate: 300 }
+);
+
+async function getRelated(slug: string, categoryId: string, stockContext: StorefrontStockContext) {
+  const related = await getRelatedCatalog(slug, categoryId);
 
   const allVariantIds = related.flatMap((p) => p.variants.map((v) => v.id));
   const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);

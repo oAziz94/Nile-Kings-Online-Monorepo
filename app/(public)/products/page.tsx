@@ -1,7 +1,7 @@
+import { Suspense } from "react";
 import { ProductsContent } from "./products-content";
+import { LoadingDots } from "@/components/shared/loading-dots";
 import { pageMetadata } from "@/lib/seo";
-
-export const dynamic = "force-dynamic";
 
 export const metadata = pageMetadata({
   title: "المنتجات",
@@ -12,7 +12,9 @@ export const metadata = pageMetadata({
 export default function ProductsPage() {
   return (
     <div className="container px-4 py-6 md:py-8">
-      <ProductsContent />
+      <Suspense fallback={<LoadingDots />}>
+        <ProductsContent />
+      </Suspense>
     </div>
   );
 }

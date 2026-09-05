@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { unstable_cache } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { apiSuccess } from "@/lib/api/response";
@@ -15,8 +16,6 @@ import {
   getStorefrontGovernorateFromRequest,
   getStorefrontStockContext,
 } from "@/lib/storefront-location";
-
-export const dynamic = "force-dynamic";
 
 function parseQuery(req: NextRequest): ProductsQuery {
   const { searchParams } = new URL(req.url);
@@ -114,6 +113,56 @@ function toListItem(p: {
     ...(colorVariants.length > 0 && { colorVariants }),
   };
 }
+
+const productsListingVariantSelect = {
+  id: true,
+  slug: true,
+  name: true,
+  basePricePiastres: true,
+  pricePiastres: true,
+  stockAvailable: true,
+  colorHex: true,
+  colorName: true,
+  imageUrl: true,
+} as const;
+
+/**
+ * The product listing query itself has no per-visitor dependency (stock is overridden after
+ * the cache read), so the filtered/sorted/paginated result is cached per unique combination
+ * of where/orderBy/skip/take — the same search hitting the DB at most once per minute instead
+ * of on every request.
+ */
+const getProductsPage = unstable_cache(
+  async (
+    whereJson: string,
+    orderByJson: string,
+    skip: number,
+    take: number,
+    wantCount: boolean
+  ) => {
+    const where = JSON.parse(whereJson) as Prisma.ProductWhereInput;
+    const orderBy = JSON.parse(orderByJson) as
+      | Prisma.ProductOrderByWithRelationInput
+      | Prisma.ProductOrderByWithRelationInput[];
+
+    const [products, totalCount] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        orderBy,
+        skip,
+        take,
+        include: {
+          category: { select: { slug: true, name: true } },
+          variants: { select: productsListingVariantSelect },
+        },
+      }),
+      wantCount ? prisma.product.count({ where }) : Promise.resolve(null),
+    ]);
+    return { products, totalCount };
+  },
+  ["products-listing"],
+  { revalidate: 60 }
+);
 
 /** One list item per color variant (first variant per color used for slug/image/price). */
 function toListItemsByVariant(p: {
@@ -220,32 +269,13 @@ export async function GET(req: NextRequest) {
   const skip = hasPriceFilter ? 0 : byVariant ? 0 : q.offset;
   const take = hasPriceFilter ? 200 : byVariant ? SECTION_VIEW_PRODUCT_CAP : q.limit;
 
-  const totalCount = hasPriceFilter
-    ? null
-    : await prisma.product.count({ where });
-
-  const variantSelect = {
-    id: true,
-    slug: true,
-    name: true,
-    basePricePiastres: true,
-    pricePiastres: true,
-    stockAvailable: true,
-    colorHex: true,
-    colorName: true,
-    imageUrl: true,
-  } as const;
-
-  const products = await prisma.product.findMany({
-    where,
-    orderBy,
-    skip,
-    take,
-    include: {
-      category: { select: { slug: true, name: true } },
-      variants: { select: variantSelect },
-    },
-  });
+  const { products, totalCount } = await getProductsPage(
+    JSON.stringify(where),
+    JSON.stringify(orderBy),
+    skip ?? 0,
+    take ?? 24,
+    !hasPriceFilter
+  );
 
   const allVariantIds = products.flatMap((p) => (p.variants as VariantRow[]).map((v) => v.id));
   const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);
