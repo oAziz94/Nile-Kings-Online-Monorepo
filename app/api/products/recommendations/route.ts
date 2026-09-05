@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { apiSuccess } from "@/lib/api/response";
 import type { ProductListItem } from "@/lib/catalog";
@@ -9,8 +10,6 @@ import {
   getStorefrontGovernorateFromRequest,
   getStorefrontStockContext,
 } from "@/lib/storefront-location";
-
-export const dynamic = "force-dynamic";
 
 const RECOMMENDATIONS_LIMIT = 12;
 
@@ -53,62 +52,82 @@ function toListItem(p: {
   };
 }
 
+/**
+ * Everything here (trending/recommended aggregation + new arrivals) is visitor-independent,
+ * so it's cached for 5 minutes instead of re-running these aggregate queries on every request.
+ */
+const getRecommendationsCatalog = unstable_cache(
+  async () => {
+    const include = {
+      category: { select: { slug: true, name: true } },
+      variants: { select: { id: true, pricePiastres: true, stockAvailable: true } },
+    } as const;
+
+    const [trendingIds, recommendedIds, newArrivals] = await Promise.all([
+      prisma.viewLog.groupBy({
+        by: ["productId"],
+        where: { productId: { not: null } },
+        _count: { productId: true },
+        orderBy: { _count: { productId: "desc" } },
+        take: RECOMMENDATIONS_LIMIT,
+      }),
+      prisma.addToCartLog
+        .groupBy({
+          by: ["variantId"],
+          _count: { variantId: true },
+          orderBy: { _count: { variantId: "desc" } },
+          take: RECOMMENDATIONS_LIMIT * 3,
+        })
+        .then((rows) =>
+          prisma.variant.findMany({
+            where: { id: { in: rows.map((r) => r.variantId) } },
+            select: { productId: true },
+          })
+        )
+        .then((variants) => {
+          const seen = new Set<string>();
+          return variants
+            .map((v) => v.productId)
+            .filter((id) => {
+              if (seen.has(id)) return false;
+              seen.add(id);
+              return true;
+            })
+            .slice(0, RECOMMENDATIONS_LIMIT);
+        }),
+      prisma.product.findMany({
+        where: { active: true },
+        orderBy: { createdAt: "desc" },
+        take: RECOMMENDATIONS_LIMIT,
+        include,
+      }),
+    ]);
+
+    const relevantIds = Array.from(
+      new Set([
+        ...trendingIds.map((r) => r.productId).filter((id): id is string => id != null),
+        ...recommendedIds,
+      ])
+    );
+    const relevantProducts = relevantIds.length
+      ? await prisma.product.findMany({ where: { id: { in: relevantIds }, active: true }, include })
+      : [];
+
+    return {
+      trendingIds: trendingIds.map((r) => r.productId).filter((id): id is string => id != null),
+      recommendedIds,
+      newArrivals,
+      relevantProducts,
+    };
+  },
+  ["products-recommendations-catalog"],
+  { revalidate: 300 }
+);
+
 export async function GET(req: NextRequest) {
   const stockContext = await getStorefrontStockContext(getStorefrontGovernorateFromRequest(req));
-  const include = {
-    category: { select: { slug: true, name: true } },
-    variants: { select: { id: true, pricePiastres: true, stockAvailable: true } },
-  } as const;
 
-  const [trendingIds, recommendedIds, newArrivals] = await Promise.all([
-    prisma.viewLog.groupBy({
-      by: ["productId"],
-      where: { productId: { not: null } },
-      _count: { productId: true },
-      orderBy: { _count: { productId: "desc" } },
-      take: RECOMMENDATIONS_LIMIT,
-    }),
-    prisma.addToCartLog
-      .groupBy({
-        by: ["variantId"],
-        _count: { variantId: true },
-        orderBy: { _count: { variantId: "desc" } },
-        take: RECOMMENDATIONS_LIMIT * 3,
-      })
-      .then((rows) =>
-        prisma.variant.findMany({
-          where: { id: { in: rows.map((r) => r.variantId) } },
-          select: { productId: true },
-        })
-      )
-      .then((variants) => {
-        const seen = new Set<string>();
-        return variants
-          .map((v) => v.productId)
-          .filter((id) => {
-            if (seen.has(id)) return false;
-            seen.add(id);
-            return true;
-          })
-          .slice(0, RECOMMENDATIONS_LIMIT);
-      }),
-    prisma.product.findMany({
-      where: { active: true },
-      orderBy: { createdAt: "desc" },
-      take: RECOMMENDATIONS_LIMIT,
-      include,
-    }),
-  ]);
-
-  const relevantIds = Array.from(
-    new Set([
-      ...trendingIds.map((r) => r.productId).filter((id): id is string => id != null),
-      ...recommendedIds,
-    ])
-  );
-  const relevantProducts = relevantIds.length
-    ? await prisma.product.findMany({ where: { id: { in: relevantIds }, active: true }, include })
-    : [];
+  const { trendingIds, recommendedIds, newArrivals, relevantProducts } = await getRecommendationsCatalog();
 
   const allVariantIds = [...relevantProducts, ...newArrivals].flatMap((p) => p.variants.map((v) => v.id));
   const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);
@@ -122,8 +141,6 @@ export async function GET(req: NextRequest) {
   );
 
   const trending = trendingIds
-    .map((r) => r.productId)
-    .filter((id): id is string => id != null)
     .map((id) => productMap.get(id))
     .filter(Boolean) as ProductListItem[];
 

@@ -1,19 +1,27 @@
-import { cache } from "react";
+import { Suspense } from "react";
+import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { CategoryContent } from "./category-content";
+import { LoadingDots } from "@/components/shared/loading-dots";
 import { pageMetadata } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+/** Category name/slug rarely changes and doesn't depend on the visitor, so this page
+ *  is ISR-cached instead of force-dynamic — cuts a full function invocation + DB
+ *  round trip per pageview down to one every 5 minutes per category. */
+export const revalidate = 300;
 
-/** Cached per-request so generateMetadata and the page share one DB round trip. */
-const getCategory = cache(async (slug: string) => {
-  return prisma.category.findFirst({
-    where: { slug },
-    select: { id: true, name: true, slug: true },
-  });
-});
+const getCategory = unstable_cache(
+  async (slug: string) => {
+    return prisma.category.findFirst({
+      where: { slug },
+      select: { id: true, name: true, slug: true },
+    });
+  },
+  ["category-by-slug"],
+  { revalidate: 300 }
+);
 
 export async function generateMetadata({
   params,
@@ -41,7 +49,9 @@ export default async function CategoryPage({
 
   return (
     <div className="container px-4 py-6 md:py-8">
-      <CategoryContent categorySlug={category.slug} categoryName={category.name} />
+      <Suspense fallback={<LoadingDots />}>
+        <CategoryContent categorySlug={category.slug} categoryName={category.name} />
+      </Suspense>
     </div>
   );
 }

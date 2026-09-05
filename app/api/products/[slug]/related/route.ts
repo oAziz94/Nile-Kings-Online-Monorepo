@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { apiSuccess } from "@/lib/api/response";
 import type { ProductListItem } from "@/lib/catalog";
@@ -10,9 +11,35 @@ import {
   getStorefrontStockContext,
 } from "@/lib/storefront-location";
 
-export const dynamic = "force-dynamic";
-
 const RELATED_LIMIT = 4;
+
+/** Related-products catalog query cached per slug — partner stock is applied after the cache read. */
+const getRelatedCatalog = unstable_cache(
+  async (slug: string) => {
+    const product = await prisma.product.findFirst({
+      where: { slug, active: true },
+      select: { id: true, categoryId: true },
+    });
+    if (!product) return null;
+
+    const related = await prisma.product.findMany({
+      where: {
+        active: true,
+        categoryId: product.categoryId,
+        id: { not: product.id },
+      },
+      orderBy: { sortOrder: "asc" },
+      take: RELATED_LIMIT,
+      include: {
+        category: { select: { slug: true, name: true } },
+        variants: { select: { id: true, pricePiastres: true, stockAvailable: true } },
+      },
+    });
+    return related;
+  },
+  ["products-related"],
+  { revalidate: 300 }
+);
 
 function toListItem(p: {
   id: string;
@@ -58,28 +85,10 @@ export async function GET(
   const { slug } = await params;
   const stockContext = await getStorefrontStockContext(getStorefrontGovernorateFromRequest(req));
 
-  const product = await prisma.product.findFirst({
-    where: { slug, active: true },
-    select: { id: true, categoryId: true },
-  });
-
-  if (!product) {
+  const related = await getRelatedCatalog(slug);
+  if (!related) {
     return apiSuccess({ products: [] });
   }
-
-  const related = await prisma.product.findMany({
-    where: {
-      active: true,
-      categoryId: product.categoryId,
-      id: { not: product.id },
-    },
-    orderBy: { sortOrder: "asc" },
-    take: RELATED_LIMIT,
-    include: {
-      category: { select: { slug: true, name: true } },
-      variants: { select: { id: true, pricePiastres: true, stockAvailable: true } },
-    },
-  });
 
   const allVariantIds = related.flatMap((p) => p.variants.map((v) => v.id));
   const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);
