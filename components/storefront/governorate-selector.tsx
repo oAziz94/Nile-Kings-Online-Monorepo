@@ -2,17 +2,13 @@
 
 import * as React from "react";
 import { MapPin } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { useCart } from "@/contexts/cart-context";
 import { parseJsonResponse } from "@/lib/api/parse-json";
 
 type GovernorateOption = { value: string; label: string };
 
 export function GovernorateSelector() {
-  const router = useRouter();
-  const { refreshCart } = useCart();
   const [options, setOptions] = React.useState<GovernorateOption[]>([]);
   const [governorate, setGovernorate] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState("");
@@ -57,11 +53,12 @@ export function GovernorateSelector() {
       });
       const json = await parseJsonResponse<{ success?: boolean; data?: { governorate: string } }>(res);
       if (res.ok && json?.success && json.data?.governorate) {
-        setGovernorate(json.data.governorate);
-        setDraft(json.data.governorate);
-        setEditing(false);
-        await refreshCart();
-        router.refresh();
+        // Hard reload, not router.refresh(): every product/category/cart page reads the
+        // governorate cookie server-side to resolve the partner whose stock to show, and several
+        // of those reads sit behind a time-based cache (unstable_cache). A soft refresh can leave
+        // stale per-partner stock numbers on screen; a full reload guarantees fresh data.
+        window.location.reload();
+        return;
       }
     } finally {
       setSaving(false);

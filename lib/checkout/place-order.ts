@@ -60,6 +60,14 @@ export type PlaceOrderInput = {
   skipCartClear?: boolean;
   adminNotes?: string | null;
   selectedPartnerId?: string | null;
+  /**
+   * Storefront: the governorate the customer chose in the delivery-location picker (not the
+   * shipping address). Partner resolution must key off this, never the address's governorate —
+   * a customer who picked Cairo but ships to a relative in Giza still gets Cairo's partner.
+   * Admin-created orders have no storefront session and omit this, falling back to the
+   * address's governorate below.
+   */
+  selectedGovernorate?: string | null;
 };
 
 export type OutOfStockItem = {
@@ -210,7 +218,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
   const stockLines = orderLines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }));
   const selectedPartner = await findFulfillablePartnerForGovernorate({
-    governorate: input.address.governorate,
+    governorate: input.selectedGovernorate ?? input.address.governorate,
     lines: stockLines,
     preferredPartnerId: input.selectedPartnerId ?? null,
   });

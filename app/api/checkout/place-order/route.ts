@@ -64,10 +64,17 @@ async function postHandler(req: Request) {
     return apiBadRequest("طريقة الدفع مطلوبة (COD أو PAYMOB أو InstaPay)");
   }
 
-  // Authoritative partner: the one resolved from the customer's chosen governorate (cookie),
-  // same partner whose stock was shown throughout browsing/cart — not re-derived from the
-  // delivery address's governorate, which may point elsewhere (e.g. shipping to a relative).
+  // Authoritative partner: resolved from the customer's chosen delivery governorate (cookie),
+  // same one whose stock was shown throughout browsing/cart — never from the shipping
+  // address's governorate, which may point elsewhere (e.g. shipping to a relative in another
+  // governorate). Both the preferred-partner lookup and its no-partner-selected fallback below
+  // key off this chosen governorate only.
   const stockContext = await getCurrentStorefrontStockContext();
+  if (!stockContext.governorate) {
+    return apiBadRequest("اختر محافظة التوصيل من أعلى الصفحة أولاً", {
+      code: "GOVERNORATE_NOT_SELECTED",
+    });
+  }
 
   const result = await placeOrder({
     userId: user.userId,
@@ -84,6 +91,7 @@ async function postHandler(req: Request) {
     paymentMethod: paymentMethod as "COD" | "PAYMOB" | "INSTAPAY_PREPAID",
     couponCode: body.couponCode ?? null,
     selectedPartnerId: stockContext.partnerId,
+    selectedGovernorate: stockContext.governorate,
   });
 
   if (!result.success) {
