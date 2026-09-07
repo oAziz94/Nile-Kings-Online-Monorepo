@@ -64,7 +64,11 @@ export async function applyStorefrontPartnerStock<T extends { id: string; stockA
   variants: T[],
   partnerId: string | null
 ): Promise<T[]> {
-  if (!partnerId || variants.length === 0) return variants;
+  if (variants.length === 0) return variants;
+  // No partner covers the customer's chosen governorate: nothing is orderable from here.
+  // Never fall back to the variant's own (legacy, no-longer-maintained) stockAvailable — that
+  // field isn't kept in sync with real per-partner inventory and would show stale numbers.
+  if (!partnerId) return variants.map((variant) => ({ ...variant, stockAvailable: 0 }));
 
   const rows = await prisma.partnerInventory.findMany({
     where: {
@@ -95,7 +99,10 @@ export async function getPartnerStockOverrides(
   variantIds: string[],
   partnerId: string | null
 ): Promise<Map<string, number> | null> {
-  if (!partnerId || variantIds.length === 0) return null;
+  if (variantIds.length === 0) return null;
+  // No partner covers the customer's chosen governorate: nothing is orderable from here.
+  // Never fall back to variants' own (legacy, no-longer-maintained) stockAvailable.
+  if (!partnerId) return new Map(variantIds.map((id) => [id, 0]));
 
   const rows = await prisma.partnerInventory.findMany({
     where: { partnerId, variantId: { in: variantIds } },
@@ -119,13 +126,9 @@ export function applyPartnerStockOverrides<T extends { id: string; stockAvailabl
 
 export async function getStorefrontSellableQuantityForVariant(variantId: string): Promise<number> {
   const context = await getCurrentStorefrontStockContext();
-  if (!context.partnerId) {
-    const variant = await prisma.variant.findUnique({
-      where: { id: variantId },
-      select: { stockAvailable: true, stockReserved: true },
-    });
-    return variant ? Math.max(0, variant.stockAvailable - variant.stockReserved) : 0;
-  }
+  // No partner covers the customer's chosen governorate: nothing is orderable from here.
+  // Never fall back to the variant's own (legacy, no-longer-maintained) stockAvailable.
+  if (!context.partnerId) return 0;
 
   const row = await prisma.partnerInventory.findUnique({
     where: { partnerId_variantId: { partnerId: context.partnerId, variantId } },
