@@ -13,10 +13,10 @@ import { useCart } from "@/contexts/cart-context";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { CHECKOUT_PAYMENT_OPTIONS } from "@/lib/checkout/types";
 import {
-  INSTAPAY_IPA,
   getInstapayTransferHref,
   getInstapayStoreHref,
   copyInstapayAddress,
+  getInstapayDetailsForPartner,
 } from "@/lib/checkout/instapay";
 import { MapPin, CreditCard, X } from "lucide-react";
 import {
@@ -45,6 +45,7 @@ type Summary = {
   appliedCouponCode: string | null;
   shippingProvider: string;
   paymentMethod?: string;
+  partnerName?: string | null;
 };
 
 type SavedAddress = {
@@ -76,9 +77,6 @@ const emptyAddress = {
   notes: "",
   phone: "",
 };
-
-/** Default minimum delivery fee (EGP) shown until address is filled and real shipping is calculated. */
-const DEFAULT_MIN_SHIPPING_EGP = 50;
 
 function piastresToEgp(p: number) {
   return Math.round(p / 100);
@@ -145,15 +143,17 @@ export default function CheckoutPage() {
   const [instapayTransferHref, setInstapayTransferHref] = useState("#");
   const [successModalOpen, setSuccessModalOpen] = useState(false);
 
+  const instapayDetails = getInstapayDetailsForPartner(summary?.partnerName);
+
   useEffect(() => {
     if (!instaPayModalOpen) return;
     const amountEgp = summary ? piastresToEgp(summary.finalTotal) : undefined;
-    setInstapayTransferHref(getInstapayTransferHref(amountEgp));
-  }, [instaPayModalOpen, summary]);
+    setInstapayTransferHref(getInstapayTransferHref(amountEgp, instapayDetails.ipa));
+  }, [instaPayModalOpen, summary, instapayDetails.ipa]);
 
   const handleInstapayAddressClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
     try {
-      await copyInstapayAddress();
+      await copyInstapayAddress(instapayDetails.ipa);
       toast({
         title: "تم نسخ عنوان الدفع",
         description: "افتح InstaPay وألصق العنوان إن لم يظهر تلقائياً.",
@@ -837,9 +837,7 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>الشحن</span>
-                  <span className="text-muted-foreground/80">
-                    <Price amount={DEFAULT_MIN_SHIPPING_EGP} /> (حد أدنى حتى إكمال العنوان)
-                  </span>
+                  <span className="text-muted-foreground/80">يُحسب بعد إكمال العنوان</span>
                 </div>
                 {/* Promo code: same position as when summary exists, exactly before final total */}
                 <div className="border-t border-border pt-3">
@@ -878,7 +876,7 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between border-t border-border pt-3 text-base font-semibold text-foreground">
                   <span>الإجمالي</span>
-                  <Price amount={(cart?.subtotalEgp ?? 0) + DEFAULT_MIN_SHIPPING_EGP} size="lg" />
+                  <span className="text-sm font-normal text-muted-foreground">يُحسب بعد إكمال العنوان</span>
                 </div>
                 <p className="text-xs text-muted-foreground">اختر عنوان التوصيل لعرض الشحن والخصومات الفعلية.</p>
               </div>
@@ -909,7 +907,7 @@ export default function CheckoutPage() {
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-2">
             <img
-              src="/instapay-qr.jpeg"
+              src={instapayDetails.qrImage}
               alt="InstaPay QR"
               className="h-48 w-48 object-contain rounded-lg border border-border bg-muted/30"
             />
@@ -920,7 +918,7 @@ export default function CheckoutPage() {
                 className="text-sm font-semibold text-primary underline underline-offset-2 hover:text-primary/90"
                 rel="noopener noreferrer"
               >
-                {INSTAPAY_IPA}
+                {instapayDetails.ipa}
               </a>
               <p className="mt-1 text-xs text-muted-foreground">
                 اضغط لفتح تطبيق InstaPay وإتمام التحويل

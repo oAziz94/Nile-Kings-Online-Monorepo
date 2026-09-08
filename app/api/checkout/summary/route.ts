@@ -3,6 +3,8 @@ import { requireCustomer } from "@/lib/auth/session";
 import { buildCheckoutSummary } from "@/lib/checkout/summary";
 import { apiSuccess, apiBadRequest, apiUnauthorized } from "@/lib/api/response";
 import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
+import { getCurrentStorefrontStockContext } from "@/lib/storefront-location";
+import { prisma } from "@/lib/db";
 
 const addressSchema = {
   governorate: (v: unknown) => typeof v === "string" && v.trim().length > 0,
@@ -78,5 +80,15 @@ export async function POST(req: NextRequest) {
     return apiBadRequest("السلة فارغة، أو وزن أحد المنتجات غير محدد، أو لا يمكن حساب الشحن للمحافظة المختارة");
   }
 
-  return apiSuccess(summary);
+  // Storefront-resolved partner (from the customer's chosen governorate cookie) — same partner
+  // place-order will use — so the InstaPay QR shown here matches who actually fulfills the order.
+  const stockContext = await getCurrentStorefrontStockContext();
+  const partner = stockContext.partnerId
+    ? await prisma.partner.findUnique({
+        where: { id: stockContext.partnerId },
+        select: { name: true },
+      })
+    : null;
+
+  return apiSuccess({ ...summary, partnerName: partner?.name ?? null });
 }
