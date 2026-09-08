@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/shared/product-card";
 import { CatalogFilterBar } from "@/components/shared/catalog-filter-bar";
+import { SortDropdown, type SortOptionValue } from "@/components/shared/sort-dropdown";
 import { LoadingDots } from "@/components/shared/loading-dots";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,9 @@ export function CategoryContent({
   const [sizes, setSizes] = useState<string[]>([]);
   const [query, setQuery] = useState(() => search.get("q") ?? "");
   const [size, setSize] = useState(() => search.get("size") ?? "");
+  const [sort, setSort] = useState<SortOptionValue>(
+    () => (search.get("sort") as SortOptionValue | null) ?? "featured"
+  );
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -62,9 +66,10 @@ export function CategoryContent({
     if (sectionParam) params.set("section", sectionParam);
     if (debouncedQuery) params.set("q", debouncedQuery);
     if (size) params.set("size", size);
+    if (sort !== "featured") params.set("sort", sort);
     const next = params.toString() ? `${pathname}?${params}` : pathname;
     router.replace(next, { scroll: false });
-  }, [debouncedQuery, pathname, router, sectionParam, size]);
+  }, [debouncedQuery, pathname, router, sectionParam, size, sort]);
 
   useEffect(() => {
     const params = new URLSearchParams({ category: categorySlug });
@@ -86,6 +91,7 @@ export function CategoryContent({
       if (sectionParam) params.set("section", sectionParam);
       if (debouncedQuery) params.set("q", debouncedQuery);
       if (size) params.set("sizes", size);
+      params.set("sort", sort);
       const limit =
         !append && !initialLimitAppliedRef.current && restore
           ? Math.max(PAGE_SIZE, restore.count)
@@ -107,7 +113,7 @@ export function CategoryContent({
         setTotal(0);
       }
     },
-    [categorySlug, debouncedQuery, sectionParam, size, restore]
+    [categorySlug, debouncedQuery, sectionParam, size, sort, restore]
   );
 
   useEffect(() => {
@@ -194,9 +200,12 @@ export function CategoryContent({
           />
         ) : (
           <>
-            <p className="mb-4 text-sm text-muted-foreground">
-              {total.toLocaleString("en-US")} منتج
-            </p>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                {total.toLocaleString("en-US")} منتج
+              </p>
+              <SortDropdown value={sort} onChange={(v) => setSort(v as SortOptionValue)} />
+            </div>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-3">
               {products.map((p) => (
                 <div key={p.variantSlug ?? p.id} data-row-id={p.id} onClick={() => remember(p.id, products.length)}>

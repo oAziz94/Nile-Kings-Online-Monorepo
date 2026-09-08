@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/shared/product-card";
 import { CatalogFilterBar, type CatalogFilterCategory } from "@/components/shared/catalog-filter-bar";
+import { SortDropdown, type SortOptionValue } from "@/components/shared/sort-dropdown";
 import { LoadingDots } from "@/components/shared/loading-dots";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,9 @@ export function ProductsContent() {
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [category, setCategory] = useState(() => searchParams.get("category") ?? "");
   const [size, setSize] = useState(() => searchParams.get("size") ?? "");
+  const [sort, setSort] = useState<SortOptionValue>(
+    () => (searchParams.get("sort") as SortOptionValue | null) ?? "featured"
+  );
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -56,9 +60,10 @@ export function ProductsContent() {
     if (debouncedSearch) params.set("q", debouncedSearch);
     if (category) params.set("category", category);
     if (size) params.set("size", size);
+    if (sort !== "featured") params.set("sort", sort);
     const next = params.toString() ? `${pathname}?${params}` : pathname;
     router.replace(next, { scroll: false });
-  }, [category, debouncedSearch, pathname, router, size]);
+  }, [category, debouncedSearch, pathname, router, size, sort]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -85,6 +90,7 @@ export function ProductsContent() {
       if (debouncedSearch) params.set("q", debouncedSearch);
       if (category) params.set("category", category);
       if (size) params.set("sizes", size);
+      params.set("sort", sort);
       const limit =
         !append && !initialLimitAppliedRef.current && restore
           ? Math.max(PAGE_SIZE, restore.count)
@@ -106,7 +112,7 @@ export function ProductsContent() {
         setTotal(0);
       }
     },
-    [category, debouncedSearch, size, restore]
+    [category, debouncedSearch, size, sort, restore]
   );
 
   useEffect(() => {
@@ -193,9 +199,12 @@ export function ProductsContent() {
           />
         ) : (
           <>
-            <p className="mb-4 text-sm text-muted-foreground">
-              {total.toLocaleString("en-US")} منتج
-            </p>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                {total.toLocaleString("en-US")} منتج
+              </p>
+              <SortDropdown value={sort} onChange={(v) => setSort(v as SortOptionValue)} />
+            </div>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-3">
               {products.map((p) => (
                 <div key={p.variantSlug ?? p.id} data-row-id={p.id} onClick={() => remember(p.id, products.length)}>

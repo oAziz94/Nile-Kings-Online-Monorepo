@@ -60,6 +60,8 @@ export type PlaceOrderInput = {
   skipCartClear?: boolean;
   adminNotes?: string | null;
   selectedPartnerId?: string | null;
+  /** True when this order is being created from the admin dashboard, not storefront checkout. */
+  createdByAdmin?: boolean;
   /**
    * Storefront: the governorate the customer chose in the delivery-location picker (not the
    * shipping address). Partner resolution must key off this, never the address's governorate —
@@ -280,7 +282,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
           },
         });
 
-        await reservePartnerStockForOrder(tx, selectedPartner.partnerId, stockLines, order.id);
+        const stockActorNotes = input.createdByAdmin ? "Admin order creation" : "Customer checkout";
+        await reservePartnerStockForOrder(tx, selectedPartner.partnerId, stockLines, order.id, stockActorNotes);
 
         await tx.orderItem.createMany({
           data: orderLines.map((line) => ({
@@ -299,7 +302,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         if (immediateConfirm) await logOrderConfirmed(tx, order.id);
 
         if (immediateConfirm) {
-          await commitPartnerReservation(tx, selectedPartner.partnerId, stockLines, order.id);
+          await commitPartnerReservation(tx, selectedPartner.partnerId, stockLines, order.id, stockActorNotes);
           await tx.paymentAttempt.create({
             data: {
               orderId: order.id,

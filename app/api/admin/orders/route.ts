@@ -136,6 +136,7 @@ export async function POST(req: NextRequest) {
     lines: itemsParsed.items,
     skipCartClear: true,
     adminNotes,
+    createdByAdmin: true,
   });
 
   if (!result.success) {

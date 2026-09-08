@@ -382,7 +382,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
 
   async function applyLeavingCreatedStock(tx: OrderTx, lines: StockLine[]) {
     if (existingOrder.assignedPartnerId) {
-      await commitPartnerReservation(tx, existingOrder.assignedPartnerId, lines, id);
+      await commitPartnerReservation(tx, existingOrder.assignedPartnerId, lines, id, "Admin order edit");
     } else {
       await commitReservation(tx, lines);
     }
@@ -407,9 +407,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     const order = await prisma.$transaction(
       async (tx) => {
         if (existing.assignedPartnerId && orderUsesReservationOnly(existing.status)) {
-          await releasePartnerReservation(tx, existing.assignedPartnerId, stockLines, existing.id);
+          await releasePartnerReservation(tx, existing.assignedPartnerId, stockLines, existing.id, "Admin order cancellation");
         } else if (existing.assignedPartnerId) {
-          await restorePartnerCommittedStock(tx, existing.assignedPartnerId, stockLines, existing.id);
+          await restorePartnerCommittedStock(tx, existing.assignedPartnerId, stockLines, existing.id, "Admin order cancellation");
         } else if (orderUsesReservationOnly(existing.status)) {
           await releaseReservation(tx, stockLines);
         } else {
@@ -439,7 +439,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
               existing.status,
               oldItemStockLines,
               linesAfterEdit,
-              existing.id
+              existing.id,
+              "Admin order edit"
             );
           } else {
             await reconcileStockForAdminOrderItemEdit(

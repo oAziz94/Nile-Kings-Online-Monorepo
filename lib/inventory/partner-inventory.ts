@@ -219,7 +219,8 @@ async function writeLedgerBatch(
   lines: StockLine[],
   reason: InventoryLedgerReason,
   orderId: string | null | undefined,
-  deltasForLine: (quantity: number) => { availableDelta: number; reservedDelta: number }
+  deltasForLine: (quantity: number) => { availableDelta: number; reservedDelta: number },
+  notes?: string | null
 ): Promise<void> {
   await tx.inventoryLedger.createMany({
     data: lines.map((line) => {
@@ -231,6 +232,7 @@ async function writeLedgerBatch(
         quantityAvailableDelta: availableDelta,
         quantityReservedDelta: reservedDelta,
         orderId: orderId ?? null,
+        notes: notes ?? null,
       };
     }),
   });
@@ -240,7 +242,8 @@ export async function reservePartnerStockForOrder(
   tx: PrismaTx,
   partnerId: string,
   lines: StockLine[],
-  orderId?: string | null
+  orderId?: string | null,
+  notes?: string | null
 ): Promise<void> {
   const aggregated = aggregateStockLines(lines);
   if (aggregated.length === 0) return;
@@ -271,17 +274,26 @@ export async function reservePartnerStockForOrder(
       WHERE pi."partnerId" = ${partnerId} AND pi."variantId" = v.variant_id
     `
   );
-  await writeLedgerBatch(tx, partnerId, aggregated, "ORDER_RESERVE", orderId, (quantity) => ({
-    availableDelta: 0,
-    reservedDelta: quantity,
-  }));
+  await writeLedgerBatch(
+    tx,
+    partnerId,
+    aggregated,
+    "ORDER_RESERVE",
+    orderId,
+    (quantity) => ({
+      availableDelta: 0,
+      reservedDelta: quantity,
+    }),
+    notes
+  );
 }
 
 export async function commitPartnerReservation(
   tx: PrismaTx,
   partnerId: string,
   lines: StockLine[],
-  orderId?: string | null
+  orderId?: string | null,
+  notes?: string | null
 ): Promise<void> {
   const aggregated = aggregateStockLines(lines);
   if (aggregated.length === 0) return;
@@ -312,17 +324,26 @@ export async function commitPartnerReservation(
       WHERE pi."partnerId" = ${partnerId} AND pi."variantId" = v.variant_id
     `
   );
-  await writeLedgerBatch(tx, partnerId, aggregated, "ORDER_COMMIT", orderId, (quantity) => ({
-    availableDelta: -quantity,
-    reservedDelta: -quantity,
-  }));
+  await writeLedgerBatch(
+    tx,
+    partnerId,
+    aggregated,
+    "ORDER_COMMIT",
+    orderId,
+    (quantity) => ({
+      availableDelta: -quantity,
+      reservedDelta: -quantity,
+    }),
+    notes
+  );
 }
 
 export async function releasePartnerReservation(
   tx: PrismaTx,
   partnerId: string,
   lines: StockLine[],
-  orderId?: string | null
+  orderId?: string | null,
+  notes?: string | null
 ): Promise<void> {
   for (const line of aggregateStockLines(lines)) {
     const row = await tx.partnerInventory.findUnique({
@@ -342,6 +363,7 @@ export async function releasePartnerReservation(
       reason: "ORDER_RELEASE",
       reservedDelta: -toRelease,
       orderId,
+      notes,
     });
   }
 }
@@ -350,7 +372,8 @@ export async function restorePartnerCommittedStock(
   tx: PrismaTx,
   partnerId: string,
   lines: StockLine[],
-  orderId?: string | null
+  orderId?: string | null,
+  notes?: string | null
 ): Promise<void> {
   for (const line of aggregateStockLines(lines)) {
     await tx.partnerInventory.upsert({
@@ -369,6 +392,7 @@ export async function restorePartnerCommittedStock(
       reason: "ORDER_RESTORE",
       availableDelta: line.quantity,
       orderId,
+      notes,
     });
   }
 }
@@ -379,18 +403,19 @@ export async function reconcilePartnerStockForAdminOrderItemEdit(
   orderStatus: OrderStatus,
   oldLines: StockLine[],
   newLines: StockLine[],
-  orderId?: string | null
+  orderId?: string | null,
+  notes?: string | null
 ): Promise<void> {
   if (orderUsesPartnerReservationOnly(orderStatus)) {
-    await releasePartnerReservation(tx, partnerId, oldLines, orderId);
-    await reservePartnerStockForOrder(tx, partnerId, newLines, orderId);
+    await releasePartnerReservation(tx, partnerId, oldLines, orderId, notes);
+    await reservePartnerStockForOrder(tx, partnerId, newLines, orderId, notes);
     return;
   }
 
   if (["CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED"].includes(orderStatus)) {
-    await restorePartnerCommittedStock(tx, partnerId, oldLines, orderId);
-    await reservePartnerStockForOrder(tx, partnerId, newLines, orderId);
-    await commitPartnerReservation(tx, partnerId, newLines, orderId);
+    await restorePartnerCommittedStock(tx, partnerId, oldLines, orderId, notes);
+    await reservePartnerStockForOrder(tx, partnerId, newLines, orderId, notes);
+    await commitPartnerReservation(tx, partnerId, newLines, orderId, notes);
     return;
   }
 
@@ -405,19 +430,20 @@ export async function reassignReservedPartnerStock(input: {
   orderStatus: OrderStatus;
   lines: StockLine[];
   tx: PrismaTx;
+  notes?: string | null;
 }): Promise<void> {
   if (input.oldPartnerId === input.newPartnerId) return;
 
   if (input.oldPartnerId) {
     if (orderUsesPartnerReservationOnly(input.orderStatus)) {
-      await releasePartnerReservation(input.tx, input.oldPartnerId, input.lines, input.orderId);
+      await releasePartnerReservation(input.tx, input.oldPartnerId, input.lines, input.orderId, input.notes);
     } else {
-      await restorePartnerCommittedStock(input.tx, input.oldPartnerId, input.lines, input.orderId);
+      await restorePartnerCommittedStock(input.tx, input.oldPartnerId, input.lines, input.orderId, input.notes);
     }
   }
 
-  await reservePartnerStockForOrder(input.tx, input.newPartnerId, input.lines, input.orderId);
+  await reservePartnerStockForOrder(input.tx, input.newPartnerId, input.lines, input.orderId, input.notes);
   if (!orderUsesPartnerReservationOnly(input.orderStatus)) {
-    await commitPartnerReservation(input.tx, input.newPartnerId, input.lines, input.orderId);
+    await commitPartnerReservation(input.tx, input.newPartnerId, input.lines, input.orderId, input.notes);
   }
 }

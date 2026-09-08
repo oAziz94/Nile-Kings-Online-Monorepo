@@ -62,6 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
             variantId: item.variantId,
             quantity: item.quantity,
           })),
+          notes: "Admin reassignment",
         });
 
         await tx.order.update({

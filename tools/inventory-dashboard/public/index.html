@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Partner Inventory Audit (local)</title>
+<style>
+  :root {
+    --bg: #f6f5f3;
+    --panel: #ffffff;
+    --border: #e2ddd6;
+    --text: #241b17;
+    --muted: #7a7069;
+    --accent: #7a1f2b;
+    --accent-soft: #f3e4e6;
+    --good: #1f7a4d;
+    --bad: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  header {
+    padding: 14px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 16px; margin: 0; }
+  header .badge {
+    font-size: 11px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 10px;
+  }
+  .admin-base {
+    display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted);
+  }
+  .admin-base input {
+    font-size: 12px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; width: 220px;
+  }
+  .tabs {
+    display: flex; gap: 4px; padding: 10px 20px 0; background: var(--panel); border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    padding: 8px 16px; cursor: pointer; border-radius: 8px 8px 0 0; font-weight: 600; color: var(--muted);
+  }
+  .tab.active { color: var(--accent); background: var(--bg); }
+  main { padding: 20px; max-width: 1400px; margin: 0 auto; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px;
+  }
+  .panel h2 { font-size: 13px; margin: 0 0 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 11px; color: var(--muted); }
+  select, input[type="text"], input[type="date"] {
+    font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text);
+  }
+  button {
+    font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer;
+  }
+  button.secondary { background: #fff; color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  tr:hover td { background: #faf8f6; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .delta-pos { color: var(--good); }
+  .delta-neg { color: var(--bad); }
+  .muted { color: var(--muted); }
+  .link { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent); }
+  .empty { padding: 24px; text-align: center; color: var(--muted); }
+  .scroll { overflow-x: auto; }
+  .pager { display: flex; align-items: center; gap: 10px; justify-content: flex-end; margin-top: 10px; }
+  .history-row td { background: #fbf7ec; }
+  .reason-tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap;
+  }
+  .actor-tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; font-weight: 600;
+  }
+  .actor-Admin { background: #eaf1fb; color: #1d4ed8; }
+  .actor-Partner { background: #eafaf0; color: var(--good); }
+  .actor-System { background: #f1eeea; color: var(--muted); }
+  .weight-row { display: flex; gap: 24px; flex-wrap: wrap; }
+  .weight-field { display: flex; flex-direction: column; gap: 4px; min-width: 200px; }
+  .weight-field .weight-head { display: flex; justify-content: space-between; font-size: 12px; }
+  .weight-field .weight-head strong { color: var(--text); }
+  .weight-field .weight-head span { color: var(--muted); font-variant-numeric: tabular-nums; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .quickset { display: flex; gap: 6px; flex-wrap: wrap; }
+  .quickset button { font-size: 11px; padding: 3px 9px; }
+  .score-bar-wrap { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+  .score-bar-track { flex: 1; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+  .score-bar-fill { height: 100%; background: var(--accent); }
+  .delta-up { color: var(--good); font-weight: 600; }
+  .delta-down { color: var(--bad); font-weight: 600; }
+  .delta-flat { color: var(--muted); }
+  .stock-zero { color: var(--bad); font-weight: 700; }
+  .view-toggle { display: flex; gap: 4px; }
+  .view-toggle button.active { background: var(--accent); color: #fff; }
+  code.notes { font-size: 12px; color: var(--muted); white-space: normal; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Partner Inventory Audit</h1>
+    <span class="badge">read-only · local</span>
+  </div>
+  <div class="admin-base">
+    <label for="adminBase">Admin app base URL (for order links)</label>
+    <input id="adminBase" type="text" value="http://localhost:3000" />
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="per-partner">Per-Partner</div>
+  <div class="tab" data-tab="audit">Cross-Partner Audit</div>
+  <div class="tab" data-tab="analytics">Priority Analytics</div>
+</div>
+
+<main>
+  <!-- ===================== PER-PARTNER VIEW ===================== -->
+  <section id="view-per-partner" class="view active">
+    <div class="panel">
+      <h2>Partner</h2>
+      <div class="row">
+        <div class="field">
+          <label for="pp-partner">Partner</label>
+          <select id="pp-partner"><option value="">Select a partner…</option></select>
+        </div>
+        <div class="field">
+          <label for="pp-q">Search item / SKU</label>
+          <input id="pp-q" type="text" placeholder="product, variant or SKU" />
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button id="pp-refresh" class="secondary">Refresh</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Current stock &amp; history</h2>
+      <div id="pp-items-wrap" class="scroll">
+        <div class="empty">Select a partner to see their items.</div>
+      </div>
+      <div class="pager" id="pp-pager" style="display:none">
+        <span id="pp-pager-info" class="muted"></span>
+        <button id="pp-prev" class="secondary">Prev</button>
+        <button id="pp-next" class="secondary">Next</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CROSS-PARTNER AUDIT VIEW ===================== -->
+  <section id="view-audit" class="view">
+    <div class="panel">
+      <h2>Filters</h2>
+      <div class="row">
+        <div class="field">
+          <label for="au-partner">Partner</label>
+          <select id="au-partner"><option value="">All partners</option></select>
+        </div>
+        <div class="field">
+          <label for="au-reason">Reason</label>
+          <select id="au-reason"><option value="">All reasons</option></select>
+        </div>
+        <div class="field">
+          <label for="au-actor">Actor</label>
+          <select id="au-actor">
+            <option value="">All actors</option>
+            <option value="Admin">Admin</option>
+            <option value="Partner">Partner</option>
+            <option value="System">System</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="au-from">From</label>
+          <input id="au-from" type="date" />
+        </div>
+        <div class="field">
+          <label for="au-to">To</label>
+          <input id="au-to" type="date" />
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button id="au-apply">Apply</button>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button id="au-clear" class="secondary">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Ledger feed</h2>
+      <div id="au-wrap" class="scroll">
+        <div class="empty">Loading…</div>
+      </div>
+      <div class="pager" id="au-pager" style="display:none">
+        <span id="au-pager-info" class="muted"></span>
+        <button id="au-prev" class="secondary">Prev</button>
+        <button id="au-next" class="secondary">Next</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PRIORITY ANALYTICS VIEW ===================== -->
+  <section id="view-analytics" class="view">
+    <div class="panel">
+      <h2>What this is</h2>
+      <p class="item-sub" style="margin:0">
+        Cross-partner stock, price, and recent sales volume for every active product, combined into a suggested
+        storefront <strong>priority</strong> (the "sortOrder" field shown as "الأولوية" on each product's admin page —
+        higher number shows first in the store). Nothing here is written back automatically; it's a ranked
+        recommendation for you to review and apply by hand.
+      </p>
+    </div>
+
+    <div class="panel">
+      <h2>Scoring weights <span class="muted" style="text-transform:none;font-weight:400">— drag to see the ranking change live</span></h2>
+      <div class="weight-row">
+        <div class="weight-field">
+          <div class="weight-head"><strong>Stock (well-stocked = safe to feature)</strong><span id="an-w-stock-val">33%</span></div>
+          <input type="range" id="an-w-stock" min="0" max="100" value="50" />
+        </div>
+        <div class="weight-field">
+          <div class="weight-head"><strong>Price (cheaper = more attractive)</strong><span id="an-w-price-val">33%</span></div>
+          <input type="range" id="an-w-price" min="0" max="100" value="50" />
+        </div>
+        <div class="weight-field">
+          <div class="weight-head"><strong>Velocity (last 30 days sold)</strong><span id="an-w-velocity-val">33%</span></div>
+          <input type="range" id="an-w-velocity" min="0" max="100" value="50" />
+        </div>
+      </div>
+      <div class="quickset" style="margin-top:12px">
+        <span class="muted" style="font-size:11px;align-self:center">Presets:</span>
+        <button type="button" class="secondary" data-preset="balanced">Balanced</button>
+        <button type="button" class="secondary" data-preset="stock-first">Stock-first (safety)</button>
+        <button type="button" class="secondary" data-preset="velocity-first">Velocity-first (popularity)</button>
+        <button type="button" class="secondary" data-preset="price-first">Price-first (bargain push)</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">Products <span id="an-count" class="muted" style="text-transform:none;font-weight:400"></span></h2>
+        <div class="view-toggle">
+          <button type="button" class="secondary active" data-scope="all">All products</button>
+          <button type="button" class="secondary" data-scope="lowest">Lowest stock (20)</button>
+          <button type="button" class="secondary" data-scope="highest">Highest stock (20)</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="field" style="min-width:220px">
+          <label for="an-search">Search product</label>
+          <input id="an-search" type="text" placeholder="name or category" />
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button id="an-refresh" class="secondary">Refresh from DB</button>
+        </div>
+      </div>
+      <div id="an-wrap" class="scroll" style="margin-top:12px">
+        <div class="empty">Loading…</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const state = {
+  adminBase: localStorage.getItem("inv-audit-admin-base") || "http://localhost:3000",
+  pp: { partnerId: "", q: "", limit: 20, offset: 0, total: 0 },
+  au: { partnerId: "", reason: "", actor: "", from: "", to: "", limit: 25, offset: 0, total: 0 },
+  an: { loaded: false, raw: [], weights: { stock: 50, price: 50, velocity: 50 }, scope: "all", q: "" },
+};
+
+const adminBaseInput = document.getElementById("adminBase");
+adminBaseInput.value = state.adminBase;
+adminBaseInput.addEventListener("change", () => {
+  state.adminBase = adminBaseInput.value.trim() || "http://localhost:3000";
+  localStorage.setItem("inv-audit-admin-base", state.adminBase);
+  renderPpItems();
+  renderAuditRows();
+  renderAnalytics();
+});
+
+document.querySelectorAll(".tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+    document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById("view-" + tab.dataset.tab).classList.add("active");
+    if (tab.dataset.tab === "analytics" && !state.an.loaded) loadAnalytics();
+  });
+});
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function fmtDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+function deltaCell(n) {
+  if (n === 0) return '<span class="muted">0</span>';
+  const cls = n > 0 ? "delta-pos" : "delta-neg";
+  return `<span class="${cls}">${n > 0 ? "+" : ""}${n}</span>`;
+}
+function orderLink(orderId) {
+  if (!orderId) return '<span class="muted">—</span>';
+  const base = state.adminBase.replace(/\/+$/, "");
+  const short = orderId.slice(-8);
+  return `<a class="link" title="${esc(orderId)}" target="_blank" rel="noopener" href="${base}/admin/orders/${encodeURIComponent(orderId)}">…${esc(short)}</a>`;
+}
+async function getJson(url) {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error ?? "Request failed");
+  return json;
+}
+
+// ----------------------- Per-partner tab -----------------------
+async function loadPartnersInto(select, includeAllOption) {
+  const { partners } = await getJson("/api/partners");
+  select.innerHTML = "";
+  if (includeAllOption) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "All partners";
+    select.appendChild(opt);
+  } else {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "Select a partner…";
+    select.appendChild(opt);
+  }
+  for (const p of partners) {
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent = `${p.name} · ${p.partnerType === "AGENT" ? "Agent" : "Distributor"} · ${p.governorate}${p.isActive ? "" : " (inactive)"}`;
+    select.appendChild(opt);
+  }
+}
+
+const ppPartnerSelect = document.getElementById("pp-partner");
+const ppQInput = document.getElementById("pp-q");
+const ppWrap = document.getElementById("pp-items-wrap");
+const ppPager = document.getElementById("pp-pager");
+const ppPagerInfo = document.getElementById("pp-pager-info");
+
+document.getElementById("pp-refresh").addEventListener("click", () => {
+  state.pp.q = ppQInput.value.trim();
+  state.pp.offset = 0;
+  renderPpItems();
+});
+ppPartnerSelect.addEventListener("change", () => {
+  state.pp.partnerId = ppPartnerSelect.value;
+  state.pp.offset = 0;
+  renderPpItems();
+});
+document.getElementById("pp-prev").addEventListener("click", () => {
+  state.pp.offset = Math.max(0, state.pp.offset - state.pp.limit);
+  renderPpItems();
+});
+document.getElementById("pp-next").addEventListener("click", () => {
+  if (state.pp.offset + state.pp.limit < state.pp.total) {
+    state.pp.offset += state.pp.limit;
+    renderPpItems();
+  }
+});
+
+async function renderPpItems() {
+  if (!state.pp.partnerId) {
+    ppWrap.innerHTML = '<div class="empty">Select a partner to see their items.</div>';
+    ppPager.style.display = "none";
+    return;
+  }
+  ppWrap.innerHTML = '<div class="empty">Loading…</div>';
+  const params = new URLSearchParams({
+    partnerId: state.pp.partnerId,
+    q: state.pp.q,
+    limit: String(state.pp.limit),
+    offset: String(state.pp.offset),
+  });
+  const { rows, total } = await getJson("/api/partner-items?" + params);
+  state.pp.total = total;
+  ppPager.style.display = total > state.pp.limit ? "flex" : "none";
+  ppPagerInfo.textContent = `${state.pp.offset + 1}–${Math.min(state.pp.offset + state.pp.limit, total)} of ${total}`;
+
+  if (rows.length === 0) {
+    ppWrap.innerHTML = '<div class="empty">No items match.</div>';
+    return;
+  }
+
+  let html = `<table><thead><tr>
+    <th>Product</th><th>Variant</th><th>SKU</th>
+    <th class="num">Available</th><th class="num">Reserved</th><th class="num">Sellable</th>
+    <th>Last logged</th><th></th>
+  </tr></thead><tbody>`;
+
+  for (const r of rows) {
+    const itemUrl = `item.html?partnerId=${encodeURIComponent(state.pp.partnerId)}&variantId=${encodeURIComponent(r.variantId)}`;
+    html += `<tr data-variant="${esc(r.variantId)}">
+      <td>${esc(r.productName)}</td>
+      <td>${esc(r.variantName)}${r.colorName ? " · " + esc(r.colorName) : ""}</td>
+      <td><code>${esc(r.sku)}</code></td>
+      <td class="num">${r.stockAvailable}</td>
+      <td class="num">${r.stockReserved}</td>
+      <td class="num">${r.sellable}</td>
+      <td>${r.hasInventoryRow ? fmtDate(r.updatedAt) : '<span class="muted">never logged</span>'}</td>
+      <td><a class="link" target="_blank" rel="noopener" href="${itemUrl}">History ↗</a></td>
+    </tr>`;
+  }
+  html += "</tbody></table>";
+  ppWrap.innerHTML = html;
+}
+
+// ----------------------- Cross-partner audit tab -----------------------
+const auPartnerSelect = document.getElementById("au-partner");
+const auReasonSelect = document.getElementById("au-reason");
+const auActorSelect = document.getElementById("au-actor");
+const auFrom = document.getElementById("au-from");
+const auTo = document.getElementById("au-to");
+const auWrap = document.getElementById("au-wrap");
+const auPager = document.getElementById("au-pager");
+const auPagerInfo = document.getElementById("au-pager-info");
+
+async function loadReasonsInto(select) {
+  const { reasons } = await getJson("/api/reasons");
+  for (const r of reasons) {
+    const opt = document.createElement("option");
+    opt.value = r;
+    opt.textContent = r;
+    select.appendChild(opt);
+  }
+}
+
+document.getElementById("au-apply").addEventListener("click", () => {
+  state.au.partnerId = auPartnerSelect.value;
+  state.au.reason = auReasonSelect.value;
+  state.au.actor = auActorSelect.value;
+  state.au.from = auFrom.value;
+  state.au.to = auTo.value;
+  state.au.offset = 0;
+  renderAuditRows();
+});
+document.getElementById("au-clear").addEventListener("click", () => {
+  auPartnerSelect.value = "";
+  auReasonSelect.value = "";
+  auActorSelect.value = "";
+  auFrom.value = "";
+  auTo.value = "";
+  state.au = { partnerId: "", reason: "", actor: "", from: "", to: "", limit: 25, offset: 0, total: 0 };
+  renderAuditRows();
+});
+document.getElementById("au-prev").addEventListener("click", () => {
+  state.au.offset = Math.max(0, state.au.offset - state.au.limit);
+  renderAuditRows();
+});
+document.getElementById("au-next").addEventListener("click", () => {
+  if (state.au.offset + state.au.limit < state.au.total) {
+    state.au.offset += state.au.limit;
+    renderAuditRows();
+  }
+});
+
+async function renderAuditRows() {
+  auWrap.innerHTML = '<div class="empty">Loading…</div>';
+  const params = new URLSearchParams({ limit: String(state.au.limit), offset: String(state.au.offset) });
+  if (state.au.partnerId) params.set("partnerId", state.au.partnerId);
+  if (state.au.reason) params.set("reason", state.au.reason);
+  if (state.au.actor) params.set("actor", state.au.actor);
+  if (state.au.from) params.set("from", new Date(state.au.from + "T00:00:00").toISOString());
+  if (state.au.to) params.set("to", new Date(state.au.to + "T23:59:59.999").toISOString());
+
+  const { rows, total } = await getJson("/api/ledger?" + params);
+  state.au.total = total;
+  auPager.style.display = total > state.au.limit ? "flex" : "none";
+  auPagerInfo.textContent = `${state.au.offset + 1}–${Math.min(state.au.offset + state.au.limit, total)} of ${total}`;
+
+  if (rows.length === 0) {
+    auWrap.innerHTML = '<div class="empty">No ledger entries match these filters.</div>';
+    return;
+  }
+
+  let html = `<table><thead><tr>
+    <th>When</th><th>Actor</th><th>Partner</th><th>Item</th><th>SKU</th><th>Reason</th>
+    <th class="num">Δ Available</th><th class="num">Δ Reserved</th><th>Order</th><th>Notes</th>
+  </tr></thead><tbody>`;
+  for (const e of rows) {
+    const itemUrl = e.partner
+      ? `item.html?partnerId=${encodeURIComponent(e.partner.id)}&variantId=${encodeURIComponent(e.variant.id)}`
+      : null;
+    const itemLabel = `${esc(e.variant.productName)} · ${esc(e.variant.name)}${e.variant.colorName ? " · " + esc(e.variant.colorName) : ""}`;
+    html += `<tr>
+      <td>${fmtDate(e.createdAt)}</td>
+      <td><span class="actor-tag actor-${esc(e.actor)}">${esc(e.actor)}</span></td>
+      <td>${esc(e.partner?.name ?? "—")}</td>
+      <td>${itemUrl ? `<a class="link" target="_blank" rel="noopener" href="${itemUrl}">${itemLabel}</a>` : itemLabel}</td>
+      <td><code>${esc(e.variant.sku)}</code></td>
+      <td><span class="reason-tag">${esc(e.reason)}</span></td>
+      <td class="num">${deltaCell(e.quantityAvailableDelta)}</td>
+      <td class="num">${deltaCell(e.quantityReservedDelta)}</td>
+      <td>${orderLink(e.orderId)}</td>
+      <td><code class="notes">${esc(e.notes ?? "")}</code></td>
+    </tr>`;
+  }
+  html += "</tbody></table>";
+  auWrap.innerHTML = html;
+}
+
+// ----------------------- Priority Analytics tab -----------------------
+const anWrap = document.getElementById("an-wrap");
+const anCount = document.getElementById("an-count");
+const anSearch = document.getElementById("an-search");
+const anSliders = {
+  stock: document.getElementById("an-w-stock"),
+  price: document.getElementById("an-w-price"),
+  velocity: document.getElementById("an-w-velocity"),
+};
+const anSliderLabels = {
+  stock: document.getElementById("an-w-stock-val"),
+  price: document.getElementById("an-w-price-val"),
+  velocity: document.getElementById("an-w-velocity-val"),
+};
+
+function fmtPrice(piastres) {
+  return (piastres / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " EGP";
+}
+function normalizeLog(value, max) {
+  if (!max || max <= 0) return 0;
+  return Math.log(1 + Math.max(0, value)) / Math.log(1 + max);
+}
+function updateWeightLabels() {
+  const total = anSliders.stock.valueAsNumber + anSliders.price.valueAsNumber + anSliders.velocity.valueAsNumber || 1;
+  for (const key of ["stock", "price", "velocity"]) {
+    const pct = Math.round((anSliders[key].valueAsNumber / total) * 100);
+    anSliderLabels[key].textContent = pct + "%";
+  }
+}
+
+const ANALYTICS_PRESETS = {
+  balanced: { stock: 50, price: 50, velocity: 50 },
+  "stock-first": { stock: 80, price: 30, velocity: 30 },
+  "velocity-first": { stock: 30, price: 30, velocity: 80 },
+  "price-first": { stock: 30, price: 80, velocity: 30 },
+};
+
+document.querySelectorAll("[data-preset]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const preset = ANALYTICS_PRESETS[btn.dataset.preset];
+    anSliders.stock.value = preset.stock;
+    anSliders.price.value = preset.price;
+    anSliders.velocity.value = preset.velocity;
+    updateWeightLabels();
+    renderAnalytics();
+  });
+});
+for (const key of ["stock", "price", "velocity"]) {
+  anSliders[key].addEventListener("input", () => {
+    updateWeightLabels();
+    renderAnalytics();
+  });
+}
+document.querySelectorAll("[data-scope]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("[data-scope]").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.an.scope = btn.dataset.scope;
+    renderAnalytics();
+  });
+});
+anSearch.addEventListener("input", () => {
+  state.an.q = anSearch.value.trim().toLowerCase();
+  renderAnalytics();
+});
+document.getElementById("an-refresh").addEventListener("click", () => {
+  state.an.loaded = false;
+  loadAnalytics();
+});
+
+async function loadAnalytics() {
+  anWrap.innerHTML = '<div class="empty">Loading (aggregating stock + 30-day sales across every partner and product)…</div>';
+  const { products } = await getJson("/api/analytics/products");
+  state.an.raw = products;
+  state.an.loaded = true;
+  updateWeightLabels();
+  renderAnalytics();
+}
+
+/** Recomputes composite scores + full-catalog rank from state.an.raw + current slider weights, every call — cheap at this data size. */
+function renderAnalytics() {
+  if (!state.an.loaded) return;
+  const raw = state.an.raw;
+  if (raw.length === 0) {
+    anWrap.innerHTML = '<div class="empty">No active products with variants found.</div>';
+    anCount.textContent = "";
+    return;
+  }
+
+  const maxStock = Math.max(...raw.map((p) => p.totalSellableStock));
+  const maxPrice = Math.max(...raw.map((p) => p.lowestPricePiastres));
+  const maxVelocity = Math.max(...raw.map((p) => p.unitsSoldLast30d));
+
+  const wStock = anSliders.stock.valueAsNumber;
+  const wPrice = anSliders.price.valueAsNumber;
+  const wVelocity = anSliders.velocity.valueAsNumber;
+  const wTotal = wStock + wPrice + wVelocity || 1;
+
+  const scored = raw.map((p) => {
+    const stockScore = normalizeLog(p.totalSellableStock, maxStock);
+    const velocityScore = normalizeLog(p.unitsSoldLast30d, maxVelocity);
+    const priceScore = 1 - normalizeLog(p.lowestPricePiastres, maxPrice); // cheaper = higher
+    const compositeScore = (wStock * stockScore + wPrice * priceScore + wVelocity * velocityScore) / wTotal;
+    return { ...p, compositeScore };
+  });
+
+  // Rank across the FULL catalog first, so rank/suggested-priority stay meaningful even when a scope filter narrows what's shown.
+  scored.sort((a, b) => b.compositeScore - a.compositeScore || a.name.localeCompare(b.name));
+  const n = scored.length;
+  scored.forEach((p, i) => {
+    p.rank = i + 1;
+    p.suggestedSortOrder = (n - p.rank + 1) * 10;
+  });
+
+  let view = scored;
+  if (state.an.scope === "lowest") {
+    view = [...scored].sort((a, b) => a.totalSellableStock - b.totalSellableStock).slice(0, 20);
+    view.sort((a, b) => a.lowestPricePiastres - b.lowestPricePiastres);
+  } else if (state.an.scope === "highest") {
+    view = [...scored].sort((a, b) => b.totalSellableStock - a.totalSellableStock).slice(0, 20);
+    view.sort((a, b) => a.lowestPricePiastres - b.lowestPricePiastres);
+  } else {
+    view = [...scored]; // already sorted by compositeScore desc
+  }
+
+  if (state.an.q) {
+    view = view.filter(
+      (p) => p.name.toLowerCase().includes(state.an.q) || p.categoryName.toLowerCase().includes(state.an.q)
+    );
+  }
+
+  anCount.textContent = `(${view.length} of ${n} shown)`;
+
+  if (view.length === 0) {
+    anWrap.innerHTML = '<div class="empty">No products match this filter.</div>';
+    return;
+  }
+
+  let html = `<table><thead><tr>
+    <th>Rank</th><th>Product</th><th class="num">Variants</th><th class="num">Lowest price</th>
+    <th class="num">Sellable stock</th><th class="num">Sold (30d)</th><th>Score</th>
+    <th class="num">Current priority</th><th class="num">Suggested priority</th><th>Δ</th><th></th>
+  </tr></thead><tbody>`;
+  for (const p of view) {
+    const delta = p.suggestedSortOrder - p.currentSortOrder;
+    const deltaHtml =
+      delta === 0
+        ? '<span class="delta-flat">–</span>'
+        : delta > 0
+          ? `<span class="delta-up">↑ ${delta}</span>`
+          : `<span class="delta-down">↓ ${Math.abs(delta)}</span>`;
+    const stockCell =
+      p.totalSellableStock === 0 ? `<span class="stock-zero">0</span>` : String(p.totalSellableStock);
+    const editUrl = `${state.adminBase.replace(/\/+$/, "")}/admin/products/${encodeURIComponent(p.id)}`;
+    html += `<tr>
+      <td class="num">#${p.rank}</td>
+      <td>${esc(p.name)}<div class="muted" style="font-size:11px">${esc(p.categoryName)}</div></td>
+      <td class="num">${p.variantCount}</td>
+      <td class="num">${fmtPrice(p.lowestPricePiastres)}</td>
+      <td class="num">${stockCell}</td>
+      <td class="num">${p.unitsSoldLast30d}</td>
+      <td>
+        <div class="score-bar-wrap">
+          <div class="score-bar-track"><div class="score-bar-fill" style="width:${Math.round(p.compositeScore * 100)}%"></div></div>
+          <span class="muted" style="font-size:11px">${(p.compositeScore * 100).toFixed(0)}</span>
+        </div>
+      </td>
+      <td class="num">${p.currentSortOrder}</td>
+      <td class="num"><strong>${p.suggestedSortOrder}</strong></td>
+      <td>${deltaHtml}</td>
+      <td><a class="link" target="_blank" rel="noopener" href="${editUrl}">Edit ↗</a></td>
+    </tr>`;
+  }
+  html += "</tbody></table>";
+  anWrap.innerHTML = html;
+}
+
+// ----------------------- Init -----------------------
+(async function init() {
+  updateWeightLabels();
+  await Promise.all([
+    loadPartnersInto(ppPartnerSelect, false),
+    loadPartnersInto(auPartnerSelect, true),
+    loadReasonsInto(auReasonSelect),
+  ]);
+  renderAuditRows();
+})();
+</script>
+</body>
+</html>

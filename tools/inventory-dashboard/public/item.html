@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Item history — Partner Inventory Audit</title>
+<style>
+  :root {
+    --bg: #f6f5f3;
+    --panel: #ffffff;
+    --border: #e2ddd6;
+    --text: #241b17;
+    --muted: #7a7069;
+    --accent: #7a1f2b;
+    --accent-soft: #f3e4e6;
+    --good: #1f7a4d;
+    --bad: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  header {
+    padding: 14px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header .back { font-size: 13px; color: var(--accent); text-decoration: none; }
+  header .badge {
+    font-size: 11px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 10px;
+  }
+  main { padding: 20px; max-width: 1200px; margin: 0 auto; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px;
+  }
+  .panel h2 { font-size: 13px; margin: 0 0 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .item-title { font-size: 18px; font-weight: 700; margin: 0 0 4px; }
+  .item-sub { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .kpi { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+  .kpi .value { font-size: 20px; font-weight: 700; margin-top: 2px; }
+  .color-dot { display:inline-block; width:12px; height:12px; border-radius:50%; border:1px solid var(--border); vertical-align:middle; margin-right:4px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 11px; color: var(--muted); }
+  select, input[type="text"], input[type="date"] {
+    font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text);
+  }
+  button {
+    font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer;
+  }
+  button.secondary { background: #fff; color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  tr:hover td { background: #faf8f6; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .delta-pos { color: var(--good); }
+  .delta-neg { color: var(--bad); }
+  .muted { color: var(--muted); }
+  .link { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent); }
+  .empty { padding: 24px; text-align: center; color: var(--muted); }
+  .scroll { overflow-x: auto; }
+  .pager { display: flex; align-items: center; gap: 10px; justify-content: flex-end; margin-top: 10px; }
+  .reason-tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap;
+  }
+  .actor-tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; font-weight: 600;
+  }
+  .actor-Admin { background: #eaf1fb; color: #1d4ed8; }
+  .actor-Partner { background: #eafaf0; color: var(--good); }
+  .actor-System { background: #f1eeea; color: var(--muted); }
+  code.notes { font-size: 12px; color: var(--muted); white-space: normal; }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="index.html">← Back to dashboard</a>
+  <span class="badge">read-only · local</span>
+</header>
+
+<main>
+  <div class="panel" id="item-panel">
+    <div class="empty">Loading item…</div>
+  </div>
+
+  <div class="panel">
+    <h2>Filters</h2>
+    <div class="row">
+      <div class="field">
+        <label for="reason">Reason</label>
+        <select id="reason"><option value="">All reasons</option></select>
+      </div>
+      <div class="field">
+        <label for="actor">Actor</label>
+        <select id="actor">
+          <option value="">All actors</option>
+          <option value="Admin">Admin</option>
+          <option value="Partner">Partner</option>
+          <option value="System">System</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="from">From</label>
+        <input id="from" type="date" />
+      </div>
+      <div class="field">
+        <label for="to">To</label>
+        <input id="to" type="date" />
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button id="apply">Apply</button>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button id="clear" class="secondary">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Full ledger history for this item &amp; partner</h2>
+    <div id="ledger-wrap" class="scroll">
+      <div class="empty">Loading…</div>
+    </div>
+    <div class="pager" id="pager" style="display:none">
+      <span id="pager-info" class="muted"></span>
+      <button id="prev" class="secondary">Prev</button>
+      <button id="next" class="secondary">Next</button>
+    </div>
+  </div>
+</main>
+
+<script>
+const qs = new URLSearchParams(location.search);
+const partnerId = qs.get("partnerId");
+const variantId = qs.get("variantId");
+const adminBase = localStorage.getItem("inv-audit-admin-base") || "http://localhost:3000";
+
+const state = { reason: "", actor: "", from: "", to: "", limit: 25, offset: 0, total: 0 };
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function fmtDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+function deltaCell(n) {
+  if (n === 0) return '<span class="muted">0</span>';
+  const cls = n > 0 ? "delta-pos" : "delta-neg";
+  return `<span class="${cls}">${n > 0 ? "+" : ""}${n}</span>`;
+}
+function orderLink(orderId) {
+  if (!orderId) return '<span class="muted">—</span>';
+  const base = adminBase.replace(/\/+$/, "");
+  const short = orderId.slice(-8);
+  return `<a class="link" title="${esc(orderId)}" target="_blank" rel="noopener" href="${base}/admin/orders/${encodeURIComponent(orderId)}">…${esc(short)}</a>`;
+}
+async function getJson(url) {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error ?? "Request failed");
+  return json;
+}
+
+const itemPanel = document.getElementById("item-panel");
+
+async function loadItem() {
+  if (!partnerId || !variantId) {
+    itemPanel.innerHTML = '<div class="empty">Missing partnerId or variantId in the URL.</div>';
+    return;
+  }
+  try {
+    const { partner, item } = await getJson(`/api/item?partnerId=${encodeURIComponent(partnerId)}&variantId=${encodeURIComponent(variantId)}`);
+    document.title = `${item.productName} · ${item.variantName} — ${partner.name}`;
+    itemPanel.innerHTML = `
+      <p class="item-title">
+        ${item.colorHex ? `<span class="color-dot" style="background:${esc(item.colorHex)}"></span>` : ""}
+        ${esc(item.productName)} — ${esc(item.variantName)}${item.colorName ? " · " + esc(item.colorName) : ""}
+      </p>
+      <p class="item-sub">SKU <code>${esc(item.sku)}</code> · Partner <strong>${esc(partner.name)}</strong>
+        (${partner.partnerType === "AGENT" ? "Agent" : "Distributor"} · ${esc(partner.governorate)}${partner.isActive ? "" : " · inactive"})
+      </p>
+      <div class="kpis">
+        <div class="kpi"><div class="label">Available</div><div class="value">${item.stockAvailable}</div></div>
+        <div class="kpi"><div class="label">Reserved</div><div class="value">${item.stockReserved}</div></div>
+        <div class="kpi"><div class="label">Sellable</div><div class="value">${item.sellable}</div></div>
+        <div class="kpi"><div class="label">Last logged</div><div class="value" style="font-size:14px">${item.hasInventoryRow ? fmtDate(item.updatedAt) : "never logged"}</div></div>
+      </div>
+    `;
+  } catch (e) {
+    itemPanel.innerHTML = `<div class="empty">Failed to load item: ${esc(e.message)}</div>`;
+  }
+}
+
+async function loadReasons() {
+  const select = document.getElementById("reason");
+  const { reasons } = await getJson("/api/reasons");
+  for (const r of reasons) {
+    const opt = document.createElement("option");
+    opt.value = r;
+    opt.textContent = r;
+    select.appendChild(opt);
+  }
+}
+
+const ledgerWrap = document.getElementById("ledger-wrap");
+const pager = document.getElementById("pager");
+const pagerInfo = document.getElementById("pager-info");
+
+document.getElementById("apply").addEventListener("click", () => {
+  state.reason = document.getElementById("reason").value;
+  state.actor = document.getElementById("actor").value;
+  state.from = document.getElementById("from").value;
+  state.to = document.getElementById("to").value;
+  state.offset = 0;
+  renderLedger();
+});
+document.getElementById("clear").addEventListener("click", () => {
+  document.getElementById("reason").value = "";
+  document.getElementById("actor").value = "";
+  document.getElementById("from").value = "";
+  document.getElementById("to").value = "";
+  Object.assign(state, { reason: "", actor: "", from: "", to: "", offset: 0 });
+  renderLedger();
+});
+document.getElementById("prev").addEventListener("click", () => {
+  state.offset = Math.max(0, state.offset - state.limit);
+  renderLedger();
+});
+document.getElementById("next").addEventListener("click", () => {
+  if (state.offset + state.limit < state.total) {
+    state.offset += state.limit;
+    renderLedger();
+  }
+});
+
+async function renderLedger() {
+  if (!partnerId || !variantId) return;
+  ledgerWrap.innerHTML = '<div class="empty">Loading…</div>';
+  const params = new URLSearchParams({
+    partnerId,
+    variantId,
+    limit: String(state.limit),
+    offset: String(state.offset),
+  });
+  if (state.reason) params.set("reason", state.reason);
+  if (state.actor) params.set("actor", state.actor);
+  if (state.from) params.set("from", new Date(state.from + "T00:00:00").toISOString());
+  if (state.to) params.set("to", new Date(state.to + "T23:59:59.999").toISOString());
+
+  const { rows, total } = await getJson("/api/ledger?" + params);
+  state.total = total;
+  pager.style.display = total > state.limit ? "flex" : "none";
+  pagerInfo.textContent = `${state.offset + 1}–${Math.min(state.offset + state.limit, total)} of ${total}`;
+
+  if (rows.length === 0) {
+    ledgerWrap.innerHTML = '<div class="empty">No ledger entries match these filters.</div>';
+    return;
+  }
+
+  let html = `<table><thead><tr><th>When</th><th>Actor</th><th>Reason</th><th class="num">Δ Available</th><th class="num">Δ Reserved</th><th>Order</th><th>Notes</th></tr></thead><tbody>`;
+  for (const e of rows) {
+    html += `<tr>
+      <td>${fmtDate(e.createdAt)}</td>
+      <td><span class="actor-tag actor-${esc(e.actor)}">${esc(e.actor)}</span></td>
+      <td><span class="reason-tag">${esc(e.reason)}</span></td>
+      <td class="num">${deltaCell(e.quantityAvailableDelta)}</td>
+      <td class="num">${deltaCell(e.quantityReservedDelta)}</td>
+      <td>${orderLink(e.orderId)}</td>
+      <td><code class="notes">${esc(e.notes ?? "")}</code></td>
+    </tr>`;
+  }
+  html += "</tbody></table>";
+  ledgerWrap.innerHTML = html;
+}
+
+(async function init() {
+  await Promise.all([loadItem(), loadReasons()]);
+  renderLedger();
+})();
+</script>
+</body>
+</html>

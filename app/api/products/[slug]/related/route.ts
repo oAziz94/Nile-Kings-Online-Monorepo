@@ -28,7 +28,7 @@ const getRelatedCatalog = unstable_cache(
         categoryId: product.categoryId,
         id: { not: product.id },
       },
-      orderBy: { sortOrder: "asc" },
+      orderBy: { sortOrder: "desc" },
       take: RELATED_LIMIT,
       include: {
         category: { select: { slug: true, name: true } },

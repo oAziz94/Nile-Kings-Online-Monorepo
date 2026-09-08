@@ -16,6 +16,7 @@ import {
   getStorefrontGovernorateFromRequest,
   getStorefrontStockContext,
 } from "@/lib/storefront-location";
+import { getProductIdsRankedByRecentSales } from "@/lib/products/ranked-listing";
 
 function parseQuery(req: NextRequest): ProductsQuery {
   const { searchParams } = new URL(req.url);
@@ -269,20 +270,27 @@ export async function GET(req: NextRequest) {
   const skip = hasPriceFilter ? 0 : byVariant ? 0 : q.offset;
   const take = hasPriceFilter ? 200 : byVariant ? SECTION_VIEW_PRODUCT_CAP : q.limit;
 
-  const { products, totalCount } = await getProductsPage(
-    JSON.stringify(where),
-    JSON.stringify(orderBy),
-    skip ?? 0,
-    take ?? 24,
-    !hasPriceFilter
-  );
+  const [{ products, totalCount }, bestSalesRankedIds] = await Promise.all([
+    getProductsPage(JSON.stringify(where), JSON.stringify(orderBy), skip ?? 0, take ?? 24, !hasPriceFilter),
+    q.sort === "best_sales" ? getProductIdsRankedByRecentSales(where) : Promise.resolve(null),
+  ]);
 
   const allVariantIds = products.flatMap((p) => (p.variants as VariantRow[]).map((v) => v.id));
   const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);
-  const stockAdjustedProducts = products.map((product) => ({
+  let stockAdjustedProducts = products.map((product) => ({
     ...product,
     variants: applyPartnerStockOverrides(product.variants as VariantRow[], overrides),
   }));
+
+  // "Best sales" is a per-product metric (summed across all of a product's variants), so it's
+  // applied here — before splitting into per-color-variant cards below — rather than as a
+  // per-card sort like price_asc/price_desc further down.
+  if (bestSalesRankedIds) {
+    const rankIndex = new Map(bestSalesRankedIds.map((id, i) => [id, i]));
+    stockAdjustedProducts = [...stockAdjustedProducts].sort(
+      (a, b) => (rankIndex.get(a.id) ?? Infinity) - (rankIndex.get(b.id) ?? Infinity)
+    );
+  }
 
   let filtered: ProductListItem[];
 

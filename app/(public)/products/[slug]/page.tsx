@@ -183,7 +183,7 @@ const getRelatedCatalog = unstable_cache(
   async (slug: string, categoryId: string) => {
     return prisma.product.findMany({
       where: { active: true, categoryId, slug: { not: slug } },
-      orderBy: { sortOrder: "asc" },
+      orderBy: { sortOrder: "desc" },
       take: 4,
       include: {
         category: { select: { slug: true, name: true } },

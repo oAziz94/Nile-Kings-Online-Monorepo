@@ -254,7 +254,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       tx: Parameters<typeof commitPartnerReservation>[0],
       lines: StockLine[]
     ) {
-      await commitPartnerReservation(tx, user.partnerId, lines, existing!.id);
+      await commitPartnerReservation(tx, user.partnerId, lines, existing!.id, "Partner order edit");
       data.reservationExpiresAt = null;
       if (nextStatus === "CONFIRMED") {
         await logOrderConfirmed(tx, existing!.id);
@@ -274,9 +274,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       const order = await prisma.$transaction(
         async (tx) => {
           if (orderUsesPartnerReservationOnly(existing.status)) {
-            await releasePartnerReservation(tx, user.partnerId, oldItemStockLines, existing.id);
+            await releasePartnerReservation(tx, user.partnerId, oldItemStockLines, existing.id, "Partner order cancellation");
           } else {
-            await restorePartnerCommittedStock(tx, user.partnerId, oldItemStockLines, existing.id);
+            await restorePartnerCommittedStock(tx, user.partnerId, oldItemStockLines, existing.id, "Partner order cancellation");
           }
           await logOrderCancelled(tx, existing.id, "partner_agent", existing.status);
           return tx.order.update({ where: { id }, data, include: orderInclude });
@@ -297,7 +297,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
               existing.status,
               oldItemStockLines,
               linesAfterEdit,
-              existing.id
+              existing.id,
+              "Partner order edit"
             );
             if (leavingCreated) {
               await applyLeavingCreatedStock(tx, linesAfterEdit);

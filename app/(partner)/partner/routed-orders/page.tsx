@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ChevronDown, Eye, FileText, Loader2, RefreshCw, ShoppingBag } from "lucide-react";
+import { ChevronDown, Eye, FileDown, FileText, Loader2, RefreshCw, ShoppingBag } from "lucide-react";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PaginationBar } from "@/components/dashboard/pagination";
@@ -117,7 +117,13 @@ function PartnerOrdersPageInner() {
     [setFilter]
   );
   const [partnerType, setPartnerType] = React.useState<"AGENT" | "DISTRIBUTOR" | null>(null);
+  const [selectedOrderIds, setSelectedOrderIds] = React.useState<string[]>([]);
+  const [exportingShipping, setExportingShipping] = React.useState(false);
   const { rememberRow } = useRowScrollRestore("partner-routed-orders-last-row", orders);
+
+  React.useEffect(() => {
+    setSelectedOrderIds([]);
+  }, [debouncedQ, statusFilter, page, pageSize]);
 
   React.useEffect(() => {
     let alive = true;
@@ -173,6 +179,57 @@ function PartnerOrdersPageInner() {
     load();
   }, [load]);
 
+  const handleExportShipping = React.useCallback(async () => {
+    if (selectedOrderIds.length === 0) {
+      toast({
+        title: "اختر طلبات للتصدير",
+        description: "حدد طلبًا واحدًا على الأقل.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setExportingShipping(true);
+    try {
+      const res = await fetch(`/api/partner/routed-orders/export`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderIds: selectedOrderIds }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast({
+          title: "فشل التصدير",
+          description: j?.error?.message ?? res.statusText,
+          variant: "destructive",
+        });
+        return;
+      }
+      const blob = await res.blob();
+      const filename =
+        res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ?? `shipments.xlsx`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "تم تصدير ملف الشحن" });
+      setSelectedOrderIds([]);
+    } catch (error) {
+      toast({
+        title: "فشل التصدير",
+        description: error instanceof Error ? error.message : "خطأ غير متوقع",
+        variant: "destructive",
+      });
+    } finally {
+      setExportingShipping(false);
+    }
+  }, [selectedOrderIds, toast]);
+
+  const selectedSet = React.useMemo(() => new Set(selectedOrderIds), [selectedOrderIds]);
+  const allSelectedOnPage = orders.length > 0 && orders.every((order) => selectedSet.has(order.id));
+
   if (loading && orders.length === 0) {
     return <div className="h-64 rounded-2xl bg-muted/40" />;
   }
@@ -214,6 +271,16 @@ function PartnerOrdersPageInner() {
                 </option>
               ))}
             </Select>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl"
+              onClick={handleExportShipping}
+              disabled={exportingShipping || selectedOrderIds.length === 0}
+            >
+              <FileDown className="ml-2 h-4 w-4" />
+              {exportingShipping ? "جاري التصدير…" : `ملف الشحن (${selectedOrderIds.length})`}
+            </Button>
           </div>
         }
       >
@@ -233,6 +300,24 @@ function PartnerOrdersPageInner() {
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="w-12">
+                    <input
+                      type="checkbox"
+                      checked={allSelectedOnPage}
+                      onChange={(event) => {
+                        if (event.target.checked) {
+                          const merged = new Set(selectedOrderIds);
+                          orders.forEach((order) => merged.add(order.id));
+                          setSelectedOrderIds(Array.from(merged));
+                          return;
+                        }
+                        const pageIds = new Set(orders.map((order) => order.id));
+                        setSelectedOrderIds((prev) => prev.filter((id) => !pageIds.has(id)));
+                      }}
+                      aria-label="تحديد كل الطلبات في هذه الصفحة"
+                      disabled={orders.length === 0}
+                    />
+                  </TableHead>
                   <TableHead>الرقم</TableHead>
                   <TableHead>العميل</TableHead>
                   <TableHead>الإجمالي</TableHead>
@@ -246,6 +331,20 @@ function PartnerOrdersPageInner() {
               <TableBody>
                 {orders.map((order) => (
                   <TableRow key={order.id} data-row-id={order.id}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedSet.has(order.id)}
+                        onChange={(event) => {
+                          if (event.target.checked) {
+                            setSelectedOrderIds((prev) => (prev.includes(order.id) ? prev : [...prev, order.id]));
+                            return;
+                          }
+                          setSelectedOrderIds((prev) => prev.filter((id) => id !== order.id));
+                        }}
+                        aria-label={`تحديد الطلب ${order.id.slice(0, 8)} للتصدير`}
+                      />
+                    </TableCell>
                     <TableCell className="font-mono text-sm">{order.id.slice(0, 8)}</TableCell>
                     <TableCell>
                       {order.user?.phone ?? "—"} {order.user?.name ? `(${order.user.name})` : ""}
