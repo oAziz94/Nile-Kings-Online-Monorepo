@@ -3,6 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { useListUrlState } from "@/hooks/use-list-url-state";
+import { useRowScrollRestore } from "@/hooks/use-row-scroll-restore";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -91,37 +93,49 @@ function egp(piastres: number): string {
 }
 
 export default function AdminOrdersPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <AdminOrdersPageInner />
+    </React.Suspense>
+  );
+}
+
+function AdminOrdersPageInner() {
   const [orders, setOrders] = React.useState<Order[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
   const [fetching, setFetching] = React.useState(false);
-  const [search, setSearch] = React.useState("");
-  const [debouncedQ, setDebouncedQ] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState("");
-  const [page, setPage] = React.useState(0);
-  const [pageSize, setPageSize] = React.useState(20);
+  const {
+    search,
+    setSearch,
+    debouncedQ,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    filters,
+    setFilter,
+  } = useListUrlState({ status: "" });
+  const statusFilter = filters.status;
+  const setStatusFilter = React.useCallback(
+    (value: string) => setFilter("status", value),
+    [setFilter]
+  );
   const [selectedOrderIds, setSelectedOrderIds] = React.useState<string[]>([]);
   const [exportingCourier, setExportingCourier] = React.useState(false);
   const [exportingCsv, setExportingCsv] = React.useState(false);
   const { toast } = useToast();
-
-  React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(search.trim()), 400);
-    return () => clearTimeout(t);
-  }, [search]);
-
-  React.useEffect(() => {
-    setPage(0);
-  }, [debouncedQ, statusFilter]);
+  const { rememberRow } = useRowScrollRestore("admin-orders-last-row", orders);
 
   React.useEffect(() => {
     setSelectedOrderIds([]);
   }, [debouncedQ, statusFilter, page, pageSize]);
 
   React.useEffect(() => {
+    if (loading) return; // total isn't known yet on first render — don't clamp against a stale 0
     const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
     if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
-  }, [total, pageSize, page]);
+  }, [loading, total, pageSize, page]);
 
   React.useEffect(() => {
     const ac = new AbortController();
@@ -371,7 +385,7 @@ export default function AdminOrdersPage() {
               </TableHeader>
               <TableBody>
                 {orders.map((o) => (
-                  <TableRow key={o.id}>
+                  <TableRow key={o.id} data-row-id={o.id}>
                     <TableCell>
                       <input
                         type="checkbox"
@@ -421,7 +435,9 @@ export default function AdminOrdersPage() {
                     <TableCell>{formatDateEn(o.createdAt)}</TableCell>
                     <TableCell className="text-left">
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/admin/orders/${o.id}`}>تفاصيل</Link>
+                        <Link href={`/admin/orders/${o.id}`} onClick={() => rememberRow(o.id)}>
+                          تفاصيل
+                        </Link>
                       </Button>
                     </TableCell>
                   </TableRow>

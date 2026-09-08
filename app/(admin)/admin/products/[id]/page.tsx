@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { ImageUpload } from "@/components/admin/image-upload";
 import { Skeleton } from "@/components/shared/skeleton";
 import { sortVariants } from "@/lib/admin/variant-sort";
+import { getDisplaySizeLabel, isKidsCategory } from "@/lib/size-display";
 import { Package, Pencil, Plus, Trash2 } from "lucide-react";
 
 type Product = {
@@ -120,6 +121,7 @@ export default function AdminProductDetailPage() {
     () => (product ? sortVariants(product.variants) : []),
     [product]
   );
+  const forKidsSizes = isKidsCategory(product?.category.slug);
 
   const load = React.useCallback(() => {
     if (!id) return;
@@ -337,11 +339,11 @@ export default function AdminProductDetailPage() {
 
   return (
     <div dir="rtl" className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/admin/products">← المنتجات</Link>
-        </Button>
+      <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">{product.name}</h1>
+        <Button variant="ghost" size="sm" type="button" onClick={() => router.back()}>
+          ← المنتجات
+        </Button>
       </div>
 
       <Card>
@@ -516,7 +518,7 @@ export default function AdminProductDetailPage() {
               <TableBody>
                 {sortedVariants.map((v) => (
                   <TableRow key={v.id}>
-                    <TableCell className="font-medium">{v.name}</TableCell>
+                    <TableCell className="font-medium">{getDisplaySizeLabel(v.name, forKidsSizes)}</TableCell>
                     <TableCell>
                       <span className="mr-2 inline-block h-4 w-4 rounded-full border border-border shrink-0 align-middle" style={{ backgroundColor: variantSwatchHex(v) }} />
                       {v.colorName ?? "—"}

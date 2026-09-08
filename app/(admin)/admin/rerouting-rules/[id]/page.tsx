@@ -173,10 +173,12 @@ export default function AdminReroutingRuleDetailPage() {
 
   return (
     <div dir="rtl" className="space-y-6">
-      <Button variant="ghost" size="sm" asChild>
-        <Link href="/admin/rerouting-rules">← قواعد التوجيه</Link>
-      </Button>
-      <h1 className="text-2xl font-bold">قاعدة التوجيه: {rule.governorate}</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">قاعدة التوجيه: {rule.governorate}</h1>
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/admin/rerouting-rules">← قواعد التوجيه</Link>
+        </Button>
+      </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">

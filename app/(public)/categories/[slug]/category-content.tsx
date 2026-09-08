@@ -9,6 +9,7 @@ import { LoadingDots } from "@/components/shared/loading-dots";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Package } from "lucide-react";
+import { useNavigateBackRestore } from "@/hooks/use-navigate-back-restore";
 
 const PAGE_SIZE = 9;
 
@@ -45,6 +46,9 @@ export function CategoryContent({
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const { restore, remember, clear } = useNavigateBackRestore(`storefront-category-${categorySlug}-scroll`);
+  const initialLimitAppliedRef = useRef(false);
+  const scrolledRef = useRef(false);
 
   const sectionParam = search.get("section") ?? "";
 
@@ -82,7 +86,12 @@ export function CategoryContent({
       if (sectionParam) params.set("section", sectionParam);
       if (debouncedQuery) params.set("q", debouncedQuery);
       if (size) params.set("sizes", size);
-      params.set("limit", String(PAGE_SIZE));
+      const limit =
+        !append && !initialLimitAppliedRef.current && restore
+          ? Math.max(PAGE_SIZE, restore.count)
+          : PAGE_SIZE;
+      if (!append) initialLimitAppliedRef.current = true;
+      params.set("limit", String(limit));
       params.set("offset", String(offset));
       const res = await fetch(`/api/products?${params}`, { cache: "no-store" });
       const json = await res.json();
@@ -98,13 +107,23 @@ export function CategoryContent({
         setTotal(0);
       }
     },
-    [categorySlug, debouncedQuery, sectionParam, size]
+    [categorySlug, debouncedQuery, sectionParam, size, restore]
   );
 
   useEffect(() => {
     setLoading(true);
     fetchPage(0, false).finally(() => setLoading(false));
   }, [fetchPage]);
+
+  useEffect(() => {
+    if (!restore || scrolledRef.current || products.length === 0) return;
+    const el = document.querySelector(`[data-row-id="${CSS.escape(restore.id)}"]`);
+    if (el) el.scrollIntoView({ block: "center" });
+    if (el || products.length >= total) {
+      scrolledRef.current = true;
+      clear();
+    }
+  }, [products, total, restore, clear]);
 
   const clearFilters = () => {
     setQuery("");
@@ -180,19 +199,20 @@ export function CategoryContent({
             </p>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-3">
               {products.map((p) => (
-                <ProductCard
-                  key={p.variantSlug ?? p.id}
-                  id={p.id}
-                  name={p.name}
-                  slug={p.slug}
-                  imageUrl={p.imageUrl}
-                  price={p.priceEgp}
-                  originalPrice={p.originalPriceEgp}
-                  discountPercent={p.discountPercent}
-                  colorVariants={p.colorVariants}
-                  variantSlug={p.variantSlug}
-                  inStock={p.inStock}
-                />
+                <div key={p.variantSlug ?? p.id} data-row-id={p.id} onClick={() => remember(p.id, products.length)}>
+                  <ProductCard
+                    id={p.id}
+                    name={p.name}
+                    slug={p.slug}
+                    imageUrl={p.imageUrl}
+                    price={p.priceEgp}
+                    originalPrice={p.originalPriceEgp}
+                    discountPercent={p.discountPercent}
+                    colorVariants={p.colorVariants}
+                    variantSlug={p.variantSlug}
+                    inStock={p.inStock}
+                  />
+                </div>
               ))}
             </div>
             <div ref={sentinelRef} className="h-4" aria-hidden />

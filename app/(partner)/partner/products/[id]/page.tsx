@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ArrowRight, Boxes, Loader2, Package, RefreshCw, Save, Warehouse } from "lucide-react";
 import { ProductImagePreview } from "@/components/shared/product-image-preview";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -24,6 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
+import { getDisplaySizeLabel, isKidsCategory } from "@/lib/size-display";
 import { cn } from "@/lib/utils";
 
 type VariantRow = {
@@ -53,12 +53,14 @@ function money(piastres: number) {
   return `${formatNumberEn(piastresToEgp(piastres))} ج.م`;
 }
 
-function variantName(variant: VariantRow) {
-  return `${variant.name}${variant.colorName ? ` · ${variant.colorName}` : ""}`;
+function variantName(variant: VariantRow, forKids: boolean) {
+  const size = getDisplaySizeLabel(variant.name, forKids);
+  return `${size}${variant.colorName ? ` · ${variant.colorName}` : ""}`;
 }
 
 export default function PartnerProductVariantsPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const productId = params.id;
   const { toast } = useToast();
   const [product, setProduct] = React.useState<ProductRow | null>(null);
@@ -94,6 +96,8 @@ export default function PartnerProductVariantsPage() {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  const forKidsSizes = isKidsCategory(product?.category.slug);
 
   const totals = React.useMemo(
     () =>
@@ -194,11 +198,9 @@ export default function PartnerProductVariantsPage() {
         badge={<StatusBadge>متغيرات المنتج</StatusBadge>}
         actions={
           <>
-            <Button asChild type="button" variant="outline" className="rounded-md">
-              <Link href="/partner/products">
-                <ArrowRight className="h-4 w-4" />
-                رجوع للمنتجات
-              </Link>
+            <Button type="button" variant="outline" className="rounded-md" onClick={() => router.back()}>
+              <ArrowRight className="h-4 w-4" />
+              رجوع للمنتجات
             </Button>
             <Button type="button" variant="outline" className="rounded-md" onClick={load} disabled={fetching}>
               <RefreshCw className={cn("h-4 w-4", fetching && "animate-spin")} />
@@ -265,7 +267,7 @@ export default function PartnerProductVariantsPage() {
                         {variant.imageUrl || product.imageUrl ? (
                           <ProductImagePreview
                             src={variant.imageUrl ?? product.imageUrl ?? ""}
-                            title={variantName(variant)}
+                            title={variantName(variant, forKidsSizes)}
                             code={variant.sku}
                             className="overflow-hidden rounded-md border border-border"
                           />
@@ -283,7 +285,7 @@ export default function PartnerProductVariantsPage() {
                               style={{ backgroundColor: variant.colorHex }}
                             />
                           )}
-                          <span className="font-medium">{variantName(variant)}</span>
+                          <span className="font-medium">{variantName(variant, forKidsSizes)}</span>
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-xs">{variant.sku}</TableCell>

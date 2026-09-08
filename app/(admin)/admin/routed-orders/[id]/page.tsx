@@ -265,10 +265,12 @@ export default function AdminRoutedOrderDetailPage() {
 
   return (
     <div dir="rtl" className="space-y-6">
-      <Button variant="ghost" size="sm" asChild>
-        <Link href="/admin/routed-orders">← الطلبات الموجهة</Link>
-      </Button>
-      <h1 className="text-2xl font-bold">طلب موجه #{routed.orderId.slice(-8)}</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">طلب موجه #{routed.orderId.slice(-8)}</h1>
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/admin/routed-orders">← الطلبات الموجهة</Link>
+        </Button>
+      </div>
 
       <Card>
         <CardHeader>

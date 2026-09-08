@@ -4,6 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { ProductImagePreview } from "@/components/shared/product-image-preview";
 import { useToast } from "@/hooks/use-toast";
+import { useListUrlState } from "@/hooks/use-list-url-state";
+import { useRowScrollRestore } from "@/hooks/use-row-scroll-restore";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -38,30 +40,28 @@ type Product = {
 };
 
 export default function AdminProductsPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <AdminProductsPageInner />
+    </React.Suspense>
+  );
+}
+
+function AdminProductsPageInner() {
   const [products, setProducts] = React.useState<Product[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
   const [fetching, setFetching] = React.useState(false);
-  const [search, setSearch] = React.useState("");
-  const [debouncedQ, setDebouncedQ] = React.useState("");
-  const [page, setPage] = React.useState(0);
-  const [pageSize, setPageSize] = React.useState(20);
+  const { search, setSearch, debouncedQ, page, setPage, pageSize, setPageSize } = useListUrlState({});
   const [exporting, setExporting] = React.useState(false);
   const { toast } = useToast();
+  const { rememberRow } = useRowScrollRestore("admin-products-last-row", products);
 
   React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(search.trim()), 400);
-    return () => clearTimeout(t);
-  }, [search]);
-
-  React.useEffect(() => {
-    setPage(0);
-  }, [debouncedQ]);
-
-  React.useEffect(() => {
+    if (loading) return; // total isn't known yet on first render — don't clamp against a stale 0
     const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
     if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
-  }, [total, pageSize, page]);
+  }, [loading, total, pageSize, page]);
 
   React.useEffect(() => {
     const ac = new AbortController();
@@ -207,7 +207,7 @@ export default function AdminProductsPage() {
               </TableHeader>
               <TableBody>
                 {list.map((p) => (
-                  <TableRow key={p.id}>
+                  <TableRow key={p.id} data-row-id={p.id}>
                     <TableCell>
                       {p.imageUrl ? (
                         <ProductImagePreview
@@ -241,7 +241,9 @@ export default function AdminProductsPage() {
                     </TableCell>
                     <TableCell className="text-left">
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/admin/products/${p.id}`}>تعديل</Link>
+                        <Link href={`/admin/products/${p.id}`} onClick={() => rememberRow(p.id)}>
+                          تعديل
+                        </Link>
                       </Button>
                     </TableCell>
                   </TableRow>

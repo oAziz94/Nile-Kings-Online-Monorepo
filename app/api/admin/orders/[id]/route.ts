@@ -36,7 +36,7 @@ const orderDetailInclude = {
       variant: {
         select: {
           imageUrl: true,
-          product: { select: { imageUrl: true } },
+          product: { select: { imageUrl: true, category: { select: { slug: true } } } },
         },
       },
     },
@@ -51,6 +51,7 @@ function mapOrderDetailApiRow(order: OrderDetailRow) {
     items: order.items.map((item) => ({
       ...item,
       imageUrl: item.variant.imageUrl ?? item.variant.product.imageUrl ?? null,
+      categorySlug: item.variant.product.category.slug,
       variant: undefined,
     })),
   };
