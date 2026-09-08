@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ArrowRight, Loader2, MapPin, Package, ShoppingBag, UserRound } from "lucide-react";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -101,6 +100,7 @@ function addressLines(address: ShippingAddress) {
 
 export default function PartnerOrderDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const orderId = params.id;
   const { toast } = useToast();
   const [order, setOrder] = React.useState<OrderDetail | null>(null);
@@ -394,11 +394,9 @@ export default function PartnerOrderDetailPage() {
           </Badge>
         }
         actions={
-          <Button asChild type="button" variant="outline" className="rounded-md">
-            <Link href="/partner/routed-orders">
-              <ArrowRight className="h-4 w-4" />
-              رجوع للطلبات
-            </Link>
+          <Button type="button" variant="outline" className="rounded-md" onClick={() => router.back()}>
+            <ArrowRight className="h-4 w-4" />
+            رجوع للطلبات
           </Button>
         }
       />

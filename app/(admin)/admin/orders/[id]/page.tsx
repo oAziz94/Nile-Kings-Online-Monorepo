@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useParams } from "next/navigation";
-import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { ArrowRight, Link2, MapPin, Package, Save, ShoppingBag, UserRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -26,6 +25,7 @@ import {
   ORDER_STATUS_BADGE_CLASSES as STATUS_BADGE_CLASSES,
   ORDER_STATUS_LABELS as STATUS_LABELS,
 } from "@/lib/constants/order-status";
+import { getDisplaySizeLabel, isKidsCategory } from "@/lib/size-display";
 import { cn } from "@/lib/utils";
 
 type Order = {
@@ -43,7 +43,16 @@ type Order = {
   createdAt: string;
   shippingAddress: Record<string, unknown>;
   user: { id: string; phone: string; name: string | null };
-  items: { variantId: string; productName: string; variantName: string; quantity: number; unitPricePiastres: number; totalPiastres: number; imageUrl: string | null }[];
+  items: {
+    variantId: string;
+    productName: string;
+    variantName: string;
+    categorySlug: string;
+    quantity: number;
+    unitPricePiastres: number;
+    totalPiastres: number;
+    imageUrl: string | null;
+  }[];
 };
 
 type SavedAddress = {
@@ -74,6 +83,7 @@ type EditableItem = {
   variantId: string;
   productName: string;
   variantName: string;
+  categorySlug: string;
   unitPricePiastres: number;
   quantity: number;
   imageUrl: string | null;
@@ -81,11 +91,13 @@ type EditableItem = {
 type ProductVariantOption = {
   id: string;
   label: string;
+  categorySlug: string;
   pricePiastres: number;
 };
 
 export default function AdminOrderDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const { toast } = useToast();
   const [order, setOrder] = React.useState<Order | null>(null);
@@ -129,6 +141,7 @@ export default function AdminOrderDetailPage() {
               variantId: item.variantId,
               productName: item.productName,
               variantName: item.variantName,
+              categorySlug: item.categorySlug,
               unitPricePiastres: item.unitPricePiastres,
               quantity: item.quantity,
               imageUrl: item.imageUrl,
@@ -164,10 +177,15 @@ export default function AdminOrderDetailPage() {
           return;
         }
         const options: ProductVariantOption[] = (json.data?.products ?? []).flatMap(
-          (p: { name: string; variants?: { id: string; name: string; colorName: string | null; pricePiastres: number }[] }) =>
+          (p: {
+            name: string;
+            category?: { slug: string };
+            variants?: { id: string; name: string; colorName: string | null; pricePiastres: number }[];
+          }) =>
             (p.variants ?? []).map((v) => ({
               id: v.id,
               label: `${p.name} - ${v.name}${v.colorName ? ` - ${v.colorName}` : ""}`,
+              categorySlug: p.category?.slug ?? "",
               pricePiastres: v.pricePiastres,
             }))
         );
@@ -351,6 +369,7 @@ export default function AdminOrderDetailPage() {
           variantId: option.id,
           productName: option.label.split(" - ")[0],
           variantName: option.label.replace(`${option.label.split(" - ")[0]} - `, ""),
+          categorySlug: option.categorySlug,
           unitPricePiastres: option.pricePiastres,
           quantity: Math.max(1, Math.trunc(newItemQty || 1)),
           imageUrl: null,
@@ -387,6 +406,7 @@ export default function AdminOrderDetailPage() {
             variantId: item.variantId,
             productName: item.productName,
             variantName: item.variantName,
+            categorySlug: item.categorySlug,
             unitPricePiastres: item.unitPricePiastres,
             quantity: item.quantity,
             imageUrl: item.imageUrl,
@@ -403,33 +423,37 @@ export default function AdminOrderDetailPage() {
     }
   };
 
-  const getSize = (variantName: string) => {
+  const getSize = (variantName: string, categorySlug: string) => {
     const parts = variantName.split("-");
-    if (parts.length < 2) return variantName;
+    const rawSize = (() => {
+      if (parts.length < 2) return variantName;
 
-    const lastPart = parts[parts.length - 1];
-    const secondLastPart = parts[parts.length - 2];
+      const lastPart = parts[parts.length - 1];
+      const secondLastPart = parts[parts.length - 2];
 
-    // Regex matching common sizes (e.g. S, M, L, XL, XXL, 3XL, numbers, etc.)
-    const sizePattern = /^(S|M|L|XL|XXL|XXXL|XS|[0-9]+[a-zA-Z]*|[0-9]+[Xx][0-9]+|[0-9]+\/[0-9]+|one\s*size|free\s*size)$/i;
+      // Regex matching common sizes (e.g. S, M, L, XL, XXL, 3XL, numbers, etc.)
+      const sizePattern = /^(S|M|L|XL|XXL|XXXL|XS|[0-9]+[a-zA-Z]*|[0-9]+[Xx][0-9]+|[0-9]+\/[0-9]+|one\s*size|free\s*size)$/i;
 
-    // If the last part has Arabic characters, it's a color, so size is the second-to-last part
-    const hasArabic = /[\u0600-\u06FF]/.test(lastPart);
-    if (hasArabic && secondLastPart) {
-      return secondLastPart;
-    }
+      // If the last part has Arabic characters, it's a color, so size is the second-to-last part
+      const hasArabic = /[\u0600-\u06FF]/.test(lastPart);
+      if (hasArabic && secondLastPart) {
+        return secondLastPart;
+      }
 
-    // If last part matches size pattern directly
-    if (sizePattern.test(lastPart)) {
+      // If last part matches size pattern directly
+      if (sizePattern.test(lastPart)) {
+        return lastPart;
+      }
+
+      // If second last part matches size pattern
+      if (secondLastPart && sizePattern.test(secondLastPart)) {
+        return secondLastPart;
+      }
+
       return lastPart;
-    }
+    })();
 
-    // If second last part matches size pattern
-    if (secondLastPart && sizePattern.test(secondLastPart)) {
-      return secondLastPart;
-    }
-
-    return lastPart;
+    return getDisplaySizeLabel(rawSize.trim(), isKidsCategory(categorySlug));
   }
 
   const getColor = (variantName: string) => {
@@ -475,11 +499,14 @@ export default function AdminOrderDetailPage() {
           </Badge>
         }
         actions={
-          <Button asChild type="button" variant="outline" className="rounded-md">
-            <Link href="/admin/orders">
-              <ArrowRight className="h-4 w-4" />
-              رجوع للطلبات
-            </Link>
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-md"
+            onClick={() => router.back()}
+          >
+            <ArrowRight className="h-4 w-4" />
+            رجوع للطلبات
           </Button>
         }
       />
@@ -662,7 +689,7 @@ export default function AdminOrderDetailPage() {
                     <TableCell>{(item.unitPricePiastres / 100).toFixed(0)} ج.م</TableCell>
                     <TableCell>{((item.quantity * item.unitPricePiastres) / 100).toFixed(0)} ج.م</TableCell>
                     <TableCell>
-                      {getSize(item.variantName)}
+                      {getSize(item.variantName, item.categorySlug)}
                     </TableCell>
                     <TableCell>
                       {getColor(item.variantName)}

@@ -194,10 +194,10 @@ export default function AdminClientProfilePage() {
   return (
     <div dir="rtl" className="space-y-6">
       <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">{profileTitle}</h1>
         <Button variant="ghost" size="sm" asChild>
           <Link href={listHref}>← القائمة</Link>
         </Button>
-        <h1 className="text-2xl font-bold">{profileTitle}</h1>
       </div>
 
       <Card>

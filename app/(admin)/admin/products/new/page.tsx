@@ -89,11 +89,11 @@ export default function NewProductPage() {
 
   return (
     <div dir="rtl" className="max-w-2xl space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">إضافة منتج</h1>
         <Button variant="ghost" size="sm" asChild>
           <Link href="/admin/products">← المنتجات</Link>
         </Button>
-        <h1 className="text-2xl font-bold">إضافة منتج</h1>
       </div>
       <Card>
         <CardHeader>

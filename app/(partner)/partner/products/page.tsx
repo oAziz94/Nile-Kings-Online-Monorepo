@@ -20,6 +20,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useListUrlState } from "@/hooks/use-list-url-state";
+import { useRowScrollRestore } from "@/hooks/use-row-scroll-restore";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatNumberEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
@@ -45,29 +47,27 @@ function egp(piastres: number | null | undefined): string {
 }
 
 export default function PartnerProductsPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <PartnerProductsPageInner />
+    </React.Suspense>
+  );
+}
+
+function PartnerProductsPageInner() {
   const { toast } = useToast();
   const [products, setProducts] = React.useState<ProductRow[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
   const [fetching, setFetching] = React.useState(false);
-  const [search, setSearch] = React.useState("");
-  const [debouncedQ, setDebouncedQ] = React.useState("");
-  const [page, setPage] = React.useState(0);
-  const [pageSize, setPageSize] = React.useState(20);
+  const { search, setSearch, debouncedQ, page, setPage, pageSize, setPageSize } = useListUrlState({});
+  const { rememberRow } = useRowScrollRestore("partner-products-last-row", products);
 
   React.useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQ(search.trim()), 400);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  React.useEffect(() => {
-    setPage(0);
-  }, [debouncedQ]);
-
-  React.useEffect(() => {
+    if (loading) return; // total isn't known yet on first render — don't clamp against a stale 0
     const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
     if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
-  }, [page, pageSize, total]);
+  }, [loading, page, pageSize, total, setPage]);
 
   const load = React.useCallback(async () => {
     setFetching(true);
@@ -171,7 +171,7 @@ export default function PartnerProductsPage() {
                   const sellable = product.variants.reduce((sum, variant) => sum + variant.sellable, 0);
                   const firstVariant = product.variants[0];
                   return (
-                    <TableRow key={product.id}>
+                    <TableRow key={product.id} data-row-id={product.id}>
                       <TableCell>
                         {product.imageUrl ? (
                           <ProductImagePreview
@@ -199,7 +199,9 @@ export default function PartnerProductsPage() {
                       </TableCell>
                       <TableCell className="text-left">
                         <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/partner/products/${product.id}`}>تعديل المخزون</Link>
+                          <Link href={`/partner/products/${product.id}`} onClick={() => rememberRow(product.id)}>
+                            تعديل المخزون
+                          </Link>
                         </Button>
                       </TableCell>
                     </TableRow>

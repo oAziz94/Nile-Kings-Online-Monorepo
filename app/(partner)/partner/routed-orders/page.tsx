@@ -20,6 +20,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useListUrlState } from "@/hooks/use-list-url-state";
+import { useRowScrollRestore } from "@/hooks/use-row-scroll-restore";
 import { piastresToEgp } from "@/lib/catalog";
 import {
   ORDER_STATUS_BADGE_CLASSES as STATUS_BADGE_CLASSES,
@@ -85,17 +87,37 @@ function egp(piastres: number): string {
 }
 
 export default function PartnerOrdersPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <PartnerOrdersPageInner />
+    </React.Suspense>
+  );
+}
+
+function PartnerOrdersPageInner() {
   const { toast } = useToast();
   const [orders, setOrders] = React.useState<Order[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
   const [fetching, setFetching] = React.useState(false);
-  const [search, setSearch] = React.useState("");
-  const [debouncedQ, setDebouncedQ] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState("");
-  const [page, setPage] = React.useState(0);
-  const [pageSize, setPageSize] = React.useState(20);
+  const {
+    search,
+    setSearch,
+    debouncedQ,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    filters,
+    setFilter,
+  } = useListUrlState({ status: "" });
+  const statusFilter = filters.status;
+  const setStatusFilter = React.useCallback(
+    (value: string) => setFilter("status", value),
+    [setFilter]
+  );
   const [partnerType, setPartnerType] = React.useState<"AGENT" | "DISTRIBUTOR" | null>(null);
+  const { rememberRow } = useRowScrollRestore("partner-routed-orders-last-row", orders);
 
   React.useEffect(() => {
     let alive = true;
@@ -112,18 +134,10 @@ export default function PartnerOrdersPage() {
   }, []);
 
   React.useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQ(search.trim()), 400);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  React.useEffect(() => {
-    setPage(0);
-  }, [debouncedQ, statusFilter]);
-
-  React.useEffect(() => {
+    if (loading) return; // total isn't known yet on first render — don't clamp against a stale 0
     const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
     if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
-  }, [page, pageSize, total]);
+  }, [loading, page, pageSize, total, setPage]);
 
   const load = React.useCallback(async () => {
     setFetching(true);
@@ -231,7 +245,7 @@ export default function PartnerOrdersPage() {
               </TableHeader>
               <TableBody>
                 {orders.map((order) => (
-                  <TableRow key={order.id}>
+                  <TableRow key={order.id} data-row-id={order.id}>
                     <TableCell className="font-mono text-sm">{order.id.slice(0, 8)}</TableCell>
                     <TableCell>
                       {order.user?.phone ?? "—"} {order.user?.name ? `(${order.user.name})` : ""}
@@ -270,7 +284,7 @@ export default function PartnerOrdersPage() {
                     {partnerType === "AGENT" && (
                       <TableCell className="text-left">
                         <Button asChild type="button" size="sm" variant="outline" className="rounded-md">
-                          <Link href={`/partner/orders/${order.id}`}>
+                          <Link href={`/partner/orders/${order.id}`} onClick={() => rememberRow(order.id)}>
                             <Eye className="h-4 w-4" />
                             فتح
                           </Link>
