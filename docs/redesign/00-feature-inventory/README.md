@@ -4,11 +4,20 @@ One file per screen (or tight group of related screens), capturing exactly what 
 
 ## Template for each screen file
 
+Per the PM role brief (`../05-role-brief.md`), every screen file pairs a **business requirements** section with the technical one — not technical alone.
+
 ```markdown
 # <Surface> — <Screen name>
 
 Route(s): `app/(surface)/...`
 Key files: components/..., lib/...
+
+## Business requirements
+- Goal/KPI this screen serves (conversion, AOV, retention, trust, ops efficiency, SEO, ...)
+- Trust/credibility signals that must survive the redesign (pricing clarity, delivery expectations, COD/prepaid framing, policy visibility, ...)
+- Known or plausible friction points in the current flow
+- Compliance/legal considerations, if any
+- Any business reason behind a "modern look" choice for this screen (vs. pure aesthetics)
 
 ## Elements & behavior
 - [ ] <element> — <exact current behavior>

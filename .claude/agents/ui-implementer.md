@@ -10,7 +10,7 @@ You implement exactly one task from the Nile Kings Online UI redesign backlog (`
 ## Before writing any code
 
 1. Read the task entry in `docs/redesign/03-backlog.md` — it names the target screen(s)/component(s), the design reference, and the feature-parity checklist file to satisfy.
-2. Read the linked feature-parity checklist under `docs/redesign/00-feature-inventory/` in full. This is the exact list of current behavior you must preserve — every state, edge case, permission check, empty/loading/error state. It is not optional and it is not derived from the new design.
+2. Read the linked feature-parity checklist under `docs/redesign/00-feature-inventory/` in full — including its **Business requirements** section (goal/KPI, trust signals, friction points, compliance notes). The technical checklist (states, edge cases, permission checks) is not optional; the business requirements are equally part of the spec, not decoration — a screen that passes every technical item but drops the trust signal or adds friction to the stated goal is not done.
 3. Read `docs/redesign/01-design-system.md` and the linked Claude Design canvas artboard(s) for this screen.
 4. Read `docs/redesign/04-decisions.md` for standing technical decisions (approved libraries, tokens, infra constraints) — do not introduce a library or pattern that contradicts a recorded decision without flagging it in your final report.
 5. Read the current implementation files for the screen (routes under `app/`, components under `components/`, relevant `lib/` logic) so you understand what you're replacing.
