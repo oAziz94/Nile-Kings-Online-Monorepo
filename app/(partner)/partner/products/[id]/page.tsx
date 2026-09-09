@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowRight, Boxes, Loader2, Package, RefreshCw, Save, Warehouse } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Boxes, ClipboardList, Loader2, Package, RefreshCw, Save, Warehouse } from "lucide-react";
 import { ProductImagePreview } from "@/components/shared/product-image-preview";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -48,6 +49,8 @@ type ProductRow = {
   category: { id: string; name: string; slug: string };
   variants: VariantRow[];
 };
+
+const STOCK_VERIFY_STATUSES = "CREATED,CONFIRMED,PROCESSING";
 
 function money(piastres: number) {
   return `${formatNumberEn(piastresToEgp(piastres))} ج.م`;
@@ -254,6 +257,7 @@ export default function PartnerProductVariantsPage() {
                   <TableHead>المحجوز</TableHead>
                   <TableHead>قابل للبيع</TableHead>
                   <TableHead>آخر تحديث</TableHead>
+                  <TableHead className="text-left">الطلبات المحجوزة</TableHead>
                   <TableHead className="text-left">حفظ</TableHead>
                 </TableRow>
               </TableHeader>
@@ -306,6 +310,18 @@ export default function PartnerProductVariantsPage() {
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                         {variant.updatedAt ? formatDateEn(variant.updatedAt) : "لم يسجل"}
+                      </TableCell>
+                      <TableCell className="text-left">
+                        <Button asChild type="button" size="sm" variant="outline" className="rounded-md">
+                          <Link
+                            href={`/partner/routed-orders?variantId=${variant.id}&status=${STOCK_VERIFY_STATUSES}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <ClipboardList className="h-4 w-4" />
+                            عرض الطلبات
+                          </Link>
+                        </Button>
                       </TableCell>
                       <TableCell className="text-left">
                         <Button

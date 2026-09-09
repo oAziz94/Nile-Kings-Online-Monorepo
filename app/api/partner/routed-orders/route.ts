@@ -19,10 +19,13 @@ export async function GET(req: NextRequest) {
     const user = await requirePartner();
     const { searchParams } = new URL(req.url);
     const statusParam = (searchParams.get("status") ?? "").trim();
-    const status =
-      statusParam && ORDER_STATUSES.includes(statusParam as OrderStatus)
-        ? (statusParam as OrderStatus)
-        : undefined;
+    const statuses = statusParam
+      .split(",")
+      .map((value) => value.trim())
+      .filter((value): value is OrderStatus => ORDER_STATUSES.includes(value as OrderStatus));
+    const status: Prisma.OrderWhereInput["status"] =
+      statuses.length > 1 ? { in: statuses } : statuses.length === 1 ? statuses[0] : undefined;
+    const variantId = (searchParams.get("variantId") ?? "").trim() || undefined;
     const q = (searchParams.get("q") ?? "").trim().slice(0, 100);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 20) || 20));
     const offset = Math.max(0, Number(searchParams.get("offset") ?? 0) || 0);
@@ -50,6 +53,7 @@ export async function GET(req: NextRequest) {
     const where: Prisma.OrderWhereInput = {
       assignedPartnerId: user.partnerId,
       ...(status ? { status } : {}),
+      ...(variantId ? { items: { some: { variantId } } } : {}),
       ...(searchWhere ?? {}),
     };
 
@@ -71,7 +75,8 @@ export async function GET(req: NextRequest) {
     const routedOrders = await prisma.routedOrder.findMany({
       where: {
         partnerId: user.partnerId,
-        ...(statusParam && !status ? { status: statusParam as never } : {}),
+        ...(statusParam && statuses.length === 0 ? { status: statusParam as never } : {}),
+        ...(variantId ? { order: { items: { some: { variantId } } } } : {}),
         ...(q
           ? {
               OR: [

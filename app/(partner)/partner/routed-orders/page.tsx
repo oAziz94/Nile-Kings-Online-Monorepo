@@ -110,12 +110,14 @@ function PartnerOrdersPageInner() {
     setPageSize,
     filters,
     setFilter,
-  } = useListUrlState({ status: "" });
+  } = useListUrlState({ status: "", variantId: "" });
   const statusFilter = filters.status;
   const setStatusFilter = React.useCallback(
     (value: string) => setFilter("status", value),
     [setFilter]
   );
+  const variantId = filters.variantId;
+  const clearVariantFilter = React.useCallback(() => setFilter("variantId", ""), [setFilter]);
   const [partnerType, setPartnerType] = React.useState<"AGENT" | "DISTRIBUTOR" | null>(null);
   const [selectedOrderIds, setSelectedOrderIds] = React.useState<string[]>([]);
   const [exportingShipping, setExportingShipping] = React.useState(false);
@@ -123,7 +125,7 @@ function PartnerOrdersPageInner() {
 
   React.useEffect(() => {
     setSelectedOrderIds([]);
-  }, [debouncedQ, statusFilter, page, pageSize]);
+  }, [debouncedQ, statusFilter, variantId, page, pageSize]);
 
   React.useEffect(() => {
     let alive = true;
@@ -153,6 +155,7 @@ function PartnerOrdersPageInner() {
     });
     if (debouncedQ) params.set("q", debouncedQ);
     if (statusFilter) params.set("status", statusFilter);
+    if (variantId) params.set("variantId", variantId);
 
     try {
       const res = await fetch(`/api/partner/routed-orders?${params}`, { credentials: "include" });
@@ -173,7 +176,7 @@ function PartnerOrdersPageInner() {
       setLoading(false);
       setFetching(false);
     }
-  }, [debouncedQ, page, pageSize, statusFilter, toast]);
+  }, [debouncedQ, page, pageSize, statusFilter, variantId, toast]);
 
   React.useEffect(() => {
     load();
@@ -246,6 +249,15 @@ function PartnerOrdersPageInner() {
           </Button>
         }
       />
+
+      {variantId && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-gold/40 bg-gold/10 px-4 py-2 text-sm">
+          <span>الطلبات مفلترة حسب متغير منتج محدد لمطابقة المخزون الفعلي.</span>
+          <Button type="button" variant="outline" size="sm" className="rounded-md" onClick={clearVariantFilter}>
+            إلغاء الفلتر
+          </Button>
+        </div>
+      )}
 
       <PanelCard
         title="قائمة الطلبات"
