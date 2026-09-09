@@ -1,0 +1,22 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1200, "h": 1900, "print": "flow" },
+    { "file": "Components.dc.html", "x": 1300, "y": 0, "w": 1000, "h": 1500, "print": "flow" },
+
+    { "file": "AuthLogin-Mobile.dc.html", "x": 0, "y": 2050, "w": 390, "h": 900 },
+    { "file": "AuthLogin-Desktop.dc.html", "x": 470, "y": 2050, "w": 1440, "h": 820 },
+
+    { "file": "PDP-Mobile.dc.html", "x": 0, "y": 3070, "w": 390, "h": 1600 },
+    { "file": "PDP-Desktop.dc.html", "x": 470, "y": 3070, "w": 1440, "h": 1350 },
+
+    { "file": "PartnerOrders-Desktop.dc.html", "x": 0, "y": 4790, "w": 1440, "h": 920 },
+    { "file": "AdminProducts-Desktop.dc.html", "x": 1520, "y": 4790, "w": 1440, "h": 920 }
+  ],
+  "annotations": [
+    { "id": "note-foundation", "x": 0, "y": -90, "w": 300, "text": "Foundation & components — tokens and shared building blocks" },
+    { "id": "note-auth", "x": 0, "y": 1960, "w": 300, "text": "Auth — login (mobile, then desktop split-panel)" },
+    { "id": "note-pdp", "x": 0, "y": 2980, "w": 300, "text": "Public storefront — product detail (mobile, then desktop)" },
+    { "id": "note-dash", "x": 0, "y": 4700, "w": 460, "text": "Partner + admin dashboards — shared sidebar/topbar shell, inspired by the Shoplytic reference, mirrored to RTL" }
+  ],
+  "launch": { "view": "canvas" }
+}

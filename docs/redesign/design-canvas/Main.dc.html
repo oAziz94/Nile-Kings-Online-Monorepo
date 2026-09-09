@@ -1,0 +1,162 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap">
+<style>
+  :root{
+    --ink:20 12% 14%; --ink-soft:24 10% 38%;
+    --paper:40 30% 97%; --sand-100:38 28% 93%; --sand-200:36 24% 88%; --sand-300:34 18% 78%;
+    --burgundy-50:352 45% 95%; --burgundy-500:352 56% 26%; --burgundy-600:352 60% 20%;
+    --gold-50:43 65% 94%; --gold-500:43 74% 52%; --gold-600:38 70% 44%;
+    --success-bg:142 40% 93%; --success-text:142 50% 26%;
+    --warning-bg:38 70% 90%; --warning-text:32 60% 30%;
+    --danger-bg:355 65% 94%; --danger-text:355 60% 40%;
+    --info-bg:208 55% 93%; --info-text:208 60% 35%;
+    --neutral-bg:36 15% 91%; --neutral-text:30 10% 38%;
+    --dark-bg:26 22% 14%;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Cairo',system-ui,sans-serif; direction:rtl; background:hsl(var(--paper)); color:hsl(var(--ink)); }
+  a { color:hsl(var(--burgundy-500)); } a:hover { color:hsl(var(--burgundy-600)); }
+  .section { padding:48px 64px; border-bottom:1px solid hsl(var(--sand-200)); }
+  .section:last-child { border-bottom:none; }
+  .kicker { font-size:13px; font-weight:700; letter-spacing:.04em; color:hsl(var(--burgundy-500)); text-transform:uppercase; margin:0 0 8px; }
+  .h2 { font-size:26px; font-weight:800; margin:0 0 6px; }
+  .lede { font-size:15px; color:hsl(var(--ink-soft)); margin:0 0 28px; max-width:640px; }
+  .swatchrow { display:flex; flex-wrap:wrap; gap:16px; }
+  .swatch { width:150px; }
+  .swatch .chip { height:72px; border-radius:12px; border:1px solid hsl(0 0% 0% / 0.06); box-shadow:0 1px 2px hsl(0 0% 0% / 0.05); }
+  .swatch .label { font-size:12px; font-weight:600; margin-top:8px; }
+  .swatch .value { font-size:11px; color:hsl(var(--ink-soft)); font-family:monospace; direction:ltr; text-align:right; }
+  .typerow { display:flex; align-items:baseline; gap:24px; padding:14px 0; border-bottom:1px dashed hsl(var(--sand-200)); }
+  .typerow:last-child { border-bottom:none; }
+  .typerow .meta { width:180px; flex:0 0 auto; font-size:12px; color:hsl(var(--ink-soft)); font-family:monospace; direction:ltr; text-align:left; }
+  .spacerow { display:flex; align-items:center; gap:16px; padding:10px 0; }
+  .spacebar { background:hsl(var(--gold-500)); border-radius:4px; height:18px; }
+  .spacelabel { width:64px; font-size:12px; font-family:monospace; color:hsl(var(--ink-soft)); direction:ltr; }
+  .radiogrid, .shadowgrid { display:flex; gap:20px; }
+  .radiobox { width:96px; height:96px; background:hsl(var(--sand-100)); border:1px solid hsl(var(--sand-300)); display:flex; align-items:center; justify-content:center; font-size:11px; color:hsl(var(--ink-soft)); font-family:monospace; }
+  .shadowbox { width:150px; height:96px; background:#fff; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:11px; color:hsl(var(--ink-soft)); font-family:monospace; }
+  .hero { background:hsl(var(--dark-bg)); color:hsl(var(--paper)); padding:56px 64px; display:flex; align-items:center; gap:24px; }
+  .mark { flex:0 0 auto; }
+  .wordmark { font-size:30px; font-weight:800; margin:0; }
+  .wordmark-ar { font-size:22px; font-weight:600; opacity:.85; margin:4px 0 0; }
+  .tagline { margin:6px 0 0; font-size:13px; color:hsl(43 40% 78%); }
+</style>
+</helmet>
+
+<div class="hero">
+  <div class="mark">
+    <svg width="56" height="56" viewBox="0 0 64 64" fill="none" stroke="hsl(var(--gold-500))" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 26 L18 14 L24 24 L32 10 L40 24 L46 14 L54 26 L50 40 L14 40 Z"/>
+      <path d="M14 40 L50 40 L50 44 L14 44 Z" fill="hsl(var(--gold-500))" stroke="none"/>
+      <circle cx="32" cy="18" r="2" fill="hsl(var(--gold-500))" stroke="none"/>
+    </svg>
+  </div>
+  <div>
+    <p class="wordmark">NILE KINGS</p>
+    <p class="wordmark-ar">نايل كينجز &mdash; قطن ملوك النيل</p>
+    <p class="tagline">Design foundation &mdash; v2 redesign &mdash; drafted for review, not final</p>
+  </div>
+</div>
+
+<div class="section">
+  <p class="kicker">Brand color</p>
+  <h2 class="h2">Burgundy &amp; gold, refined</h2>
+  <p class="lede">Your existing brand colors, kept for recognition, extended into a full tonal scale so they work as more than a header accent &mdash; primary actions, focus states, and the warm neutral surfaces around them.</p>
+  <div class="swatchrow">
+    <div class="swatch"><div class="chip" style="background:hsl(var(--burgundy-50))"></div><div class="label">burgundy-50</div><div class="value">352 45% 95%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--burgundy-500))"></div><div class="label">burgundy-500 (brand)</div><div class="value">352 56% 26%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--burgundy-600))"></div><div class="label">burgundy-600</div><div class="value">352 60% 20%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--gold-50))"></div><div class="label">gold-50</div><div class="value">43 65% 94%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--gold-500))"></div><div class="label">gold-500 (brand)</div><div class="value">43 74% 52%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--gold-600))"></div><div class="label">gold-600</div><div class="value">38 70% 44%</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="kicker">Warm neutrals</p>
+  <h2 class="h2">Paper, sand &amp; ink</h2>
+  <p class="lede">A richer warm-neutral range than the current single off-white &mdash; cream surfaces for storefront/marketing moments, a deeper warm-dark for footers and dashboard chrome.</p>
+  <div class="swatchrow">
+    <div class="swatch"><div class="chip" style="background:hsl(var(--paper)); border-color:hsl(var(--sand-300))"></div><div class="label">paper</div><div class="value">40 30% 97%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--sand-100))"></div><div class="label">sand-100</div><div class="value">38 28% 93%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--sand-200))"></div><div class="label">sand-200</div><div class="value">36 24% 88%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--sand-300))"></div><div class="label">sand-300</div><div class="value">34 18% 78%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--ink))"></div><div class="label">ink</div><div class="value">20 12% 14%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--dark-bg))"></div><div class="label">dark-bg (footer)</div><div class="value">26 22% 14%</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="kicker">Semantic / status</p>
+  <h2 class="h2">Order-status pills</h2>
+  <p class="lede">Soft pill background + saturated text, one color per stage of the order lifecycle (created &rarr; confirmed &rarr; processing &rarr; ready to ship &rarr; shipped &rarr; delivered / cancelled) &mdash; used on admin and partner order tables.</p>
+  <div class="swatchrow">
+    <div class="swatch"><div class="chip" style="background:hsl(var(--neutral-bg))"></div><div class="label">neutral &mdash; created</div><div class="value">36 15% 91%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--info-bg))"></div><div class="label">info &mdash; confirmed/shipped</div><div class="value">208 55% 93%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--warning-bg))"></div><div class="label">warning &mdash; processing</div><div class="value">38 70% 90%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--success-bg))"></div><div class="label">success &mdash; delivered</div><div class="value">142 40% 93%</div></div>
+    <div class="swatch"><div class="chip" style="background:hsl(var(--danger-bg))"></div><div class="label">danger &mdash; cancelled</div><div class="value">355 65% 94%</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="kicker">Typography</p>
+  <h2 class="h2">Cairo, one family end to end</h2>
+  <p class="lede">Cairo (already in the stack) carries both Arabic and Latin well &mdash; display weight for headlines, regular/medium for UI and body. No separate Latin display face: a mismatched pairing would break the moment Arabic content sits next to it.</p>
+  <div class="typerow"><div class="meta">display-xl / 800 / 40px</div><div style="font-size:40px; font-weight:800;">ملوك النيل &nbsp; Nile Kings</div></div>
+  <div class="typerow"><div class="meta">display-lg / 800 / 32px</div><div style="font-size:32px; font-weight:800;">تصميم جديد بالكامل</div></div>
+  <div class="typerow"><div class="meta">heading / 700 / 24px</div><div style="font-size:24px; font-weight:700;">تفاصيل المنتج</div></div>
+  <div class="typerow"><div class="meta">subheading / 600 / 20px</div><div style="font-size:20px; font-weight:600;">المنتجات ذات الصلة</div></div>
+  <div class="typerow"><div class="meta">body / 500 / 16px</div><div style="font-size:16px; font-weight:500;">قطن ٪١٠٠ مصري &mdash; متوفر بمقاسات متعددة وتوصيل لجميع المحافظات.</div></div>
+  <div class="typerow"><div class="meta">small / 500 / 14px</div><div style="font-size:14px; font-weight:500; color:hsl(var(--ink-soft));">السعر شامل الضريبة &mdash; الدفع عند الاستلام أو إنستاباي</div></div>
+  <div class="typerow"><div class="meta">caption / 600 / 12px</div><div style="font-size:12px; font-weight:600; color:hsl(var(--ink-soft)); letter-spacing:.02em;">آخر تحديث: اليوم الساعة ٩:٤٠ ص</div></div>
+</div>
+
+<div class="section">
+  <p class="kicker">Spacing scale</p>
+  <h2 class="h2">4px base rhythm</h2>
+  <div class="spacerow"><div class="spacelabel">4</div><div class="spacebar" style="width:4px"></div></div>
+  <div class="spacerow"><div class="spacelabel">8</div><div class="spacebar" style="width:8px"></div></div>
+  <div class="spacerow"><div class="spacelabel">12</div><div class="spacebar" style="width:12px"></div></div>
+  <div class="spacerow"><div class="spacelabel">16</div><div class="spacebar" style="width:16px"></div></div>
+  <div class="spacerow"><div class="spacelabel">24</div><div class="spacebar" style="width:24px"></div></div>
+  <div class="spacerow"><div class="spacelabel">32</div><div class="spacebar" style="width:32px"></div></div>
+  <div class="spacerow"><div class="spacelabel">48</div><div class="spacebar" style="width:48px"></div></div>
+  <div class="spacerow"><div class="spacelabel">64</div><div class="spacebar" style="width:64px"></div></div>
+  <div class="spacerow"><div class="spacelabel">96</div><div class="spacebar" style="width:96px"></div></div>
+</div>
+
+<div class="section">
+  <p class="kicker">Radii &amp; elevation</p>
+  <h2 class="h2">Soft on storefront, tighter on dashboards</h2>
+  <p class="lede">Same scale, different application: marketing surfaces (storefront, auth) lean into the larger radii; data-dense admin/partner screens use sm/md to stay calm at scale.</p>
+  <div class="radiogrid" style="margin-bottom:20px;">
+    <div class="radiobox" style="border-radius:8px">sm &middot; 8px</div>
+    <div class="radiobox" style="border-radius:12px">md &middot; 12px</div>
+    <div class="radiobox" style="border-radius:20px">lg &middot; 20px</div>
+    <div class="radiobox" style="border-radius:48px">pill &middot; 999px</div>
+  </div>
+  <div class="shadowgrid">
+    <div class="shadowbox" style="box-shadow:0 1px 2px hsl(0 0% 0% / 0.06)">subtle</div>
+    <div class="shadowbox" style="box-shadow:0 8px 24px hsl(0 0% 0% / 0.08)">card</div>
+    <div class="shadowbox" style="box-shadow:0 16px 40px hsl(0 0% 0% / 0.14)">elevated</div>
+  </div>
+</div>
+
+<div class="section" style="border-bottom:none;">
+  <p class="kicker">On this canvas</p>
+  <h2 class="h2">What to look at next</h2>
+  <p class="lede" style="margin-bottom:0;">Components &mdash; the shared building blocks. AuthLogin, ProductDetail, PartnerOrders, AdminProducts &mdash; the four representative screens, each mobile + desktop where relevant. Inspired by the storefront/dashboard references you shared, adapted to RTL and the brand above.</p>
+</div>
+
+</x-dc>
+</body>
+</html>

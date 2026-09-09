@@ -40,3 +40,7 @@ Thumbs.db
 
 # Prisma
 prisma/migrations/**/migration_lock.toml
+
+# Design canvas: regenerable seeded output (source .dc.html files are versioned)
+docs/redesign/design-canvas/*.html
+!docs/redesign/design-canvas/*.dc.html

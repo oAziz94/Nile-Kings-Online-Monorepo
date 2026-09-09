@@ -33,6 +33,12 @@ Bake this in now, while components are being built fresh — retrofitting later 
 
 Every artboard must be designed RTL-first (this is an Arabic-first storefront per the README) — mirror layout, icon direction, and text alignment. LTR is the fallback case here, not the default.
 
+## Direction
+
+Keeps the existing burgundy/gold brand (recognition for a live store) but extends it into a full tonal system, applied through a warmer/more editorial storefront treatment and a clean sidebar-based SaaS layout for admin/partner — synthesized from user-provided Dribbble references (a warm-neutral editorial sneaker-ecommerce site for storefront patterns; a "Shoplytic" SaaS admin dashboard for the admin/partner shell, status pills, and stat cards), adapted to RTL and to Nile Kings' own brand and order-lifecycle statuses rather than copied directly. Typography stays single-family (Cairo) rather than pairing in a Latin display face, since Arabic is the primary script, not a secondary one.
+
 ## Canvas link
 
-_(fill in once the canvas is published)_
+https://claude.ai/code/artifact/c53479c8-aac0-4f52-a73b-824448b96ab7
+
+Working source files: `docs/redesign/design-canvas/*.dc.html` + `canvas.json` (re-seed from these for any update, per the design skill's workflow).

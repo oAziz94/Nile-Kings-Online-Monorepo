@@ -1,0 +1,241 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap">
+<style>
+  :root{
+    --ink:20 12% 14%; --ink-soft:24 10% 38%;
+    --paper:40 30% 97%; --sand-100:38 28% 93%; --sand-200:36 24% 88%; --sand-300:34 18% 78%;
+    --burgundy-50:352 45% 95%; --burgundy-500:352 56% 26%; --burgundy-600:352 60% 20%;
+    --gold-50:43 65% 94%; --gold-500:43 74% 52%; --gold-600:38 70% 44%;
+    --success-bg:142 40% 93%; --success-text:142 50% 26%;
+    --warning-bg:38 70% 90%; --warning-text:32 60% 30%;
+    --danger-bg:355 65% 94%; --danger-text:355 60% 40%;
+    --info-bg:208 55% 93%; --info-text:208 60% 35%;
+    --neutral-bg:36 15% 91%; --neutral-text:30 10% 38%;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Cairo',system-ui,sans-serif; direction:rtl; background:hsl(var(--paper)); color:hsl(var(--ink)); }
+  a { color:hsl(var(--burgundy-500)); } a:hover { color:hsl(var(--burgundy-600)); }
+  .section { padding:40px 56px; border-bottom:1px solid hsl(var(--sand-200)); }
+  .section:last-child { border-bottom:none; }
+  .kicker { font-size:13px; font-weight:700; letter-spacing:.04em; color:hsl(var(--burgundy-500)); text-transform:uppercase; margin:0 0 14px; }
+  .row { display:flex; flex-wrap:wrap; align-items:center; gap:14px; }
+
+  .btn { font-family:inherit; font-size:15px; font-weight:700; border-radius:12px; padding:12px 22px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-primary { background:hsl(var(--burgundy-500)); color:hsl(var(--paper)); }
+  .btn-primary:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
+  .btn-secondary { background:hsl(var(--gold-500)); color:hsl(20 40% 12%); }
+  .btn-outline { background:transparent; color:hsl(var(--burgundy-500)); border:1.5px solid hsl(var(--burgundy-500)); }
+  .btn-ghost { background:transparent; color:hsl(var(--ink)); }
+  .btn-destructive { background:hsl(var(--danger-text)); color:#fff; }
+  .btn-disabled { background:hsl(var(--sand-200)); color:hsl(var(--ink-soft)); cursor:not-allowed; }
+  .btn-sm { padding:8px 16px; font-size:13px; border-radius:10px; }
+
+  .field { display:flex; flex-direction:column; gap:6px; width:240px; }
+  .field label { font-size:13px; font-weight:600; }
+  .field input, .field select { font-family:inherit; font-size:15px; padding:11px 14px; border-radius:10px; border:1.5px solid hsl(var(--sand-300)); background:#fff; color:hsl(var(--ink)); }
+  .field input:focus, .field select:focus { outline:none; border-color:hsl(var(--gold-600)); box-shadow:0 0 0 3px hsl(var(--gold-500) / 0.28); }
+  .field .err-input { border-color:hsl(var(--danger-text)); }
+  .field .err-msg { font-size:12px; color:hsl(var(--danger-text)); font-weight:600; }
+  .field .hint { font-size:12px; color:hsl(var(--ink-soft)); }
+
+  .ctrl-row { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; }
+  .checkbox, .radio { width:20px; height:20px; border:1.5px solid hsl(var(--sand-300)); background:#fff; display:inline-flex; align-items:center; justify-content:center; }
+  .checkbox { border-radius:5px; }
+  .radio { border-radius:50%; }
+  .checkbox.on, .radio.on { background:hsl(var(--burgundy-500)); border-color:hsl(var(--burgundy-500)); }
+  .radio.on::after { content:""; width:8px; height:8px; border-radius:50%; background:#fff; }
+  .switch { width:40px; height:24px; border-radius:999px; background:hsl(var(--sand-300)); position:relative; display:inline-block; }
+  .switch.on { background:hsl(var(--burgundy-500)); }
+  .switch::after { content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; }
+  .switch.on::after { left:19px; }
+
+  .card { background:#fff; border-radius:16px; box-shadow:0 8px 24px hsl(0 0% 0% / 0.06); padding:20px; width:220px; }
+  .card h4 { margin:0 0 6px; font-size:15px; font-weight:700; }
+  .card p { margin:0; font-size:13px; color:hsl(var(--ink-soft)); }
+
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:999px; font-size:12px; font-weight:700; }
+  .pill::before { content:""; width:6px; height:6px; border-radius:50%; }
+  .pill-neutral { background:hsl(var(--neutral-bg)); color:hsl(var(--neutral-text)); } .pill-neutral::before { background:hsl(var(--neutral-text)); }
+  .pill-info { background:hsl(var(--info-bg)); color:hsl(var(--info-text)); } .pill-info::before { background:hsl(var(--info-text)); }
+  .pill-warning { background:hsl(var(--warning-bg)); color:hsl(var(--warning-text)); } .pill-warning::before { background:hsl(var(--warning-text)); }
+  .pill-success { background:hsl(var(--success-bg)); color:hsl(var(--success-text)); } .pill-success::before { background:hsl(var(--success-text)); }
+  .pill-danger { background:hsl(var(--danger-bg)); color:hsl(var(--danger-text)); } .pill-danger::before { background:hsl(var(--danger-text)); }
+
+  .tabs { display:flex; gap:4px; background:hsl(var(--sand-100)); padding:4px; border-radius:12px; width:fit-content; }
+  .tab { padding:8px 18px; border-radius:9px; font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); }
+  .tab.on { background:#fff; color:hsl(var(--burgundy-500)); box-shadow:0 1px 3px hsl(0 0% 0% / .08); }
+
+  .tooltip-wrap { position:relative; display:inline-block; }
+  .tooltip { background:hsl(20 12% 14%); color:#fff; font-size:12px; font-weight:600; padding:6px 10px; border-radius:8px; position:absolute; bottom:calc(100% + 8px); right:50%; transform:translateX(50%); white-space:nowrap; }
+  .popover { background:#fff; border-radius:14px; box-shadow:0 16px 40px hsl(0 0% 0% / 0.14); padding:16px; width:220px; }
+  .popover h5 { margin:0 0 8px; font-size:14px; font-weight:700; }
+  .popover p { margin:0; font-size:13px; color:hsl(var(--ink-soft)); }
+
+  table.dt { border-collapse:collapse; width:100%; background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 1px 3px hsl(0 0% 0% / .06); }
+  table.dt th { text-align:right; font-size:12px; font-weight:700; color:hsl(var(--ink-soft)); background:hsl(var(--sand-100)); padding:12px 16px; }
+  table.dt td { padding:14px 16px; font-size:14px; border-top:1px solid hsl(var(--sand-200)); }
+  .sort-icon { display:inline-block; vertical-align:middle; margin-left:4px; }
+
+  .pagination { display:flex; align-items:center; gap:6px; }
+  .pg-btn { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); background:#fff; border:1px solid hsl(var(--sand-300)); }
+  .pg-btn.on { background:hsl(var(--burgundy-500)); color:#fff; border-color:hsl(var(--burgundy-500)); }
+
+  .empty { text-align:center; padding:40px; background:#fff; border-radius:16px; width:320px; }
+  .empty p.t { font-weight:700; font-size:15px; margin:14px 0 4px; }
+  .empty p.d { font-size:13px; color:hsl(var(--ink-soft)); margin:0 0 16px; }
+
+  .stat { background:#fff; border-radius:14px; padding:18px 20px; width:200px; display:flex; flex-direction:column; gap:6px; box-shadow:0 1px 3px hsl(0 0% 0% / .06); }
+  .stat .top { display:flex; justify-content:space-between; align-items:center; }
+  .stat .icon { width:34px; height:34px; border-radius:10px; background:hsl(var(--gold-50)); display:flex; align-items:center; justify-content:center; }
+  .stat .val { font-size:26px; font-weight:800; }
+  .stat .lbl { font-size:12px; color:hsl(var(--ink-soft)); font-weight:600; }
+  .stat .delta { font-size:11px; font-weight:700; color:hsl(var(--success-text)); }
+</style>
+</helmet>
+
+<div class="section">
+  <p class="kicker">Buttons</p>
+  <div class="row">
+    <button class="btn btn-primary">تأكيد الطلب</button>
+    <button class="btn btn-secondary">حفظ</button>
+    <button class="btn btn-outline">إلغاء</button>
+    <button class="btn btn-ghost">تخطي</button>
+    <button class="btn btn-destructive">حذف المنتج</button>
+    <button class="btn btn-disabled" disabled>غير متاح</button>
+    <button class="btn btn-primary btn-sm">إضافة</button>
+  </div>
+</div>
+
+<div class="section">
+  <p class="kicker">Inputs &amp; form fields</p>
+  <div class="row">
+    <div class="field">
+      <label>رقم الهاتف</label>
+      <input type="text" placeholder="01xxxxxxxxx">
+      <span class="hint">سيتم إرسال رمز التحقق إلى هذا الرقم</span>
+    </div>
+    <div class="field">
+      <label>كلمة المرور</label>
+      <input class="err-input" type="password" value="••••">
+      <span class="err-msg">كلمة المرور غير صحيحة</span>
+    </div>
+    <div class="field">
+      <label>المحافظة</label>
+      <select><option>القاهرة</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="kicker">Selection controls</p>
+  <div class="row">
+    <span class="ctrl-row"><span class="checkbox on">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
+    </span> محدد</span>
+    <span class="ctrl-row"><span class="checkbox"></span> غير محدد</span>
+    <span class="ctrl-row"><span class="radio on"></span> خيار مختار</span>
+    <span class="ctrl-row"><span class="radio"></span> خيار آخر</span>
+    <span class="ctrl-row"><span class="switch on"></span> مفعّل</span>
+    <span class="ctrl-row"><span class="switch"></span> غير مفعّل</span>
+  </div>
+</div>
+
+<div class="section">
+  <p class="kicker">Cards</p>
+  <div class="row">
+    <div class="card"><h4>قميص قطن أساسي</h4><p>٤٥٠ ج.م &middot; مقاسات متعددة</p></div>
+    <div class="card"><h4>طلب رقم ٥٨٣٤</h4><p>تم الشحن &middot; المنوفية</p></div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="kicker">Status pills (order lifecycle)</p>
+  <div class="row">
+    <span class="pill pill-neutral">تم الإنشاء</span>
+    <span class="pill pill-info">تم التأكيد</span>
+    <span class="pill pill-warning">جاري التجهيز</span>
+    <span class="pill pill-info">تم الشحن</span>
+    <span class="pill pill-success">تم التوصيل</span>
+    <span class="pill pill-danger">ملغي</span>
+  </div>
+</div>
+
+<div class="section">
+  <p class="kicker">Tabs</p>
+  <div class="tabs">
+    <div class="tab on">الكل</div>
+    <div class="tab">قيد الانتظار</div>
+    <div class="tab">مكتمل</div>
+    <div class="tab">ملغي</div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="kicker">Tooltip &amp; popover</p>
+  <div class="row" style="gap:48px; align-items:flex-start;">
+    <div class="tooltip-wrap">
+      <div class="tooltip">إجمالي شامل الشحن</div>
+      <button class="btn btn-outline btn-sm">السعر الإجمالي</button>
+    </div>
+    <div class="popover">
+      <h5>معلومات التوصيل</h5>
+      <p>يتم التوصيل خلال ٢-٤ أيام عمل حسب المحافظة المختارة.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="kicker">Data table shell (header, sort, pagination)</p>
+  <table class="dt">
+    <thead><tr>
+      <th>رقم الطلب</th>
+      <th>العميل<svg class="sort-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M7 10l5 5 5-5"/></svg></th>
+      <th>المحافظة</th>
+      <th>الحالة</th>
+      <th>التاريخ</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>#5834</td><td>أحمد س.</td><td>القاهرة</td><td><span class="pill pill-success">تم التوصيل</span></td><td>٩ سبتمبر</td></tr>
+      <tr><td>#5833</td><td>مريم ك.</td><td>الجيزة</td><td><span class="pill pill-warning">جاري التجهيز</span></td><td>٩ سبتمبر</td></tr>
+    </tbody>
+  </table>
+  <div style="margin-top:14px;" class="pagination">
+    <div class="pg-btn">‹</div>
+    <div class="pg-btn on">١</div>
+    <div class="pg-btn">٢</div>
+    <div class="pg-btn">٣</div>
+    <div class="pg-btn">›</div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="kicker">Empty state &amp; stat tile</p>
+  <div class="row" style="align-items:flex-start;">
+    <div class="empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--sand-300))" stroke-width="1.6" style="margin:0 auto;"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M3 7l2-4h14l2 4"/><path d="M8 11h8"/></svg>
+      <p class="t">لا توجد طلبات بعد</p>
+      <p class="d">ستظهر هنا الطلبات الجديدة فور وصولها.</p>
+      <button class="btn btn-outline btn-sm">تحديث</button>
+    </div>
+    <div class="stat">
+      <div class="top">
+        <span class="lbl">طلبات قيد التوجيه</span>
+        <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--gold-600))" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg></span>
+      </div>
+      <span class="val">١٢</span>
+      <span class="delta">+٣ عن أمس</span>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+</body>
+</html>
