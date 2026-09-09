@@ -86,7 +86,6 @@ export function ProductsContent() {
   const fetchPage = useCallback(
     async (offset: number, append: boolean) => {
       const params = new URLSearchParams();
-      params.set("expandVariants", "true");
       if (debouncedSearch) params.set("q", debouncedSearch);
       if (category) params.set("category", category);
       if (size) params.set("sizes", size);

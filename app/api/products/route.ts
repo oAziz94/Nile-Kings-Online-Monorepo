@@ -3,13 +3,8 @@ import { unstable_cache } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { apiSuccess } from "@/lib/api/response";
-import type { ProductsQuery, ProductListItem, ColorVariantListItem } from "@/lib/catalog";
-import {
-  piastresToEgp,
-  discountPercentFromPrices,
-  originalPriceFromExplicitDiscount,
-  originalPriceFromVariant,
-} from "@/lib/catalog";
+import type { ProductsQuery, ProductListItem } from "@/lib/catalog";
+import { buildProductListItem } from "@/lib/catalog";
 import {
   applyPartnerStockOverrides,
   getPartnerStockOverrides,
@@ -23,7 +18,6 @@ function parseQuery(req: NextRequest): ProductsQuery {
   const categorySlug = searchParams.get("category") ?? undefined;
   const q = searchParams.get("q") ?? undefined;
   const section = searchParams.get("section") ?? undefined;
-  const expandVariants = searchParams.get("expandVariants") === "true";
   const minPrice = searchParams.get("minPrice");
   const maxPrice = searchParams.get("maxPrice");
   const sizes = searchParams.get("sizes");
@@ -36,7 +30,6 @@ function parseQuery(req: NextRequest): ProductsQuery {
     q: q && q.trim() ? q.trim() : undefined,
     categorySlug,
     section: section && section.trim() ? section.trim() : undefined,
-    expandVariants,
     minPrice: minPrice ? Number(minPrice) : undefined,
     maxPrice: maxPrice ? Number(maxPrice) : undefined,
     sizes: sizes ? sizes.split(",").filter(Boolean) : undefined,
@@ -57,63 +50,9 @@ type VariantRow = {
   colorHex: string | null;
   colorName: string | null;
   imageUrl: string | null;
+  /** From `unstable_cache`: a fresh query returns a Date, a cache-hit returns its JSON-serialized ISO string. */
+  createdAt: Date | string;
 };
-
-function colorKey(v: VariantRow): string {
-  return `${v.colorName ?? ""}|${v.colorHex ?? ""}`;
-}
-
-function toListItem(p: {
-  id: string;
-  name: string;
-  slug: string;
-  imageUrl: string | null;
-  basePricePiastres: number | null;
-  discountPricePiastres: number | null;
-  category: { slug: string; name: string };
-  variants: VariantRow[];
-}): ProductListItem {
-  const prices = p.variants.map((v) => v.pricePiastres);
-  const minPrice = prices.length ? Math.min(...prices) : 0;
-  const currentPiastres = p.discountPricePiastres ?? minPrice;
-  const priceEgp = piastresToEgp(currentPiastres);
-  const originalPriceEgp = originalPriceFromExplicitDiscount(
-    p.basePricePiastres,
-    p.discountPricePiastres
-  );
-  const discountPercent = originalPriceEgp != null && originalPriceEgp > priceEgp
-    ? discountPercentFromPrices(originalPriceEgp, priceEgp)
-    : undefined;
-  const inStock = p.variants.some((v) => v.stockAvailable > 0);
-
-  const seen = new Set<string>();
-  const colorVariants: ColorVariantListItem[] = [];
-  for (const v of p.variants) {
-    const key = v.colorHex ?? "default";
-    if (seen.has(key)) continue;
-    seen.add(key);
-    colorVariants.push({
-      id: v.id,
-      colorHex: v.colorHex,
-      colorName: v.colorName,
-      imageUrl: v.imageUrl ?? p.imageUrl,
-    });
-  }
-
-  return {
-    id: p.id,
-    name: p.name,
-    slug: p.slug,
-    imageUrl: p.imageUrl,
-    priceEgp,
-    ...(originalPriceEgp && originalPriceEgp > priceEgp && { originalPriceEgp }),
-    ...(discountPercent != null && { discountPercent }),
-    categorySlug: p.category.slug,
-    categoryName: p.category.name,
-    inStock,
-    ...(colorVariants.length > 0 && { colorVariants }),
-  };
-}
 
 const productsListingVariantSelect = {
   id: true,
@@ -125,6 +64,7 @@ const productsListingVariantSelect = {
   colorHex: true,
   colorName: true,
   imageUrl: true,
+  createdAt: true,
 } as const;
 
 /**
@@ -164,53 +104,6 @@ const getProductsPage = unstable_cache(
   ["products-listing"],
   { revalidate: 60 }
 );
-
-/** One list item per color variant (first variant per color used for slug/image/price). */
-function toListItemsByVariant(p: {
-  id: string;
-  name: string;
-  slug: string;
-  imageUrl: string | null;
-  basePricePiastres: number | null;
-  category: { slug: string; name: string };
-  variants: VariantRow[];
-  productInStock: boolean;
-}): ProductListItem[] {
-  /** Representative row per color + total units across all sizes for that color (for sorting). */
-  const byColor = new Map<string, { rep: VariantRow; totalStock: number }>();
-  for (const v of p.variants) {
-    const key = colorKey(v);
-    const existing = byColor.get(key);
-    if (!existing) {
-      byColor.set(key, { rep: v, totalStock: v.stockAvailable });
-    } else {
-      existing.totalStock += v.stockAvailable;
-    }
-  }
-  const items: ProductListItem[] = [];
-  for (const { rep: v, totalStock } of byColor.values()) {
-    const priceEgp = piastresToEgp(v.pricePiastres);
-    const originalPriceEgp = originalPriceFromVariant(v.basePricePiastres, v.pricePiastres);
-    const discountPercent = originalPriceEgp != null && originalPriceEgp > priceEgp
-      ? discountPercentFromPrices(originalPriceEgp, priceEgp)
-      : undefined;
-    items.push({
-      id: v.id,
-      name: p.name,
-      slug: p.slug,
-      imageUrl: v.imageUrl ?? p.imageUrl,
-      priceEgp,
-      ...(originalPriceEgp && originalPriceEgp > priceEgp && { originalPriceEgp }),
-      ...(discountPercent != null && { discountPercent }),
-      categorySlug: p.category.slug,
-      categoryName: p.category.name,
-      inStock: p.productInStock,
-      variantSlug: v.slug,
-      stockAvailable: totalStock,
-    });
-  }
-  return items;
-}
 
 export async function GET(req: NextRequest) {
   const q = parseQuery(req);
@@ -259,19 +152,17 @@ export async function GET(req: NextRequest) {
             : [{ sortOrder: "desc" }, { createdAt: "desc" }];
 
   const hasPriceFilter = q.minPrice != null || q.maxPrice != null;
-  // Category view (الكل, الاكثر مبيعا, tag section) or كل المنتجات: show one card per color variant.
-  const byVariant = Boolean(q.categorySlug) || Boolean(q.expandVariants);
+  // price_asc/price_desc are applied client-side (below), so they need every matching product
+  // fetched up front and sorted before slicing to a page — same as the price-range filter case —
+  // rather than a single DB-paginated page re-sorted in isolation.
+  const needsFullFetch = hasPriceFilter || q.sort === "price_asc" || q.sort === "price_desc";
+  const FULL_FETCH_CAP = 500;
 
-  // When listing by category we show one card per color variant. We fetch matching products
-  // (up to a cap), expand to variant-level list, then paginate by variant index so the
-  // frontend can load all variants. Otherwise limit/offset would apply to products and
-  // many variants would never appear.
-  const SECTION_VIEW_PRODUCT_CAP = 500;
-  const skip = hasPriceFilter ? 0 : byVariant ? 0 : q.offset;
-  const take = hasPriceFilter ? 200 : byVariant ? SECTION_VIEW_PRODUCT_CAP : q.limit;
+  const skip = needsFullFetch ? 0 : q.offset;
+  const take = needsFullFetch ? FULL_FETCH_CAP : q.limit;
 
   const [{ products, totalCount }, bestSalesRankedIds] = await Promise.all([
-    getProductsPage(JSON.stringify(where), JSON.stringify(orderBy), skip ?? 0, take ?? 24, !hasPriceFilter),
+    getProductsPage(JSON.stringify(where), JSON.stringify(orderBy), skip ?? 0, take ?? 24, !needsFullFetch),
     q.sort === "best_sales" ? getProductIdsRankedByRecentSales(where) : Promise.resolve(null),
   ]);
 
@@ -283,8 +174,7 @@ export async function GET(req: NextRequest) {
   }));
 
   // "Best sales" is a per-product metric (summed across all of a product's variants), so it's
-  // applied here — before splitting into per-color-variant cards below — rather than as a
-  // per-card sort like price_asc/price_desc further down.
+  // applied here rather than as a per-card sort like price_asc/price_desc further down.
   if (bestSalesRankedIds) {
     const rankIndex = new Map(bestSalesRankedIds.map((id, i) => [id, i]));
     stockAdjustedProducts = [...stockAdjustedProducts].sort(
@@ -292,23 +182,16 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  let filtered: ProductListItem[];
-
-  if (byVariant) {
-    filtered = stockAdjustedProducts.flatMap((p) =>
-      toListItemsByVariant({
-        ...p,
-        productInStock: (p.variants as VariantRow[]).some((v) => v.stockAvailable > 0),
-        variants: (p.variants as VariantRow[]).filter((v) => {
-          if (q.sizes?.length && !q.sizes.includes(v.name)) return false;
-          if (q.inStockOnly && v.stockAvailable <= 0) return false;
-          return true;
-        }),
-      })
-    );
-  } else {
-    filtered = stockAdjustedProducts.map(toListItem);
-  }
+  let filtered: ProductListItem[] = stockAdjustedProducts.map((p) =>
+    buildProductListItem({
+      ...p,
+      variants: (p.variants as VariantRow[]).filter((v) => {
+        if (q.sizes?.length && !q.sizes.includes(v.name)) return false;
+        if (q.inStockOnly && v.stockAvailable <= 0) return false;
+        return true;
+      }),
+    })
+  );
 
   if (q.minPrice != null || q.maxPrice != null) {
     filtered = filtered.filter((p) => {
@@ -322,15 +205,10 @@ export async function GET(req: NextRequest) {
   if (q.sort === "price_asc") filtered.sort((a, b) => a.priceEgp - b.priceEgp);
   else if (q.sort === "price_desc") filtered.sort((a, b) => b.priceEgp - a.priceEgp);
 
-  // When byVariant, paginate the variant-level list; total is variant count so frontend can load all.
-  const start = hasPriceFilter ? (q.offset ?? 0) : (q.offset ?? 0);
+  const start = q.offset ?? 0;
   const end = start + (q.limit ?? 24);
-  const paginated = filtered.slice(start, end);
-  const total = hasPriceFilter
-    ? filtered.length
-    : byVariant
-      ? filtered.length
-      : (totalCount ?? paginated.length);
+  const paginated = needsFullFetch ? filtered.slice(start, end) : filtered;
+  const total = needsFullFetch ? filtered.length : (totalCount ?? paginated.length);
   const response = apiSuccess({ products: paginated, total });
   response.headers.set("Cache-Control", "no-store, must-revalidate");
   return response;

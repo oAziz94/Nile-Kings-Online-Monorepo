@@ -79,6 +79,7 @@ type RelatedItem = {
   slug: string;
   imageUrl: string | null;
   colorVariants?: { id: string; colorHex: string | null; colorName: string | null; imageUrl: string | null }[];
+  variantSlug?: string | null;
   priceEgp: number;
   originalPriceEgp?: number;
   discountPercent?: number;
@@ -427,6 +428,8 @@ export function ProductPageContent({
                 originalPrice={p.originalPriceEgp}
                 discountPercent={p.discountPercent}
                 colorVariants={p.colorVariants}
+                variantSlug={p.variantSlug}
+                inStock={p.inStock}
               />
             ))}
           </div>

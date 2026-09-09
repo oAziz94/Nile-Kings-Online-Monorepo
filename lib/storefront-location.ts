@@ -4,11 +4,30 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 
-export const STOREFRONT_GOVERNORATE_COOKIE = "nile_storefront_governorate";
+/**
+ * Holds the customer's full delivery location, not just the governorate — the location
+ * modal collects area (and optionally city/street/phone/...) so the same value can both
+ * route partner inventory and prefill checkout / seed a saved address. Replaces the older
+ * governorate-only cookie; readers below still expose governorate-only accessors so the
+ * many call sites that only ever needed that keep working unchanged.
+ */
+export const STOREFRONT_LOCATION_COOKIE = "nile_storefront_location";
 
 export type StorefrontStockContext = {
   governorate: string | null;
   partnerId: string | null;
+};
+
+export type StorefrontAddress = {
+  governorate: string;
+  area: string | null;
+  city: string | null;
+  street: string | null;
+  building: string | null;
+  floor: string | null;
+  apartment: string | null;
+  phone: string | null;
+  label: string | null;
 };
 
 export function normalizeStorefrontGovernorate(value: string | null | undefined): string | null {
@@ -18,13 +37,49 @@ export function normalizeStorefrontGovernorate(value: string | null | undefined)
   return match?.value ?? null;
 }
 
+function readStringField(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function parseStorefrontAddressCookie(raw: string | undefined): StorefrontAddress | null {
+  if (!raw) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object") return null;
+  const record = parsed as Record<string, unknown>;
+  const governorate = normalizeStorefrontGovernorate(readStringField(record.governorate));
+  if (!governorate) return null;
+
+  return {
+    governorate,
+    area: readStringField(record.area),
+    city: readStringField(record.city),
+    street: readStringField(record.street),
+    building: readStringField(record.building),
+    floor: readStringField(record.floor),
+    apartment: readStringField(record.apartment),
+    phone: readStringField(record.phone),
+    label: readStringField(record.label),
+  };
+}
+
 export function getStorefrontGovernorateFromRequest(req: NextRequest): string | null {
-  return normalizeStorefrontGovernorate(req.cookies.get(STOREFRONT_GOVERNORATE_COOKIE)?.value);
+  return parseStorefrontAddressCookie(req.cookies.get(STOREFRONT_LOCATION_COOKIE)?.value)?.governorate ?? null;
 }
 
 export async function getStorefrontGovernorateFromCookies(): Promise<string | null> {
   const cookieStore = await cookies();
-  return normalizeStorefrontGovernorate(cookieStore.get(STOREFRONT_GOVERNORATE_COOKIE)?.value);
+  return parseStorefrontAddressCookie(cookieStore.get(STOREFRONT_LOCATION_COOKIE)?.value)?.governorate ?? null;
+}
+
+/** Full delivery location (governorate + whatever else the customer entered), or null if unset/invalid. */
+export async function getStorefrontAddressFromCookies(): Promise<StorefrontAddress | null> {
+  const cookieStore = await cookies();
+  return parseStorefrontAddressCookie(cookieStore.get(STOREFRONT_LOCATION_COOKIE)?.value);
 }
 
 export async function getStorefrontStockContext(

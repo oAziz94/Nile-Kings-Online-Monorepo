@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
-import type { ProductListItem, ColorVariantListItem } from "@/lib/catalog";
-import { piastresToEgp, discountPercentFromPrices, originalPriceFromExplicitDiscount } from "@/lib/catalog";
+import type { ProductListItem } from "@/lib/catalog";
+import { buildProductListItem } from "@/lib/catalog";
 import {
   applyPartnerStockOverrides,
   getCurrentStorefrontStockContext,
@@ -20,67 +20,31 @@ type RawProduct = {
   category: { slug: string; name: string };
   variants: {
     id: string;
+    slug: string | null;
     pricePiastres: number;
     stockAvailable: number;
     colorHex: string | null;
     colorName: string | null;
     imageUrl: string | null;
+    /** From `unstable_cache`: a fresh query returns a Date, a cache-hit returns its JSON-serialized ISO string. */
+    createdAt: Date | string;
   }[];
 };
 
-function toListItem(p: RawProduct): ProductListItem {
-  const prices = p.variants.map((v) => v.pricePiastres);
-  const minPrice = prices.length ? Math.min(...prices) : 0;
-  const currentPiastres = p.discountPricePiastres ?? minPrice;
-  const priceEgp = piastresToEgp(currentPiastres);
-  const originalPriceEgp = originalPriceFromExplicitDiscount(
-    p.basePricePiastres,
-    p.discountPricePiastres
-  );
-  const discountPercent = originalPriceEgp != null && originalPriceEgp > priceEgp
-    ? discountPercentFromPrices(originalPriceEgp, priceEgp)
-    : undefined;
-  const inStock = p.variants.some((v) => v.stockAvailable > 0);
-
-  const seen = new Set<string>();
-  const colorVariants: ColorVariantListItem[] = [];
-  for (const v of p.variants) {
-    const key = v.colorHex ?? "default";
-    if (seen.has(key)) continue;
-    seen.add(key);
-    colorVariants.push({
-      id: v.id,
-      colorHex: v.colorHex,
-      colorName: v.colorName,
-      imageUrl: v.imageUrl ?? p.imageUrl,
-    });
-  }
-
-  return {
-    id: p.id,
-    name: p.name,
-    slug: p.slug,
-    imageUrl: p.imageUrl,
-    priceEgp,
-    ...(originalPriceEgp && originalPriceEgp > priceEgp && { originalPriceEgp }),
-    ...(discountPercent != null && { discountPercent }),
-    categorySlug: p.category.slug,
-    categoryName: p.category.name,
-    inStock,
-    ...(colorVariants.length > 0 && { colorVariants }),
-  };
-}
+const toListItem = buildProductListItem;
 
 const include = {
   category: { select: { slug: true, name: true } },
   variants: {
     select: {
       id: true,
+      slug: true,
       pricePiastres: true,
       stockAvailable: true,
       colorHex: true,
       colorName: true,
       imageUrl: true,
+      createdAt: true,
     },
   },
 } as const;

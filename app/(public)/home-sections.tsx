@@ -26,6 +26,7 @@ type HomeProduct = {
   discountPercent?: number;
   inStock?: boolean;
   colorVariants?: { id: string; colorHex: string | null; colorName: string | null; imageUrl: string | null }[];
+  variantSlug?: string | null;
 };
 
 /** Home data shape from getHomeData(); collection products are ProductListItem[]. */
@@ -41,6 +42,7 @@ function toCardProps(p: HomeProduct | ProductListItem) {
     originalPrice: p.originalPriceEgp,
     discountPercent: p.discountPercent,
     colorVariants: p.colorVariants,
+    variantSlug: p.variantSlug,
     inStock: p.inStock ?? true,
   };
 }

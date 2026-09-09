@@ -21,6 +21,7 @@ function toCardProps(p: ProductListItem) {
     originalPrice: p.originalPriceEgp,
     discountPercent: p.discountPercent,
     colorVariants: p.colorVariants,
+    variantSlug: p.variantSlug,
     inStock: p.inStock ?? true,
   };
 }

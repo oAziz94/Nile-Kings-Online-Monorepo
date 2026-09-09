@@ -59,6 +59,8 @@ export async function POST(req: NextRequest) {
 
   const { mergeGuestCartIntoUser } = await import("@/lib/cart/cart");
   await mergeGuestCartIntoUser(user.id);
+  const { mergeGuestAddressIntoUser } = await import("@/lib/addresses/merge-guest-address");
+  await mergeGuestAddressIntoUser(user.id);
 
   return apiSuccess(
     { userId: user.id, role: user.role },

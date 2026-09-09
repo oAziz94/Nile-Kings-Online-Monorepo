@@ -9,6 +9,7 @@ import {
   discountPercentFromPrices,
   originalPriceFromExplicitDiscount,
   originalPriceFromVariant,
+  buildProductListItem,
 } from "@/lib/catalog";
 import { pageMetadata } from "@/lib/seo";
 import {
@@ -190,11 +191,13 @@ const getRelatedCatalog = unstable_cache(
         variants: {
           select: {
             id: true,
+            slug: true,
             pricePiastres: true,
             stockAvailable: true,
             colorHex: true,
             colorName: true,
             imageUrl: true,
+            createdAt: true,
           },
         },
       },
@@ -214,43 +217,7 @@ async function getRelated(slug: string, categoryId: string, stockContext: Storef
     variants: applyPartnerStockOverrides(product.variants, overrides),
   }));
 
-  return stockAdjustedRelated.map((p) => {
-    const prices = p.variants.map((v) => v.pricePiastres);
-    const minPrice = prices.length ? Math.min(...prices) : 0;
-    const currentPiastres = p.discountPricePiastres ?? minPrice;
-    const priceEgp = piastresToEgp(currentPiastres);
-    const originalPriceEgp = originalPriceFromExplicitDiscount(
-      p.basePricePiastres,
-      p.discountPricePiastres
-    );
-    const discountPercent = originalPriceEgp != null && originalPriceEgp > priceEgp
-      ? discountPercentFromPrices(originalPriceEgp, priceEgp)
-      : undefined;
-    const seen = new Set<string>();
-    const colorVariants: { id: string; colorHex: string | null; colorName: string | null; imageUrl: string | null }[] = [];
-    for (const v of p.variants) {
-      const key = v.colorHex ?? "default";
-      if (seen.has(key)) continue;
-      seen.add(key);
-      colorVariants.push({
-        id: v.id,
-        colorHex: v.colorHex,
-        colorName: v.colorName,
-        imageUrl: v.imageUrl ?? p.imageUrl,
-      });
-    }
-    return {
-      id: p.id,
-      name: p.name,
-      slug: p.slug,
-      imageUrl: p.imageUrl,
-      priceEgp,
-      originalPriceEgp: originalPriceEgp && originalPriceEgp > priceEgp ? originalPriceEgp : undefined,
-      discountPercent,
-      inStock: p.variants.some((v) => v.stockAvailable > 0),
-      colorVariants: colorVariants.length > 0 ? colorVariants : undefined,
-    };
-  });
+  return stockAdjustedRelated.map(buildProductListItem);
 }
 
 export default async function ProductPage({

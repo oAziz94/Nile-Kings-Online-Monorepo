@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { apiSuccess } from "@/lib/api/response";
 import type { ProductListItem } from "@/lib/catalog";
-import { piastresToEgp, discountPercentFromPrices, originalPriceFromExplicitDiscount } from "@/lib/catalog";
+import { buildProductListItem } from "@/lib/catalog";
 import {
   applyPartnerStockOverrides,
   getPartnerStockOverrides,
@@ -13,44 +13,7 @@ import {
 
 const RECOMMENDATIONS_LIMIT = 12;
 
-function toListItem(p: {
-  id: string;
-  name: string;
-  slug: string;
-  imageUrl: string | null;
-  basePricePiastres: number | null;
-  discountPricePiastres: number | null;
-  category: { slug: string; name: string };
-  variants: { id: string; pricePiastres: number; stockAvailable: number }[];
-}): ProductListItem {
-  const prices = p.variants.map((v) => v.pricePiastres);
-  const minPrice = prices.length ? Math.min(...prices) : 0;
-  const currentPiastres = p.discountPricePiastres ?? minPrice;
-  const priceEgp = piastresToEgp(currentPiastres);
-  const originalPriceEgp = originalPriceFromExplicitDiscount(
-    p.basePricePiastres,
-    p.discountPricePiastres
-  );
-  const discountPercent =
-    originalPriceEgp != null && originalPriceEgp > priceEgp
-      ? discountPercentFromPrices(originalPriceEgp, priceEgp)
-      : undefined;
-  const inStock = p.variants.some((v) => v.stockAvailable > 0);
-
-  return {
-    id: p.id,
-    name: p.name,
-    slug: p.slug,
-    imageUrl: p.imageUrl,
-    priceEgp,
-    ...(originalPriceEgp &&
-      originalPriceEgp > priceEgp && { originalPriceEgp }),
-    ...(discountPercent != null && { discountPercent }),
-    categorySlug: p.category.slug,
-    categoryName: p.category.name,
-    inStock,
-  };
-}
+const toListItem = buildProductListItem;
 
 /**
  * Everything here (trending/recommended aggregation + new arrivals) is visitor-independent,
@@ -60,7 +23,18 @@ const getRecommendationsCatalog = unstable_cache(
   async () => {
     const include = {
       category: { select: { slug: true, name: true } },
-      variants: { select: { id: true, pricePiastres: true, stockAvailable: true } },
+      variants: {
+        select: {
+          id: true,
+          slug: true,
+          pricePiastres: true,
+          stockAvailable: true,
+          colorHex: true,
+          colorName: true,
+          imageUrl: true,
+          createdAt: true,
+        },
+      },
     } as const;
 
     const [trendingIds, recommendedIds, newArrivals] = await Promise.all([
