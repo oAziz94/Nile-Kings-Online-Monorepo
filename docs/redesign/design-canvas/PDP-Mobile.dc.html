@@ -10,48 +10,49 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap">
 <style>
   :root{
-    --ink:20 12% 14%; --ink-soft:24 10% 38%;
-    --paper:40 30% 97%; --sand-100:38 28% 93%; --sand-200:36 24% 88%; --sand-300:34 18% 78%;
-    --burgundy-500:352 56% 26%; --gold-50:43 65% 94%; --gold-500:43 74% 52%; --gold-600:38 70% 44%;
-    --success-text:142 50% 26%; --success-bg:142 40% 93%;
+    --papyrus:42 45% 97%; --stone-100:38 22% 93%; --stone-200:36 16% 87%; --stone-300:34 12% 76%;
+    --lapis-900:228 44% 9%; --lapis-800:228 40% 14%;
+    --ink:228 22% 14%; --ink-soft:225 10% 42%;
+    --gold-500:42 78% 55%; --gold-600:38 74% 46%; --carnelian-500:9 68% 45%;
+    --malachite-text:152 50% 24%; --malachite-bg:152 42% 92%;
   }
   * { box-sizing:border-box; }
   html,body { margin:0; }
-  body { font-family:'Cairo',system-ui,sans-serif; direction:rtl; background:hsl(var(--paper)); color:hsl(var(--ink)); }
+  body { font-family:'Cairo',system-ui,sans-serif; direction:rtl; background:hsl(var(--papyrus)); color:hsl(var(--ink)); }
   .topbar { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; }
-  .icon-btn { width:36px; height:36px; border-radius:10px; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px hsl(0 0% 0% / .06); }
-  .gallery { margin:0 18px; height:340px; border-radius:20px; background:linear-gradient(160deg, hsl(38 40% 82%) 0%, hsl(30 25% 62%) 60%, hsl(20 22% 42%) 100%); position:relative; overflow:hidden; }
-  .gallery .badge { position:absolute; top:14px; right:14px; background:hsl(var(--burgundy-500)); color:#fff; font-size:11px; font-weight:800; padding:5px 10px; border-radius:999px; }
+  .icon-btn { width:36px; height:36px; border-radius:10px; background:#fff; border:1px solid hsl(var(--stone-200)); display:flex; align-items:center; justify-content:center; }
+  .gallery { margin:0 18px; height:340px; border-radius:16px; background:linear-gradient(160deg, hsl(228 30% 22%) 0%, hsl(228 40% 14%) 55%, hsl(228 44% 9%) 100%); position:relative; overflow:hidden; }
+  .gallery .badge { position:absolute; top:14px; right:14px; background:hsl(var(--carnelian-500)); color:#fff; font-size:11px; font-weight:800; padding:5px 12px; border-radius:999px; }
   .dots { display:flex; justify-content:center; gap:6px; margin-top:10px; }
-  .dots span { width:6px; height:6px; border-radius:50%; background:hsl(var(--sand-300)); }
-  .dots span.on { background:hsl(var(--burgundy-500)); width:18px; border-radius:4px; }
+  .dots span { width:6px; height:6px; border-radius:50%; background:hsl(var(--stone-300)); }
+  .dots span.on { background:hsl(var(--lapis-800)); width:18px; border-radius:4px; }
   .info { padding:18px; }
-  .cat { font-size:12px; font-weight:700; color:hsl(var(--gold-600)); text-transform:uppercase; letter-spacing:.03em; margin:0 0 4px; }
-  h1 { font-size:21px; font-weight:800; margin:0 0 8px; }
+  .cat { font-size:12px; font-weight:800; color:hsl(var(--gold-600)); text-transform:uppercase; letter-spacing:.05em; margin:0 0 4px; }
+  h1 { font-size:22px; font-weight:800; letter-spacing:-.01em; margin:0 0 8px; }
   .price-row { display:flex; align-items:baseline; gap:10px; margin-bottom:16px; }
-  .price { font-size:26px; font-weight:800; color:hsl(var(--burgundy-500)); }
+  .price { font-size:27px; font-weight:800; color:hsl(var(--lapis-800)); }
   .old-price { font-size:14px; color:hsl(var(--ink-soft)); text-decoration:line-through; }
   .group { margin-bottom:18px; }
   .group .lbl { font-size:13px; font-weight:700; margin-bottom:8px; }
   .swatches { display:flex; gap:10px; }
   .swatch { width:36px; height:36px; border-radius:50%; border:2px solid transparent; }
-  .swatch.on { border-color:hsl(var(--burgundy-500)); }
+  .swatch.on { border-color:hsl(var(--lapis-800)); }
   .sizes { display:flex; gap:8px; }
-  .size { width:44px; height:40px; border-radius:10px; border:1.5px solid hsl(var(--sand-300)); background:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
-  .size.on { border-color:hsl(var(--burgundy-500)); background:hsl(var(--burgundy-500)); color:#fff; }
-  .size.out { color:hsl(var(--sand-300)); text-decoration:line-through; }
-  .avail { display:flex; align-items:center; gap:8px; background:hsl(var(--success-bg)); color:hsl(var(--success-text)); padding:10px 14px; border-radius:12px; font-size:13px; font-weight:700; margin-bottom:18px; }
-  .cta-bar { position:sticky; bottom:0; background:hsl(var(--paper) / .96); backdrop-filter:blur(6px); padding:14px 18px 20px; border-top:1px solid hsl(var(--sand-200)); }
-  .btn { width:100%; background:hsl(var(--burgundy-500)); color:hsl(var(--paper)); font-family:inherit; font-weight:700; font-size:15px; border:none; border-radius:12px; padding:15px; cursor:pointer; }
+  .size { width:44px; height:40px; border-radius:10px; border:1.5px solid hsl(var(--stone-300)); background:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
+  .size.on { border-color:hsl(var(--lapis-800)); background:hsl(var(--lapis-800)); color:#fff; }
+  .size.out { color:hsl(var(--stone-300)); text-decoration:line-through; }
+  .avail { display:flex; align-items:center; gap:8px; background:hsl(var(--malachite-bg)); color:hsl(var(--malachite-text)); padding:10px 14px; border-radius:12px; font-size:13px; font-weight:700; margin-bottom:18px; }
+  .cta-bar { position:sticky; bottom:0; background:hsl(var(--papyrus) / .96); backdrop-filter:blur(6px); padding:14px 18px 20px; border-top:1px solid hsl(var(--stone-200)); }
+  .btn { width:100%; background:hsl(var(--lapis-800)); color:hsl(var(--papyrus)); font-family:inherit; font-weight:700; font-size:15px; border:none; border-radius:999px; padding:15px; cursor:pointer; }
   .btn:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
   .related { padding:24px 18px 32px; }
   .related h2 { font-size:17px; font-weight:800; margin:0 0 14px; }
   .rel-row { display:flex; gap:14px; overflow:hidden; }
-  .rel-card { flex:0 0 148px; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 1px 3px hsl(0 0% 0% / .06); }
-  .rel-img { height:120px; background:linear-gradient(160deg, hsl(38 35% 85%), hsl(28 22% 60%)); }
+  .rel-card { flex:0 0 148px; background:#fff; border-radius:14px; border:1px solid hsl(var(--stone-200)); overflow:hidden; }
+  .rel-img { height:120px; background:linear-gradient(160deg, hsl(228 25% 30%), hsl(228 40% 14%)); }
   .rel-body { padding:12px; }
   .rel-body .n { font-size:13px; font-weight:700; margin:0 0 4px; }
-  .rel-body .p { font-size:13px; font-weight:800; color:hsl(var(--burgundy-500)); margin:0; }
+  .rel-body .p { font-size:13px; font-weight:800; color:hsl(var(--lapis-800)); margin:0; }
 </style>
 </helmet>
 
@@ -63,20 +64,20 @@
   </div>
 </div>
 
-<div class="gallery"><span class="badge">خصم ١٥٪</span></div>
+<div class="gallery"><span class="badge">خصم 15%</span></div>
 <div class="dots"><span class="on"></span><span></span><span></span><span></span></div>
 
 <div class="info">
   <p class="cat">قمصان رجالي</p>
   <h1>قميص قطن أساسي &mdash; كم طويل</h1>
-  <div class="price-row"><span class="price">٤٥٠ ج.م</span><span class="old-price">٥٣٠ ج.م</span></div>
+  <div class="price-row"><span class="price">450 ج.م</span><span class="old-price">530 ج.م</span></div>
 
   <div class="group">
     <p class="lbl">اللون</p>
     <div class="swatches">
-      <span class="swatch on" style="background:hsl(352 56% 26%)"></span>
-      <span class="swatch" style="background:hsl(210 20% 20%)"></span>
-      <span class="swatch" style="background:hsl(40 30% 90%)"></span>
+      <span class="swatch on" style="background:hsl(228 40% 14%)"></span>
+      <span class="swatch" style="background:hsl(9 68% 45%)"></span>
+      <span class="swatch" style="background:hsl(42 30% 88%)"></span>
     </div>
   </div>
 
@@ -92,15 +93,15 @@
 
   <div class="avail">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg>
-    متوفر للتوصيل إلى القاهرة &mdash; خلال ٢-٤ أيام
+    متوفر للتوصيل إلى القاهرة &mdash; خلال 2-4 أيام
   </div>
 </div>
 
 <div class="related">
   <h2>منتجات ذات صلة</h2>
   <div class="rel-row">
-    <div class="rel-card"><div class="rel-img"></div><div class="rel-body"><p class="n">قميص كم قصير</p><p class="p">٣٨٠ ج.م</p></div></div>
-    <div class="rel-card"><div class="rel-img"></div><div class="rel-body"><p class="n">بنطلون قطن</p><p class="p">٥٩٠ ج.م</p></div></div>
+    <div class="rel-card"><div class="rel-img"></div><div class="rel-body"><p class="n">قميص كم قصير</p><p class="p">380 ج.م</p></div></div>
+    <div class="rel-card"><div class="rel-img"></div><div class="rel-body"><p class="n">بنطلون قطن</p><p class="p">590 ج.م</p></div></div>
   </div>
 </div>
 

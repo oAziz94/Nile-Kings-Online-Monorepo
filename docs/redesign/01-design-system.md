@@ -35,7 +35,14 @@ Every artboard must be designed RTL-first (this is an Arabic-first storefront pe
 
 ## Direction
 
-Keeps the existing burgundy/gold brand (recognition for a live store) but extends it into a full tonal system, applied through a warmer/more editorial storefront treatment and a clean sidebar-based SaaS layout for admin/partner — synthesized from user-provided Dribbble references (a warm-neutral editorial sneaker-ecommerce site for storefront patterns; a "Shoplytic" SaaS admin dashboard for the admin/partner shell, status pills, and stat cards), adapted to RTL and to Nile Kings' own brand and order-lifecycle statuses rather than copied directly. Typography stays single-family (Cairo) rather than pairing in a Latin display face, since Arabic is the primary script, not a secondary one.
+**Revised 2026-09-09** after user feedback on the first pass — three explicit corrections, now standing rules for this design system:
+
+1. **Logo is fixed, exact shape, recolor only.** The real `public/logo.png` (crown + wordmark + winged emblem + Arabic caption) is programmatically recolored — never redrawn or approximated — into `lapis` / `gold` / `cream` full-lockup variants plus a cropped crown-only `-mark` variant for compact UI (sidebar/topbar/mobile header, where the full lockup would be illegible at small sizes). Source: `docs/redesign/design-canvas/logo-assets/`. `ui-implementer` must use these real assets (or SVG-trace them exactly if a task needs true vector) — never invent a simplified icon standing in for the logo.
+2. **Brand color is reimagined around "materials of the pharaohs,"** not the previous burgundy/gold-only palette: lapis lazuli (deep dark/ink, dashboard sidebar chrome), gold (precious accent — used sparingly for CTAs/focus/highlights, not the default button fill), carnelian (secondary/danger accent), turquoise/faience (info), malachite (success). Each color is named for an actual material rather than chosen arbitrarily — the story is jewelry and stone, deliberately avoiding literal pyramid/hieroglyph iconography (that reads as tourist-kitsch, not premium).
+3. **Modernized execution**: bigger/bolder display type with tight negative letter-spacing, pill-shaped primary actions instead of rounded-rectangles, tighter default corner radii (large radii reserved for hero/marketing moments only), dark-lapis sidebar chrome on admin/partner (replacing a plain white sidebar) with gold marking the active state, a thin gold gradient rule as a recurring signature accent.
+4. **Western numerals (0-9) only, everywhere** — prices, dates, counts, OTP digits, pagination. No Arabic-Indic numerals anywhere in the system.
+
+Typography stays single-family (Cairo) rather than pairing in a Latin display face, since Arabic is the primary script, not a secondary one — unchanged from the original direction.
 
 ## Canvas link
 

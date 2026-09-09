@@ -10,69 +10,68 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap">
 <style>
   :root{
-    --ink:20 12% 14%; --ink-soft:24 10% 38%;
-    --paper:40 30% 97%; --sand-100:38 28% 93%; --sand-200:36 24% 88%; --sand-300:34 18% 78%;
-    --burgundy-500:352 56% 26%; --gold-600:38 70% 44%;
-    --success-text:142 50% 26%; --success-bg:142 40% 93%;
-    --dark-bg:26 22% 14%;
+    --papyrus:42 45% 97%; --stone-100:38 22% 93%; --stone-200:36 16% 87%; --stone-300:34 12% 76%;
+    --lapis-900:228 44% 9%; --lapis-800:228 40% 14%;
+    --ink:228 22% 14%; --ink-soft:225 10% 42%;
+    --gold-500:42 78% 55%; --gold-600:38 74% 46%;
+    --malachite-text:152 50% 24%; --malachite-bg:152 42% 92%;
   }
   * { box-sizing:border-box; }
   html,body { margin:0; }
-  body { font-family:'Cairo',system-ui,sans-serif; direction:rtl; background:hsl(var(--paper)); color:hsl(var(--ink)); }
-  .nav { display:flex; align-items:center; justify-content:space-between; padding:22px 64px; }
-  .nav .mark { display:flex; align-items:center; gap:10px; font-weight:800; font-size:16px; }
-  .nav .links { display:flex; gap:28px; font-size:14px; font-weight:600; color:hsl(var(--ink-soft)); }
+  body { font-family:'Cairo',system-ui,sans-serif; direction:rtl; background:hsl(var(--papyrus)); color:hsl(var(--ink)); }
+  .nav { display:flex; align-items:center; justify-content:space-between; padding:20px 64px; }
+  .nav .mark { display:flex; align-items:center; }
+  .nav .mark img { height:30px; width:auto; }
+  .nav .links { display:flex; gap:28px; font-size:14px; font-weight:700; color:hsl(var(--ink-soft)); }
   .nav .icons { display:flex; gap:16px; }
 
   .layout { display:flex; gap:56px; padding:24px 64px 64px; }
   .gallery-col { flex:0 0 46%; display:flex; gap:14px; }
   .thumbs { display:flex; flex-direction:column; gap:10px; }
-  .thumb { width:72px; height:72px; border-radius:12px; background:linear-gradient(160deg, hsl(38 35% 85%), hsl(28 22% 60%)); border:2px solid transparent; }
-  .thumb.on { border-color:hsl(var(--burgundy-500)); }
-  .main-img { flex:1; height:560px; border-radius:24px; background:linear-gradient(160deg, hsl(38 40% 82%) 0%, hsl(30 25% 62%) 55%, hsl(20 22% 42%) 100%); position:relative; }
-  .main-img .badge { position:absolute; top:20px; right:20px; background:hsl(var(--burgundy-500)); color:#fff; font-size:12px; font-weight:800; padding:6px 14px; border-radius:999px; }
+  .thumb { width:72px; height:72px; border-radius:12px; background:linear-gradient(160deg, hsl(228 25% 30%), hsl(228 40% 14%)); border:2px solid transparent; }
+  .thumb.on { border-color:hsl(var(--lapis-800)); }
+  .main-img { flex:1; height:560px; border-radius:20px; background:linear-gradient(160deg, hsl(228 28% 24%) 0%, hsl(228 40% 14%) 55%, hsl(228 44% 9%) 100%); position:relative; }
+  .main-img .badge { position:absolute; top:20px; right:20px; background:hsl(9 68% 45%); color:#fff; font-size:12px; font-weight:800; padding:7px 16px; border-radius:999px; }
 
   .info-col { flex:1; padding-top:8px; }
-  .cat { font-size:13px; font-weight:700; color:hsl(var(--gold-600)); text-transform:uppercase; letter-spacing:.03em; margin:0 0 8px; }
-  h1 { font-size:34px; font-weight:800; margin:0 0 14px; max-width:460px; }
+  .cat { font-size:13px; font-weight:800; color:hsl(var(--gold-600)); text-transform:uppercase; letter-spacing:.05em; margin:0 0 8px; }
+  h1 { font-size:36px; font-weight:800; letter-spacing:-.01em; margin:0 0 14px; max-width:460px; }
   .price-row { display:flex; align-items:baseline; gap:14px; margin-bottom:24px; }
-  .price { font-size:32px; font-weight:800; color:hsl(var(--burgundy-500)); }
+  .price { font-size:33px; font-weight:800; color:hsl(var(--lapis-800)); }
   .old-price { font-size:16px; color:hsl(var(--ink-soft)); text-decoration:line-through; }
   .group { margin-bottom:22px; }
   .group .lbl { font-size:14px; font-weight:700; margin-bottom:10px; }
   .swatches { display:flex; gap:12px; }
   .swatch { width:40px; height:40px; border-radius:50%; border:2px solid transparent; }
-  .swatch.on { border-color:hsl(var(--burgundy-500)); }
+  .swatch.on { border-color:hsl(var(--lapis-800)); }
   .sizes { display:flex; gap:10px; }
-  .size { width:48px; height:44px; border-radius:10px; border:1.5px solid hsl(var(--sand-300)); background:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; }
-  .size.on { border-color:hsl(var(--burgundy-500)); background:hsl(var(--burgundy-500)); color:#fff; }
-  .avail { display:inline-flex; align-items:center; gap:8px; background:hsl(var(--success-bg)); color:hsl(var(--success-text)); padding:10px 16px; border-radius:12px; font-size:14px; font-weight:700; margin-bottom:26px; }
+  .size { width:48px; height:44px; border-radius:10px; border:1.5px solid hsl(var(--stone-300)); background:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; }
+  .size.on { border-color:hsl(var(--lapis-800)); background:hsl(var(--lapis-800)); color:#fff; }
+  .avail { display:inline-flex; align-items:center; gap:8px; background:hsl(var(--malachite-bg)); color:hsl(var(--malachite-text)); padding:10px 16px; border-radius:12px; font-size:14px; font-weight:700; margin-bottom:26px; }
   .cta-row { display:flex; gap:14px; }
-  .btn { background:hsl(var(--burgundy-500)); color:hsl(var(--paper)); font-family:inherit; font-weight:700; font-size:16px; border:none; border-radius:14px; padding:16px 40px; cursor:pointer; }
-  .btn:focus-visible { outline:3px solid hsl(var(--gold-500,43 74% 52%)); outline-offset:2px; }
+  .btn { background:hsl(var(--lapis-800)); color:hsl(var(--papyrus)); font-family:inherit; font-weight:700; font-size:16px; border:none; border-radius:999px; padding:16px 42px; cursor:pointer; }
+  .btn:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
   .desc { margin-top:28px; font-size:14px; line-height:1.9; color:hsl(var(--ink-soft)); max-width:460px; }
 
   .related { padding:0 64px 72px; }
-  .related h2 { font-size:26px; font-weight:800; margin:0 0 6px; text-align:center; }
+  .related h2 { font-size:28px; font-weight:800; letter-spacing:-.01em; margin:0 0 6px; text-align:center; }
   .related .sub { text-align:center; font-size:14px; color:hsl(var(--ink-soft)); margin:0 0 28px; }
   .grid { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:20px; }
-  .rel-card { background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 8px 24px hsl(0 0% 0% / .05); }
-  .rel-img { height:180px; background:linear-gradient(160deg, hsl(38 35% 85%), hsl(28 22% 60%)); }
+  .rel-card { background:#fff; border:1px solid hsl(var(--stone-200)); border-radius:16px; overflow:hidden; }
+  .rel-img { height:180px; background:linear-gradient(160deg, hsl(228 25% 30%), hsl(228 40% 14%)); }
   .rel-body { padding:16px; }
   .rel-body .n { font-size:14px; font-weight:700; margin:0 0 6px; }
-  .rel-body .p { font-size:14px; font-weight:800; color:hsl(var(--burgundy-500)); margin:0; }
+  .rel-body .p { font-size:14px; font-weight:800; color:hsl(var(--lapis-800)); margin:0; }
 
-  .cta-band { margin:0 64px 72px; border-radius:24px; background:hsl(var(--dark-bg)); color:#fff; padding:56px; text-align:center; }
-  .cta-band h3 { font-size:26px; font-weight:800; margin:0 0 18px; }
-  .cta-band .btn { background:hsl(43 74% 52%); color:hsl(20 40% 12%); }
+  .cta-band { margin:0 64px 72px; border-radius:20px; background:hsl(var(--lapis-900)); color:#fff; padding:56px; text-align:center; position:relative; overflow:hidden; }
+  .cta-band::after { content:""; position:absolute; inset:0; background:radial-gradient(50% 80% at 50% 0%, hsl(42 78% 55% / .14), transparent 70%); }
+  .cta-band h3 { font-size:27px; font-weight:800; letter-spacing:-.01em; margin:0 0 18px; position:relative; }
+  .cta-band .btn { background:hsl(var(--gold-500)); color:hsl(var(--lapis-900)); position:relative; }
 </style>
 </helmet>
 
 <div class="nav">
-  <div class="mark">
-    <svg width="22" height="22" viewBox="0 0 64 64" fill="none" stroke="hsl(352 56% 26%)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 26 L18 14 L24 24 L32 10 L40 24 L46 14 L54 26 L50 40 L14 40 Z"/></svg>
-    نايل كينجز
-  </div>
+  <div class="mark"><img src="logo-lapis-mark.png" alt="نايل كينجز"></div>
   <div class="links"><span>الرئيسية</span><span>المنتجات</span><span>الفئات</span><span>كن شريكاً</span></div>
   <div class="icons">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -82,7 +81,7 @@
 
 <div class="layout">
   <div class="gallery-col">
-    <div class="main-img"><span class="badge">خصم ١٥٪</span></div>
+    <div class="main-img"><span class="badge">خصم 15%</span></div>
     <div class="thumbs">
       <div class="thumb on"></div>
       <div class="thumb"></div>
@@ -93,14 +92,14 @@
   <div class="info-col">
     <p class="cat">قمصان رجالي</p>
     <h1>قميص قطن أساسي &mdash; كم طويل</h1>
-    <div class="price-row"><span class="price">٤٥٠ ج.م</span><span class="old-price">٥٣٠ ج.م</span></div>
+    <div class="price-row"><span class="price">450 ج.م</span><span class="old-price">530 ج.م</span></div>
 
     <div class="group">
       <p class="lbl">اللون</p>
       <div class="swatches">
-        <span class="swatch on" style="background:hsl(352 56% 26%)"></span>
-        <span class="swatch" style="background:hsl(210 20% 20%)"></span>
-        <span class="swatch" style="background:hsl(40 30% 90%)"></span>
+        <span class="swatch on" style="background:hsl(228 40% 14%)"></span>
+        <span class="swatch" style="background:hsl(9 68% 45%)"></span>
+        <span class="swatch" style="background:hsl(42 30% 88%)"></span>
       </div>
     </div>
     <div class="group">
@@ -115,12 +114,12 @@
 
     <div class="avail">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg>
-      متوفر للتوصيل إلى القاهرة &mdash; خلال ٢-٤ أيام عمل
+      متوفر للتوصيل إلى القاهرة &mdash; خلال 2-4 أيام عمل
     </div>
 
     <div class="cta-row"><button class="btn">أضف إلى السلة</button></div>
 
-    <p class="desc">قميص قطن ١٠٠٪ مصري بقصة مريحة، مناسب للاستخدام اليومي. متوفر بألوان ومقاسات متعددة، مع شحن لجميع المحافظات عبر شبكة شركائنا المحليين.</p>
+    <p class="desc">قميص قطن 100% مصري بقصة مريحة، مناسب للاستخدام اليومي. متوفر بألوان ومقاسات متعددة، مع شحن لجميع المحافظات عبر شبكة شركائنا المحليين.</p>
   </div>
 </div>
 
@@ -128,10 +127,10 @@
   <h2>منتجات ذات صلة</h2>
   <p class="sub">قد يعجبك أيضاً</p>
   <div class="grid">
-    <div class="rel-card"><div class="rel-img"></div><div class="rel-body"><p class="n">قميص كم قصير</p><p class="p">٣٨٠ ج.م</p></div></div>
-    <div class="rel-card"><div class="rel-img"></div><div class="rel-body"><p class="n">بنطلون قطن</p><p class="p">٥٩٠ ج.م</p></div></div>
-    <div class="rel-card"><div class="rel-img"></div><div class="rel-body"><p class="n">جاكيت خفيف</p><p class="p">٧٥٠ ج.م</p></div></div>
-    <div class="rel-card"><div class="rel-img"></div><div class="rel-body"><p class="n">تيشيرت أساسي</p><p class="p">٢٩٠ ج.م</p></div></div>
+    <div class="rel-card"><div class="rel-img"></div><div class="rel-body"><p class="n">قميص كم قصير</p><p class="p">380 ج.م</p></div></div>
+    <div class="rel-card"><div class="rel-img"></div><div class="rel-body"><p class="n">بنطلون قطن</p><p class="p">590 ج.م</p></div></div>
+    <div class="rel-card"><div class="rel-img"></div><div class="rel-body"><p class="n">جاكيت خفيف</p><p class="p">750 ج.م</p></div></div>
+    <div class="rel-card"><div class="rel-img"></div><div class="rel-body"><p class="n">تيشيرت أساسي</p><p class="p">290 ج.م</p></div></div>
   </div>
 </div>
 

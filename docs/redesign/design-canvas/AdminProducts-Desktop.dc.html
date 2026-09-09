@@ -10,78 +10,82 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap">
 <style>
   :root{
-    --ink:20 12% 14%; --ink-soft:24 10% 38%;
-    --sand-50:40 26% 98%; --sand-100:38 28% 93%; --sand-200:36 24% 88%; --sand-300:34 18% 78%;
-    --burgundy-500:352 56% 26%; --gold-50:43 65% 94%; --gold-500:43 74% 52%; --gold-600:38 70% 44%;
-    --success-bg:142 40% 93%; --success-text:142 50% 26%;
-    --warning-bg:38 70% 90%; --warning-text:32 60% 30%;
-    --danger-bg:355 65% 94%; --danger-text:355 60% 40%;
+    --stone-50:40 30% 98%; --stone-100:38 22% 93%; --stone-200:36 16% 87%; --stone-300:34 12% 76%;
+    --lapis-900:228 44% 9%; --lapis-800:228 40% 14%; --lapis-700:227 34% 20%;
+    --ink:228 22% 14%; --ink-soft:225 10% 42%;
+    --gold-50:42 70% 94%; --gold-500:42 78% 55%; --gold-600:38 74% 46%;
+    --malachite-bg:152 42% 92%; --malachite-text:152 50% 24%;
+    --warn-bg:42 65% 90%; --warn-text:34 62% 30%;
+    --danger-bg:9 58% 94%; --danger-text:8 62% 40%;
   }
   * { box-sizing:border-box; }
   html,body { margin:0; height:100%; }
-  body { font-family:'Cairo',system-ui,sans-serif; direction:rtl; background:hsl(var(--sand-50)); color:hsl(var(--ink)); display:flex; }
+  body { font-family:'Cairo',system-ui,sans-serif; direction:rtl; background:hsl(var(--stone-50)); color:hsl(var(--ink)); display:flex; }
 
-  .sidebar { width:236px; flex:0 0 auto; background:#fff; border-left:1px solid hsl(var(--sand-200)); padding:24px 18px; }
-  .sb-mark { display:flex; align-items:center; gap:10px; padding:0 6px 24px; font-weight:800; font-size:15px; }
-  .sb-section { font-size:11px; font-weight:700; color:hsl(var(--ink-soft)); text-transform:uppercase; letter-spacing:.04em; margin:18px 8px 8px; }
-  .sb-item { font-family:inherit; cursor:pointer; border:none; background:transparent; width:100%; text-align:right; display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; font-size:14px; font-weight:600; color:hsl(var(--ink-soft)); }
-  .sb-item.on { background:hsl(var(--gold-50)); color:hsl(var(--burgundy-500)); font-weight:700; }
-  .sb-item:focus-visible, .filter-btn:focus-visible, .bulk-btn:focus-visible, .pg-btn:focus-visible, .checkbox:focus-visible, .btn-primary:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
+  .sidebar { width:236px; flex:0 0 auto; background:hsl(var(--lapis-900)); padding:24px 16px; }
+  .sb-mark { display:flex; align-items:center; padding:0 8px 26px; }
+  .sb-mark img { height:24px; width:auto; }
+  .sb-section { font-size:11px; font-weight:700; color:hsl(220 20% 55%); text-transform:uppercase; letter-spacing:.06em; margin:18px 10px 8px; }
+  .sb-item { font-family:inherit; cursor:pointer; border:none; background:transparent; width:100%; text-align:right; display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:10px; font-size:14px; font-weight:600; color:hsl(220 25% 72%); }
+  .sb-item.on { background:hsl(var(--lapis-700)); color:hsl(var(--gold-500)); font-weight:700; }
 
   .main { flex:1; min-width:0; }
-  .topbar { display:flex; align-items:center; justify-content:space-between; padding:20px 32px; border-bottom:1px solid hsl(var(--sand-200)); background:#fff; }
-  .search { display:flex; align-items:center; gap:10px; background:hsl(var(--sand-100)); border-radius:10px; padding:9px 14px; width:280px; color:hsl(var(--ink-soft)); font-size:13px; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:20px 32px; border-bottom:1px solid hsl(var(--stone-200)); background:#fff; }
+  .search { display:flex; align-items:center; gap:10px; background:hsl(var(--stone-100)); border-radius:10px; padding:9px 14px; width:280px; color:hsl(var(--ink-soft)); font-size:13px; }
   .top-icons { display:flex; align-items:center; gap:16px; }
-  .icon-btn { width:36px; height:36px; border-radius:10px; background:hsl(var(--sand-100)); display:flex; align-items:center; justify-content:center; }
-  .avatar { width:36px; height:36px; border-radius:50%; background:hsl(var(--burgundy-500)); color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; }
+  .icon-btn { width:36px; height:36px; border-radius:10px; background:hsl(var(--stone-100)); display:flex; align-items:center; justify-content:center; }
+  .avatar { width:36px; height:36px; border-radius:50%; background:hsl(var(--lapis-800)); color:hsl(var(--gold-500)); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; }
 
   .content { padding:28px 32px; }
   .page-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
-  .page-head h1 { font-size:22px; font-weight:800; margin:0; }
+  .page-head h1 { font-size:23px; font-weight:800; letter-spacing:-.01em; margin:0; }
   .page-head p { font-size:13px; color:hsl(var(--ink-soft)); margin:4px 0 0; }
-  .btn-primary { cursor:pointer; background:hsl(var(--burgundy-500)); color:#fff; border:none; border-radius:10px; padding:11px 20px; font-family:inherit; font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:8px; }
+  .btn-primary { cursor:pointer; background:hsl(var(--lapis-800)); color:#fff; border:none; border-radius:999px; padding:11px 22px; font-family:inherit; font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:8px; }
+  .btn-primary:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
 
-  .panel { background:#fff; border-radius:18px; box-shadow:0 1px 3px hsl(0 0% 0% / .05); overflow:hidden; }
-  .toolbar { display:flex; align-items:center; justify-content:space-between; padding:16px 22px; border-bottom:1px solid hsl(var(--sand-200)); gap:16px; }
-  .toolbar .search2 { flex:1; max-width:320px; display:flex; align-items:center; gap:8px; background:hsl(var(--sand-100)); border-radius:10px; padding:8px 14px; font-size:13px; color:hsl(var(--ink-soft)); }
-  .filter-btn { font-family:inherit; cursor:pointer; border:none; display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:10px; background:hsl(var(--sand-100)); font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); }
+  .panel { background:#fff; border-radius:14px; border:1px solid hsl(var(--stone-200)); overflow:hidden; }
+  .toolbar { display:flex; align-items:center; justify-content:space-between; padding:16px 22px; border-bottom:1px solid hsl(var(--stone-200)); gap:16px; }
+  .toolbar .search2 { flex:1; max-width:320px; display:flex; align-items:center; gap:8px; background:hsl(var(--stone-100)); border-radius:10px; padding:8px 14px; font-size:13px; color:hsl(var(--ink-soft)); }
+  .filter-btn { font-family:inherit; cursor:pointer; border:none; display:flex; align-items:center; gap:6px; padding:8px 16px; border-radius:999px; background:hsl(var(--stone-100)); font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); }
+  .filter-btn:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
 
-  .bulk-bar { display:flex; align-items:center; justify-content:space-between; padding:12px 22px; background:hsl(var(--gold-50)); border-bottom:1px solid hsl(var(--sand-200)); }
+  .bulk-bar { display:flex; align-items:center; justify-content:space-between; padding:12px 22px; background:hsl(var(--gold-50)); border-bottom:1px solid hsl(var(--stone-200)); }
   .bulk-left { display:flex; align-items:center; gap:10px; font-size:13px; font-weight:700; }
   .bulk-actions { display:flex; gap:8px; }
-  .bulk-btn { font-family:inherit; cursor:pointer; font-size:12px; font-weight:700; padding:7px 14px; border-radius:8px; background:#fff; border:1px solid hsl(var(--sand-300)); }
+  .bulk-btn { font-family:inherit; cursor:pointer; font-size:12px; font-weight:700; padding:7px 16px; border-radius:999px; background:#fff; border:1px solid hsl(var(--stone-300)); }
   .bulk-btn.danger { color:hsl(var(--danger-text)); border-color:hsl(var(--danger-bg)); }
+  .bulk-btn:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
 
   table { width:100%; border-collapse:collapse; }
-  th { text-align:right; font-size:12px; font-weight:700; color:hsl(var(--ink-soft)); padding:12px 22px; background:hsl(var(--sand-50)); }
-  td { padding:13px 22px; font-size:14px; border-top:1px solid hsl(var(--sand-200)); vertical-align:middle; }
-  .checkbox { font-family:inherit; cursor:pointer; padding:0; width:18px; height:18px; border-radius:5px; border:1.5px solid hsl(var(--sand-300)); background:#fff; display:inline-flex; align-items:center; justify-content:center; }
-  .checkbox.on { background:hsl(var(--burgundy-500)); border-color:hsl(var(--burgundy-500)); }
+  th { text-align:right; font-size:12px; font-weight:800; color:hsl(var(--ink-soft)); padding:12px 22px; background:hsl(var(--stone-50)); }
+  td { padding:13px 22px; font-size:14px; border-top:1px solid hsl(var(--stone-200)); vertical-align:middle; }
+  .checkbox { font-family:inherit; cursor:pointer; padding:0; width:18px; height:18px; border-radius:6px; border:1.5px solid hsl(var(--stone-300)); background:#fff; display:inline-flex; align-items:center; justify-content:center; }
+  .checkbox.on { background:hsl(var(--lapis-800)); border-color:hsl(var(--lapis-800)); }
+  .checkbox:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
   .prod-cell { display:flex; align-items:center; gap:12px; }
-  .thumb { width:40px; height:40px; border-radius:9px; background:linear-gradient(160deg, hsl(38 35% 85%), hsl(28 22% 60%)); flex:0 0 auto; }
+  .thumb { width:40px; height:40px; border-radius:9px; background:linear-gradient(160deg, hsl(228 25% 30%), hsl(228 40% 14%)); flex:0 0 auto; }
   .prod-cell .name { font-weight:700; }
   .prod-cell .sku { font-size:12px; color:hsl(var(--ink-soft)); direction:ltr; display:inline-block; }
-  .pill { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:999px; font-size:12px; font-weight:700; }
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:999px; font-size:12px; font-weight:800; }
   .pill::before { content:""; width:6px; height:6px; border-radius:50%; }
-  .p-success { background:hsl(var(--success-bg)); color:hsl(var(--success-text)); } .p-success::before { background:hsl(var(--success-text)); }
-  .p-warning { background:hsl(var(--warning-bg)); color:hsl(var(--warning-text)); } .p-warning::before { background:hsl(var(--warning-text)); }
+  .p-success { background:hsl(var(--malachite-bg)); color:hsl(var(--malachite-text)); } .p-success::before { background:hsl(var(--malachite-text)); }
+  .p-warning { background:hsl(var(--warn-bg)); color:hsl(var(--warn-text)); } .p-warning::before { background:hsl(var(--warn-text)); }
   .p-danger { background:hsl(var(--danger-bg)); color:hsl(var(--danger-text)); } .p-danger::before { background:hsl(var(--danger-text)); }
   .row-menu { color:hsl(var(--ink-soft)); }
 
   .panel-foot { display:flex; align-items:center; justify-content:space-between; padding:16px 22px; }
   .panel-foot .cnt { font-size:13px; color:hsl(var(--ink-soft)); }
   .pagination { display:flex; align-items:center; gap:6px; }
-  .pg-btn { font-family:inherit; cursor:pointer; border:none; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); background:hsl(var(--sand-100)); }
-  .pg-btn.on { background:hsl(var(--burgundy-500)); color:#fff; }
+  .pg-btn { font-family:inherit; cursor:pointer; border:none; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); background:hsl(var(--stone-100)); }
+  .pg-btn.on { background:hsl(var(--lapis-800)); color:#fff; }
   .pg-btn.pg-prev svg { transform:scaleX(-1); }
+  .pg-btn:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
+  .sb-item:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
 </style>
 </helmet>
 
 <div class="sidebar">
-  <div class="sb-mark">
-    <svg width="22" height="22" viewBox="0 0 64 64" fill="none" stroke="hsl(352 56% 26%)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 26 L18 14 L24 24 L32 10 L40 24 L46 14 L54 26 L50 40 L14 40 Z"/></svg>
-    نايل كينجز &mdash; إدارة
-  </div>
+  <div class="sb-mark"><img src="logo-gold-mark.png" alt="نايل كينجز"></div>
   <div class="sb-section">الكتالوج</div>
   <button class="sb-item on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/></svg> المنتجات</button>
   <button class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg> الفئات</button>
@@ -123,7 +127,7 @@
       </div>
 
       <div class="bulk-bar">
-        <div class="bulk-left"><button class="checkbox on" aria-pressed="true"></button> تم تحديد ٣ منتجات</div>
+        <div class="bulk-left"><button class="checkbox on" aria-pressed="true"></button> تم تحديد 3 منتجات</div>
         <div class="bulk-actions">
           <button class="bulk-btn">تغيير الحالة</button>
           <button class="bulk-btn">تصدير</button>
@@ -137,38 +141,38 @@
           <tr>
             <td><button class="checkbox on" aria-pressed="true"></button></td>
             <td><div class="prod-cell"><div class="thumb"></div><div><div class="name">قميص قطن أساسي</div><div class="sku">SKU-1042</div></div></div></td>
-            <td>قمصان</td><td>٤٥٠ ج.م</td><td>٣٤</td>
+            <td>قمصان</td><td>450 ج.م</td><td>34</td>
             <td><span class="pill p-success">منشور</span></td>
             <td class="row-menu">⋮</td>
           </tr>
           <tr>
             <td><button class="checkbox on" aria-pressed="true"></button></td>
             <td><div class="prod-cell"><div class="thumb"></div><div><div class="name">بنطلون قطن كلاسيك</div><div class="sku">SKU-1043</div></div></div></td>
-            <td>بناطيل</td><td>٥٩٠ ج.م</td><td>٦</td>
+            <td>بناطيل</td><td>590 ج.م</td><td>6</td>
             <td><span class="pill p-warning">مخزون منخفض</span></td>
             <td class="row-menu">⋮</td>
           </tr>
           <tr>
             <td><button class="checkbox on" aria-pressed="true"></button></td>
             <td><div class="prod-cell"><div class="thumb"></div><div><div class="name">جاكيت خفيف</div><div class="sku">SKU-1044</div></div></div></td>
-            <td>جواكت</td><td>٧٥٠ ج.م</td><td>٠</td>
+            <td>جواكت</td><td>750 ج.م</td><td>0</td>
             <td><span class="pill p-danger">غير متوفر</span></td>
             <td class="row-menu">⋮</td>
           </tr>
           <tr>
             <td><button class="checkbox" aria-pressed="false"></button></td>
             <td><div class="prod-cell"><div class="thumb"></div><div><div class="name">تيشيرت أساسي</div><div class="sku">SKU-1045</div></div></div></td>
-            <td>تيشرتات</td><td>٢٩٠ ج.م</td><td>٨٩</td>
+            <td>تيشرتات</td><td>290 ج.م</td><td>89</td>
             <td><span class="pill p-success">منشور</span></td>
             <td class="row-menu">⋮</td>
           </tr>
         </tbody>
       </table>
       <div class="panel-foot">
-        <span class="cnt">عرض ١-٤ من ١٦٢ منتج</span>
+        <span class="cnt">عرض 1-4 من 162 منتج</span>
         <div class="pagination">
           <button class="pg-btn pg-prev" aria-label="الصفحة السابقة"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
-          <button class="pg-btn on">١</button><button class="pg-btn">٢</button><button class="pg-btn">٣</button>
+          <button class="pg-btn on">1</button><button class="pg-btn">2</button><button class="pg-btn">3</button>
           <button class="pg-btn pg-next" aria-label="الصفحة التالية"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
         </div>
       </div>

@@ -10,53 +10,47 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap">
 <style>
   :root{
-    --ink:20 12% 14%; --ink-soft:24 10% 38%;
-    --paper:40 30% 97%; --sand-100:38 28% 93%; --sand-300:34 18% 78%;
-    --burgundy-500:352 56% 26%; --burgundy-600:352 60% 20%;
-    --gold-500:43 74% 52%; --gold-600:38 70% 44%;
-    --dark-bg:26 22% 14%;
+    --papyrus:42 45% 97%; --stone-100:38 22% 93%; --stone-300:34 12% 76%;
+    --lapis-900:228 44% 9%; --lapis-800:228 40% 14%; --lapis-700:227 34% 20%;
+    --ink:228 22% 14%; --ink-soft:225 10% 42%;
+    --gold-500:42 78% 55%; --gold-600:38 74% 46%;
   }
   * { box-sizing:border-box; }
   html,body { margin:0; height:100%; }
-  body { font-family:'Cairo',system-ui,sans-serif; direction:rtl; background:hsl(var(--paper)); color:hsl(var(--ink)); display:flex; }
-  .brand-pane { width:46%; background:radial-gradient(120% 100% at 20% 0%, hsl(352 45% 32%) 0%, hsl(var(--dark-bg)) 65%); color:hsl(var(--paper)); padding:64px; display:flex; flex-direction:column; justify-content:space-between; }
-  .mark { display:inline-flex; align-items:center; gap:12px; }
-  .mark .wordmark { font-size:20px; font-weight:800; margin:0; }
-  .quote { font-size:32px; font-weight:800; line-height:1.5; max-width:460px; }
+  body { font-family:'Cairo',system-ui,sans-serif; direction:rtl; background:hsl(var(--papyrus)); color:hsl(var(--ink)); display:flex; }
+  .brand-pane { width:46%; background:radial-gradient(120% 100% at 20% 0%, hsl(var(--lapis-700)) 0%, hsl(var(--lapis-900)) 65%); color:hsl(var(--papyrus)); padding:64px; display:flex; flex-direction:column; justify-content:space-between; position:relative; overflow:hidden; }
+  .brand-pane::after { content:""; position:absolute; inset:0; background:radial-gradient(50% 60% at 90% 100%, hsl(42 78% 55% / .14), transparent 70%); pointer-events:none; }
+  .brand-pane img { height:34px; width:auto; position:relative; }
+  .quote { font-size:34px; font-weight:800; letter-spacing:-.01em; line-height:1.5; max-width:460px; position:relative; }
   .quote span { color:hsl(var(--gold-500)); }
-  .meta { font-size:13px; color:hsl(43 40% 78%); }
+  .meta { font-size:13px; color:hsl(43 40% 78%); position:relative; }
   .form-pane { flex:1; display:flex; align-items:center; justify-content:center; padding:40px; }
   .form-wrap { width:400px; }
-  h1 { font-size:26px; font-weight:800; margin:0 0 6px; }
+  h1 { font-size:27px; font-weight:800; letter-spacing:-.01em; margin:0 0 6px; }
   .sub { font-size:14px; color:hsl(var(--ink-soft)); margin:0 0 28px; }
   .field { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
-  .field label { font-size:13px; font-weight:600; }
+  .field label { font-size:13px; font-weight:700; }
   .phone-wrap { display:flex; gap:8px; }
-  .cc { flex:0 0 auto; padding:12px 12px; border-radius:10px; border:1.5px solid hsl(var(--sand-300)); background:hsl(var(--sand-100)); font-weight:700; font-size:14px; direction:ltr; }
-  input { font-family:inherit; font-size:15px; padding:12px 14px; border-radius:10px; border:1.5px solid hsl(var(--sand-300)); background:#fff; width:100%; }
-  input:focus { outline:none; border-color:hsl(var(--gold-600)); box-shadow:0 0 0 3px hsl(var(--gold-500) / .28); }
+  .cc { flex:0 0 auto; padding:12px 12px; border-radius:10px; border:1.5px solid hsl(var(--stone-300)); background:hsl(var(--stone-100)); font-weight:800; font-size:14px; direction:ltr; }
+  input { font-family:inherit; font-size:15px; padding:12px 14px; border-radius:10px; border:1.5px solid hsl(var(--stone-300)); background:#fff; width:100%; }
+  input:focus { outline:none; border-color:hsl(var(--gold-600)); box-shadow:0 0 0 3px hsl(var(--gold-500) / .3); }
   .fwd { text-align:left; margin-bottom:6px; }
-  .fwd a { font-size:13px; font-weight:700; color:hsl(var(--burgundy-500)); text-decoration:none; }
-  .btn { width:100%; margin-top:18px; background:hsl(var(--burgundy-500)); color:hsl(var(--paper)); font-family:inherit; font-weight:700; font-size:15px; border:none; border-radius:12px; padding:14px; cursor:pointer; }
+  .fwd a { font-size:13px; font-weight:700; color:hsl(var(--lapis-800)); text-decoration:none; }
+  .btn { width:100%; margin-top:18px; background:hsl(var(--lapis-800)); color:hsl(var(--papyrus)); font-family:inherit; font-weight:700; font-size:15px; border:none; border-radius:999px; padding:14px; cursor:pointer; }
   .btn:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
   .divider { display:flex; align-items:center; gap:12px; margin:24px 0; color:hsl(var(--ink-soft)); font-size:12px; }
-  .divider::before, .divider::after { content:""; height:1px; flex:1; background:hsl(var(--sand-300)); }
-  .otp-note { background:hsl(var(--sand-100)); border-radius:12px; padding:14px 16px; font-size:13px; color:hsl(var(--ink-soft)); }
+  .divider::before, .divider::after { content:""; height:1px; flex:1; background:hsl(var(--stone-300)); }
+  .otp-note { background:hsl(var(--stone-100)); border-radius:12px; padding:14px 16px; font-size:13px; color:hsl(var(--ink-soft)); border-right:3px solid hsl(var(--gold-500)); }
   .otp-note b { color:hsl(var(--ink)); }
   .signup { margin-top:24px; font-size:13px; text-align:center; color:hsl(var(--ink-soft)); }
-  .signup a { font-weight:700; color:hsl(var(--burgundy-500)); }
+  .signup a { font-weight:700; color:hsl(var(--lapis-800)); }
 </style>
 </helmet>
 
 <div class="brand-pane">
-  <div class="mark">
-    <svg width="30" height="30" viewBox="0 0 64 64" fill="none" stroke="hsl(var(--gold-500))" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M10 26 L18 14 L24 24 L32 10 L40 24 L46 14 L54 26 L50 40 L14 40 Z"/>
-    </svg>
-    <p class="wordmark">NILE KINGS</p>
-  </div>
-  <p class="quote">قطن مصري <span>١٠٠٪</span>، يوصلك أينما كنت &mdash; من القاهرة إلى أسوان.</p>
-  <p class="meta">أكثر من ٢٧ محافظة مغطاة بشبكة شركاء التوصيل</p>
+  <img src="logo-gold.png" alt="">
+  <p class="quote">قطن مصري <span>100%</span>، يوصلك أينما كنت &mdash; من القاهرة إلى أسوان.</p>
+  <p class="meta">أكثر من 27 محافظة مغطاة بشبكة شركاء التوصيل</p>
 </div>
 
 <div class="form-pane">
@@ -80,7 +74,7 @@
 
     <div class="divider">أو</div>
 
-    <div class="otp-note"><b>خطوة التحقق التالية:</b> بعد تسجيل الدخول، سيُطلب منك إدخال رمز مكوّن من ٤ أرقام يصلك عبر رسالة نصية لتأكيد الحساب.</div>
+    <div class="otp-note"><b>خطوة التحقق التالية:</b> بعد تسجيل الدخول، سيُطلب منك إدخال رمز مكوّن من 4 أرقام يصلك عبر رسالة نصية لتأكيد الحساب.</div>
 
     <p class="signup">ليس لديك حساب؟ <a href="#">إنشاء حساب جديد</a></p>
   </div>
