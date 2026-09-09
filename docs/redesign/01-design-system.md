@@ -21,6 +21,14 @@ dropdown-menu, tabs, popover, tooltip, checkbox, radio-group, switch, form (reac
 - **Partner portal**: partner dashboard/orders list — data-table-heavy
 - **Admin**: products or orders table view — data-table-heavy, filters, bulk actions
 
+## Mobile-first
+
+Design every artboard mobile-first, not desktop-scaled-down — assume most storefront traffic is on a phone unless Phase 2's baseline data says otherwise. Define the actual breakpoint scale (not just "responsive" as a vague intent) as part of the tokens above, and every representative screen below gets a mobile artboard, not just desktop.
+
+## Accessibility is a requirement, not a nice-to-have
+
+Bake this in now, while components are being built fresh — retrofitting later is expensive. Radix primitives already give a solid baseline (focus management, ARIA roles); don't undo that with custom styling. Concretely: color tokens must meet WCAG AA contrast (both light and any future dark mode), every interactive element has a visible focus state and is keyboard-reachable, form fields have real labels (not placeholder-as-label), and icon-only buttons get an accessible name. `ui-verifier` checks this per screen.
+
 ## RTL is not optional
 
 Every artboard must be designed RTL-first (this is an Arabic-first storefront per the README) — mirror layout, icon direction, and text alignment. LTR is the fallback case here, not the default.

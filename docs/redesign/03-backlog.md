@@ -12,7 +12,9 @@ Claude Design canvas: tokens, core components, four representative screens (see 
 Instrument current Vercel/Neon/Upstash/Cloudinary usage before any provider decisions. Produces the data behind any later infra swap. Not started.
 
 ## Phase 3 — Foundation build
-Design tokens → `tailwind.config.ts`; expand `components/ui` primitives; wire `react-hook-form` + Zod resolver; set up TanStack Query/Table scaffolding. This is shared infrastructure every screen task in Phase 4 depends on. Not started.
+Design tokens → `tailwind.config.ts`; expand `components/ui` primitives; wire `react-hook-form` + Zod resolver; set up TanStack Query/Table scaffolding; add Sentry (see `04-decisions.md`); set up Playwright and the pattern for a per-screen smoke test. This is shared infrastructure every screen task in Phase 4 depends on. Not started.
+
+**Precondition for Phase 4, not part of Phase 3 itself**: the `redesign` Neon database branch must exist (user-created, see `04-decisions.md`) before any task that needs a schema change.
 
 ## Phase 4 — Surface rebuilds
 Proposed order: Auth (smallest surface, proves the implement→verify loop) → Public storefront → Partner portal → Admin dashboard. Each screen is its own task: implementer builds against its Phase-0 checklist + Phase-1 design, verifier checks it, PM closes or bounces it. Not started — tasks get listed here once Phase 0 + Phase 1 are far enough along to write them concretely.

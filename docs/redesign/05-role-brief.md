@@ -9,6 +9,7 @@ For each screen/feature, alongside the technical parity checklist, call out:
 - **Trust & credibility signals** — for an Arabic/Egypt-market storefront: clear pricing in EGP, delivery-time expectations by governorate, COD vs prepaid framing, return/refund policy visibility, reviews/social proof, security badges at checkout.
 - **Friction points** — anything in the current flow that plausibly costs conversions or creates support load (e.g. unclear stock-by-governorate messaging, checkout steps, OTP flow drop-off).
 - **Compliance/legal** — Egyptian ecommerce norms (clear pricing, return policy, data handling) where relevant; not a full legal review, but flag anything that looks like a gap.
+- **URL/SEO stability** (public storefront screens only) — the route stays the same unless a route change is explicitly approved; note any metadata/structured-data that must survive the rebuild.
 - **Competitive/market framing** — where a "modern look" choice has a business reason (e.g. PDP gallery/zoom expectations set by larger competitors) vs. purely aesthetic preference.
 
 ## How this feeds the rest of the system

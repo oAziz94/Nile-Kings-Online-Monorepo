@@ -40,6 +40,8 @@ Each item becomes a real backlog task (`03-backlog.md`) only once its phase come
 | Server-components-first audit | Approved | Trim client JS where App Router allows server-only |
 | Baseline-measure usage before any provider swap | Approved | Precondition for the "open to swapping providers" infra decision |
 | Drop `@vercel/analytics` Web Analytics | Approved | Free tier is 2,500 events/mo then pauses; Pro is $12/mo. Redundant with the existing Postgres `ViewLog`/`AddToCartLog` pipeline + Meta Pixel — see `07-analytics-and-audit-plan.md`. GA4 (free) considered separately if broader traffic-source analytics are wanted |
+| Add Sentry error tracking | Approved | Free "Developer" tier: 5K errors/mo, free forever, capped at 1 user. Added during Phase 3; not in the stack today, and a full rewrite raises regression risk without it |
+| Playwright smoke tests, one per verified screen | Approved | `ui-verifier`'s manual walkthrough doesn't persist as a regression check on its own; a minimal happy-path test per screen, added at verification time, does |
 
 ## Explicitly out of scope for now
 

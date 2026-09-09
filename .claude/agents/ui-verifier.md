@@ -16,6 +16,18 @@ You verify exactly one completed task from the Nile Kings Online UI redesign bac
 5. Start the app (use the `run` skill / `npm run dev`) and manually walk the affected screen(s): every interactive element, every state in the parity checklist (empty, loading, error, permission-restricted, edge-case inputs), in both a normal viewport and RTL.
 6. Run `npm run lint`, typecheck, and `npm run test` yourself — do not trust the implementer's report that these passed.
 
+## Checkout, cart, and payment-method (COD/InstaPay) tasks get extra scrutiny
+
+These carry direct revenue risk. Walk every payment-method path explicitly (not just the default one), confirm the total/fee math against the parity checklist to the piastre, and say so explicitly in your report. Your APPROVE on one of these is necessary but the PM still does a manual pass before merging — say that in your report too, don't let it read as final sign-off.
+
+## Add a smoke test before reporting
+
+If none exists yet for this screen, add a minimal Playwright smoke test (happy path + the screen's key states from the parity checklist) as part of verification — see `docs/redesign/04-decisions.md`. This is what keeps a later, unrelated task from silently breaking a screen you already verified. Note the test file you added in your report.
+
+## Accessibility check
+
+Per `docs/redesign/01-design-system.md`: confirm keyboard reachability, a visible focus state on interactive elements, real form labels (not placeholder-as-label), and accessible names on icon-only buttons. Report any gap as a checklist failure, not a footnote.
+
 ## Report format
 
 For each feature-parity checklist item: PASS / FAIL / CANNOT VERIFY (with a one-line reason — e.g. "cannot verify without partner-role test account").

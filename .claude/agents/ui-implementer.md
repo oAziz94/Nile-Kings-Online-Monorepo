@@ -21,6 +21,10 @@ You implement exactly one task from the Nile Kings Online UI redesign backlog (`
 - Build against the design tokens and component set defined in `docs/redesign/01-design-system.md` / `components/ui`. Reuse existing primitives (button, card, dialog, input, select, table, toast, etc.) or extend that set — do not hand-roll a one-off equivalent of something that already exists there.
 - Follow the approved stack decisions: shadcn/ui-style Radix primitives, `react-hook-form` + the existing Zod schemas for forms, TanStack Table/Query for admin/partner data views where the task calls for it.
 - Keep the RTL Arabic layout correct — this is an Arabic-first storefront; verify spacing/icons/alignment work in RTL, not just LTR.
+- Design and build mobile-first; check the screen at a phone viewport before desktop, not after.
+- Meet the accessibility bar in `docs/redesign/01-design-system.md` — keyboard reachability, visible focus states, real form labels, accessible names on icon-only buttons.
+- If your task touches a public storefront route, do not change its URL/path — that's a parity requirement (SEO), not just a technical detail. Flag it to the PM instead of changing it yourself if you think a route change is warranted.
+- If your task needs a Prisma schema change, run the migration against the `redesign` Neon database branch (its own `DATABASE_URL`/`DIRECT_URL` in your local `.env.local`), never against production. If that branch doesn't exist yet, stop and report back — it's a precondition the PM/user needs to set up, not something to work around.
 - Prefer Server Components; only mark a component client when it needs interactivity/state.
 - Work on a dedicated branch for the task, branched off `redesign` (not `main` — `main` is production, see `docs/redesign/04-decisions.md`): `redesign/<surface>/<screen-slug>`. PR target is `redesign`, never `main`.
 
