@@ -22,7 +22,11 @@
     "partner-inventory:verify-gamal": "tsx scripts/verify-gamal-partner-inventory.ts",
     "inventory:dashboard": "tsx tools/inventory-dashboard/server.ts",
     "version:task": "npm version patch -m \"chore(version): %s (task)\"",
-    "version:feature": "npm version minor -m \"chore(version): %s (major feature)\""
+    "version:feature": "npm version minor -m \"chore(version): %s (major feature)\"",
+    "dev:redesign": "dotenv -e .env.redesign -- next dev --turbopack",
+    "db:push:redesign": "dotenv -e .env.redesign -- prisma db push",
+    "db:migrate:redesign": "dotenv -e .env.redesign -- prisma migrate dev",
+    "db:studio:redesign": "dotenv -e .env.redesign -- prisma studio"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.0",
@@ -53,6 +57,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.0",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.0.0",
     "postcss": "^8.4.0",

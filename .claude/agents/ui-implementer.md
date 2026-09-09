@@ -24,7 +24,7 @@ You implement exactly one task from the Nile Kings Online UI redesign backlog (`
 - Design and build mobile-first; check the screen at a phone viewport before desktop, not after.
 - Meet the accessibility bar in `docs/redesign/01-design-system.md` — keyboard reachability, visible focus states, real form labels, accessible names on icon-only buttons.
 - If your task touches a public storefront route, do not change its URL/path — that's a parity requirement (SEO), not just a technical detail. Flag it to the PM instead of changing it yourself if you think a route change is warranted.
-- If your task needs a Prisma schema change, run the migration against the `redesign` Neon database branch (its own `DATABASE_URL`/`DIRECT_URL` in your local `.env.local`), never against production. If that branch doesn't exist yet, stop and report back — it's a precondition the PM/user needs to set up, not something to work around.
+- If your task needs a Prisma schema change, use `npm run db:push:redesign` / `db:migrate:redesign` (reads `.env.redesign`, the `redesign` Neon branch) — never `db:push`/`db:migrate` directly, those hit production via `.env`. If `.env.redesign` doesn't exist yet, stop and report back — it's a precondition the PM/user needs to set up, not something to work around.
 - Prefer Server Components; only mark a component client when it needs interactivity/state.
 - Work on a dedicated branch for the task, branched off `redesign` (not `main` — `main` is production, see `docs/redesign/04-decisions.md`): `redesign/<surface>/<screen-slug>`. PR target is `redesign`, never `main`.
 
