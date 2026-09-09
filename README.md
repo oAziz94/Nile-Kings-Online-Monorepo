@@ -6,7 +6,7 @@ Nile Kings Online is the full-stack e-commerce platform powering **Nile Kings Co
 
 - **Storefront** — Arabic RTL catalog with categories, product/variant browsing (size & color variants), search, filters, and home-page recommendations.
 - **Cart & checkout** — guest and authenticated carts, coupon codes (percent, fixed, and "buy X get Y free" BOGO discounts), Cash-on-Delivery and InstaPay (prepaid) payment methods, and dynamic shipping-fee calculation.
-- **Governorate-based delivery routing** — orders are automatically assigned to a partner (agent/distributor) based on the customer's governorate using configurable, round-robin routing rules, with partners notified over WhatsApp (Meta Cloud API).
+- **Governorate-based delivery routing** — orders are automatically assigned to a partner (agent/distributor) based on the customer's governorate using configurable, round-robin routing rules.
 - **Partner-owned inventory network** — each partner maintains its own stock per product variant, with a full inventory ledger (reserve/commit/release/transfer), restock requests between partners, and storefront stock that reflects the partner assigned to the shopper's governorate.
 - **Partner registration** — public "become an agent/distributor" request form, with an admin workflow to review, contact, and convert requests into active partners (including linking distributors to agents).
 - **Authentication** — phone-number based accounts with password login, OTP (one-time password) login/verification, and forgot-password flow; JWT session stored in an httpOnly cookie.
@@ -34,7 +34,6 @@ Nile Kings Online is the full-stack e-commerce platform powering **Nile Kings Co
 - `libphonenumber-js` for phone parsing/validation (Egyptian numbers)
 - `nodemailer` (SMTP) and `resend` for transactional email
 - `twilio` for SMS/OTP delivery
-- Meta WhatsApp Cloud API integration (custom service, no SDK) for partner order notifications
 - `xlsx` for admin data export
 
 **Database**
@@ -66,7 +65,7 @@ Business logic lives in `lib/`, grouped by domain (`lib/checkout`, `lib/inventor
 1. A shopper's governorate is captured (checkout address, or a storefront cookie set from their selection) and normalized against a fixed list of Egyptian governorates.
 2. Each governorate can have an active `ReroutingRule`, which links an ordered list of active `Partner`s (agents/distributors) participating in round-robin assignment for that governorate.
 3. **Storefront stock** reflects this routing *before* checkout: `lib/storefront-location.ts` resolves the current governorate to its rule's first partner and shows that partner's `PartnerInventory` levels (available minus reserved) instead of central stock, so shoppers only see what's actually deliverable to them.
-4. **On checkout**, `assignOrderToGovernorate()` (`lib/rerouting/assign.ts`) re-resolves the rule for the order's shipping governorate, selects the next partner in round-robin order (advancing `lastAssignedPartnerId`), creates a `RoutedOrder` record, and notifies the partner via the Meta WhatsApp Cloud API (using an approved message template) — all inside a transaction, with WhatsApp delivery treated as best-effort so a notification failure never blocks the order.
+4. **On checkout**, `assignOrderToGovernorate()` (`lib/rerouting/assign.ts`) re-resolves the rule for the order's shipping governorate, selects the next partner in round-robin order (advancing `lastAssignedPartnerId`), and creates a `RoutedOrder` record — all inside a transaction.
 5. If no rule exists or no partners are active for a governorate, the order is still created but marked `UNROUTED` for manual admin assignment.
 6. Partner stock is adjusted through an append-only `InventoryLedger` (reserve on order, commit/release/restore as the order progresses, plus manual adjustments and inter-partner transfers via `RestockRequest`s), so stock levels are always reconstructable and auditable.
 
@@ -74,7 +73,7 @@ Business logic lives in `lib/`, grouped by domain (`lib/checkout`, `lib/inventor
 Shopper (governorate) → ReroutingRule → [Partner A, Partner B, …] (round-robin)
                               │
                               ├─ storefront: shows selected partner's PartnerInventory
-                              └─ checkout:   assigns order → RoutedOrder → WhatsApp notify
+                              └─ checkout:   assigns order → RoutedOrder
 ```
 
 ## Getting Started
@@ -142,14 +141,6 @@ SMTP_FROM_NAME=
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_FROM=
-
-# WhatsApp partner notifications (Meta Cloud API)
-WHATSAPP_API_URL=
-WHATSAPP_PHONE_NUMBER_ID=
-WHATSAPP_ACCESS_TOKEN=
-WHATSAPP_BUSINESS_ACCOUNT_ID=
-WHATSAPP_ORDER_TEMPLATE_NAME=
-WHATSAPP_ORDER_TEMPLATE_LANGUAGE=
 ```
 
 ### Database Setup

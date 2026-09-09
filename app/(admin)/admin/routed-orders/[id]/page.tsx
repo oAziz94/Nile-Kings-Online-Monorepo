@@ -307,20 +307,6 @@ export default function AdminRoutedOrderDetailPage() {
         </CardContent>
       </Card>
 
-      {routed.notificationError && (
-        <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-600">
-          <CardHeader>
-            <CardTitle className="text-amber-800 dark:text-amber-200">لم يُرسل إشعار واتساب</CardTitle>
-            <CardDescription>
-              تم تعيين الطلب للشريك لكن إرسال رسالة واتساب فشل. تأكد من ضبط WAPILOT_INSTANCE_ID و WAPILOT_API_TOKEN.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-amber-900 dark:text-amber-100 font-mono break-all">{routed.notificationError}</p>
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle>إثبات التسليم (صورة)</CardTitle>

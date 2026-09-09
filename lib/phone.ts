@@ -15,8 +15,3 @@ export function normalizeEgyptMobilePhone(input: string): string | null {
 
   return phone.number;
 }
-
-export function normalizeEgyptMobilePhoneForWhatsApp(input: string): string | null {
-  const normalized = normalizeEgyptMobilePhone(input);
-  return normalized ? normalized.replace(/^\+/, "") : null;
-}

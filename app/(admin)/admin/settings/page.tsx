@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/shared/skeleton";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { MessageCircle, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type OtpRules = {
@@ -25,8 +25,6 @@ export default function AdminSettingsPage() {
   const [savingCod, setSavingCod] = React.useState(false);
   const [savingOtp, setSavingOtp] = React.useState(false);
   const [otpForm, setOtpForm] = React.useState({ expiryMinutes: "", cooldownSeconds: "", maxVerifyAttempts: "", lockMinutes: "" });
-  const [whatsappTestTo, setWhatsappTestTo] = React.useState("");
-  const [whatsappTestSending, setWhatsappTestSending] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -119,41 +117,13 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const sendWhatsAppTest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const to = whatsappTestTo.trim();
-    if (!to) {
-      toast({ title: "أدخل رقم هاتف للاختبار (مثلاً 01012345678)", variant: "destructive" });
-      return;
-    }
-    setWhatsappTestSending(true);
-    try {
-      const res = await fetch("/api/admin/whatsapp-test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ to }),
-      });
-      const json = await res.json();
-      if (res.ok && json?.success) {
-        toast({ title: "تم إرسال رسالة الاختبار إلى " + (json.data?.to ?? to) });
-      } else {
-        toast({ title: json?.error?.message ?? "فشل الإرسال", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "خطأ في الاتصال", variant: "destructive" });
-    } finally {
-      setWhatsappTestSending(false);
-    }
-  };
-
   if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="الإعدادات"
-        description="رسوم COD، قواعد OTP، واختبار إشعارات واتساب."
+        description="رسوم COD وقواعد OTP."
         badge={
           <span className="inline-flex items-center gap-1 rounded-full bg-burgundy/10 px-2.5 py-0.5 text-xs font-medium text-burgundy">
             <Settings className="h-3 w-3" />
@@ -235,35 +205,6 @@ export default function AdminSettingsPage() {
               />
             </div>
             <Button type="submit" disabled={savingOtp}>{savingOtp ? "جاري…" : "حفظ إعدادات OTP"}</Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card className={cn("rounded-2xl border-border/80 shadow-card")}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5" />
-            اختبار واتساب (Meta Cloud API)
-          </CardTitle>
-          <CardDescription>
-            إرسال رسالة اختبار إلى رقم معتمد في واتساب. يتطلب ضبط WHATSAPP_PHONE_NUMBER_ID و WHATSAPP_ACCESS_TOKEN.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={sendWhatsAppTest} className="flex flex-wrap items-end gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="whatsapp-test-to">رقم الهاتف (مثلاً 01012345678)</Label>
-              <Input
-                id="whatsapp-test-to"
-                type="text"
-                placeholder="01012345678"
-                value={whatsappTestTo}
-                onChange={(e) => setWhatsappTestTo(e.target.value)}
-              />
-            </div>
-            <Button type="submit" disabled={whatsappTestSending}>
-              {whatsappTestSending ? "جاري الإرسال…" : "إرسال رسالة اختبار"}
-            </Button>
           </form>
         </CardContent>
       </Card>

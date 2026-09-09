@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  normalizeEgyptMobilePhone,
-  normalizeEgyptMobilePhoneForWhatsApp,
-} from "@/lib/phone";
+import { normalizeEgyptMobilePhone } from "@/lib/phone";
 
 describe("normalizeEgyptMobilePhone", () => {
   it.each([
@@ -23,8 +20,4 @@ describe("normalizeEgyptMobilePhone", () => {
       expect(normalizeEgyptMobilePhone(input)).toBeNull();
     }
   );
-
-  it("formats valid Egyptian mobiles for WhatsApp without plus", () => {
-    expect(normalizeEgyptMobilePhoneForWhatsApp("01012345678")).toBe("201012345678");
-  });
 });
