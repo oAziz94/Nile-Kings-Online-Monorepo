@@ -11,7 +11,7 @@
 <style>
   :root{
     --papyrus:42 45% 97%; --stone-50:40 30% 98%; --stone-100:38 22% 93%; --stone-200:36 16% 87%; --stone-300:34 12% 76%;
-    --lapis-900:228 44% 9%; --lapis-800:228 40% 14%; --lapis-700:227 34% 20%; --lapis-600:226 28% 30%;
+    --lapis-900:228 44% 9%; --lapis-800:228 40% 14%; --lapis-700:227 34% 20%; --lapis-600:226 30% 28%;
     --ink:228 22% 14%; --ink-soft:225 10% 42%;
     --gold-50:42 70% 94%; --gold-500:42 78% 55%; --gold-600:38 74% 46%;
     --malachite-bg:152 42% 92%; --malachite-text:152 50% 24%;
@@ -36,9 +36,12 @@
   .topbar { display:flex; align-items:center; justify-content:space-between; padding:20px 32px; border-bottom:1px solid hsl(var(--stone-200)); background:#fff; }
   .search { display:flex; align-items:center; gap:10px; background:hsl(var(--stone-100)); border-radius:10px; padding:9px 14px; width:280px; color:hsl(var(--ink-soft)); font-size:13px; }
   .top-icons { display:flex; align-items:center; gap:16px; }
-  .icon-btn { width:36px; height:36px; border-radius:10px; background:hsl(var(--stone-100)); display:flex; align-items:center; justify-content:center; position:relative; }
+  .icon-btn { font-family:inherit; cursor:pointer; border:none; width:36px; height:36px; border-radius:10px; background:hsl(var(--stone-100)); display:flex; align-items:center; justify-content:center; position:relative; }
+  .icon-btn:focus-visible, .btn-export:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
   .dot-badge { position:absolute; top:6px; left:7px; width:7px; height:7px; border-radius:50%; background:hsl(9 68% 45%); }
   .avatar { width:36px; height:36px; border-radius:50%; background:hsl(var(--lapis-800)); color:hsl(var(--gold-500)); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; }
+  .btn-export { background:hsl(var(--lapis-800)); color:#fff; border:none; border-radius:999px; padding:9px 18px; font-family:inherit; font-weight:700; font-size:13px; cursor:pointer; }
+  button:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
 
   .content { padding:28px 32px; }
   .page-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
@@ -95,7 +98,7 @@
   <div class="topbar">
     <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg> بحث عن طلب...</div>
     <div class="top-icons">
-      <div class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot-badge"></span></div>
+      <button class="icon-btn" aria-label="الإشعارات"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot-badge"></span></button>
       <div class="avatar">أح</div>
     </div>
   </div>
@@ -124,7 +127,7 @@
           <button class="filter-chip">تم التوصيل</button>
           <button class="filter-chip">ملغي</button>
         </div>
-        <button style="background:hsl(var(--lapis-800)); color:#fff; border:none; border-radius:999px; padding:9px 18px; font-family:inherit; font-weight:700; font-size:13px; cursor:pointer;">تصدير</button>
+        <button class="btn-export">تصدير</button>
       </div>
       <table>
         <thead><tr><th>رقم الطلب</th><th>العميل</th><th>المحافظة</th><th>الحالة</th><th>التاريخ</th><th>القيمة</th></tr></thead>

@@ -43,7 +43,8 @@
   .spacelabel { width:64px; font-size:12px; font-family:monospace; color:hsl(var(--ink-soft)); direction:ltr; }
   .radiogrid { display:flex; gap:20px; }
   .radiobox { width:96px; height:96px; background:hsl(var(--stone-100)); border:1px solid hsl(var(--stone-300)); display:flex; align-items:center; justify-content:center; font-size:11px; color:hsl(var(--ink-soft)); font-family:monospace; }
-  .pillbtn { font-family:inherit; font-weight:700; font-size:14px; padding:12px 26px; border-radius:999px; border:none; }
+  .pillbtn { font-family:inherit; font-weight:700; font-size:14px; padding:12px 26px; border-radius:999px; border:none; cursor:pointer; }
+  .pillbtn:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
   .hero { background:hsl(var(--lapis-800)); color:hsl(var(--papyrus)); padding:64px; display:flex; align-items:center; gap:32px; position:relative; overflow:hidden; }
   .hero::after { content:""; position:absolute; inset:0; background:radial-gradient(60% 90% at 85% 0%, hsl(42 78% 55% / .16), transparent 60%); pointer-events:none; }
   .hero img { height:104px; width:auto; position:relative; }
@@ -75,8 +76,8 @@
     <div class="mat-card" style="background:hsl(var(--lapis-800));"><h4>Lapis</h4><p>Deep, dark foundation. Text, dashboard chrome, premium dark sections.</p></div>
     <div class="mat-card" style="background:hsl(var(--gold-600));"><h4>Gold</h4><p>Precious accent. Primary highlights, focus states, key CTAs &mdash; used sparingly.</p></div>
     <div class="mat-card" style="background:hsl(var(--carnelian-500));"><h4>Carnelian</h4><p>Warm secondary. Sale badges, secondary actions, danger states.</p></div>
-    <div class="mat-card" style="background:hsl(178 45% 26%);"><h4>Turquoise</h4><p>Faience blue-green. Info states, links, cool highlight moments.</p></div>
-    <div class="mat-card" style="background:hsl(152 40% 26%);"><h4>Malachite</h4><p>Deep green. Success states, delivered/confirmed signals.</p></div>
+    <div class="mat-card" style="background:hsl(var(--turquoise-500));"><h4>Turquoise</h4><p>Faience blue-green. Info states, links, cool highlight moments.</p></div>
+    <div class="mat-card" style="background:hsl(var(--malachite-text));"><h4>Malachite</h4><p>Deep green. Success states, delivered/confirmed signals.</p></div>
   </div>
 </div>
 

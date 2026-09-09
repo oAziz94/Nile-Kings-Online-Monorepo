@@ -20,7 +20,8 @@
   html,body { margin:0; }
   body { font-family:'Cairo',system-ui,sans-serif; direction:rtl; background:hsl(var(--papyrus)); color:hsl(var(--ink)); }
   .topbar { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; }
-  .icon-btn { width:36px; height:36px; border-radius:10px; background:#fff; border:1px solid hsl(var(--stone-200)); display:flex; align-items:center; justify-content:center; }
+  .icon-btn { font-family:inherit; cursor:pointer; width:36px; height:36px; border-radius:10px; background:#fff; border:1px solid hsl(var(--stone-200)); display:flex; align-items:center; justify-content:center; }
+  .icon-btn:focus-visible, .swatch:focus-visible, .size:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
   .gallery { margin:0 18px; height:340px; border-radius:16px; background:linear-gradient(160deg, hsl(228 30% 22%) 0%, hsl(228 40% 14%) 55%, hsl(228 44% 9%) 100%); position:relative; overflow:hidden; }
   .gallery .badge { position:absolute; top:14px; right:14px; background:hsl(var(--carnelian-500)); color:#fff; font-size:11px; font-weight:800; padding:5px 12px; border-radius:999px; }
   .dots { display:flex; justify-content:center; gap:6px; margin-top:10px; }
@@ -35,12 +36,12 @@
   .group { margin-bottom:18px; }
   .group .lbl { font-size:13px; font-weight:700; margin-bottom:8px; }
   .swatches { display:flex; gap:10px; }
-  .swatch { width:36px; height:36px; border-radius:50%; border:2px solid transparent; }
+  .swatch { font-family:inherit; cursor:pointer; padding:0; width:36px; height:36px; border-radius:50%; border:2px solid transparent; }
   .swatch.on { border-color:hsl(var(--lapis-800)); }
   .sizes { display:flex; gap:8px; }
-  .size { width:44px; height:40px; border-radius:10px; border:1.5px solid hsl(var(--stone-300)); background:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
+  .size { font-family:inherit; cursor:pointer; width:44px; height:40px; border-radius:10px; border:1.5px solid hsl(var(--stone-300)); background:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
   .size.on { border-color:hsl(var(--lapis-800)); background:hsl(var(--lapis-800)); color:#fff; }
-  .size.out { color:hsl(var(--stone-300)); text-decoration:line-through; }
+  .size.out { color:hsl(var(--stone-300)); text-decoration:line-through; cursor:not-allowed; }
   .avail { display:flex; align-items:center; gap:8px; background:hsl(var(--malachite-bg)); color:hsl(var(--malachite-text)); padding:10px 14px; border-radius:12px; font-size:13px; font-weight:700; margin-bottom:18px; }
   .cta-bar { position:sticky; bottom:0; background:hsl(var(--papyrus) / .96); backdrop-filter:blur(6px); padding:14px 18px 20px; border-top:1px solid hsl(var(--stone-200)); }
   .btn { width:100%; background:hsl(var(--lapis-800)); color:hsl(var(--papyrus)); font-family:inherit; font-weight:700; font-size:15px; border:none; border-radius:999px; padding:15px; cursor:pointer; }
@@ -57,10 +58,10 @@
 </helmet>
 
 <div class="topbar">
-  <div class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transform:scaleX(-1)"><path d="M15 18l-6-6 6-6"/></svg></div>
+  <button class="icon-btn" aria-label="رجوع"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transform:scaleX(-1)"><path d="M15 18l-6-6 6-6"/></svg></button>
   <div style="display:flex; gap:8px;">
-    <div class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 8.6c0 5-8.8 10.4-8.8 10.4S3.2 13.6 3.2 8.6a5.4 5.4 0 0 1 9.8-3.2 5.4 5.4 0 0 1 9.8 3.2z"/></svg></div>
-    <div class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2l2.4 12.4a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 7H6"/></svg></div>
+    <button class="icon-btn" aria-label="المفضلة"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 8.6c0 5-8.8 10.4-8.8 10.4S3.2 13.6 3.2 8.6a5.4 5.4 0 0 1 9.8-3.2 5.4 5.4 0 0 1 9.8 3.2z"/></svg></button>
+    <button class="icon-btn" aria-label="السلة"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2l2.4 12.4a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 7H6"/></svg></button>
   </div>
 </div>
 
@@ -75,19 +76,19 @@
   <div class="group">
     <p class="lbl">اللون</p>
     <div class="swatches">
-      <span class="swatch on" style="background:hsl(228 40% 14%)"></span>
-      <span class="swatch" style="background:hsl(9 68% 45%)"></span>
-      <span class="swatch" style="background:hsl(42 30% 88%)"></span>
+      <button class="swatch on" aria-label="كحلي" aria-pressed="true" style="background:hsl(228 40% 14%)"></button>
+      <button class="swatch" aria-label="أحمر" aria-pressed="false" style="background:hsl(9 68% 45%)"></button>
+      <button class="swatch" aria-label="بيج" aria-pressed="false" style="background:hsl(42 30% 88%)"></button>
     </div>
   </div>
 
   <div class="group">
     <p class="lbl">المقاس</p>
     <div class="sizes">
-      <div class="size">S</div>
-      <div class="size on">M</div>
-      <div class="size">L</div>
-      <div class="size out">XL</div>
+      <button class="size" aria-pressed="false">S</button>
+      <button class="size on" aria-pressed="true">M</button>
+      <button class="size" aria-pressed="false">L</button>
+      <button class="size out" disabled>XL</button>
     </div>
   </div>
 
