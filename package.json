@@ -22,7 +22,7 @@
     "partner-inventory:verify-gamal": "tsx scripts/verify-gamal-partner-inventory.ts",
     "inventory:dashboard": "tsx tools/inventory-dashboard/server.ts",
     "version:task": "npm version patch -m \"chore(version): %s (task)\"",
-    "version:phase": "npm version minor -m \"chore(version): %s (phase)\""
+    "version:feature": "npm version minor -m \"chore(version): %s (major feature)\""
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.0",
