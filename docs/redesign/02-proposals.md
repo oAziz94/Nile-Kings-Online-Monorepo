@@ -33,7 +33,8 @@ Each item becomes a real backlog task (`03-backlog.md`) only once its phase come
 | Initiative | Status | Notes |
 |---|---|---|
 | ISR for storefront category/product pages | Approved | Fewer Vercel invocations + Neon queries per pageview |
-| Push more hot reads through Upstash Redis | Approved | Currently free-tier — see `04-decisions.md`; monitor usage |
+| Switch product/category caches from time-based `revalidate` to `revalidateTag` | Approved | Admin edits invalidate immediately instead of waiting out the 60-300s window; existing `unstable_cache` usage stays, just gains tags |
+| Targeted Redis additions (not a general cache migration) | Approved | See `06-caching-plan.md` — governorate→partner resolution, extended rate-limiting, notification-center counters, abandoned-cart tracking, low-stock alert dedupe. Product/category/menu/filter reads stay on Next's Data Cache, already free and working |
 | Consistent `next/image` + Cloudinary `f_auto,q_auto` | Approved | Cloudinary bills on bandwidth/transforms |
 | Confirm Prisma uses Neon's pooled connection string | Approved | Avoids connection-exhaustion cost under load |
 | Server-components-first audit | Approved | Trim client JS where App Router allows server-only |
