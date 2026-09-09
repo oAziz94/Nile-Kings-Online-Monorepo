@@ -25,9 +25,10 @@
   .sidebar { width:236px; flex:0 0 auto; background:#fff; border-left:1px solid hsl(var(--sand-200)); padding:24px 18px; display:flex; flex-direction:column; }
   .sb-mark { display:flex; align-items:center; gap:10px; padding:0 6px 24px; font-weight:800; font-size:15px; }
   .sb-section { font-size:11px; font-weight:700; color:hsl(var(--ink-soft)); text-transform:uppercase; letter-spacing:.04em; margin:18px 8px 8px; }
-  .sb-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; font-size:14px; font-weight:600; color:hsl(var(--ink-soft)); }
+  .sb-item { font-family:inherit; cursor:pointer; border:none; background:transparent; width:100%; text-align:right; display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; font-size:14px; font-weight:600; color:hsl(var(--ink-soft)); }
   .sb-item.on { background:hsl(var(--gold-50)); color:hsl(var(--burgundy-500)); font-weight:700; }
   .sb-item svg { flex:0 0 auto; }
+  .sb-item:focus-visible, .filter-chip:focus-visible, .pg-btn:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
 
   .main { flex:1; min-width:0; }
   .topbar { display:flex; align-items:center; justify-content:space-between; padding:20px 32px; border-bottom:1px solid hsl(var(--sand-200)); background:#fff; }
@@ -52,7 +53,7 @@
   .panel { background:#fff; border-radius:18px; box-shadow:0 1px 3px hsl(0 0% 0% / .05); overflow:hidden; }
   .panel-head { display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid hsl(var(--sand-200)); }
   .filters { display:flex; gap:8px; }
-  .filter-chip { font-size:13px; font-weight:700; padding:7px 14px; border-radius:999px; background:hsl(var(--sand-100)); color:hsl(var(--ink-soft)); }
+  .filter-chip { font-family:inherit; cursor:pointer; border:none; font-size:13px; font-weight:700; padding:7px 14px; border-radius:999px; background:hsl(var(--sand-100)); color:hsl(var(--ink-soft)); }
   .filter-chip.on { background:hsl(var(--burgundy-500)); color:#fff; }
 
   table { width:100%; border-collapse:collapse; }
@@ -68,8 +69,9 @@
   .panel-foot { display:flex; align-items:center; justify-content:space-between; padding:16px 22px; }
   .panel-foot .cnt { font-size:13px; color:hsl(var(--ink-soft)); }
   .pagination { display:flex; align-items:center; gap:6px; }
-  .pg-btn { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); background:hsl(var(--sand-100)); }
+  .pg-btn { font-family:inherit; cursor:pointer; border:none; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); background:hsl(var(--sand-100)); }
   .pg-btn.on { background:hsl(var(--burgundy-500)); color:#fff; }
+  .pg-btn.pg-prev svg { transform:scaleX(-1); }
 </style>
 </helmet>
 
@@ -79,15 +81,15 @@
     نايل كينجز &mdash; شريك
   </div>
   <div class="sb-section">النظرة العامة</div>
-  <div class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg> الرئيسية</div>
-  <div class="sb-item on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg> الطلبات الموجّهة</div>
+  <button class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg> الرئيسية</button>
+  <button class="sb-item on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg> الطلبات الموجّهة</button>
   <div class="sb-section">المخزون</div>
-  <div class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/></svg> المنتجات</div>
-  <div class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4M3 7h18M7 21l-4-4 4-4M21 17H3"/></svg> طلبات التوريد</div>
+  <button class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/></svg> المنتجات</button>
+  <button class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4M3 7h18M7 21l-4-4 4-4M21 17H3"/></svg> طلبات التوريد</button>
   <div class="sb-section">الشبكة</div>
-  <div class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.4"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/><circle cx="18" cy="8" r="2.6"/></svg> الموزعون
-</div>
-  <div class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg> التقارير</div>
+  <button class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.4"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/><circle cx="18" cy="8" r="2.6"/></svg> الموزعون
+</button>
+  <button class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg> التقارير</button>
 </div>
 
 <div class="main">
@@ -117,11 +119,11 @@
     <div class="panel">
       <div class="panel-head">
         <div class="filters">
-          <span class="filter-chip on">الكل</span>
-          <span class="filter-chip">قيد الانتظار</span>
-          <span class="filter-chip">تم الشحن</span>
-          <span class="filter-chip">تم التوصيل</span>
-          <span class="filter-chip">ملغي</span>
+          <button class="filter-chip on">الكل</button>
+          <button class="filter-chip">قيد الانتظار</button>
+          <button class="filter-chip">تم الشحن</button>
+          <button class="filter-chip">تم التوصيل</button>
+          <button class="filter-chip">ملغي</button>
         </div>
         <button style="background:hsl(var(--burgundy-500)); color:#fff; border:none; border-radius:10px; padding:9px 16px; font-family:inherit; font-weight:700; font-size:13px;">تصدير</button>
       </div>
@@ -136,7 +138,11 @@
       </table>
       <div class="panel-foot">
         <span class="cnt">عرض ١-٤ من ٤٨ طلب</span>
-        <div class="pagination"><div class="pg-btn">‹</div><div class="pg-btn on">١</div><div class="pg-btn">٢</div><div class="pg-btn">٣</div><div class="pg-btn">›</div></div>
+        <div class="pagination">
+          <button class="pg-btn pg-prev" aria-label="الصفحة السابقة"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <button class="pg-btn on">١</button><button class="pg-btn">٢</button><button class="pg-btn">٣</button>
+          <button class="pg-btn pg-next" aria-label="الصفحة التالية"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+        </div>
       </div>
     </div>
   </div>

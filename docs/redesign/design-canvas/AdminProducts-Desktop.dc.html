@@ -24,8 +24,9 @@
   .sidebar { width:236px; flex:0 0 auto; background:#fff; border-left:1px solid hsl(var(--sand-200)); padding:24px 18px; }
   .sb-mark { display:flex; align-items:center; gap:10px; padding:0 6px 24px; font-weight:800; font-size:15px; }
   .sb-section { font-size:11px; font-weight:700; color:hsl(var(--ink-soft)); text-transform:uppercase; letter-spacing:.04em; margin:18px 8px 8px; }
-  .sb-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; font-size:14px; font-weight:600; color:hsl(var(--ink-soft)); }
+  .sb-item { font-family:inherit; cursor:pointer; border:none; background:transparent; width:100%; text-align:right; display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; font-size:14px; font-weight:600; color:hsl(var(--ink-soft)); }
   .sb-item.on { background:hsl(var(--gold-50)); color:hsl(var(--burgundy-500)); font-weight:700; }
+  .sb-item:focus-visible, .filter-btn:focus-visible, .bulk-btn:focus-visible, .pg-btn:focus-visible, .checkbox:focus-visible, .btn-primary:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
 
   .main { flex:1; min-width:0; }
   .topbar { display:flex; align-items:center; justify-content:space-between; padding:20px 32px; border-bottom:1px solid hsl(var(--sand-200)); background:#fff; }
@@ -38,23 +39,23 @@
   .page-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
   .page-head h1 { font-size:22px; font-weight:800; margin:0; }
   .page-head p { font-size:13px; color:hsl(var(--ink-soft)); margin:4px 0 0; }
-  .btn-primary { background:hsl(var(--burgundy-500)); color:#fff; border:none; border-radius:10px; padding:11px 20px; font-family:inherit; font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:8px; }
+  .btn-primary { cursor:pointer; background:hsl(var(--burgundy-500)); color:#fff; border:none; border-radius:10px; padding:11px 20px; font-family:inherit; font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:8px; }
 
   .panel { background:#fff; border-radius:18px; box-shadow:0 1px 3px hsl(0 0% 0% / .05); overflow:hidden; }
   .toolbar { display:flex; align-items:center; justify-content:space-between; padding:16px 22px; border-bottom:1px solid hsl(var(--sand-200)); gap:16px; }
   .toolbar .search2 { flex:1; max-width:320px; display:flex; align-items:center; gap:8px; background:hsl(var(--sand-100)); border-radius:10px; padding:8px 14px; font-size:13px; color:hsl(var(--ink-soft)); }
-  .filter-btn { display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:10px; background:hsl(var(--sand-100)); font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); }
+  .filter-btn { font-family:inherit; cursor:pointer; border:none; display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:10px; background:hsl(var(--sand-100)); font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); }
 
   .bulk-bar { display:flex; align-items:center; justify-content:space-between; padding:12px 22px; background:hsl(var(--gold-50)); border-bottom:1px solid hsl(var(--sand-200)); }
   .bulk-left { display:flex; align-items:center; gap:10px; font-size:13px; font-weight:700; }
   .bulk-actions { display:flex; gap:8px; }
-  .bulk-btn { font-size:12px; font-weight:700; padding:7px 14px; border-radius:8px; background:#fff; border:1px solid hsl(var(--sand-300)); }
+  .bulk-btn { font-family:inherit; cursor:pointer; font-size:12px; font-weight:700; padding:7px 14px; border-radius:8px; background:#fff; border:1px solid hsl(var(--sand-300)); }
   .bulk-btn.danger { color:hsl(var(--danger-text)); border-color:hsl(var(--danger-bg)); }
 
   table { width:100%; border-collapse:collapse; }
   th { text-align:right; font-size:12px; font-weight:700; color:hsl(var(--ink-soft)); padding:12px 22px; background:hsl(var(--sand-50)); }
   td { padding:13px 22px; font-size:14px; border-top:1px solid hsl(var(--sand-200)); vertical-align:middle; }
-  .checkbox { width:18px; height:18px; border-radius:5px; border:1.5px solid hsl(var(--sand-300)); background:#fff; display:inline-flex; align-items:center; justify-content:center; }
+  .checkbox { font-family:inherit; cursor:pointer; padding:0; width:18px; height:18px; border-radius:5px; border:1.5px solid hsl(var(--sand-300)); background:#fff; display:inline-flex; align-items:center; justify-content:center; }
   .checkbox.on { background:hsl(var(--burgundy-500)); border-color:hsl(var(--burgundy-500)); }
   .prod-cell { display:flex; align-items:center; gap:12px; }
   .thumb { width:40px; height:40px; border-radius:9px; background:linear-gradient(160deg, hsl(38 35% 85%), hsl(28 22% 60%)); flex:0 0 auto; }
@@ -70,8 +71,9 @@
   .panel-foot { display:flex; align-items:center; justify-content:space-between; padding:16px 22px; }
   .panel-foot .cnt { font-size:13px; color:hsl(var(--ink-soft)); }
   .pagination { display:flex; align-items:center; gap:6px; }
-  .pg-btn { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); background:hsl(var(--sand-100)); }
+  .pg-btn { font-family:inherit; cursor:pointer; border:none; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); background:hsl(var(--sand-100)); }
   .pg-btn.on { background:hsl(var(--burgundy-500)); color:#fff; }
+  .pg-btn.pg-prev svg { transform:scaleX(-1); }
 </style>
 </helmet>
 
@@ -81,16 +83,16 @@
     نايل كينجز &mdash; إدارة
   </div>
   <div class="sb-section">الكتالوج</div>
-  <div class="sb-item on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/></svg> المنتجات</div>
-  <div class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg> الفئات</div>
+  <button class="sb-item on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/></svg> المنتجات</button>
+  <button class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg> الفئات</button>
   <div class="sb-section">الطلبات</div>
-  <div class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg> كل الطلبات</div>
-  <div class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4M3 7h18M7 21l-4-4 4-4M21 17H3"/></svg> الطلبات الموجّهة</div>
+  <button class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg> كل الطلبات</button>
+  <button class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4M3 7h18M7 21l-4-4 4-4M21 17H3"/></svg> الطلبات الموجّهة</button>
   <div class="sb-section">الشبكة</div>
-  <div class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.4"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg> الشركاء</div>
-  <div class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg> التحليلات</div>
+  <button class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.4"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg> الشركاء</button>
+  <button class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg> التحليلات</button>
   <div class="sb-section">النظام</div>
-  <div class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg> الإعدادات</div>
+  <button class="sb-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg> الإعدادات</button>
 </div>
 
 <div class="main">
@@ -115,17 +117,17 @@
       <div class="toolbar">
         <div class="search2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg> ابحث عن منتج أو SKU...</div>
         <div style="display:flex; gap:8px;">
-          <span class="filter-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg> الفئة</span>
-          <span class="filter-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg> الحالة</span>
+          <button class="filter-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg> الفئة</button>
+          <button class="filter-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg> الحالة</button>
         </div>
       </div>
 
       <div class="bulk-bar">
-        <div class="bulk-left"><span class="checkbox on"></span> تم تحديد ٣ منتجات</div>
+        <div class="bulk-left"><button class="checkbox on" aria-pressed="true"></button> تم تحديد ٣ منتجات</div>
         <div class="bulk-actions">
-          <span class="bulk-btn">تغيير الحالة</span>
-          <span class="bulk-btn">تصدير</span>
-          <span class="bulk-btn danger">حذف</span>
+          <button class="bulk-btn">تغيير الحالة</button>
+          <button class="bulk-btn">تصدير</button>
+          <button class="bulk-btn danger">حذف</button>
         </div>
       </div>
 
@@ -133,28 +135,28 @@
         <thead><tr><th style="width:40px;"></th><th>المنتج</th><th>الفئة</th><th>السعر</th><th>المخزون</th><th>الحالة</th><th></th></tr></thead>
         <tbody>
           <tr>
-            <td><span class="checkbox on"></span></td>
+            <td><button class="checkbox on" aria-pressed="true"></button></td>
             <td><div class="prod-cell"><div class="thumb"></div><div><div class="name">قميص قطن أساسي</div><div class="sku">SKU-1042</div></div></div></td>
             <td>قمصان</td><td>٤٥٠ ج.م</td><td>٣٤</td>
             <td><span class="pill p-success">منشور</span></td>
             <td class="row-menu">⋮</td>
           </tr>
           <tr>
-            <td><span class="checkbox on"></span></td>
+            <td><button class="checkbox on" aria-pressed="true"></button></td>
             <td><div class="prod-cell"><div class="thumb"></div><div><div class="name">بنطلون قطن كلاسيك</div><div class="sku">SKU-1043</div></div></div></td>
             <td>بناطيل</td><td>٥٩٠ ج.م</td><td>٦</td>
             <td><span class="pill p-warning">مخزون منخفض</span></td>
             <td class="row-menu">⋮</td>
           </tr>
           <tr>
-            <td><span class="checkbox on"></span></td>
+            <td><button class="checkbox on" aria-pressed="true"></button></td>
             <td><div class="prod-cell"><div class="thumb"></div><div><div class="name">جاكيت خفيف</div><div class="sku">SKU-1044</div></div></div></td>
             <td>جواكت</td><td>٧٥٠ ج.م</td><td>٠</td>
             <td><span class="pill p-danger">غير متوفر</span></td>
             <td class="row-menu">⋮</td>
           </tr>
           <tr>
-            <td><span class="checkbox"></span></td>
+            <td><button class="checkbox" aria-pressed="false"></button></td>
             <td><div class="prod-cell"><div class="thumb"></div><div><div class="name">تيشيرت أساسي</div><div class="sku">SKU-1045</div></div></div></td>
             <td>تيشرتات</td><td>٢٩٠ ج.م</td><td>٨٩</td>
             <td><span class="pill p-success">منشور</span></td>
@@ -164,7 +166,11 @@
       </table>
       <div class="panel-foot">
         <span class="cnt">عرض ١-٤ من ١٦٢ منتج</span>
-        <div class="pagination"><div class="pg-btn">‹</div><div class="pg-btn on">١</div><div class="pg-btn">٢</div><div class="pg-btn">٣</div><div class="pg-btn">›</div></div>
+        <div class="pagination">
+          <button class="pg-btn pg-prev" aria-label="الصفحة السابقة"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <button class="pg-btn on">١</button><button class="pg-btn">٢</button><button class="pg-btn">٣</button>
+          <button class="pg-btn pg-next" aria-label="الصفحة التالية"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+        </div>
       </div>
     </div>
   </div>

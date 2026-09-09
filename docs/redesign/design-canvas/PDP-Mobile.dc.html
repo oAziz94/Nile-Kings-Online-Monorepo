@@ -42,7 +42,8 @@
   .size.out { color:hsl(var(--sand-300)); text-decoration:line-through; }
   .avail { display:flex; align-items:center; gap:8px; background:hsl(var(--success-bg)); color:hsl(var(--success-text)); padding:10px 14px; border-radius:12px; font-size:13px; font-weight:700; margin-bottom:18px; }
   .cta-bar { position:sticky; bottom:0; background:hsl(var(--paper) / .96); backdrop-filter:blur(6px); padding:14px 18px 20px; border-top:1px solid hsl(var(--sand-200)); }
-  .btn { width:100%; background:hsl(var(--burgundy-500)); color:hsl(var(--paper)); font-family:inherit; font-weight:700; font-size:15px; border:none; border-radius:12px; padding:15px; }
+  .btn { width:100%; background:hsl(var(--burgundy-500)); color:hsl(var(--paper)); font-family:inherit; font-weight:700; font-size:15px; border:none; border-radius:12px; padding:15px; cursor:pointer; }
+  .btn:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
   .related { padding:24px 18px 32px; }
   .related h2 { font-size:17px; font-weight:800; margin:0 0 14px; }
   .rel-row { display:flex; gap:14px; overflow:hidden; }
@@ -55,7 +56,7 @@
 </helmet>
 
 <div class="topbar">
-  <div class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+  <div class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transform:scaleX(-1)"><path d="M15 18l-6-6 6-6"/></svg></div>
   <div style="display:flex; gap:8px;">
     <div class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 8.6c0 5-8.8 10.4-8.8 10.4S3.2 13.6 3.2 8.6a5.4 5.4 0 0 1 9.8-3.2 5.4 5.4 0 0 1 9.8 3.2z"/></svg></div>
     <div class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2l2.4 12.4a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 7H6"/></svg></div>

@@ -47,12 +47,14 @@
   .field .hint { font-size:12px; color:hsl(var(--ink-soft)); }
 
   .ctrl-row { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; }
+  button.checkbox, button.radio, button.switch { font-family:inherit; cursor:pointer; padding:0; }
+  button.checkbox:focus-visible, button.radio:focus-visible, button.switch:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
   .checkbox, .radio { width:20px; height:20px; border:1.5px solid hsl(var(--sand-300)); background:#fff; display:inline-flex; align-items:center; justify-content:center; }
   .checkbox { border-radius:5px; }
   .radio { border-radius:50%; }
   .checkbox.on, .radio.on { background:hsl(var(--burgundy-500)); border-color:hsl(var(--burgundy-500)); }
   .radio.on::after { content:""; width:8px; height:8px; border-radius:50%; background:#fff; }
-  .switch { width:40px; height:24px; border-radius:999px; background:hsl(var(--sand-300)); position:relative; display:inline-block; }
+  .switch { width:40px; height:24px; border-radius:999px; background:hsl(var(--sand-300)); position:relative; display:inline-block; border:none; }
   .switch.on { background:hsl(var(--burgundy-500)); }
   .switch::after { content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; }
   .switch.on::after { left:19px; }
@@ -70,8 +72,9 @@
   .pill-danger { background:hsl(var(--danger-bg)); color:hsl(var(--danger-text)); } .pill-danger::before { background:hsl(var(--danger-text)); }
 
   .tabs { display:flex; gap:4px; background:hsl(var(--sand-100)); padding:4px; border-radius:12px; width:fit-content; }
-  .tab { padding:8px 18px; border-radius:9px; font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); }
+  .tab { font-family:inherit; cursor:pointer; border:none; background:transparent; padding:8px 18px; border-radius:9px; font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); }
   .tab.on { background:#fff; color:hsl(var(--burgundy-500)); box-shadow:0 1px 3px hsl(0 0% 0% / .08); }
+  .tab:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
 
   .tooltip-wrap { position:relative; display:inline-block; }
   .tooltip { background:hsl(20 12% 14%); color:#fff; font-size:12px; font-weight:600; padding:6px 10px; border-radius:8px; position:absolute; bottom:calc(100% + 8px); right:50%; transform:translateX(50%); white-space:nowrap; }
@@ -85,8 +88,12 @@
   .sort-icon { display:inline-block; vertical-align:middle; margin-left:4px; }
 
   .pagination { display:flex; align-items:center; gap:6px; }
-  .pg-btn { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); background:#fff; border:1px solid hsl(var(--sand-300)); }
+  .pg-btn { font-family:inherit; cursor:pointer; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:hsl(var(--ink-soft)); background:#fff; border:1px solid hsl(var(--sand-300)); }
   .pg-btn.on { background:hsl(var(--burgundy-500)); color:#fff; border-color:hsl(var(--burgundy-500)); }
+  .pg-btn:focus-visible { outline:3px solid hsl(var(--gold-500)); outline-offset:2px; }
+  /* base chevron points left (correct, unmirrored, for "next" - continuing further from the RTL reading-start);
+     "previous" goes back toward the reading-start, so it's mirrored to point right. */
+  .pg-btn.pg-prev svg { transform:scaleX(-1); }
 
   .empty { text-align:center; padding:40px; background:#fff; border-radius:16px; width:320px; }
   .empty p.t { font-weight:700; font-size:15px; margin:14px 0 4px; }
@@ -137,14 +144,14 @@
 <div class="section">
   <p class="kicker">Selection controls</p>
   <div class="row">
-    <span class="ctrl-row"><span class="checkbox on">
+    <span class="ctrl-row"><button class="checkbox on" aria-pressed="true">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
-    </span> محدد</span>
-    <span class="ctrl-row"><span class="checkbox"></span> غير محدد</span>
-    <span class="ctrl-row"><span class="radio on"></span> خيار مختار</span>
-    <span class="ctrl-row"><span class="radio"></span> خيار آخر</span>
-    <span class="ctrl-row"><span class="switch on"></span> مفعّل</span>
-    <span class="ctrl-row"><span class="switch"></span> غير مفعّل</span>
+    </button> محدد</span>
+    <span class="ctrl-row"><button class="checkbox" aria-pressed="false"></button> غير محدد</span>
+    <span class="ctrl-row"><button class="radio on" aria-pressed="true"></button> خيار مختار</span>
+    <span class="ctrl-row"><button class="radio" aria-pressed="false"></button> خيار آخر</span>
+    <span class="ctrl-row"><button class="switch on" aria-pressed="true"></button> مفعّل</span>
+    <span class="ctrl-row"><button class="switch" aria-pressed="false"></button> غير مفعّل</span>
   </div>
 </div>
 
@@ -171,10 +178,10 @@
 <div class="section">
   <p class="kicker">Tabs</p>
   <div class="tabs">
-    <div class="tab on">الكل</div>
-    <div class="tab">قيد الانتظار</div>
-    <div class="tab">مكتمل</div>
-    <div class="tab">ملغي</div>
+    <button class="tab on">الكل</button>
+    <button class="tab">قيد الانتظار</button>
+    <button class="tab">مكتمل</button>
+    <button class="tab">ملغي</button>
   </div>
 </div>
 
@@ -208,11 +215,11 @@
     </tbody>
   </table>
   <div style="margin-top:14px;" class="pagination">
-    <div class="pg-btn">‹</div>
-    <div class="pg-btn on">١</div>
-    <div class="pg-btn">٢</div>
-    <div class="pg-btn">٣</div>
-    <div class="pg-btn">›</div>
+    <button class="pg-btn pg-prev" aria-label="الصفحة السابقة"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="pg-btn on">١</button>
+    <button class="pg-btn">٢</button>
+    <button class="pg-btn">٣</button>
+    <button class="pg-btn pg-next" aria-label="الصفحة التالية"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
   </div>
 </div>
 
