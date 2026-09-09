@@ -17,7 +17,7 @@ Each item becomes a real backlog task (`03-backlog.md`) only once its phase come
 | Order tracking timeline on customer profile | Approved | Visual status trail, not just current-status badge |
 | JSON-LD product structured data + sitemap | Approved | SEO, no infra cost |
 | PWA install for storefront | Approved | |
-| Admin-browsable audit-log UI | Approved | Audit logging already exists per README; this adds the UI to read it |
+| Admin-browsable audit-log UI + general admin action logging | Approved | Order/OTP audit logs already exist (Postgres); this generalizes the same pattern to all admin actions (not Redis — see `07-analytics-and-audit-plan.md`) plus the UI to read it |
 
 ## Library / standardization swaps
 
@@ -39,6 +39,7 @@ Each item becomes a real backlog task (`03-backlog.md`) only once its phase come
 | Confirm Prisma uses Neon's pooled connection string | Approved | Avoids connection-exhaustion cost under load |
 | Server-components-first audit | Approved | Trim client JS where App Router allows server-only |
 | Baseline-measure usage before any provider swap | Approved | Precondition for the "open to swapping providers" infra decision |
+| Drop `@vercel/analytics` Web Analytics | Approved | Free tier is 2,500 events/mo then pauses; Pro is $12/mo. Redundant with the existing Postgres `ViewLog`/`AddToCartLog` pipeline + Meta Pixel — see `07-analytics-and-audit-plan.md`. GA4 (free) considered separately if broader traffic-source analytics are wanted |
 
 ## Explicitly out of scope for now
 
