@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import { Prisma } from "@prisma/client";
 import { apiSuccess, apiBadRequest, apiTooManyRequests, apiUnauthorized } from "@/lib/api/response";
 import { hashPassword } from "@/lib/auth/password";
 import { createSession, sessionCookieOptions } from "@/lib/auth/session";
@@ -88,15 +89,29 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await hashPassword(password);
 
-  const user = await prisma.user.create({
-    data: {
-      phone: normalizedPhone,
-      passwordHash,
-      name,
-      email,
-      role: "CUSTOMER",
-    },
-  });
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: {
+        phone: normalizedPhone,
+        passwordHash,
+        name,
+        email,
+        role: "CUSTOMER",
+      },
+    });
+  } catch (err) {
+    // Two concurrent requests can both pass the `existing` check above before either has
+    // inserted (a real race in a multi-instance deployment, flagged during backlog 4.4's
+    // verification even though this create call predates that task). Map the resulting
+    // unique-constraint violation on `phone` to the same clean "already registered" response
+    // instead of letting it surface as a generic 500.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      await recordFailedRegister(normalizedPhone, ip);
+      return apiBadRequest("هذا الرقم مسجّل مسبقاً. استخدم تسجيل الدخول.");
+    }
+    throw err;
+  }
 
   await clearRegisterAttempts(normalizedPhone);
 
