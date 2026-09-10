@@ -1,13 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { loadRedesignTestEnv } from "./test-env";
+loadRedesignTestEnv();
+
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
-import dotenv from "dotenv";
-import path from "node:path";
 import { Redis } from "@upstash/redis";
-
-// Load the same Upstash creds the local/dev server itself uses (this test process is
-// separate from the Next.js process, so it doesn't inherit that env automatically).
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 /** Mirrors lib/redis/login-limits.ts's hourKey format exactly. */
 function currentHourSuffix(): string {

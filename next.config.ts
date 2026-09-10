@@ -9,6 +9,14 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "res.cloudinary.com", pathname: "/**" },
     ],
   },
+  eslint: {
+    // eslint.config.mjs (added in backlog 4.2) was this repo's first-ever ESLint config;
+    // `next build` runs lint by default and surfaced a backlog of pre-existing violations
+    // across unrelated files, hard-failing builds that succeeded before. `npm run lint`
+    // still runs and still exits non-zero on real violations — only the build is decoupled
+    // from that pre-existing debt (docs/redesign/04-decisions.md 2026-09-10, 4.2 verification).
+    ignoreDuringBuilds: true,
+  },
 };
 
 // Safe with no Sentry account configured yet: source-map upload is skipped
