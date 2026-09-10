@@ -132,7 +132,7 @@ function LoginContent() {
                     {...form.register("countryCode")}
                     dir="ltr"
                     aria-label="رمز الدولة"
-                    className="min-w-[7rem] flex-none cursor-pointer"
+                    className="w-auto min-w-[7rem] flex-none cursor-pointer"
                   >
                     {COUNTRY_CODES.map(({ code, country }) => (
                       <option key={code} value={code}>
