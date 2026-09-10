@@ -130,6 +130,7 @@ function LoginContent() {
                   </FormControl>
                   <Select
                     {...form.register("countryCode")}
+                    defaultValue={DEFAULT_COUNTRY_CODE}
                     dir="ltr"
                     aria-label="رمز الدولة"
                     className="w-auto min-w-[7rem] flex-none cursor-pointer"
