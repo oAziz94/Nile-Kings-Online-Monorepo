@@ -1,3 +1,9 @@
+## 2026-09-10 — Task branch naming drops the `redesign/` prefix
+
+The 4.1 (Login) implementer hit a real git constraint: `redesign/auth/login` can't exist as a branch name while `redesign` itself is a branch — `refs/heads/redesign` is a file, so `refs/heads/redesign/auth/login` would need it to be a directory (`fatal: cannot lock ref`). This isn't specific to login; it blocks every task branch under the originally-planned `redesign/<surface>/<screen-slug>` scheme.
+
+**Fix**: task branches drop the `redesign/` prefix — just `<surface>/<screen-slug>` (e.g. `auth/login`, `auth/register`, `public/pdp`), branched off and PR'd into `redesign` as before. The prefix was redundant anyway (the base branch is already implied by where the branch is cut from and merged into). `03-backlog.md`'s Phase 4 header is updated to match. No other part of the branching/versioning scheme changes.
+
 ## 2026-09-10 — Custom subagent types aren't invocable by name in this environment
 
 `.claude/agents/ui-implementer.md` and `.claude/agents/ui-verifier.md` exist and are well-formed, but this session's Agent tool rejects `subagent_type: "ui-implementer"`/`"ui-verifier"` outright ("Agent type not found — available agents: claude, claude-code-guide, Explore, general-purpose, Plan, statusline-setup"). Custom project-level agents aren't being picked up as distinct dispatchable types here, whatever the reason (environment/harness difference).
