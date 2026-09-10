@@ -1,10 +1,24 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
-import { apiSuccess, apiBadRequest, apiUnauthorized } from "@/lib/api/response";
+import { apiSuccess, apiBadRequest, apiUnauthorized, apiTooManyRequests } from "@/lib/api/response";
 import { createSession, sessionCookieOptions } from "@/lib/auth/session";
 import { verifyPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/db";
-import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
+import { ACCOUNT_PHONE_ERROR_MESSAGE, normalizeAccountPhone } from "@/lib/phone";
+import {
+  checkLoginIpRateLimit,
+  checkLoginPhoneRateLimit,
+  clearLoginAttempts,
+  recordFailedLogin,
+} from "@/lib/redis/login-limits";
+
+function getClientIp(req: NextRequest): string | null {
+  return (
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    null
+  );
+}
 
 export async function POST(req: NextRequest) {
   let body: { phone?: string; password?: string };
@@ -20,26 +34,41 @@ export async function POST(req: NextRequest) {
     return apiBadRequest("رقم الجوال وكلمة المرور مطلوبان");
   }
 
-  const normalized = normalizeEgyptMobilePhone(phone);
+  const normalized = normalizeAccountPhone(phone);
   if (!normalized) {
-    return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
+    return apiBadRequest(ACCOUNT_PHONE_ERROR_MESSAGE);
   }
+
+  const ip = getClientIp(req);
+  const [phoneAllowed, ipAllowed] = await Promise.all([
+    checkLoginPhoneRateLimit(normalized),
+    ip ? checkLoginIpRateLimit(ip) : Promise.resolve(true),
+  ]);
+  if (!phoneAllowed || !ipAllowed) {
+    return apiTooManyRequests("تجاوزت الحد المسموح من المحاولات. حاول مرة أخرى بعد قليل.");
+  }
+
   const user = await prisma.user.findUnique({
     where: { phone: normalized },
   });
 
   if (!user) {
+    await recordFailedLogin(normalized, ip);
     return apiUnauthorized("رقم الجوال أو كلمة المرور غير صحيحة");
   }
 
   if (!user.passwordHash) {
+    await recordFailedLogin(normalized, ip);
     return apiUnauthorized("هذا الحساب مسجّل بالتحقق برمز. أنشئ كلمة مرور من صفحة التسجيل أو استخدم إنشاء حساب.");
   }
 
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
+    await recordFailedLogin(normalized, ip);
     return apiUnauthorized("رقم الجوال أو كلمة المرور غير صحيحة");
   }
+
+  await clearLoginAttempts(normalized);
 
   const sessionToken = await createSession({
     userId: user.id,
