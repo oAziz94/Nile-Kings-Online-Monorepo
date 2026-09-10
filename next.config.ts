@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -10,4 +11,14 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Safe with no Sentry account configured yet: source-map upload is skipped
+// (not failed) when org/project/authToken are unset. Fill in SENTRY_ORG,
+// SENTRY_PROJECT, SENTRY_AUTH_TOKEN once the Sentry project exists.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: true,
+  widenClientFileUpload: true,
+  disableLogger: true,
+});
