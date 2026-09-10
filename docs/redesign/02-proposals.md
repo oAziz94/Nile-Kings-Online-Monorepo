@@ -9,7 +9,7 @@ Each item becomes a real backlog task (`03-backlog.md`) only once its phase come
 | Feature | Status | Notes |
 |---|---|---|
 | Wishlist / saved items (storefront) | Approved | |
-| Product reviews & ratings | Approved | Needs a moderation path in admin |
+| Product reviews & ratings | **Rejected** (2026-09-10) | User explicitly dropped this feature. Not built |
 | Postgres full-text search for product search | Approved | Replaces/augments current search; avoids a paid search service |
 | Admin bulk actions (bulk order-status update, bulk product edit) | Approved | |
 | In-app admin notification center (low stock, unrouted orders, pending partner requests) | Approved | |
@@ -55,3 +55,4 @@ Each item becomes a real backlog task (`03-backlog.md`) only once its phase come
 ## Explicitly out of scope for now
 
 - **Guest checkout** — user explicitly rejected 2026-09-10 ("no guest checkout whatsoever"). Checkout keeps its login requirement, full stop.
+- **Product reviews & ratings** — user explicitly dropped 2026-09-10. No reviews/ratings feature, no moderation path, nothing storefront-visible for it.
