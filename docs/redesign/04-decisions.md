@@ -1,3 +1,13 @@
+## 2026-09-10 — 4.1 (Login) verified, merged, v2.0.1
+
+Implemented on `auth/login`, independently verified (APPROVE — see the verifier's full report; diff-confirmed against `redesign`, zero scope creep, shared components/other `normalizeEgyptMobilePhone` call sites untouched, all `login.md` checklist items live-tested, tsc/vitest/lint/Playwright independently re-run rather than taken on the implementer's word), one fragility fix applied before merge (country-code `<select>` now pins `defaultValue` explicitly instead of relying on it happening to match `COUNTRY_CODES[0]`), then merged into `redesign`. `npm run version:task` → `2.0.1`. Full summary in `03-backlog.md`'s 4.1 entry.
+
+**Two things carried forward, not silently dropped**:
+- The design canvas's desktop two-pane brand-hero layout wasn't built for login (a single responsive card is used at both breakpoints instead) — tracked in `03-backlog.md` to build once, consistently, in `(auth)/layout.tsx` when 4.2 (Register) starts, since building it per-task would mean restructuring shared layout three times.
+- An IP-based rate-limit dimension (30 fails/hour) was added alongside the requested phone-based one (10 fails/phone/hour) — the implementer's own judgment call, endorsed by both the verifier and PM as it closes a real enumeration gap a phone-only limit leaves open. This is now the reference pattern for 4.2/4.3's own rate limiting, not a one-off.
+
+**Also fixed as part of closing this task** (repo-wide, not login-specific): `vitest.config.ts`'s `include: ["**/*.spec.ts"]` was also picking up Playwright's `tests/e2e/*.spec.ts` files, making `npm run test` report a failed suite even when every real unit test passed — a pre-existing issue since Phase 3.6 (Playwright's own install), surfaced by the verifier's independent test run rather than something this task introduced. Fixed with an `exclude` entry; `npm run test` now exits clean (8/8 suites, 86/86 tests).
+
 ## 2026-09-10 — Task branch naming drops the `redesign/` prefix
 
 The 4.1 (Login) implementer hit a real git constraint: `redesign/auth/login` can't exist as a branch name while `redesign` itself is a branch — `refs/heads/redesign` is a file, so `refs/heads/redesign/auth/login` would need it to be a directory (`fatal: cannot lock ref`). This isn't specific to login; it blocks every task branch under the originally-planned `redesign/<surface>/<screen-slug>` scheme.
