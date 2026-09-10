@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { PartnerShell } from "@/components/partner/partner-shell";
+import { QueryProvider } from "@/components/providers/query-provider";
 import { getCurrentUser, requirePartner } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -21,5 +22,9 @@ export default async function PartnerPortalLayout({
     redirect("/");
   }
 
-  return <PartnerShell>{children}</PartnerShell>;
+  return (
+    <QueryProvider>
+      <PartnerShell>{children}</PartnerShell>
+    </QueryProvider>
+  );
 }
