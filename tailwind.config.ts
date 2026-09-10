@@ -15,8 +15,10 @@ const config: Config = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        // Legacy aliases — retired names, repointed at the pharaonic palette so
+        // not-yet-migrated screens (see app/globals.css) render on-brand. New work
+        // should use the palette below (lapis/gold/carnelian/turquoise/malachite) directly.
         burgundy: "hsl(var(--burgundy))",
-        gold: "hsl(var(--gold))",
         primary: { DEFAULT: "hsl(var(--primary))", foreground: "hsl(var(--primary-foreground))" },
         secondary: { DEFAULT: "hsl(var(--secondary))", foreground: "hsl(var(--secondary-foreground))" },
         destructive: { DEFAULT: "hsl(var(--destructive))", foreground: "hsl(var(--destructive-foreground))" },
@@ -25,6 +27,50 @@ const config: Config = {
         hover: { DEFAULT: "hsl(var(--hover))", foreground: "hsl(var(--hover-foreground))" },
         card: { DEFAULT: "hsl(var(--card))", foreground: "hsl(var(--card-foreground))" },
         popover: { DEFAULT: "hsl(var(--popover))", foreground: "hsl(var(--popover-foreground))" },
+
+        // Materials of the pharaohs — v2 palette (docs/redesign/01-design-system.md)
+        papyrus: "hsl(var(--papyrus))",
+        ink: "hsl(var(--ink))",
+        "ink-soft": "hsl(var(--ink-soft))",
+        stone: {
+          100: "hsl(var(--stone-100))",
+          200: "hsl(var(--stone-200))",
+          300: "hsl(var(--stone-300))",
+        },
+        lapis: {
+          900: "hsl(var(--lapis-900))",
+          800: "hsl(var(--lapis-800))",
+          700: "hsl(var(--lapis-700))",
+          600: "hsl(var(--lapis-600))",
+        },
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          50: "hsl(var(--gold-50))",
+          100: "hsl(var(--gold-100))",
+          500: "hsl(var(--gold-500))",
+          600: "hsl(var(--gold-600))",
+        },
+        carnelian: {
+          50: "hsl(var(--carnelian-50))",
+          500: "hsl(var(--carnelian-500))",
+          600: "hsl(var(--carnelian-600))",
+        },
+        turquoise: {
+          50: "hsl(var(--turquoise-50))",
+          500: "hsl(var(--turquoise-500))",
+        },
+        malachite: {
+          bg: "hsl(var(--malachite-bg))",
+          text: "hsl(var(--malachite-text))",
+        },
+        "warn-bg": "hsl(var(--warn-bg))",
+        "warn-text": "hsl(var(--warn-text))",
+        "danger-bg": "hsl(var(--danger-bg))",
+        "danger-text": "hsl(var(--danger-text))",
+        "info-bg": "hsl(var(--info-bg))",
+        "info-text": "hsl(var(--info-text))",
+        "neutral-bg": "hsl(var(--neutral-bg))",
+        "neutral-text": "hsl(var(--neutral-text))",
       },
       fontFamily: {
         cairo: ["var(--font-cairo)", "sans-serif"],
