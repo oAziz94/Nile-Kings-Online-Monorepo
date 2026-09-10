@@ -20,7 +20,7 @@ import {
   incrementVerifyAttempts,
   clearVerifyAttempts,
 } from "@/lib/redis/otp-limits";
-import { normalizeEgyptMobilePhone } from "@/lib/phone";
+import { normalizeAccountPhone } from "@/lib/phone";
 
 const OTP_SALT = env.JWT_SECRET.slice(0, 16); // reuse secret for salt, not the raw JWT
 
@@ -44,9 +44,16 @@ export async function logOtpEvent(
   });
 }
 
-/** Normalize Egyptian mobile numbers to E.164 (+201...). */
+/**
+ * Normalize the account-identity phone (forgot-password's OTP lookup/send target) to E.164.
+ * Uses `normalizeAccountPhone` (all 22 dropdown countries) rather than Egypt-only, per
+ * docs/redesign/04-decisions.md 2026-09-10 "International account phone numbers" — mirrors
+ * login/register's own account-phone validation. Only `purpose: "forgot_password"` actually
+ * has any live callers today (the `purpose: "login"` OTP path is dead code, confirmed zero
+ * callers repo-wide), but this function is shared by both, so both get the same behavior.
+ */
 export function normalizePhone(phone: string): string {
-  return normalizeEgyptMobilePhone(phone) ?? "";
+  return normalizeAccountPhone(phone) ?? "";
 }
 
 export type RequestOtpResult =
