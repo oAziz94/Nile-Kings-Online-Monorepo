@@ -1,28 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { loadRedesignTestEnv } from "./test-env";
+loadRedesignTestEnv();
+
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
-import dotenv from "dotenv";
-import path from "node:path";
 import { Redis } from "@upstash/redis";
-
-// Load the same env the real `dev:redesign` server uses — this test process is separate from
-// the Next.js process, so it doesn't inherit either file automatically, and has to reproduce
-// dotenv-cli's own precedence itself: .env.redesign's DATABASE_URL/DIRECT_URL (the `redesign`
-// Neon branch) must win, with anything it doesn't define (Redis, JWT secret, Twilio, etc.)
-// falling back to `.env`, since dotenv.config() never overrides an already-set process.env key.
-//
-// FIX (found while building backlog 4.2/Register, applies here too): this previously loaded
-// only `.env` — meaning every run of this suite's beforeAll (and the rate-limit test's seeding)
-// was writing test fixture users straight into the PRODUCTION database, not the redesign
-// branch. Loading `.env.redesign` first wasn't enough on its own either: `@prisma/client`'s own
-// import above already auto-loads the project's plain `.env` as a side effect before any code
-// in this file runs (ESM import hoisting), setting DATABASE_URL to production *before* the
-// dotenv.config() calls below ever execute — so without `override: true` on the first call,
-// dotenv's default "don't clobber an already-set var" behavior made the `.env.redesign` load a
-// silent no-op. `override: true` here forces it to win; the second call (plain `.env`, no
-// override) only fills in whatever `.env.redesign` doesn't define.
-dotenv.config({ path: path.resolve(__dirname, "../../.env.redesign"), override: true });
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 /** Mirrors lib/redis/login-limits.ts's hourKey format exactly. */
 function currentHourSuffix(): string {

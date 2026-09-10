@@ -1,27 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { PrismaClient } from "@prisma/client";
-import dotenv from "dotenv";
-import path from "node:path";
-import { Redis } from "@upstash/redis";
+import { loadRedesignTestEnv } from "./test-env";
+loadRedesignTestEnv();
 
-// Load the same env the real `dev:redesign` server uses — this test process is separate from
-// the Next.js process, so it doesn't inherit either file automatically, and has to reproduce
-// dotenv-cli's own precedence itself: .env.redesign's DATABASE_URL/DIRECT_URL (the `redesign`
-// Neon branch) must win, with anything it doesn't define (Redis, JWT secret, Twilio, etc.)
-// falling back to `.env`, since dotenv.config() never overrides an already-set process.env key.
-// (tests/e2e/auth-login.spec.ts had the same bug — loading only `.env` — until fixed alongside
-// this file; see that file's own comment for the full story.)
-// `override: true` on the first call is load-bearing: `@prisma/client`'s own import (above)
-// already auto-loads the project's plain `.env` as a side effect before this line ever runs
-// (ESM import hoisting — the `import` executes before any other module code regardless of
-// textual order), which sets process.env.DATABASE_URL to *production* first. Without
-// `override`, dotenv's default "don't clobber an already-set var" behavior would make this
-// `.env.redesign` load a silent no-op and every Prisma call below would hit production. The
-// second call (plain `.env`, no override) only fills in whatever `.env.redesign` doesn't
-// define (Redis, JWT secret, Twilio, etc.), same as the real `dev:redesign` server gets via
-// dotenv-cli's precedence.
-dotenv.config({ path: path.resolve(__dirname, "../../.env.redesign"), override: true });
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+import { PrismaClient } from "@prisma/client";
+import { Redis } from "@upstash/redis";
 
 // Regression coverage for backlog task 4.2 (Register), mirroring tests/e2e/auth-login.spec.ts's
 // pattern exactly (real DB-seeded fixtures, RTL/label checks, serial mode for shared Redis
