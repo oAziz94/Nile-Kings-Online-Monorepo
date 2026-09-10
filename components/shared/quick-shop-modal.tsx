@@ -280,10 +280,7 @@ export function QuickShopModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-h-[90vh] overflow-y-auto w-full max-w-md p-0 gap-0 rounded-2xl"
-        onClose={() => onOpenChange(false)}
-      >
+      <DialogContent className="max-h-[90vh] overflow-y-auto w-full max-w-md p-0 gap-0 rounded-2xl">
         <DialogHeader className="p-4 pb-0">
           <div className="flex items-start justify-between gap-2">
             <DialogTitle className="text-lg font-bold text-foreground text-right flex-1">

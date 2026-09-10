@@ -160,7 +160,6 @@ export function PartnerRegistrationModal({
       <DialogContent
         className="max-w-md rounded-2xl border border-border bg-card shadow-lg p-0 overflow-hidden"
         dir="rtl"
-        onClose={() => !loading && onOpenChange(false)}
       >
         <div className="flex items-start justify-between gap-4 p-6 pb-0">
           <DialogHeader className="space-y-1 text-right">
