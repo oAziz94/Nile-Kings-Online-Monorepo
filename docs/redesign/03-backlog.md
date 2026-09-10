@@ -9,12 +9,12 @@ Per-screen feature-parity checklists under `00-feature-inventory/`, covering all
 Claude Design canvas: tokens, core components, four representative screens (see `01-design-system.md`). **Complete** — pharaonic-palette canvas (8 artboards) built, corrected twice against review findings, approved by user 2026-09-10. Canvas: https://claude.ai/code/artifact/c53479c8-aac0-4f52-a73b-824448b96ab7, sources at `design-canvas/*.dc.html`.
 
 ## Phase 2 — Infra baseline
-Instrument current Vercel/Neon/Upstash/Cloudinary usage before any provider decisions. Produces the data behind any later infra swap. **Mostly complete** (2026-09-10) — see `02-infra-baseline.md`.
-- **2.1 — Vercel** — not measurable from this environment (no authenticated CLI/token). **Still needs a manual check from the user**: plan tier, build-minutes/mo, function invocations/mo, bandwidth/mo (Project → Usage tab).
-- **2.2 — Neon** — done: storage measured directly via SQL (111 MB on both `main` and `redesign`, 30 tables). Compute hours/mo and branch-limit headroom still need a quick look at the Neon console's Billing/Usage tab (not SQL-queryable).
-- **2.3 — Upstash Redis** — partially done: connection/config confirmed healthy via the data-plane REST API (near-zero standing keys/memory, as expected given short TTLs). The actual commands/mo-vs-500K-free-tier number is account-level and needs a look at the Upstash console dashboard (front page, no digging required).
-- **2.4 — Cloudinary** — done: pulled directly from the Admin API. Free tier, 25.6% of monthly credits used, and bandwidth (not storage or transformations) is 92% of that usage — directly validates the already-approved Phase 6 image-pipeline item.
-- Remaining: 3 numbers only the user can grab (Vercel's three usage figures, Neon's compute-hours, Upstash's commands/mo) — everything programmatically reachable has been measured.
+Instrument current Vercel/Neon/Upstash/Cloudinary usage before any provider decisions. Produces the data behind any later infra swap. **Complete** (2026-09-10) — see `02-infra-baseline.md` for full numbers and analysis.
+- **2.1 — Vercel** — done (user provided dashboard screenshots). **This is the dominant cost by far, ~$40/period vs. Neon's ~$6.59 and Cloudinary/Upstash's ~$0.** Two biggest lines (Web Analytics Events $10.71, and Fluid Active CPU $16.81 alongside 8.26M function invocations) map directly onto two already-approved Phase 6 items (drop `@vercel/analytics`; server-components/redundant-fetch audit) — real evidence those items matter, not just code hygiene.
+- **2.2 — Neon** — done: storage via SQL (111 MB both branches, no drift) + console billing (Launch plan — paid, not free as `04-decisions.md` 2026-09-09 assumed; $6.59/period). Correction logged in `02-infra-baseline.md`.
+- **2.3 — Upstash Redis** — done: confirmed free tier, 1.2K/500K commands, effectively zero cost/risk.
+- **2.4 — Cloudinary** — done: Free tier, 25.6% of monthly credits used, bandwidth (not storage/transformations) is 92% of that — validates the already-approved image-pipeline item.
+- **Conclusion**: no provider swap looks warranted right now — execute the already-approved Phase 6 items (they target the two real cost drivers directly) and re-measure before considering any swap.
 
 ## Phase 3 — Foundation build
 Shared infrastructure every Phase 4 screen task depends on. Not started. Concrete tasks:

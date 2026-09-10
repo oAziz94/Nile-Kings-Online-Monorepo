@@ -2,6 +2,12 @@
 
 Running log of settled calls, so later tasks don't relitigate them. Add new entries at the top with a date.
 
+## 2026-09-10 — Phase 2 infra baseline measured; corrects the 2026-09-09 Neon free-tier assumption
+
+Full numbers in `02-infra-baseline.md`. Headline finding: **Vercel is the dominant cost (~$40/period), not Neon/Upstash/Cloudinary (~$6.59 combined)** — its two biggest line items (Web Analytics Events $10.71/period; Fluid Active CPU $16.81/period alongside 8.26M function invocations) map directly onto two already-approved `02-proposals.md` Phase 6 items (drop `@vercel/analytics`; server-components/redundant-fetch audit), turning those from "good practice" into "confirmed, quantified savings." No provider swap looks warranted — execute the already-approved Phase 6 items and re-measure before considering one.
+
+**Correction**: the "Redis (Upstash)" decision entry from 2026-09-09 (below) separately assumed Neon's database branching was on a *free* tier ("up to 10 branches/project on the free tier"). The account is actually on Neon's **Launch** plan (paid, usage-based — $6.59/period currently: 62.45 compute hours + 0.04 GB-month storage). This doesn't change the branching decision itself (the `redesign` branch's marginal cost is still close to zero — copy-on-write means it shares storage with `main` until schemas diverge, confirmed by both branches measuring identically at 111 MB), but any future session reading the 2026-09-09 entry should read "free tier" there as superseded by this correction.
+
 ## 2026-09-10 — International account phone numbers (supersedes part of the auth review below)
 
 User raised a real gap after the fact: some customers plausibly hold non-Egyptian numbers (Gulf-based Egyptian expats buying for family in Egypt is a common pattern in this market), so unconditionally restricting phone to Egypt-only would turn away real customers, not just close a misleading UI element.
