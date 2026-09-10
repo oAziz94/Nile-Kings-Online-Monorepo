@@ -2,6 +2,23 @@
 
 Running log of settled calls, so later tasks don't relitigate them. Add new entries at the top with a date.
 
+## 2026-09-10 — Public storefront/auth feature review
+
+Full read-through of all auth (3) and public storefront (14) feature-inventory files, done specifically to answer "does the storefront/auth need anything added." Decisions below; the "Approved"/"Rejected" items are also mirrored in `02-proposals.md`.
+
+- **PDP image gallery, back-in-stock notifications, and the widened order-history scope (detail page + pagination + reorder)** — all approved, see `02-proposals.md` for specifics.
+- **COD fee display** — user explicitly kept the current fold-into-shipping display rather than splitting it into its own honest line item. No change to checkout's pricing display.
+- **Smaller correctness fixes, decided under PM latitude** (not asked, corrections with no real trade-off):
+  - Auth: `register` and `forgot-password` get the same "redirect an already-logged-in visitor away" guard `login` already has (`login.md` found this asymmetry).
+  - Auth: the 22-country phone dropdown on all three auth screens gets restricted to Egypt only — the backend has only ever accepted Egyptian mobile numbers, so the other 21 options are pure UI noise that always fails validation.
+  - `home.md`: the home page's "loading skeleton" branch only ever fires on a genuine backend failure (the page is fully server-rendered, so there's no real client-side loading state to show) — replacing it with an honest error message so a real outage doesn't read as "the site is just slow."
+  - `products-pdp.md`: product-tag chips all link to the same generic `/products` URL regardless of which tag was clicked, despite `?section=` (the tag filter they're supposed to trigger) already working server-side — wiring the chips to the param they're supposed to use.
+  - `cart.md`: item removals (inactive product, or a governorate change pruning unavailable lines) currently only surface as a toast on whichever page the shopper happens to land on next — showing it immediately on the cart page itself when it happens there.
+  - `checkout.md`: the `INVALID_CHECKOUT` error currently collapses three distinct root causes (empty cart / a product missing weight data / an unmappable shipping address) into one message — splitting it into three specific, diagnosable messages. This does not change checkout's success-path behavior, only which error a shopper/support agent sees on failure.
+  - `become-a-partner.md` and `register.md`: both collect PII with no link to `/terms`/`/privacy` anywhere on the form — adding the links. `become-a-partner.md` additionally has no rate limiting or CAPTCHA on a public POST endpoint — adding basic rate limiting (reusing the existing OTP-limiter pattern).
+  - `profile-addresses.md` and `checkout.md`: `building`/`floor`/`apartment` exist on the `SavedAddress` model and are editable via the admin's PATCH API, but **no customer-facing form anywhere** (profile addresses, checkout's new-address form) lets a shopper actually set them — adding these fields to both customer-facing address forms, since they matter for delivery accuracy in Egypt.
+- **Deliberately not pursued, noted rather than silently dropped**: a self-service phone-number-change flow on `profile-account.md` (phone is permanently read-only today, no in-app path to change it) — lower frequency need, judged not worth the added verification complexity (would need its own OTP-based re-verification step) for this round. Can be revisited later if it becomes a real support burden.
+
 ## 2026-09-10 — Admin/partner dashboard feature review
 
 Full read-through of all 14 admin and 8 partner feature-inventory files, done specifically to answer "does admin/partner need anything added" per user request. Decisions below; the "Approved" items are also mirrored in `02-proposals.md`.
