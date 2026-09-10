@@ -29,6 +29,7 @@
     "db:studio:redesign": "dotenv -e .env.redesign -- prisma studio"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@neondatabase/serverless": "^0.10.0",
     "@prisma/adapter-neon": "^6.0.0",
     "@prisma/client": "^6.0.0",
@@ -54,6 +55,7 @@
     "nodemailer": "^8.0.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-hook-form": "^7.87.0",
     "resend": "^6.10.0",
     "tailwind-merge": "^2.5.0",
     "twilio": "^5.12.2",
