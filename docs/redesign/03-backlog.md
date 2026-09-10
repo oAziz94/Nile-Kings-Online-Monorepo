@@ -9,12 +9,12 @@ Per-screen feature-parity checklists under `00-feature-inventory/`, covering all
 Claude Design canvas: tokens, core components, four representative screens (see `01-design-system.md`). **Complete** — pharaonic-palette canvas (8 artboards) built, corrected twice against review findings, approved by user 2026-09-10. Canvas: https://claude.ai/code/artifact/c53479c8-aac0-4f52-a73b-824448b96ab7, sources at `design-canvas/*.dc.html`.
 
 ## Phase 2 — Infra baseline
-Instrument current Vercel/Neon/Upstash/Cloudinary usage before any provider decisions. Produces the data behind any later infra swap. Not started. Concrete tasks:
-- **2.1** — Vercel: current plan tier, build-minutes/mo, function invocations/mo, bandwidth/mo (from the Vercel dashboard's usage tab).
-- **2.2** — Neon: storage size, compute hours/mo, active branch count (main + `redesign`), connection-pool utilization.
-- **2.3** — Upstash Redis: commands/mo against the 500K free-tier ceiling (per `04-decisions.md` 2026-09-09, expected well under it, but confirm with real numbers, not the estimate).
-- **2.4** — Cloudinary: storage, bandwidth, transformations/mo against free-tier limits.
-- Output: a short `02-infra-baseline.md` with current numbers, so Phase 6's "did this help" comparison has a real baseline, not a guess.
+Instrument current Vercel/Neon/Upstash/Cloudinary usage before any provider decisions. Produces the data behind any later infra swap. **Mostly complete** (2026-09-10) — see `02-infra-baseline.md`.
+- **2.1 — Vercel** — not measurable from this environment (no authenticated CLI/token). **Still needs a manual check from the user**: plan tier, build-minutes/mo, function invocations/mo, bandwidth/mo (Project → Usage tab).
+- **2.2 — Neon** — done: storage measured directly via SQL (111 MB on both `main` and `redesign`, 30 tables). Compute hours/mo and branch-limit headroom still need a quick look at the Neon console's Billing/Usage tab (not SQL-queryable).
+- **2.3 — Upstash Redis** — partially done: connection/config confirmed healthy via the data-plane REST API (near-zero standing keys/memory, as expected given short TTLs). The actual commands/mo-vs-500K-free-tier number is account-level and needs a look at the Upstash console dashboard (front page, no digging required).
+- **2.4 — Cloudinary** — done: pulled directly from the Admin API. Free tier, 25.6% of monthly credits used, and bandwidth (not storage or transformations) is 92% of that usage — directly validates the already-approved Phase 6 image-pipeline item.
+- Remaining: 3 numbers only the user can grab (Vercel's three usage figures, Neon's compute-hours, Upstash's commands/mo) — everything programmatically reachable has been measured.
 
 ## Phase 3 — Foundation build
 Shared infrastructure every Phase 4 screen task depends on. Not started. Concrete tasks:
