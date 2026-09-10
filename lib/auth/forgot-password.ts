@@ -53,7 +53,7 @@ export type RequestPasswordResetResult =
   | { success: false; reason: "rate_limit_phone" }
   | { success: false; reason: "rate_limit_ip" }
   | { success: false; reason: "locked"; lockMinutes: number }
-  | { success: false; reason: "twilio_error"; message: string };
+  | { success: false; reason: "send_error"; message: string };
 
 /**
  * Request OTP for forgot password. Blocks users with role ADMIN; requires existing user with

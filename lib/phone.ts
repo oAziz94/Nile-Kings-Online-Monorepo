@@ -97,3 +97,17 @@ export function normalizeAccountPhone(input: string): string | null {
 
   return phone.number;
 }
+
+/**
+ * Account-identity phone (registration/login/password-reset), formatted for WaPilot's
+ * `chat_id` (E.164 with the leading "+" stripped). International equivalent of the old,
+ * deleted `normalizeEgyptMobilePhoneForWhatsApp` (Egypt-only, built on `normalizeEgyptMobilePhone`)
+ * — this one is built on `normalizeAccountPhone` instead, so it validates against whichever of
+ * the 22 dropdown countries the number belongs to, same as the rest of the account-phone flow.
+ * See docs/redesign/04-decisions.md 2026-09-10 "WhatsApp OTP via WaPilot" — do not let WhatsApp
+ * delivery regress to Egypt-only the way the old deleted registration-OTP path was.
+ */
+export function normalizeAccountPhoneForWhatsApp(input: string): string | null {
+  const normalized = normalizeAccountPhone(input);
+  return normalized ? normalized.replace(/^\+/, "") : null;
+}

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { apiSuccess, apiBadRequest, apiTooManyRequests, apiForbidden } from "@/lib/api/response";
-import { requestPasswordResetOtp } from "@/lib/auth/forgot-password";
+import { apiSuccess, apiBadRequest, apiTooManyRequests } from "@/lib/api/response";
+import { requestRegisterOtp } from "@/lib/auth/register-otp";
 import { ACCOUNT_PHONE_ERROR_MESSAGE } from "@/lib/phone";
 
 function getClientIp(req: NextRequest): string | null {
@@ -25,23 +25,23 @@ export async function POST(req: NextRequest) {
   }
 
   const ip = getClientIp(req);
-  const result = await requestPasswordResetOtp(phone, ip);
+  const result = await requestRegisterOtp(phone, ip);
 
   if (result.success) {
     return apiSuccess(
       { cooldownSeconds: result.cooldownSeconds ?? 60 },
-      "تم إرسال رمز التحقق إلى جوالك",
+      "تم إرسال رمز التحقق عبر واتساب",
       200
     );
   }
 
   switch (result.reason) {
-    case "admin_phone":
-      return apiForbidden("لا يمكن استعادة كلمة المرور لهذا الرقم");
+    case "already_registered":
+      return apiBadRequest("هذا الرقم مسجّل مسبقاً. استخدم تسجيل الدخول.");
     case "invalid_phone":
       return apiBadRequest(ACCOUNT_PHONE_ERROR_MESSAGE);
-    case "no_account":
-      return apiBadRequest("لا يوجد حساب بهذا الرقم أو الحساب لا يستخدم كلمة مرور");
+    case "rate_limited":
+      return apiTooManyRequests("تجاوزت الحد المسموح من المحاولات. حاول مرة أخرى بعد قليل.");
     case "cooldown":
       return apiTooManyRequests(
         `انتظر ${result.cooldownSeconds} ثانية قبل إعادة الإرسال`

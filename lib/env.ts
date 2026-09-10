@@ -5,9 +5,6 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   UPSTASH_REDIS_REST_URL: z.string().url(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1, "UPSTASH_REDIS_REST_TOKEN is required"),
-  TWILIO_ACCOUNT_SID: z.string().min(1, "TWILIO_ACCOUNT_SID is required"),
-  TWILIO_AUTH_TOKEN: z.string().min(1, "TWILIO_AUTH_TOKEN is required"),
-  TWILIO_FROM: z.string().min(1, "TWILIO_FROM is required"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   ENCRYPTION_KEY: z.string().length(64, "ENCRYPTION_KEY must be 64 hex chars (32 bytes for AES-256)").optional(),
   CRON_SECRET: z.string().min(1).optional(), // optional secret for future scheduled jobs
@@ -30,6 +27,13 @@ const envSchema = z.object({
   SMTP_FROM_NAME: z.string().min(1).optional(),
   SMTP_FROM: z.string().min(1).optional(),
   PARTNER_NOTIFICATION_EMAIL: z.string().email().optional(),
+  // WaPilot WhatsApp API (account-phone OTP delivery for register/forgot-password — optional;
+  // if unset, requestOtp() returns a "send_error" result instead of a hard crash, matching the
+  // Resend/SMTP graceful-degradation pattern above). See
+  // docs/redesign/04-decisions.md 2026-09-10 "WhatsApp OTP via WaPilot".
+  WAPILOT_INSTANCE_ID: z.string().min(1).optional(),
+  WAPILOT_API_TOKEN: z.string().min(1).optional(),
+  WAPILOT_API_URL: z.string().url().optional(), // default: https://api.wapilot.net/api/v2
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -40,9 +44,6 @@ function validateEnv(): Env {
     DATABASE_URL: process.env.DATABASE_URL,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
-    TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
-    TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
-    TWILIO_FROM: process.env.TWILIO_FROM,
     JWT_SECRET: process.env.JWT_SECRET,
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
     CRON_SECRET: process.env.CRON_SECRET,
@@ -63,6 +64,9 @@ function validateEnv(): Env {
     SMTP_FROM_NAME: process.env.SMTP_FROM_NAME,
     SMTP_FROM: process.env.SMTP_FROM,
     PARTNER_NOTIFICATION_EMAIL: process.env.PARTNER_NOTIFICATION_EMAIL,
+    WAPILOT_INSTANCE_ID: process.env.WAPILOT_INSTANCE_ID,
+    WAPILOT_API_TOKEN: process.env.WAPILOT_API_TOKEN,
+    WAPILOT_API_URL: process.env.WAPILOT_API_URL,
   });
 
   if (!parsed.success) {

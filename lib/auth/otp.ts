@@ -4,10 +4,10 @@
  */
 
 import crypto from "node:crypto";
-import twilio from "twilio";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/db";
 import { getOtpRules } from "@/lib/settings";
+import { getWhatsAppService } from "@/lib/services/whatsapp";
 import {
   getCooldownRemaining,
   setCooldown,
@@ -63,11 +63,18 @@ export type RequestOtpResult =
   | { success: false; reason: "rate_limit_ip" }
   | { success: false; reason: "locked"; lockMinutes: number }
   | { success: false; reason: "invalid_phone" }
-  | { success: false; reason: "twilio_error"; message: string };
+  | { success: false; reason: "send_error"; message: string };
 
-export type OtpPurpose = "login" | "forgot_password";
+/**
+ * "login" is legacy dead code — the OTP-for-login routes were deleted in backlog 4.2, and
+ * `verifyOtp` below (the function that reads it) has zero remaining callers. Kept only so the
+ * `OTPRequest.purpose` column's historical rows still typecheck; do not wire a new caller to it.
+ * "register" is new for backlog 4.4 (WhatsApp OTP via WaPilot) — a distinct purpose (not reused
+ * "login") so `OTPRequest` rows stay unambiguous between the two verified-phone flows.
+ */
+export type OtpPurpose = "login" | "forgot_password" | "register";
 
-/** Request OTP: rate limits, cooldown, lock check; send via Twilio; store hash in DB; set cooldown. */
+/** Request OTP: rate limits, cooldown, lock check; send via WhatsApp (WaPilot); store hash in DB; set cooldown. */
 export async function requestOtp(
   phone: string,
   ip: string | null,
@@ -123,17 +130,10 @@ export async function requestOtp(
       ? `رمز استعادة كلمة المرور نايل كينجز: ${code}`
       : `رمز التحقق نايل كينجز: ${code}`;
 
-  try {
-    const client = twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
-    await client.messages.create({
-      body,
-      from: env.TWILIO_FROM,
-      to: normalized,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Twilio error";
-    await logOtpEvent(normalized, "request", ip, `twilio_error: ${message}`);
-    return { success: false, reason: "twilio_error", message };
+  const sendResult = await getWhatsAppService().sendText(normalized, body);
+  if (!sendResult.ok) {
+    await logOtpEvent(normalized, "request", ip, `send_error: ${sendResult.error}`);
+    return { success: false, reason: "send_error", message: sendResult.error };
   }
 
   await clearVerifyAttempts(normalized); // new OTP = reset verify attempts
@@ -353,4 +353,104 @@ export async function verifyOtpForForgotPassword(
   const resetToken = await createResetToken(normalized);
   await logOtpEvent(normalized, "verify_success", _ip, "forgot_password_ok");
   return { success: true, resetToken };
+}
+
+export type VerifyOtpForRegisterResult =
+  | { success: true; registerToken: string }
+  | { success: false; reason: "locked"; lockMinutes: number }
+  | { success: false; reason: "invalid" }
+  | { success: false; reason: "expired" }
+  | { success: false; reason: "too_many_attempts"; lockMinutes: number };
+
+/**
+ * Verify OTP for the registration flow only (purpose = "register"). Structurally identical to
+ * `verifyOtpForForgotPassword` above (same lock/attempts/expiry/hash-compare sequence — kept as
+ * a separate, near-duplicate function rather than a shared refactor, matching this file's
+ * existing precedent of `verifyOtp`/`verifyOtpForForgotPassword` coexisting as near-duplicates;
+ * this task's scope is the transport (WhatsApp) and the new register flow, not a refactor of
+ * otp.ts's existing logic). Returns a short-lived register token on success (not a User — unlike
+ * the old dead `verifyOtp`, this doesn't create the account yet, since name/email/password
+ * haven't been collected; see lib/auth/register-otp.ts for the token + account-creation gate).
+ */
+export async function verifyOtpForRegister(
+  phone: string,
+  code: string,
+  _ip: string | null,
+  createRegisterToken: (phone: string) => Promise<string>
+): Promise<VerifyOtpForRegisterResult> {
+  const normalized = normalizePhone(phone);
+  if (!normalized) {
+    return { success: false, reason: "invalid" };
+  }
+  const rules = await getOtpRules();
+  const maxAttempts = rules.maxVerifyAttempts;
+  const lockMinutes = rules.lockMinutes;
+  const lockTtlSec = lockMinutes * 60;
+
+  const trimmed = code.replace(/\D/g, "").slice(0, 6);
+  if (trimmed.length !== 6) {
+    await logOtpEvent(normalized, "verify_fail", _ip, "invalid_format");
+    return { success: false, reason: "invalid" };
+  }
+
+  const lockRem = await getLockRemaining(normalized);
+  if (lockRem > 0) {
+    await logOtpEvent(normalized, "verify_fail", _ip, "locked");
+    return {
+      success: false,
+      reason: "locked",
+      lockMinutes: Math.ceil(lockRem / 60),
+    };
+  }
+
+  const record = await prisma.oTPRequest.findFirst({
+    where: { phone: normalized, purpose: "register" },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!record) {
+    await logOtpEvent(normalized, "verify_fail", _ip, "no_request");
+    return { success: false, reason: "invalid" };
+  }
+
+  if (record.lockedUntil && record.lockedUntil > new Date()) {
+    await logOtpEvent(normalized, "verify_fail", _ip, "locked");
+    return {
+      success: false,
+      reason: "locked",
+      lockMinutes: Math.ceil((record.lockedUntil.getTime() - Date.now()) / 60000),
+    };
+  }
+
+  if (record.expiresAt < new Date()) {
+    await logOtpEvent(normalized, "verify_fail", _ip, "expired");
+    return { success: false, reason: "expired" };
+  }
+
+  const attempts = await incrementVerifyAttempts(normalized, lockTtlSec);
+  if (attempts > maxAttempts) {
+    const lockedUntil = new Date(Date.now() + lockMinutes * 60 * 1000);
+    await prisma.oTPRequest.update({
+      where: { id: record.id },
+      data: { lockedUntil },
+    });
+    await setLock(normalized, lockTtlSec);
+    await logOtpEvent(normalized, "verify_fail", _ip, "too_many_attempts");
+    return {
+      success: false,
+      reason: "too_many_attempts",
+      lockMinutes,
+    };
+  }
+
+  const codeHash = hashOtp(trimmed);
+  if (codeHash !== record.codeHash) {
+    await logOtpEvent(normalized, "verify_fail", _ip, "invalid");
+    return { success: false, reason: "invalid" };
+  }
+
+  await clearVerifyAttempts(normalized);
+  const registerToken = await createRegisterToken(normalized);
+  await logOtpEvent(normalized, "verify_success", _ip, "register_ok");
+  return { success: true, registerToken };
 }

@@ -77,7 +77,7 @@ function ForgotPasswordContent() {
       setStep("otp");
       setOtpDigits(Array(OTP_LENGTH).fill(""));
       setResendCooldown(data?.data?.cooldownSeconds ?? RESEND_COOLDOWN_SEC);
-      toast({ title: "تم إرسال رمز التحقق", description: "تحقق من رسائلك.", variant: "default" });
+      toast({ title: "تم إرسال رمز التحقق", description: "تحقق من واتساب.", variant: "default" });
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch {
       toast({ title: "خطأ في الاتصال", variant: "destructive" });
@@ -103,7 +103,7 @@ function ForgotPasswordContent() {
         return;
       }
       setResendCooldown(data?.data?.cooldownSeconds ?? RESEND_COOLDOWN_SEC);
-      toast({ title: "تم إرسال رمز جديد", variant: "default" });
+      toast({ title: "تم إرسال رمز جديد عبر واتساب", variant: "default" });
     } catch {
       toast({ title: "خطأ في الاتصال", variant: "destructive" });
     } finally {
@@ -251,6 +251,9 @@ function ForgotPasswordContent() {
                 className="flex-1"
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              سيصلك رمز التحقق عبر واتساب على هذا الرقم.
+            </p>
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "جاري الإرسال…" : "إرسال رمز التحقق"}
@@ -261,7 +264,7 @@ function ForgotPasswordContent() {
       {step === "otp" && (
         <form onSubmit={handleVerifyOtp} className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            أدخل الرمز المرسل إلى {countryCode} {phone}
+            أدخل الرمز المرسل عبر واتساب إلى {countryCode} {phone}
           </p>
           <div className="flex justify-center gap-2" dir="ltr">
             {Array.from({ length: OTP_LENGTH }, (_, i) => (

@@ -62,7 +62,6 @@
     "react-hook-form": "^7.87.0",
     "resend": "^6.10.0",
     "tailwind-merge": "^2.5.0",
-    "twilio": "^5.12.2",
     "xlsx": "^0.18.5",
     "zod": "^3.23.0"
   },
