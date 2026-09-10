@@ -55,7 +55,13 @@ export type RequestPasswordResetResult =
   | { success: false; reason: "locked"; lockMinutes: number }
   | { success: false; reason: "twilio_error"; message: string };
 
-/** Request OTP for forgot password. Blocks users with role ADMIN; requires existing user with password. */
+/**
+ * Request OTP for forgot password. Blocks users with role ADMIN; requires existing user with
+ * password. `normalizePhone` (from lib/auth/otp.ts) now validates internationally (all 22
+ * account-phone dropdown countries) rather than Egypt-only — see
+ * docs/redesign/04-decisions.md 2026-09-10 "International account phone numbers" and
+ * docs/redesign/03-backlog.md 4.3.
+ */
 export async function requestPasswordResetOtp(
   phone: string,
   ip: string | null
