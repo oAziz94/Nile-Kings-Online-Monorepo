@@ -18,6 +18,7 @@ Each item becomes a real backlog task (`03-backlog.md`) only once its phase come
 | JSON-LD product structured data + sitemap | Approved | SEO, no infra cost |
 | PWA install for storefront | Approved | |
 | Admin-browsable audit-log UI + general admin action logging | Approved | Order/OTP audit logs already exist (Postgres); this generalizes the same pattern to all admin actions (not Redis — see `07-analytics-and-audit-plan.md`) plus the UI to read it |
+| Guest checkout (remove forced login at checkout) | Proposed, awaiting approval | Found during Phase 0: checkout hard-requires login today with only a client-side gate (no server-side route guard — worth tightening regardless). Common conversion improvement; changes session/order-ownership logic, so needs explicit sign-off before scheduling — see `04-decisions.md` 2026-09-10 |
 
 ## Library / standardization swaps
 
