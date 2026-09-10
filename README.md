@@ -137,10 +137,10 @@ SMTP_EMAIL=
 SMTP_FROM=
 SMTP_FROM_NAME=
 
-# SMS / OTP (Twilio)
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_FROM=
+# WhatsApp / OTP (WaPilot) — register + forgot-password phone verification
+WAPILOT_INSTANCE_ID=
+WAPILOT_API_TOKEN=
+WAPILOT_API_URL=
 ```
 
 ### Database Setup

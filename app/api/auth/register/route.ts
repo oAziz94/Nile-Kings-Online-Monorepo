@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
-import { apiSuccess, apiBadRequest, apiTooManyRequests } from "@/lib/api/response";
+import { Prisma } from "@prisma/client";
+import { apiSuccess, apiBadRequest, apiTooManyRequests, apiUnauthorized } from "@/lib/api/response";
 import { hashPassword } from "@/lib/auth/password";
 import { createSession, sessionCookieOptions } from "@/lib/auth/session";
+import { verifyRegisterToken } from "@/lib/auth/register-otp";
 import { prisma } from "@/lib/db";
-import { ACCOUNT_PHONE_ERROR_MESSAGE, normalizeAccountPhone } from "@/lib/phone";
 import {
   checkRegisterIpRateLimit,
   checkRegisterPhoneRateLimit,
@@ -22,9 +23,16 @@ function getClientIp(req: NextRequest): string | null {
   );
 }
 
+/**
+ * Account creation, now gated on a `registerToken` (proof of a completed WhatsApp OTP
+ * verification for this exact phone — see lib/auth/register-otp.ts) instead of a raw `phone` in
+ * the body. Backlog 4.4: "phone -> WhatsApp OTP -> profile -> create account" — this route is the
+ * final "create account" step; the phone->OTP steps live at
+ * /api/auth/register/{request,verify}, mirroring forgot-password's request/verify/reset split.
+ */
 export async function POST(req: NextRequest) {
   let body: {
-    phone?: string;
+    registerToken?: string;
     name?: string;
     email?: string;
     password?: string;
@@ -35,13 +43,13 @@ export async function POST(req: NextRequest) {
     return apiBadRequest("جسم الطلب غير صالح");
   }
 
-  const phone = body.phone?.trim();
+  const registerToken = body.registerToken?.trim();
   const name = body.name?.trim();
   const email = body.email?.trim() || null;
   const password = body.password;
 
-  if (!phone) {
-    return apiBadRequest("رقم الجوال مطلوب");
+  if (!registerToken) {
+    return apiBadRequest("رمز التحقق مطلوب");
   }
   if (!name || name.length < 2) {
     return apiBadRequest("الاسم مطلوب (حرفان على الأقل)");
@@ -50,11 +58,11 @@ export async function POST(req: NextRequest) {
     return apiBadRequest(`كلمة المرور مطلوبة (${MIN_PASSWORD_LEN} أحرف على الأقل)`);
   }
 
-  // International account phone (all 22 dropdown countries), same validator as login —
-  // see docs/redesign/04-decisions.md 2026-09-10 "International account phone numbers".
-  const normalizedPhone = normalizeAccountPhone(phone);
+  const normalizedPhone = await verifyRegisterToken(registerToken);
   if (!normalizedPhone) {
-    return apiBadRequest(ACCOUNT_PHONE_ERROR_MESSAGE);
+    return apiUnauthorized(
+      "انتهت صلاحية جلسة التحقق أو أنها غير صحيحة. أعد طلب رمز التحقق."
+    );
   }
 
   const ip = getClientIp(req);
@@ -70,25 +78,40 @@ export async function POST(req: NextRequest) {
     where: { phone: normalizedPhone },
   });
   if (existing) {
-    // Deliberately out of scope for this task: a phone that already exists (including a
-    // passwordless account created by the now-removed OTP flow) still has no claim/recovery
-    // path from this screen — see docs/redesign/00-feature-inventory/auth/register.md's Notes
-    // and docs/redesign/03-backlog.md 4.2 "Explicitly NOT in scope". Behavior preserved as-is.
+    // Same dead-end as before (register.md's Notes / backlog 4.2 "Explicitly NOT in scope"): no
+    // claim/recovery path from this screen. In the normal flow this can no longer actually
+    // happen (requestRegisterOtp already rejects an already-registered phone before an OTP is
+    // ever sent), but stays here as a defense-in-depth check against a race (e.g. the same phone
+    // completing two verified OTP flows in two tabs) between OTP verification and this step.
     await recordFailedRegister(normalizedPhone, ip);
     return apiBadRequest("هذا الرقم مسجّل مسبقاً. استخدم تسجيل الدخول.");
   }
 
   const passwordHash = await hashPassword(password);
 
-  const user = await prisma.user.create({
-    data: {
-      phone: normalizedPhone,
-      passwordHash,
-      name,
-      email,
-      role: "CUSTOMER",
-    },
-  });
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: {
+        phone: normalizedPhone,
+        passwordHash,
+        name,
+        email,
+        role: "CUSTOMER",
+      },
+    });
+  } catch (err) {
+    // Two concurrent requests can both pass the `existing` check above before either has
+    // inserted (a real race in a multi-instance deployment, flagged during backlog 4.4's
+    // verification even though this create call predates that task). Map the resulting
+    // unique-constraint violation on `phone` to the same clean "already registered" response
+    // instead of letting it surface as a generic 500.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      await recordFailedRegister(normalizedPhone, ip);
+      return apiBadRequest("هذا الرقم مسجّل مسبقاً. استخدم تسجيل الدخول.");
+    }
+    throw err;
+  }
 
   await clearRegisterAttempts(normalizedPhone);
 

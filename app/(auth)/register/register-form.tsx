@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, type FieldErrors } from "react-hook-form";
@@ -9,11 +9,14 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from "@/lib/country-codes";
 
 const MIN_PASSWORD_LEN = 8;
+const OTP_LENGTH = 6;
+const RESEND_COOLDOWN_SEC = 60;
 
 /**
  * Same guard as login (app/(auth)/login/login-form.tsx) — copied, not reinvented, per
@@ -32,15 +35,23 @@ function digitsOnly(value: string): string {
   return value.replace(/\D/g, "");
 }
 
-type Step = "phone" | "profile";
+function fullPhone(countryCode: string, national: string): string {
+  return countryCode + digitsOnly(national);
+}
+
+type Step = "phone" | "otp" | "profile";
 
 /**
- * Single schema for both steps (react-hook-form + zodResolver, per
- * docs/redesign/04-decisions.md "Forms" decision). The "phone" step only ever validates the
- * `phone` field on its own (via `form.trigger("phone")`) — matching register.md exactly:
- * "No server call and no phone-format validation happens at this step ... otherwise
- * setStep('profile')". Real phone-format validation (against whichever of the 22 dropdown
- * countries was selected) only happens server-side at final submit, same as before.
+ * Backlog 4.4 (WhatsApp OTP via WaPilot): reinstates OTP verification at registration —
+ * phone -> WhatsApp OTP -> profile -> create account, a step-order change from the previous
+ * phone -> profile -> submit flow (docs/redesign/04-decisions.md 2026-09-10). The new "otp" step
+ * is modeled closely on app/(auth)/forgot-password/forgot-password-form.tsx's existing OTP step
+ * (segmented 6-box input, auto-advance/backspace/paste-fanout, resend cooldown read from the
+ * server response, "تغيير الرقم" back-navigation) rather than inventing a new pattern. The
+ * "phone" and "profile" steps keep their existing react-hook-form + Zod wiring from 4.2
+ * unchanged; only the "phone" step's continue action now makes a real network call (send OTP)
+ * instead of a purely client-side step transition, and the final submit now carries a
+ * `registerToken` (proof of completed OTP verification) instead of a raw phone number.
  */
 const registerFormSchema = z
   .object({
@@ -61,6 +72,11 @@ function RegisterContent() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect");
   const [step, setStep] = useState<Step>("phone");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [registerToken, setRegisterToken] = useState<string | null>(null);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -77,6 +93,25 @@ function RegisterContent() {
   });
   const loading = form.formState.isSubmitting;
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown]);
+
+  const requestOtp = useCallback(
+    async (full: string) => {
+      const res = await fetch("/api/auth/register/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: full }),
+      });
+      const data = await res.json();
+      return { ok: res.ok, data };
+    },
+    []
+  );
+
   const handleContinue = async () => {
     const valid = await form.trigger("phone");
     if (!valid) {
@@ -86,17 +121,128 @@ function RegisterContent() {
       });
       return;
     }
-    setStep("profile");
+    const { countryCode, phone } = form.getValues();
+    const full = fullPhone(countryCode, phone);
+    setOtpLoading(true);
+    try {
+      const { ok, data } = await requestOtp(full);
+      if (!ok) {
+        toast({ title: data?.error?.message ?? "فشل إرسال الرمز", variant: "destructive" });
+        return;
+      }
+      setStep("otp");
+      setOtpDigits(Array(OTP_LENGTH).fill(""));
+      setResendCooldown(data?.data?.cooldownSeconds ?? RESEND_COOLDOWN_SEC);
+      toast({
+        title: "تم إرسال رمز التحقق عبر واتساب",
+        description: "تحقق من واتساب.",
+        variant: "default",
+      });
+      setTimeout(() => inputRefs.current[0]?.focus(), 100);
+    } catch {
+      toast({ title: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resendCooldown > 0) return;
+    const { countryCode, phone } = form.getValues();
+    const full = fullPhone(countryCode, phone);
+    setOtpLoading(true);
+    try {
+      const { ok, data } = await requestOtp(full);
+      if (!ok) {
+        toast({ title: data?.error?.message ?? "فشل إعادة الإرسال", variant: "destructive" });
+        return;
+      }
+      setResendCooldown(data?.data?.cooldownSeconds ?? RESEND_COOLDOWN_SEC);
+      toast({ title: "تم إرسال رمز جديد عبر واتساب", variant: "default" });
+    } catch {
+      toast({ title: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleOtpChange = useCallback(
+    (index: number, value: string) => {
+      if (value.length > 1) {
+        const digits = value.replace(/\D/g, "").slice(0, OTP_LENGTH).split("");
+        const next = [...otpDigits];
+        digits.forEach((d, i) => {
+          if (index + i < OTP_LENGTH) next[index + i] = d;
+        });
+        setOtpDigits(next);
+        const nextFocus = Math.min(index + digits.length, OTP_LENGTH - 1);
+        inputRefs.current[nextFocus]?.focus();
+        return;
+      }
+      const digit = value.replace(/\D/g, "").slice(-1);
+      const next = [...otpDigits];
+      next[index] = digit;
+      setOtpDigits(next);
+      if (digit && index < OTP_LENGTH - 1) inputRefs.current[index + 1]?.focus();
+    },
+    [otpDigits]
+  );
+
+  const handleOtpKeyDown = useCallback(
+    (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+        inputRefs.current[index - 1]?.focus();
+      }
+    },
+    [otpDigits]
+  );
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = otpDigits.join("");
+    if (code.length !== OTP_LENGTH) {
+      toast({ title: "أدخل الرمز المكون من 6 أرقام", variant: "destructive" });
+      return;
+    }
+    const { countryCode, phone } = form.getValues();
+    const full = fullPhone(countryCode, phone);
+    setOtpLoading(true);
+    try {
+      const res = await fetch("/api/auth/register/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: full, code }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: data?.error?.message ?? "رمز غير صحيح", variant: "destructive" });
+        return;
+      }
+      setRegisterToken(data?.data?.registerToken ?? null);
+      setStep("profile");
+      toast({ title: "تم التحقق", description: "أكمل بياناتك لإنشاء الحساب.", variant: "default" });
+    } catch {
+      toast({ title: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
   const onSubmit = async (values: RegisterFormValues) => {
-    const full = values.countryCode + digitsOnly(values.phone);
+    if (!registerToken) {
+      toast({
+        title: "انتهت جلسة التحقق. أعد طلب رمز التحقق.",
+        variant: "destructive",
+      });
+      setStep("otp");
+      return;
+    }
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: full,
+          registerToken,
           name: values.name.trim(),
           email: values.email.trim() || undefined,
           password: values.password,
@@ -182,13 +328,67 @@ function RegisterContent() {
                       ))}
                     </Select>
                   </div>
+                  <FormDescription>سيصلك رمز التحقق عبر واتساب على هذا الرقم.</FormDescription>
                 </FormItem>
               )}
             />
 
-            <Button type="submit" className="w-full">
-              متابعة
+            <Button type="submit" className="w-full" disabled={otpLoading}>
+              {otpLoading ? "جاري الإرسال…" : "متابعة"}
             </Button>
+          </form>
+        )}
+
+        {step === "otp" && (
+          <form onSubmit={handleVerifyOtp} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              أدخل الرمز المرسل عبر واتساب إلى {form.getValues("countryCode")} {form.getValues("phone")}
+            </p>
+            <div className="flex justify-center gap-2" dir="ltr">
+              {Array.from({ length: OTP_LENGTH }, (_, i) => (
+                <Input
+                  key={i}
+                  ref={(el) => {
+                    inputRefs.current[i] = el;
+                  }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otpDigits[i]}
+                  onChange={(e) => handleOtpChange(i, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                  className={cn(
+                    "h-12 w-11 rounded-xl px-0 text-center text-lg font-semibold",
+                    otpDigits[i] ? "border-primary" : ""
+                  )}
+                  aria-label={`رقم ${i + 1}`}
+                />
+              ))}
+            </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={otpLoading || otpDigits.join("").length !== OTP_LENGTH}
+            >
+              تحقق ومتابعة
+            </Button>
+            <div className="flex flex-col items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={handleResend}
+                disabled={resendCooldown > 0 || otpLoading}
+              >
+                {resendCooldown > 0
+                  ? `إعادة الإرسال بعد ${resendCooldown} ثانية`
+                  : "إعادة إرسال الرمز"}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setStep("phone")}>
+                تغيير الرقم
+              </Button>
+            </div>
           </form>
         )}
 
@@ -281,9 +481,9 @@ function RegisterContent() {
               variant="ghost"
               size="sm"
               className="w-full"
-              onClick={() => setStep("phone")}
+              onClick={() => setStep("otp")}
             >
-              تغيير الرقم
+              العودة لتغيير الرمز
             </Button>
           </form>
         )}

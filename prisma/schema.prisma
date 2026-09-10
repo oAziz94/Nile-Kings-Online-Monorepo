@@ -119,7 +119,7 @@ model OTPRequest {
   expiresAt   DateTime
   attempts    Int       @default(0)
   lockedUntil DateTime?
-  purpose     String?   @default("login") // "login" | "forgot_password"
+  purpose     String?   @default("login") // "login" (legacy/dead) | "forgot_password" | "register"
   createdAt   DateTime  @default(now())
 
   @@index([phone])

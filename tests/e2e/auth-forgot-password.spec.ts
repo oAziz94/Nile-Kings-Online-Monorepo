@@ -17,22 +17,26 @@ import parsePhoneNumber from "libphonenumber-js/mobile";
 // verify-attempt lock, a real (non-mocked) verify+reset round trip proving no auto-login, the
 // resetToken-lost-on-refresh edge case, and the new already-logged-in redirect guard.
 //
-// Twilio note: this is the one auth screen that actually sends real OTP SMS via Twilio in
-// production. This suite deliberately never triggers a real Twilio send:
+// WhatsApp (WaPilot) note: this is the one auth screen that actually sends a real OTP over
+// WhatsApp in production (backlog 4.4 swapped the transport from Twilio SMS to WaPilot
+// WhatsApp — see docs/redesign/04-decisions.md 2026-09-10 "WhatsApp OTP via WaPilot"; register
+// now also sends one, covered separately in tests/e2e/auth-register.spec.ts). Neither `.env` nor
+// `.env.redesign` has real WAPILOT_INSTANCE_ID/WAPILOT_API_TOKEN configured yet (a disclosed,
+// known gap — see 04-decisions.md), so this suite deliberately never triggers a real WhatsApp
+// send:
 //   - The ADMIN-block / no-account / passwordless-account / invalid-format request-route paths
-//     all return before `requestOtp()` (the only Twilio-calling function) is ever invoked, so
+//     all return before `requestOtp()` (the only WhatsApp-sending function) is ever invoked, so
 //     they're tested against the real, unmocked route with zero stubbing.
 //   - Every "the phone step succeeds and advances to the OTP step" scenario mocks only the
 //     browser's network call to `/api/auth/forgot-password/request` (via page.route), so the
 //     client-side UI (step transition, cooldown countdown, OTP boxes) is exercised for real
-//     without ever reaching the live route/Twilio.
-//   - The actual OTP `verify` and `reset` routes touch zero Twilio code (only DB/Redis/JWT), so
+//     without ever reaching the live route/WaPilot.
+//   - The actual OTP `verify` and `reset` routes touch zero WhatsApp code (only DB/Redis/JWT), so
 //     those run for real, unmocked, against a known OTP code seeded directly into the
 //     `OTPRequest` table (hashed the same way `lib/auth/otp.ts`'s `hashOtp` does) — this proves
 //     the real server-side lock/attempt-counter/reset-JWT logic without needing to receive a
-//     real SMS, which isn't practically possible from this environment. See
-//     docs/redesign/03-backlog.md 4.3's verification note and the Twilio "Geographic
-//     Permissions" operational gap already logged in docs/redesign/04-decisions.md.
+//     real WhatsApp message, which isn't practically possible from this environment (no WaPilot
+//     credentials configured — see this task's final report for the exact env vars needed).
 
 const prisma = new PrismaClient();
 
@@ -85,7 +89,7 @@ async function clearOtpRedisState(phone: string): Promise<void> {
 }
 
 /** Intercepts the browser's call to the request route and fabricates a success response,
- * without ever reaching the real route (see the Twilio note above). */
+ * without ever reaching the real route (see the WhatsApp/WaPilot note above). */
 async function mockRequestSuccess(page: Page, cooldownSeconds: number): Promise<void> {
   await page.route("**/api/auth/forgot-password/request", async (route) => {
     await route.fulfill({
@@ -175,7 +179,7 @@ test.beforeAll(async () => {
     update: { passwordHash: await hashPassword(GUARD_LOGIN_PASSWORD), role: "CUSTOMER" },
   });
 
-  // Seed known-code OTPRequest rows directly (bypasses Twilio entirely — see file header).
+  // Seed known-code OTPRequest rows directly (bypasses WaPilot entirely — see file header).
   const future = new Date(Date.now() + 10 * 60 * 1000);
   await prisma.oTPRequest.deleteMany({
     where: { phone: { in: [RESET_FLOW_PHONE, WRONG_CODE_PHONE, LOCK_PHONE] }, purpose: "forgot_password" },
@@ -204,6 +208,9 @@ test("renders RTL with real labels and the select-before-phone field order (reve
   const countrySelect = page.getByLabel("رمز الدولة");
   await expect(phoneInput).toBeVisible();
   await expect(countrySelect).toBeVisible();
+  // Backlog 4.4 copy requirement: the phone step must say the OTP arrives via WhatsApp
+  // specifically, not a generic "verification code"/SMS wording.
+  await expect(page.getByText("سيصلك رمز التحقق عبر واتساب", { exact: false })).toBeVisible();
 
   const phoneBox = await phoneInput.boundingBox();
   const selectBox = await countrySelect.boundingBox();
@@ -299,13 +306,15 @@ test("a successful request advances to the OTP step, ticks the resend cooldown, 
   await page.getByLabel("رقم الهاتف").fill(national);
   await page.getByRole("button", { name: "إرسال رمز التحقق" }).click();
   await expect(page.getByText("تم إرسال رمز التحقق", { exact: true })).toBeVisible();
-  await expect(page.getByText(`أدخل الرمز المرسل إلى +20 ${national}`, { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(`أدخل الرمز المرسل عبر واتساب إلى +20 ${national}`, { exact: true })
+  ).toBeVisible();
 
   await expect(page.getByRole("button", { name: /إعادة الإرسال بعد \d+ ثانية/ })).toBeDisabled();
   await expect(page.getByRole("button", { name: "إعادة إرسال الرمز" })).toBeEnabled({ timeout: 4000 });
 
   await page.getByRole("button", { name: "إعادة إرسال الرمز" }).click();
-  await expect(page.getByText("تم إرسال رمز جديد", { exact: true })).toBeVisible();
+  await expect(page.getByText("تم إرسال رمز جديد عبر واتساب", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "تغيير الرقم" }).click();
   await expect(page.getByLabel("رقم الهاتف")).toBeVisible();
@@ -359,7 +368,7 @@ test("OTP boxes auto-advance on digit entry, backspace on an empty box moves foc
   await expect(page.getByRole("button", { name: "تحقق ومتابعة" })).toBeEnabled();
 });
 
-test("a real OTP verify + password reset succeeds end-to-end (no Twilio dependency — the code is seeded directly), does not auto-login, and the new password works on /login while the old one no longer does", async ({
+test("a real OTP verify + password reset succeeds end-to-end (no WhatsApp/WaPilot dependency — the code is seeded directly), does not auto-login, and the new password works on /login while the old one no longer does", async ({
   page,
 }) => {
   await mockRequestSuccess(page, 60);
