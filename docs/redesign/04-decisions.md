@@ -1,3 +1,9 @@
+## 2026-09-10 — Custom subagent types aren't invocable by name in this environment
+
+`.claude/agents/ui-implementer.md` and `.claude/agents/ui-verifier.md` exist and are well-formed, but this session's Agent tool rejects `subagent_type: "ui-implementer"`/`"ui-verifier"` outright ("Agent type not found — available agents: claude, claude-code-guide, Explore, general-purpose, Plan, statusline-setup"). Custom project-level agents aren't being picked up as distinct dispatchable types here, whatever the reason (environment/harness difference).
+
+**Workaround, in effect from Phase 4 onward**: dispatch `general-purpose` instead, with the relevant `.claude/agents/*.md` file's full role definition folded directly into the prompt (told to read that file and follow it as its standing instructions, plus the task-specific brief). This reproduces the intended implement→verify architecture — an implementer that doesn't verify its own work, a verifier that can't edit and didn't write the code — just via a different dispatch mechanism than originally planned. The two agent-definition files stay in the repo as the source of truth for what each role should do; they're just not directly invocable by name here. If a future session finds custom agent types *do* work (e.g. run via a different Claude Code surface), prefer dispatching them by name instead of this workaround.
+
 # Redesign — standing decisions
 
 Running log of settled calls, so later tasks don't relitigate them. Add new entries at the top with a date.
