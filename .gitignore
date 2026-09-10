@@ -38,6 +38,11 @@ Thumbs.db
 # Vercel
 .vercel
 
+# Playwright
+/playwright-report/
+/test-results/
+/blob-report/
+
 # Prisma
 prisma/migrations/**/migration_lock.toml
 
