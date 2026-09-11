@@ -74,6 +74,14 @@ const config: Config = {
       },
       fontFamily: {
         cairo: ["var(--font-cairo)", "sans-serif"],
+        // Auth surface visual refresh only (backlog 4.5) — the design canvas
+        // (docs/redesign/design-canvas/Auth Surface v2.dc.html) specifies a 3-family system
+        // (Amiri display / IBM Plex Sans Arabic body / Archivo Latin+numerals) instead of this
+        // app's site-wide single-family Cairo. Scoped to the (auth) route group via
+        // app/(auth)/layout.tsx's next/font instances — not applied anywhere else.
+        amiri: ["var(--font-amiri)", "serif"],
+        "plex-arabic": ["var(--font-plex-arabic)", "sans-serif"],
+        archivo: ["var(--font-archivo)", "sans-serif"],
       },
       borderRadius: {
         "2xl": "1rem",

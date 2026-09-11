@@ -1,0 +1,63 @@
+/**
+ * Motion primitives for the Auth surface visual refresh (backlog 4.5), copied verbatim from
+ * docs/redesign/design-canvas/Auth Surface v2.dc.html's <style> block:
+ *   - nkDrift: 26s ambient scale on the cotton photography, alternating.
+ *   - nkRise: 700ms staggered fade-up on first paint only (lockup, then form rows).
+ *   - nkDraw: 900ms one-time stroke-draw on the Ankh mark at OTP verification.
+ *
+ * The canvas itself shipped these with NO `prefers-reduced-motion` guard — flagged as a real gap
+ * in docs/redesign/04-decisions.md 2026-09-11 ("Reduced motion") and called out there as a
+ * mandatory fix, not optional polish. Every rule below is guarded:
+ *   - Default (no media query matched, or `reduce` preferred): static end-state, no animation.
+ *   - `(prefers-reduced-motion: no-preference)`: the actual animation runs.
+ */
+
+@keyframes nkDrift {
+  0% {
+    transform: scale(1.06) translate3d(0, 0, 0);
+  }
+  100% {
+    transform: scale(1.14) translate3d(-1.6%, -1.2%, 0);
+  }
+}
+
+@keyframes nkRise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nkDraw {
+  from {
+    stroke-dashoffset: 150;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Static fallbacks — visible/complete immediately, matches reduced-motion end-state. */
+.nk-drift {
+  transform: scale(1.1);
+}
+.nk-draw {
+  stroke-dashoffset: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nk-drift {
+    animation: nkDrift 26s ease-in-out infinite alternate;
+  }
+  .nk-rise {
+    animation: nkRise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .nk-draw {
+    stroke-dashoffset: 150;
+    animation: nkDraw 0.9s ease-out both;
+  }
+}
