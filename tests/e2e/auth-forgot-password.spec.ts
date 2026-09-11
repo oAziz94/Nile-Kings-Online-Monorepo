@@ -198,7 +198,7 @@ test.afterAll(async () => {
   await prisma.$disconnect();
 });
 
-test("renders RTL with real labels and the select-before-phone field order (reverse of login/register)", async ({
+test("renders RTL with real labels and the same phone-then-country-code control group as login/register", async ({
   page,
 }) => {
   await page.goto("/forgot-password");
@@ -216,10 +216,10 @@ test("renders RTL with real labels and the select-before-phone field order (reve
   const selectBox = await countrySelect.boundingBox();
   expect(phoneBox).not.toBeNull();
   expect(selectBox).not.toBeNull();
-  // forgot-password.md: select-then-input, the reverse of login/register's input-then-select.
-  // In RTL, the first DOM child renders furthest right (higher x) — here that's the select,
-  // unlike login/register where the phone input is first in the DOM and therefore rightmost.
-  expect(selectBox!.x).toBeGreaterThan(phoneBox!.x);
+  // Backlog 4.5 unified this screen's control group with login/register (04-decisions.md
+  // 2026-09-11): in RTL the first DOM child renders furthest right — the phone input — with the
+  // country select at the inline end. The pre-4.5 screen had this mirrored.
+  expect(phoneBox!.x).toBeGreaterThan(selectBox!.x);
 });
 
 test("keyboard reachability and a visible focus state", async ({ page }) => {

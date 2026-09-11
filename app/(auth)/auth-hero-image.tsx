@@ -3,13 +3,16 @@
 import Image from "next/image";
 import { useAuthVisual } from "./auth-visual-context";
 
+// Web-sized JPEG derivatives of the user-provided photography (source of truth stays at
+// docs/redesign/design-canvas/art/*.png, 1.2–2.4 MB each — far too heavy to hand next/image
+// as a source on every first paint).
 const SOURCES = {
   weave: {
-    src: "/brand/cotton-weave.png",
+    src: "/brand/cotton-weave.jpg",
     alt: "نسيج قطن مصري خام",
   },
   drape: {
-    src: "/brand/cotton-drape.png",
+    src: "/brand/cotton-drape.jpg",
     alt: "كتان قطني مطوي",
   },
 } as const;

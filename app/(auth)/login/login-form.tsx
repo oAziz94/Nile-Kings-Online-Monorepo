@@ -9,12 +9,15 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from "@/lib/country-codes";
+import { cn } from "@/lib/utils";
 import { useAuthVisual } from "../auth-visual-context";
 import {
   authLabelClass,
   authFieldBoxClass,
   authBareInputClass,
   authBareSelectClass,
+  authBareSelectStyle,
+  authOutlineActionClass,
   AuthDivider,
   AuthSubmitButton,
   PasswordFieldBox,
@@ -154,6 +157,7 @@ function LoginContent() {
                     dir="ltr"
                     aria-label="رمز الدولة"
                     className={authBareSelectClass}
+                    style={authBareSelectStyle}
                   >
                     {COUNTRY_CODES.map(({ code, country }) => (
                       <option key={code} value={code}>
@@ -199,19 +203,18 @@ function LoginContent() {
         </form>
       </Form>
 
-      <p className="mt-5 flex items-center gap-2 font-plex-arabic text-[13px] text-[hsl(228_18%_38%)]">
+      {/* Canvas: a full-width outline secondary action on mobile (screen 2g), a one-line text
+          link on desktop (2a). Only one is ever rendered per breakpoint. */}
+      <Link href="/register" className={cn(authOutlineActionClass, "mt-4 lg:hidden")}>
+        إنشاء حساب جديد
+      </Link>
+      <p className="mt-5 hidden items-center gap-2 font-plex-arabic text-[13px] text-[hsl(228_18%_38%)] lg:flex">
         ليس لديك حساب؟{" "}
         <Link
           href="/register"
           className="font-medium text-gold-600 underline decoration-gold-500 underline-offset-2 hover:no-underline"
         >
           إنشاء حساب
-        </Link>
-      </p>
-
-      <p className="mt-6 font-plex-arabic text-sm text-[hsl(228_10%_55%)]">
-        <Link href="/" className="underline hover:text-[hsl(228_40%_14%)]">
-          العودة للمتجر
         </Link>
       </p>
     </div>

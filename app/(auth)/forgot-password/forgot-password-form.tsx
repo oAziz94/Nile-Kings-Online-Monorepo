@@ -12,6 +12,7 @@ import {
   authFieldBoxClass,
   authBareInputClass,
   authBareSelectClass,
+  authBareSelectStyle,
   AuthDivider,
   AuthSubmitButton,
   PasswordFieldBox,
@@ -248,7 +249,7 @@ function ForgotPasswordContent() {
           <div className="font-plex-arabic text-xs font-medium tracking-[0.02em] text-gold-600">
             استعادة كلمة المرور
           </div>
-          <h1 className="mt-3 font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] authDesktop:text-[38px]">
+          <h1 className="mt-3 font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
             استعادة كلمة المرور
           </h1>
           <p className="mt-2 mb-7 font-plex-arabic text-sm leading-[1.7] text-[hsl(228_18%_38%)]">
@@ -256,28 +257,17 @@ function ForgotPasswordContent() {
           </p>
           <form onSubmit={handleRequestOtp} className="flex flex-col gap-[18px]">
             {/*
-              Select-then-input order, the reverse of login/register's input-then-select order —
-              an intentional, preserved inconsistency, not a bug. See forgot-password.md's Notes
-              and docs/redesign/03-backlog.md 4.3 "Field order quirk".
+              Same input-then-select control group as login/register. The pre-4.5 screen had the
+              select first (a preserved quirk from the original app, see 03-backlog.md 4.3) — the
+              design canvas unifies all three ("country code leading the number in one control
+              group"), and the user's manual pass read the mirrored version as an RTL bug. See
+              04-decisions.md 2026-09-11.
             */}
             <div className="space-y-2">
               <label htmlFor="phone" className={authLabelClass}>
                 رقم الهاتف
               </label>
               <div className={authFieldBoxClass()}>
-                <select
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  dir="ltr"
-                  aria-label="رمز الدولة"
-                  className={authBareSelectClass}
-                >
-                  {COUNTRY_CODES.map(({ code, country }) => (
-                    <option key={code} value={code}>
-                      {code} {country}
-                    </option>
-                  ))}
-                </select>
                 <input
                   id="phone"
                   type="tel"
@@ -288,6 +278,20 @@ function ForgotPasswordContent() {
                   autoComplete="tel-national"
                   className={authBareInputClass}
                 />
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  dir="ltr"
+                  aria-label="رمز الدولة"
+                  className={authBareSelectClass}
+                  style={authBareSelectStyle}
+                >
+                  {COUNTRY_CODES.map(({ code, country }) => (
+                    <option key={code} value={code}>
+                      {code} {country}
+                    </option>
+                  ))}
+                </select>
               </div>
               <p className="font-plex-arabic text-xs text-[hsl(228_10%_52%)]">
                 سيصلك رمز التحقق عبر واتساب على هذا الرقم.
@@ -303,7 +307,7 @@ function ForgotPasswordContent() {
 
       {step === "otp" && (
         <>
-          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] authDesktop:text-[38px]">
+          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
             تأكيد رقم هاتفك
           </h1>
           <div className="mt-2 mb-6 flex flex-wrap items-center gap-2 font-plex-arabic text-sm text-[hsl(228_18%_38%)]">
@@ -372,7 +376,7 @@ function ForgotPasswordContent() {
               3
             </span>
           </div>
-          <h1 className="mt-3 font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] authDesktop:text-[38px]">
+          <h1 className="mt-3 font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
             كلمة مرور جديدة
           </h1>
           <p className="mt-2 mb-7 font-plex-arabic text-sm leading-[1.7] text-[hsl(228_18%_38%)]">
@@ -432,12 +436,6 @@ function ForgotPasswordContent() {
           className="font-medium text-gold-600 underline decoration-gold-500 underline-offset-2 hover:no-underline"
         >
           تسجيل الدخول
-        </Link>
-      </p>
-
-      <p className="mt-4 font-plex-arabic text-sm text-[hsl(228_10%_55%)]">
-        <Link href="/" className="underline hover:text-[hsl(228_40%_14%)]">
-          العودة للمتجر
         </Link>
       </p>
     </div>

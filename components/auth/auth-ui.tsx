@@ -4,8 +4,9 @@
  * Small shared presentational primitives for the Auth surface visual refresh (backlog 4.5),
  * translating the design canvas's literal inline styles
  * (docs/redesign/design-canvas/Auth Surface v2.dc.html) into reusable Tailwind/CSS: radius-0
- * hairline fields, flush-start labels, the gold hairline rule before every primary action, and
- * the primary button's trailing Ankh mark. Presentation only — no auth/business logic here.
+ * hairline fields (52px on desktop, 56px on mobile per the canvas's two frames), flush-start
+ * labels, the gold hairline rule before every primary action, and the primary button's
+ * trailing Ankh mark. Presentation only — no auth/business logic here.
  *
  * Every interactive element here gets an explicit `focus-visible:ring-*` (visible focus state,
  * design-system requirement — see docs/redesign/01-design-system.md's accessibility section),
@@ -28,7 +29,7 @@ export const authLabelClass =
 /** The bordered, radius-0 "field box" every input/select sits inside — canvas's hairline field. */
 export function authFieldBoxClass(hasError?: boolean): string {
   return cn(
-    "flex h-[52px] rounded-none border bg-transparent transition-colors focus-within:border-2",
+    "flex h-14 rounded-none border bg-transparent transition-colors focus-within:border-2 lg:h-[52px]",
     hasError
       ? "border-[hsl(6_58%_42%)] bg-[hsl(6_60%_98%)] focus-within:border-[hsl(6_58%_42%)]"
       : "border-[hsl(40_12%_70%)] focus-within:border-[hsl(228_40%_14%)] focus-within:border-b-[hsl(42_78%_55%)]"
@@ -39,22 +40,33 @@ export function authFieldBoxClass(hasError?: boolean): string {
  * Bare `<input>` styling once it's inside `authFieldBoxClass` (no own border/radius) — still
  * carries its own focus-visible ring (not just the wrapper's `focus-within` border swap) so a
  * keyboard user gets a real visible-focus indicator on the input itself.
+ *
+ * `w-0 min-w-0 flex-1` (not `w-full flex-1`): a flex item that is BOTH width:100% AND flex-1
+ * fights its own shrink and overflows the box once a sibling (country select / show-password
+ * button) claims space — same root cause as the OTP-box overflow bug, see 04-decisions.md.
+ * `text-right` keeps the visible text/caret on the RTL page's reading edge even though the
+ * control itself is `dir="ltr"` so multi-digit numbers never reverse.
  */
 export const authBareInputClass = cn(
-  // `w-0 min-w-0 flex-1` (not `w-full flex-1`): a flex item that is BOTH `w-full` (width:100%)
-  // AND `flex-1` fights its own shrink — the browser sizes it to 100% of the flex container
-  // before the sibling (country-select / show-password button) claims its own space, so the
-  // pair overflows the field box and the input's real content clips, worse once
-  // `focus-within:border-2` adds width. Same root cause, same fix, as the OTP-box overflow
-  // bug fixed in backlog 4.5 (components/auth/otp-boxes.tsx) — see 04-decisions.md.
-  "h-[52px] w-0 min-w-0 flex-1 rounded-none border-0 bg-transparent px-3.5 text-right font-archivo text-[16px] tracking-[0.03em] text-[hsl(228_40%_14%)] placeholder:text-[hsl(228_8%_65%)]",
+  "h-full w-0 min-w-0 flex-1 rounded-none border-0 bg-transparent px-3.5 text-right font-archivo text-[16px] tracking-[0.03em] text-[hsl(228_40%_14%)] placeholder:text-[hsl(228_8%_65%)]",
   authFocusRingClass
 );
 
+// Canvas's own 10×6 chevron, drawn by the select itself so the native arrow never shows.
+const selectChevron =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='hsl(228 14%25 45%25)' stroke-width='1.2'/%3E%3C/svg%3E\")";
+
+/**
+ * The country-code select: sits at the inline end of the field box with a hairline divider
+ * against the number input (canvas: "country code leading the number in one control group").
+ * `dir="ltr"` on the element keeps "+20 مصر" reading as a code-first unit.
+ */
 export const authBareSelectClass = cn(
-  "h-[52px] flex-none cursor-pointer rounded-none border-0 border-r border-[hsl(40_12%_70%)] bg-transparent px-3.5 font-archivo text-[14px] font-medium text-[hsl(228_40%_14%)]",
+  "h-full flex-none cursor-pointer appearance-none rounded-none border-0 border-r border-[hsl(40_12%_70%)] bg-transparent bg-no-repeat py-0 pl-3.5 pr-7 font-archivo text-[14px] font-medium text-[hsl(228_40%_14%)]",
+  "bg-[position:right_12px_center]",
   authFocusRingClass
 );
+export const authBareSelectStyle: React.CSSProperties = { backgroundImage: selectChevron };
 
 /** Canvas: the thin gold rule that always separates the last field from the primary action. */
 export function AuthDivider({ className }: { className?: string }) {
@@ -72,7 +84,7 @@ export const AuthSubmitButton = forwardRef<HTMLButtonElement, AuthSubmitButtonPr
         type="submit"
         {...props}
         className={cn(
-          "flex h-14 w-full items-center justify-between rounded-none bg-[hsl(228_40%_14%)] px-5 font-plex-arabic text-[15px] font-semibold text-papyrus transition-colors hover:bg-[hsl(228_30%_26%)] disabled:cursor-not-allowed disabled:opacity-60",
+          "flex h-[58px] w-full items-center justify-between rounded-none bg-[hsl(228_40%_14%)] px-5 font-plex-arabic text-[15px] font-semibold text-papyrus transition-colors hover:bg-[hsl(228_30%_26%)] disabled:cursor-not-allowed disabled:opacity-60 lg:h-14",
           authFocusRingClass,
           className
         )}
@@ -84,23 +96,25 @@ export const AuthSubmitButton = forwardRef<HTMLButtonElement, AuthSubmitButtonPr
   }
 );
 
-/** Canvas's mobile secondary action (login's "إنشاء حساب جديد") — outline, no Ankh. */
+/** Canvas's secondary action (login's mobile "إنشاء حساب جديد") — outline, no Ankh. */
 export const AuthOutlineButton = forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
   function AuthOutlineButton({ className, children, ...props }, ref) {
     return (
       <button
         ref={ref}
         {...props}
-        className={cn(
-          "flex h-14 w-full items-center justify-center rounded-none border border-[hsl(228_40%_14%)] bg-transparent px-5 font-plex-arabic text-[15px] font-semibold text-[hsl(228_40%_14%)] transition-colors hover:bg-[hsl(228_40%_14%)]/5",
-          authFocusRingClass,
-          className
-        )}
+        className={cn(authOutlineActionClass, className)}
       >
         {children}
       </button>
     );
   }
+);
+
+/** Same outline treatment for a `<Link>` used as a secondary action. */
+export const authOutlineActionClass = cn(
+  "flex h-[58px] w-full items-center justify-center rounded-none border border-[hsl(228_40%_14%)] bg-transparent px-5 font-plex-arabic text-[15px] font-semibold text-[hsl(228_40%_14%)] transition-colors hover:bg-[hsl(228_40%_14%)]/5 lg:h-14",
+  authFocusRingClass
 );
 
 export interface PasswordFieldBoxProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -119,7 +133,7 @@ export const PasswordFieldBox = forwardRef<HTMLInputElement, PasswordFieldBoxPro
   function PasswordFieldBox({ className, error, ...props }, ref) {
     const [show, setShow] = useState(false);
     return (
-      <div className={cn(authFieldBoxClass(error), "items-center justify-between pl-3.5")}>
+      <div className={cn(authFieldBoxClass(error), "items-center justify-between")}>
         <input
           ref={ref}
           type={show ? "text" : "password"}
@@ -131,7 +145,7 @@ export const PasswordFieldBox = forwardRef<HTMLInputElement, PasswordFieldBoxPro
           type="button"
           onClick={() => setShow((s) => !s)}
           className={cn(
-            "shrink-0 whitespace-nowrap px-3.5 font-plex-arabic text-xs font-medium text-gold-600 hover:underline",
+            "h-full shrink-0 whitespace-nowrap px-3.5 font-plex-arabic text-xs font-medium text-gold-600 hover:underline",
             authFocusRingClass
           )}
           aria-label={show ? "إخفاء قيمة الحقل المُدخلة" : "إظهار قيمة الحقل المُدخلة"}

@@ -17,6 +17,7 @@ import {
   authFieldBoxClass,
   authBareInputClass,
   authBareSelectClass,
+  authBareSelectStyle,
   AuthDivider,
   AuthSubmitButton,
   PasswordFieldBox,
@@ -358,7 +359,7 @@ function RegisterContent() {
 
       {step === "phone" && (
         <>
-          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] authDesktop:text-[38px]">
+          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
             إنشاء حساب جديد
           </h1>
           <p className="mt-2 mb-7 font-plex-arabic text-sm leading-[1.7] text-[hsl(228_18%_38%)]">
@@ -395,6 +396,7 @@ function RegisterContent() {
                         dir="ltr"
                         aria-label="رمز الدولة"
                         className={authBareSelectClass}
+                        style={authBareSelectStyle}
                       >
                         {COUNTRY_CODES.map(({ code, country }) => (
                           <option key={code} value={code}>
@@ -445,7 +447,7 @@ function RegisterContent() {
 
       {step === "otp" && (
         <>
-          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] authDesktop:text-[38px]">
+          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
             تأكيد رقم هاتفك
           </h1>
           <div className="mt-2 mb-6 flex flex-wrap items-center gap-2 font-plex-arabic text-sm text-[hsl(228_18%_38%)]">
@@ -519,7 +521,7 @@ function RegisterContent() {
       {step === "profile" && (
         <>
           <div className="flex items-center gap-3">
-            <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] authDesktop:text-[38px]">
+            <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
               بياناتك
             </h1>
             <span className="flex items-center gap-1.5 font-plex-arabic text-xs text-[hsl(150_36%_28%)]">
@@ -656,12 +658,6 @@ function RegisterContent() {
           className="font-medium text-gold-600 underline decoration-gold-500 underline-offset-2 hover:no-underline"
         >
           تسجيل الدخول
-        </Link>
-      </p>
-
-      <p className="mt-4 font-plex-arabic text-sm text-[hsl(228_10%_55%)]">
-        <Link href="/" className="underline hover:text-[hsl(228_40%_14%)]">
-          العودة للمتجر
         </Link>
       </p>
     </div>
