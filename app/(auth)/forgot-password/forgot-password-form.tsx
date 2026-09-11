@@ -248,7 +248,7 @@ function ForgotPasswordContent() {
           <div className="font-plex-arabic text-xs font-medium tracking-[0.02em] text-gold-600">
             استعادة كلمة المرور
           </div>
-          <h1 className="mt-3 font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+          <h1 className="mt-3 font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] authDesktop:text-[38px]">
             استعادة كلمة المرور
           </h1>
           <p className="mt-2 mb-7 font-plex-arabic text-sm leading-[1.7] text-[hsl(228_18%_38%)]">
@@ -303,7 +303,7 @@ function ForgotPasswordContent() {
 
       {step === "otp" && (
         <>
-          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] authDesktop:text-[38px]">
             تأكيد رقم هاتفك
           </h1>
           <div className="mt-2 mb-6 flex flex-wrap items-center gap-2 font-plex-arabic text-sm text-[hsl(228_18%_38%)]">
@@ -372,7 +372,7 @@ function ForgotPasswordContent() {
               3
             </span>
           </div>
-          <h1 className="mt-3 font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+          <h1 className="mt-3 font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] authDesktop:text-[38px]">
             كلمة مرور جديدة
           </h1>
           <p className="mt-2 mb-7 font-plex-arabic text-sm leading-[1.7] text-[hsl(228_18%_38%)]">

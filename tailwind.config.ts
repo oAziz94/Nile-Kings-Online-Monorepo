@@ -9,6 +9,16 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      screens: {
+        // Auth surface's two-pane composition (app/(auth)/layout.tsx) is built against the
+        // design canvas's literal 1440x900 frame with fixed-pixel/percent math that only
+        // resolves cleanly at that width and up — Tailwind's default `lg` (1024px) overlaps
+        // real content (heading vs. slogan) anywhere from 1024 to ~1360px, a common laptop
+        // range. `authDesktop` gates the auth screens' two-pane switch at a width where the
+        // math actually fits; below it, the (genuinely fluid) mobile composition renders
+        // instead of a broken degraded desktop attempt. Not used anywhere outside `(auth)`.
+        authDesktop: "1440px",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

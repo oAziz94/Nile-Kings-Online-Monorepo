@@ -41,7 +41,13 @@ export function authFieldBoxClass(hasError?: boolean): string {
  * keyboard user gets a real visible-focus indicator on the input itself.
  */
 export const authBareInputClass = cn(
-  "h-[52px] w-full flex-1 rounded-none border-0 bg-transparent px-3.5 font-archivo text-[16px] tracking-[0.03em] text-[hsl(228_40%_14%)] placeholder:text-[hsl(228_8%_65%)]",
+  // `w-0 min-w-0 flex-1` (not `w-full flex-1`): a flex item that is BOTH `w-full` (width:100%)
+  // AND `flex-1` fights its own shrink — the browser sizes it to 100% of the flex container
+  // before the sibling (country-select / show-password button) claims its own space, so the
+  // pair overflows the field box and the input's real content clips, worse once
+  // `focus-within:border-2` adds width. Same root cause, same fix, as the OTP-box overflow
+  // bug fixed in backlog 4.5 (components/auth/otp-boxes.tsx) — see 04-decisions.md.
+  "h-[52px] w-0 min-w-0 flex-1 rounded-none border-0 bg-transparent px-3.5 text-right font-archivo text-[16px] tracking-[0.03em] text-[hsl(228_40%_14%)] placeholder:text-[hsl(228_8%_65%)]",
   authFocusRingClass
 );
 

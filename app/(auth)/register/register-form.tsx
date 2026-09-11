@@ -358,7 +358,7 @@ function RegisterContent() {
 
       {step === "phone" && (
         <>
-          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] authDesktop:text-[38px]">
             إنشاء حساب جديد
           </h1>
           <p className="mt-2 mb-7 font-plex-arabic text-sm leading-[1.7] text-[hsl(228_18%_38%)]">
@@ -445,7 +445,7 @@ function RegisterContent() {
 
       {step === "otp" && (
         <>
-          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] authDesktop:text-[38px]">
             تأكيد رقم هاتفك
           </h1>
           <div className="mt-2 mb-6 flex flex-wrap items-center gap-2 font-plex-arabic text-sm text-[hsl(228_18%_38%)]">
@@ -519,7 +519,7 @@ function RegisterContent() {
       {step === "profile" && (
         <>
           <div className="flex items-center gap-3">
-            <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+            <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] authDesktop:text-[38px]">
               بياناتك
             </h1>
             <span className="flex items-center gap-1.5 font-plex-arabic text-xs text-[hsl(150_36%_28%)]">

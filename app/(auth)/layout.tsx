@@ -104,7 +104,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="relative min-h-screen w-full overflow-hidden bg-papyrus">
           {/* Brand header — single real instance, sized responsively (not duplicated: it's a
               real interactive <Link>, unlike the purely-decorative hero/slogan pieces below). */}
-          <header className="absolute inset-x-0 top-0 z-40 flex h-14 items-center justify-center border-b border-[hsl(40_12%_80%)] bg-papyrus px-4 lg:h-[76px]">
+          <header className="absolute inset-x-0 top-0 z-40 flex h-14 items-center justify-center border-b border-[hsl(40_12%_80%)] bg-papyrus px-4 authDesktop:h-[76px]">
             <Link href="/" aria-label="العودة للمتجر — قطن ملوك النيل">
               <Image
                 src="/brand/logo-lapis.png"
@@ -112,13 +112,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                 width={700}
                 height={437}
                 priority
-                className="h-9 w-auto lg:h-[58px]"
+                className="h-9 w-auto authDesktop:h-[58px]"
               />
             </Link>
           </header>
 
           {/* ============================= Mobile hero band (< lg) ============================= */}
-          <div className="absolute inset-x-0 top-14 h-64 overflow-hidden lg:hidden">
+          <div className="absolute inset-x-0 top-14 h-64 overflow-hidden authDesktop:hidden">
             <AuthHeroImage sizes="100vw" className="nk-drift object-cover" />
             <div className="pointer-events-none absolute inset-0" style={{ background: heroGradientMobile }} />
           </div>
@@ -126,11 +126,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             size="text-[26px]"
             ankhSize={22}
             ankhStroke={9}
-            className="absolute inset-x-6 top-[124px] z-[3] justify-end lg:hidden"
+            className="absolute inset-x-6 top-[124px] z-[3] justify-end authDesktop:hidden"
           />
 
           {/* ============================= Desktop material pane (lg+) ============================= */}
-          <div className="absolute left-0 top-[76px] bottom-[-64px] hidden w-1/2 overflow-hidden lg:block">
+          <div className="absolute left-0 top-[76px] bottom-[-64px] hidden w-1/2 overflow-hidden authDesktop:block">
             <AuthHeroImage sizes="50vw" className="nk-drift object-cover" />
             <div className="pointer-events-none absolute inset-0" style={{ background: heroGradient }} />
           </div>
@@ -138,13 +138,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <Ankh
             size={392}
             strokeWidth={5}
-            className="pointer-events-none absolute -bottom-14 -left-12 hidden text-[hsl(228_40%_14%)] opacity-[0.09] lg:block"
+            className="pointer-events-none absolute -bottom-14 -left-12 hidden text-[hsl(228_40%_14%)] opacity-[0.09] authDesktop:block"
           />
           {/* Gold seam accent — split into two segments, gapped where the fold-crop overlaps. */}
-          <div className="pointer-events-none absolute top-[76px] left-1/2 hidden h-[100px] w-px bg-gold-500/50 lg:block" />
-          <div className="pointer-events-none absolute top-[300px] bottom-0 left-1/2 hidden w-px bg-gold-500/50 lg:block" />
+          <div className="pointer-events-none absolute top-[76px] left-1/2 hidden h-[100px] w-px bg-gold-500/50 authDesktop:block" />
+          <div className="pointer-events-none absolute top-[300px] bottom-0 left-1/2 hidden w-px bg-gold-500/50 authDesktop:block" />
           {/* Second crop — the folded stack, straddles the material/ivory seam, escapes the bottom edge. */}
-          <div className="absolute bottom-[-72px] left-[41.7%] hidden h-[340px] w-[252px] overflow-hidden shadow-[-14px_-14px_34px_rgba(32,30,29,0.13)] lg:block">
+          <div className="absolute bottom-[-72px] left-[41.7%] hidden h-[340px] w-[252px] overflow-hidden shadow-[-14px_-14px_34px_rgba(32,30,29,0.13)] authDesktop:block">
             <Image
               src="/brand/cotton-stack.png"
               alt=""
@@ -158,11 +158,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             size="text-[46px]"
             ankhSize={38}
             ankhStroke={7}
-            className="absolute left-[29.5%] top-[188px] z-[3] hidden w-[500px] lg:flex"
+            className="absolute left-[29.5%] top-[188px] z-[3] hidden w-[500px] authDesktop:flex"
           />
           <p
             aria-hidden="true"
-            className="nk-rise pointer-events-none absolute left-[29.5%] top-[262px] z-[3] hidden w-[340px] font-plex-arabic text-[14.5px] leading-[1.9] lg:block"
+            className="nk-rise pointer-events-none absolute left-[29.5%] top-[262px] z-[3] hidden w-[340px] font-plex-arabic text-[14.5px] leading-[1.9] authDesktop:block"
             style={{ animationDelay: "120ms" }}
           >
             قطن مصري أصيل، جودة تحسها من أول لمسة.
@@ -173,7 +173,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               on desktop, not scoped to a single screen. */}
           <p
             aria-hidden="true"
-            className="pointer-events-none absolute bottom-9 left-10 z-[3] hidden font-plex-arabic text-[11.5px] text-[hsl(228_26%_26%)] lg:block"
+            className="pointer-events-none absolute bottom-9 left-10 z-[3] hidden font-plex-arabic text-[11.5px] text-[hsl(228_26%_26%)] authDesktop:block"
           >
             أكثر من <span dir="ltr" className="font-archivo font-medium">27</span> محافظة مغطاة
             بشبكة شركاء التوصيل
@@ -191,8 +191,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div
             className={cn(
               "relative z-[3] mt-[280px] flex min-h-[calc(100vh-280px)] flex-col border-t border-[hsl(40_12%_80%)] bg-papyrus px-6 pb-8 pt-8",
-              "lg:absolute lg:inset-y-0 lg:right-[88px] lg:mt-0 lg:min-h-0 lg:w-[404px] lg:max-w-[404px]",
-              "lg:overflow-y-auto lg:border-t-0 lg:bg-transparent lg:px-0 lg:pt-[150px] lg:pb-10"
+              "authDesktop:absolute authDesktop:inset-y-0 authDesktop:right-[88px] authDesktop:mt-0 authDesktop:min-h-0 authDesktop:w-[404px] authDesktop:max-w-[404px]",
+              "authDesktop:overflow-y-auto authDesktop:border-t-0 authDesktop:bg-transparent authDesktop:px-0 authDesktop:pt-[150px] authDesktop:pb-10"
             )}
           >
             {children}
