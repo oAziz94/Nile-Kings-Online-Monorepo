@@ -76,6 +76,12 @@ export const OtpBoxes = forwardRef<HTMLDivElement, OtpBoxesProps>(function OtpBo
             ref={(el) => setInputRef(i, el)}
             type="text"
             inputMode="numeric"
+            // Deliberately 6, not 1: a paste into any box must deliver its full multi-char value
+            // through onChange so the parent's fan-out logic (handleOtpChange in both
+            // register-form.tsx/forgot-password-form.tsx) can distribute it across boxes — the
+            // browser truncates a paste to maxLength *before* onChange ever fires, so maxLength=1
+            // would silently break paste. Single-keystroke entry is bounded by handleOtpChange's
+            // own `.slice(-1)`, not by this attribute.
             maxLength={6}
             disabled={state === "locked"}
             value={digits[i] ?? ""}
@@ -86,7 +92,12 @@ export const OtpBoxes = forwardRef<HTMLDivElement, OtpBoxesProps>(function OtpBo
             // by this exact accessible name; changing it would be an unnecessary parity break.
             aria-label={`رقم ${i + 1}`}
             className={cn(
-              "h-[66px] flex-1 rounded-none text-center font-archivo text-[24px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed",
+              // `min-w-0` is load-bearing: a bare `flex-1` lets the native <input>'s intrinsic
+              // content width win over the flex-basis:0% shrink, so all 6 boxes render at their
+              // UA-default width instead of sharing the row — 4 of 6 end up clipped off-canvas
+              // (caught by ui-verifier's manual viewport check, invisible to Playwright's
+              // programmatic fill()/keyboard driving).
+              "h-[66px] w-0 min-w-0 flex-1 rounded-none text-center font-archivo text-[24px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed",
               boxClassFor(!!digits[i])
             )}
           />
