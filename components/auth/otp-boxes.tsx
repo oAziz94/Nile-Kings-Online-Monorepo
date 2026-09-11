@@ -22,7 +22,7 @@ const OTP_LENGTH = 6;
 const STATE_BOX_CLASS: Record<OtpBoxState, (filled: boolean) => string> = {
   idle: (filled) =>
     cn(
-      "border bg-white text-[hsl(228_40%_14%)]",
+      "border bg-transparent text-[hsl(228_40%_14%)]",
       filled ? "border-2 border-[hsl(228_40%_14%)] border-b-[hsl(42_78%_55%)]" : "border-[hsl(40_12%_70%)]"
     ),
   wrong: () => "border border-[hsl(6_58%_42%)] bg-[hsl(6_60%_98%)] text-[hsl(6_58%_36%)]",

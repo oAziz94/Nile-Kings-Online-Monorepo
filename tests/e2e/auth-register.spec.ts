@@ -178,7 +178,7 @@ test("renders RTL with real labels, the phone/country-code row, WhatsApp copy, a
   await expect(countrySelect).toBeVisible();
   await expect(page.getByRole("button", { name: "متابعة" })).toBeVisible();
   // Backlog 4.4 copy requirement: must say the OTP arrives via WhatsApp specifically.
-  await expect(page.getByText("سيصلك رمز التحقق عبر واتساب", { exact: false })).toBeVisible();
+  await expect(page.getByText("رمز التحقق عبر واتساب", { exact: false })).toBeVisible();
 
   // Neither the OTP step nor the profile step's fields are in the DOM yet.
   await expect(page.getByLabel("رقم 1")).toHaveCount(0);
@@ -485,15 +485,18 @@ test("registration OTP-request rate limiting: 10 already-registered attempts per
 test("desktop viewport shows the shared two-pane brand layout alongside a fully usable form", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/register");
-  await expect(page.getByText("قطن مصري", { exact: false })).toBeVisible();
+  await expect(page.locator("p:visible", { hasText: "قطن مصري" })).toBeVisible();
   await expect(page.getByText("أكثر من 27 محافظة", { exact: false })).toBeVisible();
   await expect(page.getByLabel("رقم الهاتف")).toBeVisible();
 });
 
-test("mobile viewport collapses to a single centered card with no brand pane, exactly as before this layout existed", async ({ page }) => {
+// Since the 2026-09-11 art-direction refinement the phone layout keeps the photography band and
+// the brand promise on it (brief §17: "do not turn mobile into a generic form page") — the old
+// "no brand pane on mobile" expectation is superseded; the form must still be fully usable.
+test("mobile viewport keeps the brand band above a fully usable form", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/register");
-  await expect(page.getByText("قطن مصري", { exact: false })).toBeHidden();
+  await expect(page.locator("p:visible", { hasText: "قطن مصري" })).toBeVisible();
   await expect(page.getByLabel("رقم الهاتف")).toBeVisible();
   await expect(page.getByRole("button", { name: "متابعة" })).toBeVisible();
 });

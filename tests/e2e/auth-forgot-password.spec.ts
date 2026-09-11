@@ -210,7 +210,7 @@ test("renders RTL with real labels and the same phone-then-country-code control 
   await expect(countrySelect).toBeVisible();
   // Backlog 4.4 copy requirement: the phone step must say the OTP arrives via WhatsApp
   // specifically, not a generic "verification code"/SMS wording.
-  await expect(page.getByText("سيصلك رمز التحقق عبر واتساب", { exact: false })).toBeVisible();
+  await expect(page.getByText("رمز التحقق عبر واتساب", { exact: false })).toBeVisible();
 
   const phoneBox = await phoneInput.boundingBox();
   const selectBox = await countrySelect.boundingBox();
@@ -486,14 +486,17 @@ test("an already-logged-in visitor is redirected away from /forgot-password with
 test("desktop viewport shows the shared two-pane brand layout alongside a fully usable form", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/forgot-password");
-  await expect(page.getByText("قطن مصري", { exact: false })).toBeVisible();
+  // The brand promise now exists twice in the DOM (mobile band + desktop block, one hidden per
+  // breakpoint since the 2026-09-11 art-direction refinement) — assert on the rendered one.
+  await expect(page.locator("p:visible", { hasText: "قطن مصري" })).toBeVisible();
   await expect(page.getByLabel("رقم الهاتف")).toBeVisible();
 });
 
-test("mobile viewport collapses to a single centered card with no brand pane", async ({ page }) => {
+// See auth-register.spec.ts: the phone layout keeps the brand band since the art-direction refinement.
+test("mobile viewport keeps the brand band above a fully usable form", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/forgot-password");
-  await expect(page.getByText("قطن مصري", { exact: false })).toBeHidden();
+  await expect(page.locator("p:visible", { hasText: "قطن مصري" })).toBeVisible();
   await expect(page.getByLabel("رقم الهاتف")).toBeVisible();
   await expect(page.getByRole("button", { name: "إرسال رمز التحقق" })).toBeVisible();
 });

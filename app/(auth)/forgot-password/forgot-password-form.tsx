@@ -6,14 +6,18 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from "@/lib/country-codes";
 import { OtpBoxes, classifyOtpVerifyError, type OtpBoxState } from "@/components/auth/otp-boxes";
+import { cn } from "@/lib/utils";
 import { useAuthVisual } from "../auth-visual-context";
 import {
   authLabelClass,
+  authHelpClass,
   authFieldBoxClass,
   authBareInputClass,
   authBareSelectClass,
   authBareSelectStyle,
+  authInlineActionClass,
   AuthDivider,
+  AuthFieldDivider,
   AuthSubmitButton,
   PasswordFieldBox,
 } from "@/components/auth/auth-ui";
@@ -246,16 +250,13 @@ function ForgotPasswordContent() {
     <div className="w-full">
       {step === "phone" && (
         <>
-          <div className="font-plex-arabic text-xs font-medium tracking-[0.02em] text-gold-600">
-            استعادة كلمة المرور
-          </div>
-          <h1 className="mt-3 font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+          <h1 className="font-amiri text-[36px] font-bold leading-[1.1] text-[hsl(228_40%_14%)] lg:text-[46px]">
             استعادة كلمة المرور
           </h1>
-          <p className="mt-2 mb-7 font-plex-arabic text-sm leading-[1.7] text-[hsl(228_18%_38%)]">
+          <p className="mt-3 mb-8 font-plex-arabic text-[15px] leading-[1.8] text-[hsl(228_18%_32%)]">
             أدخل رقم جوالك — سنرسل لك رمز تحقق عبر واتساب.
           </p>
-          <form onSubmit={handleRequestOtp} className="flex flex-col gap-[18px]">
+          <form onSubmit={handleRequestOtp} className="flex flex-col gap-6">
             {/*
               Same input-then-select control group as login/register. The pre-4.5 screen had the
               select first (a preserved quirk from the original app, see 03-backlog.md 4.3) — the
@@ -263,7 +264,7 @@ function ForgotPasswordContent() {
               group"), and the user's manual pass read the mirrored version as an RTL bug. See
               04-decisions.md 2026-09-11.
             */}
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <label htmlFor="phone" className={authLabelClass}>
                 رقم الهاتف
               </label>
@@ -278,6 +279,7 @@ function ForgotPasswordContent() {
                   autoComplete="tel-national"
                   className={authBareInputClass}
                 />
+                <AuthFieldDivider />
                 <select
                   value={countryCode}
                   onChange={(e) => setCountryCode(e.target.value)}
@@ -293,9 +295,7 @@ function ForgotPasswordContent() {
                   ))}
                 </select>
               </div>
-              <p className="font-plex-arabic text-xs text-[hsl(228_10%_52%)]">
-                سيصلك رمز التحقق عبر واتساب على هذا الرقم.
-              </p>
+              <p className={authHelpClass}>سيُرسل رمز التحقق عبر واتساب إلى هذا الرقم.</p>
             </div>
             <AuthDivider />
             <AuthSubmitButton disabled={loading}>
@@ -307,10 +307,10 @@ function ForgotPasswordContent() {
 
       {step === "otp" && (
         <>
-          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+          <h1 className="font-amiri text-[36px] font-bold leading-[1.1] text-[hsl(228_40%_14%)] lg:text-[46px]">
             تأكيد رقم هاتفك
           </h1>
-          <div className="mt-2 mb-6 flex flex-wrap items-center gap-2 font-plex-arabic text-sm text-[hsl(228_18%_38%)]">
+          <div className="mt-3 mb-7 flex flex-wrap items-center gap-2 font-plex-arabic text-[15px] leading-[1.8] text-[hsl(228_18%_32%)]">
             {/* Exact original copy — tests/e2e/auth-forgot-password.spec.ts checks this precise
                 string (kept in its own element so the sibling "تغيير" button doesn't get
                 folded into the same exact-text match). */}
@@ -370,24 +370,18 @@ function ForgotPasswordContent() {
 
       {step === "password" && (
         <>
-          <div className="font-plex-arabic text-xs font-medium tracking-[0.02em] text-gold-600">
-            استعادة كلمة المرور ·{" "}
-            <span dir="ltr" className="font-archivo">
-              3
-            </span>
-          </div>
-          <h1 className="mt-3 font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+          <h1 className="font-amiri text-[36px] font-bold leading-[1.1] text-[hsl(228_40%_14%)] lg:text-[46px]">
             كلمة مرور جديدة
           </h1>
-          <p className="mt-2 mb-7 font-plex-arabic text-sm leading-[1.7] text-[hsl(228_18%_38%)]">
+          <p className="mt-3 mb-8 font-plex-arabic text-[15px] leading-[1.8] text-[hsl(228_18%_32%)]">
             تم تأكيد الرقم{" "}
             <span dir="ltr" className="font-archivo font-medium text-[hsl(228_40%_14%)]">
               {countryCode} {phone}
             </span>{" "}
             عبر واتساب.
           </p>
-          <form onSubmit={handleSetPassword} className="flex flex-col gap-5">
-            <div className="space-y-2">
+          <form onSubmit={handleSetPassword} className="flex flex-col gap-6">
+            <div className="space-y-2.5">
               <label htmlFor="newPassword" className={authLabelClass}>
                 كلمة المرور الجديدة
               </label>
@@ -399,7 +393,7 @@ function ForgotPasswordContent() {
                 autoComplete="new-password"
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <label htmlFor="confirmPassword" className={authLabelClass}>
                 تأكيد كلمة المرور
               </label>
@@ -429,12 +423,9 @@ function ForgotPasswordContent() {
         </>
       )}
 
-      <p className="mt-6 font-plex-arabic text-sm text-[hsl(228_18%_38%)]">
+      <p className="mt-7 font-plex-arabic text-[14px] text-[hsl(228_18%_40%)]">
         تذكرت كلمة المرور؟{" "}
-        <Link
-          href="/login"
-          className="font-medium text-gold-600 underline decoration-gold-500 underline-offset-2 hover:no-underline"
-        >
+        <Link href="/login" className={cn(authInlineActionClass, "inline-block py-2 text-[15px]")}>
           تسجيل الدخول
         </Link>
       </p>

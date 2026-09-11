@@ -1,23 +1,24 @@
 /**
- * Motion primitives for the Auth surface visual refresh (backlog 4.5), copied verbatim from
- * docs/redesign/design-canvas/Auth Surface v2.dc.html's <style> block:
- *   - nkDrift: 26s ambient scale on the cotton photography, alternating.
- *   - nkRise: 700ms staggered fade-up on first paint only (lockup, then form rows).
- *   - nkDraw: 900ms one-time stroke-draw on the Ankh mark at OTP verification.
+ * Motion primitives for the Auth surface (backlog 4.5 + the 2026-09-11 art-direction refinement):
+ *   - nkDrift:    26s ambient scale on the cotton photography, alternating (from the canvas).
+ *   - nkRise:     700ms staggered fade-up on first paint (slogan lockup).
+ *   - nkRiseSoft: 560ms shorter rise for the form column — replays on login/register/forgot
+ *                 navigation via app/(auth)/auth-form-reveal.tsx (route-keyed remount).
+ *   - nkEnter:    900ms — the folded-stack photograph slides a few px into the composition, the
+ *                 "second photographic layer entering the story" beat from the brief.
+ *   - nkDraw:     900ms one-time stroke-draw on the Ankh mark at OTP verification.
  *
- * The canvas itself shipped these with NO `prefers-reduced-motion` guard — flagged as a real gap
- * in docs/redesign/04-decisions.md 2026-09-11 ("Reduced motion") and called out there as a
- * mandatory fix, not optional polish. Every rule below is guarded:
- *   - Default (no media query matched, or `reduce` preferred): static end-state, no animation.
- *   - `(prefers-reduced-motion: no-preference)`: the actual animation runs.
+ * Every rule is guarded by `prefers-reduced-motion` (mandatory per docs/redesign/04-decisions.md
+ * 2026-09-11 "Reduced motion"): with `reduce` — or before the query resolves — every element
+ * renders in its static end-state; only `no-preference` runs the animations.
  */
 
 @keyframes nkDrift {
   0% {
-    transform: scale(1.06) translate3d(0, 0, 0);
+    transform: scale(1.04) translate3d(0, 0, 0);
   }
   100% {
-    transform: scale(1.14) translate3d(-1.6%, -1.2%, 0);
+    transform: scale(1.1) translate3d(-1.2%, -0.8%, 0);
   }
 }
 
@@ -32,6 +33,28 @@
   }
 }
 
+@keyframes nkRiseSoft {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nkEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(-18px, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 @keyframes nkDraw {
   from {
     stroke-dashoffset: 150;
@@ -43,7 +66,7 @@
 
 /* Static fallbacks — visible/complete immediately, matches reduced-motion end-state. */
 .nk-drift {
-  transform: scale(1.1);
+  transform: scale(1.07);
 }
 .nk-draw {
   stroke-dashoffset: 0;
@@ -55,6 +78,13 @@
   }
   .nk-rise {
     animation: nkRise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .nk-rise-soft {
+    animation: nkRiseSoft 0.56s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .nk-enter {
+    animation: nkEnter 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: 180ms;
   }
   .nk-draw {
     stroke-dashoffset: 150;

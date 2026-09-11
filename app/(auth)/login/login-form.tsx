@@ -6,19 +6,21 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from "@/lib/country-codes";
 import { cn } from "@/lib/utils";
 import { useAuthVisual } from "../auth-visual-context";
 import {
   authLabelClass,
+  authHelpClass,
   authFieldBoxClass,
   authBareInputClass,
   authBareSelectClass,
   authBareSelectStyle,
-  authOutlineActionClass,
+  authInlineActionClass,
   AuthDivider,
+  AuthFieldDivider,
   AuthSubmitButton,
   PasswordFieldBox,
 } from "@/components/auth/auth-ui";
@@ -133,12 +135,12 @@ function LoginContent() {
   return (
     <div className="w-full">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-[22px]">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-6">
           <FormField
             control={form.control}
             name="phone"
             render={({ field }) => (
-              <FormItem className="space-y-2">
+              <FormItem className="space-y-2.5">
                 <FormLabel className={authLabelClass}>رقم الهاتف</FormLabel>
                 <div className={authFieldBoxClass()}>
                   <FormControl>
@@ -151,6 +153,7 @@ function LoginContent() {
                       {...field}
                     />
                   </FormControl>
+                  <AuthFieldDivider />
                   <select
                     {...form.register("countryCode")}
                     defaultValue={DEFAULT_COUNTRY_CODE}
@@ -166,6 +169,11 @@ function LoginContent() {
                     ))}
                   </select>
                 </div>
+                {/* Product information, not decoration: the account model is WhatsApp-verified
+                    numbers (art-direction brief §9/§19) — the same sentence on all three screens. */}
+                <FormDescription className={authHelpClass}>
+                  سيُرسل رمز التحقق عبر واتساب إلى هذا الرقم.
+                </FormDescription>
               </FormItem>
             )}
           />
@@ -174,12 +182,12 @@ function LoginContent() {
             control={form.control}
             name="password"
             render={({ field }) => (
-              <FormItem className="space-y-2">
+              <FormItem className="space-y-2.5">
                 <div className="flex items-baseline justify-between">
                   <FormLabel className={authLabelClass}>كلمة المرور</FormLabel>
                   <Link
                     href="/forgot-password"
-                    className="font-plex-arabic text-xs text-gold-600 hover:underline"
+                    className="font-plex-arabic text-[13px] text-gold-600 underline-offset-4 hover:underline"
                   >
                     نسيت كلمة المرور؟
                   </Link>
@@ -195,7 +203,7 @@ function LoginContent() {
             )}
           />
 
-          <AuthDivider className="my-0.5" />
+          <AuthDivider className="my-1" />
 
           <AuthSubmitButton disabled={loading}>
             {loading ? "جاري تسجيل الدخول…" : "تسجيل الدخول"}
@@ -203,17 +211,11 @@ function LoginContent() {
         </form>
       </Form>
 
-      {/* Canvas: a full-width outline secondary action on mobile (screen 2g), a one-line text
-          link on desktop (2a). Only one is ever rendered per breakpoint. */}
-      <Link href="/register" className={cn(authOutlineActionClass, "mt-4 lg:hidden")}>
-        إنشاء حساب جديد
-      </Link>
-      <p className="mt-5 hidden items-center gap-2 font-plex-arabic text-[13px] text-[hsl(228_18%_38%)] lg:flex">
+      {/* One pattern at every breakpoint (brief §12): quiet lead-in, the action is the emphasis.
+          The link carries its own vertical padding so it is a comfortable thumb target on phones. */}
+      <p className="mt-7 font-plex-arabic text-[14px] text-[hsl(228_18%_40%)]">
         ليس لديك حساب؟{" "}
-        <Link
-          href="/register"
-          className="font-medium text-gold-600 underline decoration-gold-500 underline-offset-2 hover:no-underline"
-        >
+        <Link href="/register" className={cn(authInlineActionClass, "inline-block py-2 text-[15px]")}>
           إنشاء حساب
         </Link>
       </p>

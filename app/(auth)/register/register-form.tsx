@@ -12,13 +12,17 @@ import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from "@/lib/country-codes";
 import { Ankh } from "@/components/brand/ankh";
 import { OtpBoxes, classifyOtpVerifyError, type OtpBoxState } from "@/components/auth/otp-boxes";
 import { useAuthVisual } from "../auth-visual-context";
+import { cn } from "@/lib/utils";
 import {
   authLabelClass,
+  authHelpClass,
   authFieldBoxClass,
   authBareInputClass,
   authBareSelectClass,
   authBareSelectStyle,
+  authInlineActionClass,
   AuthDivider,
+  AuthFieldDivider,
   AuthSubmitButton,
   PasswordFieldBox,
 } from "@/components/auth/auth-ui";
@@ -359,10 +363,10 @@ function RegisterContent() {
 
       {step === "phone" && (
         <>
-          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+          <h1 className="font-amiri text-[36px] font-bold leading-[1.1] text-[hsl(228_40%_14%)] lg:text-[46px]">
             إنشاء حساب جديد
           </h1>
-          <p className="mt-2 mb-7 font-plex-arabic text-sm leading-[1.7] text-[hsl(228_18%_38%)]">
+          <p className="mt-3 mb-8 font-plex-arabic text-[15px] leading-[1.8] text-[hsl(228_18%_32%)]">
             رقم هاتفك أولًا — يؤكد عبر واتساب ثم يكمل الباقي.
           </p>
           <Form {...form}>
@@ -371,13 +375,13 @@ function RegisterContent() {
                 e.preventDefault();
                 void handleContinue();
               }}
-              className="flex flex-col gap-[18px]"
+              className="flex flex-col gap-6"
             >
               <FormField
                 control={form.control}
                 name="phone"
                 render={({ field }) => (
-                  <FormItem className="space-y-2">
+                  <FormItem className="space-y-2.5">
                     <FormLabel className={authLabelClass}>رقم الهاتف</FormLabel>
                     <div className={authFieldBoxClass()}>
                       <FormControl>
@@ -390,6 +394,7 @@ function RegisterContent() {
                           {...field}
                         />
                       </FormControl>
+                      <AuthFieldDivider />
                       <select
                         {...form.register("countryCode")}
                         defaultValue={DEFAULT_COUNTRY_CODE}
@@ -405,18 +410,16 @@ function RegisterContent() {
                         ))}
                       </select>
                     </div>
-                    {/* Exact original copy ("سيصلك رمز التحقق عبر واتساب على هذا الرقم.") kept
-                        as a leading substring — tests/e2e/auth-register.spec.ts asserts on it. */}
-                    <FormDescription className="font-plex-arabic text-xs text-[hsl(228_10%_52%)]">
-                      سيصلك رمز التحقق عبر واتساب على هذا الرقم.
+                    {/* The one WhatsApp sentence used on all three screens (art-direction brief
+                        §9) — it replaced both the older helper line and the canvas's teal notice
+                        box that repeated it. tests/e2e/auth-register.spec.ts asserts on the
+                        "رمز التحقق عبر واتساب" substring. */}
+                    <FormDescription className={authHelpClass}>
+                      سيُرسل رمز التحقق عبر واتساب إلى هذا الرقم.
                     </FormDescription>
                   </FormItem>
                 )}
               />
-
-              <div className="border border-[hsl(183_30%_62%)] bg-[hsl(183_40%_97%)] px-[15px] py-[13px] font-plex-arabic text-[12.5px] leading-[1.7] text-[hsl(183_42%_22%)]">
-                تأكد أن رقمك مرتبط بحساب واتساب — سيصلك رمز التحقق هناك.
-              </div>
 
               <AuthDivider />
 
@@ -447,10 +450,10 @@ function RegisterContent() {
 
       {step === "otp" && (
         <>
-          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+          <h1 className="font-amiri text-[36px] font-bold leading-[1.1] text-[hsl(228_40%_14%)] lg:text-[46px]">
             تأكيد رقم هاتفك
           </h1>
-          <div className="mt-2 mb-6 flex flex-wrap items-center gap-2 font-plex-arabic text-sm text-[hsl(228_18%_38%)]">
+          <div className="mt-3 mb-7 flex flex-wrap items-center gap-2 font-plex-arabic text-[15px] leading-[1.8] text-[hsl(228_18%_32%)]">
             {/* Exact original copy — tests/e2e/auth-register.spec.ts checks this precise
                 string (kept in its own element so the sibling "تغيير" button doesn't get
                 folded into the same exact-text match). */}
@@ -521,7 +524,7 @@ function RegisterContent() {
       {step === "profile" && (
         <>
           <div className="flex items-center gap-3">
-            <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+            <h1 className="font-amiri text-[36px] font-bold leading-[1.1] text-[hsl(228_40%_14%)] lg:text-[46px]">
               بياناتك
             </h1>
             <span className="flex items-center gap-1.5 font-plex-arabic text-xs text-[hsl(150_36%_28%)]">
@@ -529,7 +532,7 @@ function RegisterContent() {
               الرقم مؤكد
             </span>
           </div>
-          <p className="mt-1.5 mb-6 font-plex-arabic text-[13.5px] leading-[1.7] text-[hsl(228_18%_38%)]">
+          <p className="mt-2 mb-7 font-plex-arabic text-[15px] leading-[1.8] text-[hsl(228_18%_32%)]">
             خطوة أخيرة — ثم نعيدك إلى إتمام الشراء.
           </p>
           <Form {...form}>
@@ -651,12 +654,9 @@ function RegisterContent() {
         </>
       )}
 
-      <p className="mt-6 flex items-center gap-2 font-plex-arabic text-[11.5px] text-[hsl(228_18%_38%)]">
+      <p className="mt-7 font-plex-arabic text-[14px] text-[hsl(228_18%_40%)]">
         لديك حساب؟{" "}
-        <Link
-          href="/login"
-          className="font-medium text-gold-600 underline decoration-gold-500 underline-offset-2 hover:no-underline"
-        >
+        <Link href="/login" className={cn(authInlineActionClass, "inline-block py-2 text-[15px]")}>
           تسجيل الدخول
         </Link>
       </p>
