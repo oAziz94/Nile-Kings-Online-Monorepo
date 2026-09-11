@@ -22,7 +22,9 @@ interface AuthVisualState {
 const AuthVisualContext = createContext<AuthVisualState | null>(null);
 
 export function AuthVisualProvider({ children }: { children: React.ReactNode }) {
-  const [variant, setVariant] = useState<AuthHeroVariant>("weave");
+  // Per the user's 2026-09-11 follow-up the bed-linen photograph (drape) is the hero on
+  // login/register/OTP; the macro weave moves to forgot-password's new-password step.
+  const [variant, setVariant] = useState<AuthHeroVariant>("drape");
   const value = useMemo(() => ({ variant, setVariant }), [variant]);
   return <AuthVisualContext.Provider value={value}>{children}</AuthVisualContext.Provider>;
 }

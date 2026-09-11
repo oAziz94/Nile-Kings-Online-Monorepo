@@ -77,7 +77,7 @@ function LoginContent() {
   // otherwise leak in from forgot-password's "drape" step — assert this screen's own default on
   // mount rather than trusting the context's initial value.
   useEffect(() => {
-    setVariant("weave");
+    setVariant("drape");
   }, [setVariant]);
 
   const form = useForm<LoginFormValues>({

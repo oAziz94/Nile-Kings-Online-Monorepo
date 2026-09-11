@@ -486,7 +486,6 @@ test("desktop viewport shows the shared two-pane brand layout alongside a fully 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/register");
   await expect(page.locator("p:visible", { hasText: "قطن مصري" })).toBeVisible();
-  await expect(page.getByText("أكثر من 27 محافظة", { exact: false })).toBeVisible();
   await expect(page.getByLabel("رقم الهاتف")).toBeVisible();
 });
 

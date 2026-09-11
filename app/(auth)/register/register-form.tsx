@@ -138,7 +138,7 @@ function RegisterContent() {
   // navigations, so assert this screen's own hero variant on mount rather than trusting
   // whatever forgot-password may have last set it to.
   useEffect(() => {
-    setVariant("weave");
+    setVariant("drape");
   }, [setVariant]);
 
   const form = useForm<RegisterFormValues>({

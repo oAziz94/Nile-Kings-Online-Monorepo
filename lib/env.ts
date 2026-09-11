@@ -33,7 +33,12 @@ const envSchema = z.object({
   // docs/redesign/04-decisions.md 2026-09-10 "WhatsApp OTP via WaPilot".
   WAPILOT_INSTANCE_ID: z.string().min(1).optional(),
   WAPILOT_API_TOKEN: z.string().min(1).optional(),
-  WAPILOT_API_URL: z.string().url().optional(), // default: https://api.wapilot.net/api/v2
+  // An empty value (e.g. `WAPILOT_API_URL=""` in an env file) means "use the default", not
+  // "invalid URL" — otherwise the whole app 500s on every route at startup.
+  WAPILOT_API_URL: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().url().optional()
+  ), // default: https://api.wapilot.net/api/v2
 });
 
 export type Env = z.infer<typeof envSchema>;

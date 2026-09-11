@@ -29,11 +29,6 @@ export default async function LoginPage() {
         </p>
       </div>
       <LoginForm />
-      {/* Mobile only — the desktop equivalent trust line lives in the shared layout
-          (app/(auth)/layout.tsx), visible on every (auth) screen there, not just login. */}
-      <p className="mt-auto pt-10 font-plex-arabic text-[11.5px] text-[hsl(228_10%_55%)] lg:hidden">
-        توصيل إلى <span dir="ltr" className="font-archivo font-medium">27</span> محافظة
-      </p>
     </div>
   );
 }

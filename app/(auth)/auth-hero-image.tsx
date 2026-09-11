@@ -6,9 +6,9 @@ import { useAuthVisual, type AuthHeroVariant } from "./auth-visual-context";
 // Web-sized JPEG derivatives of the approved photography (source of truth stays at
 // docs/redesign/design-canvas/art/*.jpeg, ~2.5–3 MB each — far too heavy to hand next/image as a
 // source on every first paint). Roles per the 2026-09-11 art-direction brief:
-//   weave — MATERIAL (hero): the macro cotton, tactile and close.
-//   drape — LIVING: bed linen, used only where the story moves to the home (forgot-password's
-//           new-password step), never forced into login.
+//   drape — the hero on login/register/OTP (user's 2026-09-11 follow-up: "use cotton-drape
+//           instead of cotton-weave").
+//   weave — the macro cotton, shown on forgot-password's new-password step.
 const SOURCES = {
   weave: {
     src: "/brand/cotton-weave.jpg",

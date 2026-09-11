@@ -85,17 +85,17 @@ const layoutVars = {
 const SUPPORT_COPY = "قطن مصري أصيل، من أول لمسة تحس الفرق.";
 
 // The crop, not the image (brief §4): each block draws the photograph larger than itself and
-// looks at one region of it. Desktop frames the macro cotton's calmer left third plus a single
-// diagonal crest at ~1.5× — closer and more tactile, and the folds no longer stack up as four
-// vertical bars competing with the slogan. The bed linen (drape) is framed on its creases, not
-// the bed's edge. Mobile bands are wide and short, so they look further in and lower.
+// looks at one region of it. The bed linen (drape, the hero) is framed on the sheet's creases
+// and the fold rolling over the mattress edge, not on the bed frame; the macro weave (forgot-
+// password's last step) on its calmer left third plus one diagonal crest at ~1.5×. Mobile
+// bands are wide and short, so they look further in and lower.
 const HERO_CROPS_DESKTOP = {
+  drape: { inset: "-8% -30% -8% -6%", position: "58% 50%" },
   weave: { inset: "-24% -46% -30% -6%", position: "0% 50%" },
-  drape: { inset: "-12% -18% -12% -12%", position: "60% 55%" },
 } as const;
 const HERO_CROPS_MOBILE = {
+  drape: { inset: "-6% -6% -6% -6%", position: "55% 55%" },
   weave: { inset: "-20% -10% -20% -30%", position: "0% 45%" },
-  drape: { inset: "-10% -10% -10% -10%", position: "55% 60%" },
 } as const;
 
 function Slogan({
@@ -194,15 +194,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           >
             <Image src="/brand/cotton-stack.jpg" alt="" aria-hidden="true" fill sizes="320px" className="object-cover" />
           </div>
-          {/* Trust line on the material — present on every (auth) desktop screen; regression
-              coverage in tests/e2e/auth-register.spec.ts expects it site-wide on desktop. */}
-          <p
-            aria-hidden="true"
-            className="pointer-events-none absolute bottom-8 left-10 z-[3] hidden font-plex-arabic text-[12px] text-[hsl(228_26%_22%)]/85 lg:block"
-          >
-            أكثر من <span dir="ltr" className="font-archivo font-medium">27</span> محافظة مغطاة
-            بشبكة شركاء التوصيل
-          </p>
 
           {/* ============================= Form column — single instance =============================
               Mobile: the only in-flow child (navbar/band/stack are all absolute), so its top

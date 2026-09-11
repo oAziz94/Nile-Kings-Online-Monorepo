@@ -60,10 +60,10 @@ function ForgotPasswordContent() {
   const router = useRouter();
   const { setVariant } = useAuthVisual();
 
-  // The canvas uses the "draped linen" photography crop specifically for this step (screen 2f) —
-  // every other (auth) screen/step uses the cotton-weave hero. See auth-visual-context.tsx.
+  // The photograph changes on the last step only: every other (auth) screen/step shows the
+  // bed-linen hero, this one shows the macro weave. See auth-visual-context.tsx.
   useEffect(() => {
-    setVariant(step === "password" ? "drape" : "weave");
+    setVariant(step === "password" ? "weave" : "drape");
   }, [step, setVariant]);
 
   useEffect(() => {

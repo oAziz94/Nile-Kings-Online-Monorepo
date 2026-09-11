@@ -23,9 +23,9 @@ export function Toaster() {
                 info banners carry it; errors stay mark-less so the carnelian hue does the work. */}
             {variant !== "destructive" && (
               <Ankh
-                size={16}
-                strokeWidth={11}
-                className={variant === "success" ? "mt-[3px] shrink-0 text-[hsl(150_36%_30%)]" : "mt-[3px] shrink-0 text-gold-500"}
+                size={22}
+                strokeWidth={9}
+                className={variant === "success" ? "mt-px shrink-0 text-[hsl(150_36%_30%)]" : "mt-px shrink-0 text-gold-500"}
               />
             )}
             <div className="grid min-w-0 flex-1 gap-0.5">
