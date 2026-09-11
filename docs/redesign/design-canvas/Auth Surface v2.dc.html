@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/modernist-392e6069-7172-4f08-94da-bc797075a579/styles.css">
+<script src="_ds/modernist-392e6069-7172-4f08-94da-bc797075a579/_ds_bundle.js"></script>
+<script src="./image-slot.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&amp;family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&amp;family=Archivo:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#e4e0d7;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:hsl(38 52% 32%);text-decoration:none}
+a:hover{color:hsl(228 40% 14%)}
+@keyframes nkDrift{0%{transform:scale(1.06) translate3d(0,0,0)}100%{transform:scale(1.14) translate3d(-1.6%,-1.2%,0)}}
+@keyframes nkRise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes nkDraw{from{stroke-dashoffset:150}to{stroke-dashoffset:0}}
+</style>
+</helmet>
+
+<div dir="ltr" style="padding:52px 60px 34px;max-width:1620px;font-family:Archivo,system-ui,sans-serif;color:hsl(228 30% 18%)">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:40px;border-bottom:2px solid hsl(228 40% 14%);padding-bottom:16px">
+<div>
+<div style="font:600 11px Archivo;letter-spacing:.2em;color:hsl(38 52% 32%);text-transform:uppercase">Turn 2 · art direction pass</div>
+<h1 style="font:700 40px/1.05 Archivo;letter-spacing:-.02em;margin:10px 0 0;color:hsl(228 40% 14%)">Material, not panels</h1>
+<div style="font:400 14.5px/1.55 Archivo;color:hsl(228 14% 42%);margin-top:8px;max-width:660px">Same flows, same field logic, same states as v1. What changed is the composition: cotton became the architecture, the slogan crosses the seam, and the Ankh became a drawn mark.</div>
+</div>
+<div style="flex:none;text-align:right">
+<div style="font:600 10px Archivo;letter-spacing:.18em;color:hsl(228 14% 45%);text-transform:uppercase">v1 remains at</div>
+<div style="font:400 13px Archivo;color:hsl(228 20% 28%);margin-top:4px">Auth Surface.dc.html</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:2px solid hsl(228 40% 14%)">
+<div style="padding:20px 26px 22px 0;border-right:1px solid hsl(40 12% 76%)">
+<div style="font:600 10px Archivo;letter-spacing:.16em;color:hsl(6 58% 42%);text-transform:uppercase">Why v1 read as AI</div>
+<ul style="font:400 13px/1.6 Archivo;color:hsl(228 20% 28%);margin:9px 0 0;padding-inline-start:15px">
+<li>One rectangle inside another, repeated four times. Nothing ever crossed a boundary.</li>
+<li>Form optically centred in its column — the safest possible placement.</li>
+<li>Luxury asserted by <i>spacing</i>. No material, no texture, no photography: nothing to feel.</li>
+<li>The slogan sat obediently inside its padding at a polite 34px.</li>
+<li>The Ankh was a Unicode-grade glyph, not a mark with a construction.</li>
+</ul>
+</div>
+<div style="padding:20px 26px 22px;border-right:1px solid hsl(40 12% 76%)">
+<div style="font:600 10px Archivo;letter-spacing:.16em;color:hsl(150 36% 30%);text-transform:uppercase">Kept, untouched</div>
+<ul style="font:400 13px/1.6 Archivo;color:hsl(228 20% 28%);margin:9px 0 0;padding-inline-start:15px">
+<li>Every flow and state: login, register (phone → WhatsApp → profile), recovery, all errors, cooldown, lock.</li>
+<li>Radius 0, hairline fields, 2px rules, flush-start labels.</li>
+<li>Country code leading the number in one control group; Western numerals in Archivo.</li>
+<li>Palette proportions — gold still an accent, never a fill.</li>
+</ul>
+</div>
+<div style="padding:20px 26px 22px;border-right:1px solid hsl(40 12% 76%)">
+<div style="font:600 10px Archivo;letter-spacing:.16em;color:hsl(38 52% 32%);text-transform:uppercase">The composition</div>
+<ul style="font:400 13px/1.6 Archivo;color:hsl(228 20% 28%);margin:9px 0 0;padding-inline-start:15px">
+<li>Cotton occupies 47% of the frame and is cropped by three of its four edges — it is not a card.</li>
+<li>A second crop (folded stack) straddles the material/ivory seam and escapes the bottom edge.</li>
+<li>The slogan crosses that seam: المصري on ivory, the Ankh <i>on</i> the line, للمصري on the cloth.</li>
+<li>Form sits high, not centred; measure tightened to 404px so whitespace frames rather than pads.</li>
+<li>Ankh watermark at 380px, cropped by two edges, 9% ink.</li>
+</ul>
+</div>
+<div style="padding:20px 0 22px 26px">
+<div style="font:600 10px Archivo;letter-spacing:.16em;color:hsl(228 14% 45%);text-transform:uppercase">Motion · three moves only</div>
+<ul style="font:400 13px/1.6 Archivo;color:hsl(228 20% 28%);margin:9px 0 0;padding-inline-start:15px">
+<li><b>Drift</b> — 26s ambient scale on the cotton, alternating. Imperceptible per second, alive over a minute.</li>
+<li><b>Rise</b> — 700ms staggered fade-up on the lockup then the form rows, on first paint only.</li>
+<li><b>Draw</b> — the Ankh strokes itself once at verification, 900ms. That is the only celebratory motion in the product.</li>
+<li>No parallax, no glow, no particles, no page-transition theatre.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div dir="ltr" style="padding:0 60px 40px;font-family:Archivo,sans-serif">
+<div style="display:flex;align-items:baseline;gap:14px;padding:26px 0 16px">
+<span style="font:600 11px Archivo;letter-spacing:.18em;color:hsl(38 52% 32%)">A</span>
+<span style="font:700 21px Archivo;letter-spacing:-.01em;color:hsl(228 40% 14%)">The mark — a drawn Ankh, not a glyph</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;border:1px solid hsl(40 12% 76%);border-top:2px solid hsl(228 40% 14%);background:hsl(42 45% 97%)">
+<div style="flex:0 0 300px;padding:26px 28px;border-right:1px solid hsl(40 12% 76%);position:relative">
+<div style="font:600 10px Archivo;letter-spacing:.16em;color:hsl(38 52% 32%);text-transform:uppercase">Construction</div>
+<div style="position:relative;width:150px;height:290px;margin:20px 0 0">
+<svg viewBox="0 0 48 96" style="position:absolute;inset:0;width:150px;height:290px;overflow:visible" fill="none">
+<g stroke="hsl(228 40% 14%)" stroke-opacity=".14" stroke-width=".5">
+<path d="M24 0V96"></path><path d="M0 50h48"></path><path d="M13.5 0v96"></path><path d="M34.5 0v96"></path><path d="M0 28h48"></path><path d="M0 44h48"></path>
+<circle cx="24" cy="28" r="10.5"></circle>
+</g>
+<g stroke="hsl(228 40% 14%)" stroke-width="5" stroke-linecap="butt">
+<path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path>
+<path d="M6 50h37"></path>
+<path d="M24 50v43"></path>
+</g>
+</svg>
+</div>
+<div style="font:400 12px/1.65 Archivo;color:hsl(228 20% 28%);margin-top:18px">A true semicircle on a 21-unit span, cut flat — then <b>detached</b> from the cross by a 6-unit air gap. The crossbar is deliberately off-centre: 18 units one side, 19 the other. Butt-cut terminals throughout. It is not an artifact; it is a monogram that happens to be an Ankh.</div>
+</div>
+<div style="flex:1 1 300px;padding:26px 28px;border-right:1px solid hsl(40 12% 76%)">
+<div style="font:600 10px Archivo;letter-spacing:.16em;color:hsl(38 52% 32%);text-transform:uppercase">Two weights</div>
+<div style="display:flex;align-items:flex-end;gap:34px;margin-top:24px">
+<div style="text-align:center"><svg viewBox="0 0 48 96" style="width:56px;height:112px" fill="none"><g stroke="hsl(228 40% 14%)" stroke-width="5"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg><div style="font:400 10.5px Archivo;color:hsl(228 14% 45%);margin-top:10px">Display · 5</div></div>
+<div style="text-align:center"><svg viewBox="0 0 48 96" style="width:26px;height:52px" fill="none"><g stroke="hsl(228 40% 14%)" stroke-width="8"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg><div style="font:400 10.5px Archivo;color:hsl(228 14% 45%);margin-top:10px">UI · 8</div></div>
+<div style="text-align:center"><svg viewBox="0 0 48 96" style="width:13px;height:26px" fill="none"><g stroke="hsl(228 40% 14%)" stroke-width="11"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg><div style="font:400 10.5px Archivo;color:hsl(228 14% 45%);margin-top:10px">13px · 11</div></div>
+</div>
+<div style="font:400 12px/1.65 Archivo;color:hsl(228 20% 28%);margin-top:22px;border-top:1px solid hsl(40 12% 82%);padding-top:14px">Weight compensates as it shrinks so the air gap survives. Below 13px the gap closes and the mark stops working — use the wordmark instead.</div>
+</div>
+<div style="flex:1 1 380px;padding:26px 28px">
+<div style="font:600 10px Archivo;letter-spacing:.16em;color:hsl(38 52% 32%);text-transform:uppercase">Five sanctioned uses</div>
+<div style="display:flex;flex-wrap:wrap;gap:28px;margin-top:22px;align-items:center">
+<div dir="rtl" style="text-align:center">
+<div style="display:flex;align-items:center;gap:14px"><span style="font:700 26px Amiri;color:hsl(228 40% 14%)">المصري</span><svg viewBox="0 0 48 96" style="width:15px;height:30px" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="8"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg><span style="font:700 26px Amiri;color:hsl(228 40% 14%)">للمصري</span></div>
+<div dir="ltr" style="font:400 10.5px Archivo;color:hsl(228 14% 45%);margin-top:10px">1 · separator in the slogan</div>
+</div>
+<div style="text-align:center">
+<div style="width:56px;height:56px;background:hsl(228 40% 14%);display:grid;place-items:center"><svg viewBox="0 0 48 96" style="width:17px;height:34px" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="8"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg></div>
+<div style="font:400 10.5px Archivo;color:hsl(228 14% 45%);margin-top:10px">2 · favicon tile</div>
+</div>
+<div style="text-align:center">
+<div style="display:flex;align-items:center;gap:10px;width:200px"><span style="flex:1;height:1px;background:hsl(228 40% 14%);opacity:.28"></span><svg viewBox="0 0 48 96" style="width:11px;height:22px;flex:none" fill="none"><g stroke="hsl(228 40% 14%)" stroke-width="11"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg><span style="flex:1;height:1px;background:hsl(228 40% 14%);opacity:.28"></span></div>
+<div style="font:400 10.5px Archivo;color:hsl(228 14% 45%);margin-top:10px">3 · divider interrupt</div>
+</div>
+<div style="text-align:center">
+<div style="width:76px;height:56px;background:hsl(42 20% 90%);position:relative;overflow:hidden"><svg viewBox="0 0 48 96" style="position:absolute;left:-8px;bottom:-14px;width:44px;height:88px;opacity:.16" fill="none"><g stroke="hsl(228 40% 14%)" stroke-width="6"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg></div>
+<div style="font:400 10.5px Archivo;color:hsl(228 14% 45%);margin-top:10px">4 · cropped watermark</div>
+</div>
+<div style="text-align:center">
+<svg viewBox="0 0 48 96" style="width:18px;height:36px" fill="none"><g stroke="hsl(150 36% 30%)" stroke-width="8" stroke-dasharray="150" style="animation:nkDraw .9s ease-out 1 both"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<div style="font:400 10.5px Archivo;color:hsl(228 14% 45%);margin-top:10px">5 · draws at verification</div>
+</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;align-items:baseline;gap:14px;padding:40px 0 16px;border-top:2px solid hsl(228 40% 14%);margin-top:32px">
+<span style="font:600 11px Archivo;letter-spacing:.18em;color:hsl(38 52% 32%)">B</span>
+<span style="font:700 21px Archivo;letter-spacing:-.01em;color:hsl(228 40% 14%)">Photography — one environment, three crops</span>
+<span style="font:400 12px Archivo;color:hsl(228 14% 45%);margin-inline-start:10px">Every image below is a live drop target. Drag your own product shots on — the composition doesn't move.</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:0;border:1px solid hsl(40 12% 76%);border-top:2px solid hsl(228 40% 14%)">
+<div style="flex:1 1 240px;border-right:1px solid hsl(40 12% 76%)">
+<div style="position:relative;height:260px"><image-slot id="nk-weave" shape="rect" src="art/cotton-weave.png" placeholder="Macro plain-weave — Egyptian cotton at 1:1, raking light"></image-slot></div>
+<div style="padding:14px 16px;border-top:1px solid hsl(40 12% 76%);font:400 11.5px/1.6 Archivo;color:hsl(228 20% 28%)"><b>Hero · the weave.</b> Fills the panel on every screen. Shoot at 1:1 with raking side light so the weave reads as structure, not pattern. Ivory on ivory — no styling props.</div>
+</div>
+<div style="flex:1 1 240px;border-right:1px solid hsl(40 12% 76%)">
+<div style="position:relative;height:260px"><image-slot id="nk-stack" shape="rect" src="art/cotton-stack.png" placeholder="Folded stack edge — creases, hem, stitch run"></image-slot></div>
+<div style="padding:14px 16px;border-top:1px solid hsl(40 12% 76%);font:400 11.5px/1.6 Archivo;color:hsl(228 20% 28%)"><b>Secondary · the fold.</b> The crop that straddles the seam and escapes the frame. Folded tees or folded sheets — the subject is the crease and the stitch, never a garment silhouette.</div>
+</div>
+<div style="flex:1 1 240px;border-right:1px solid hsl(40 12% 76%)">
+<div style="position:relative;height:260px"><image-slot id="nk-drape" shape="rect" src="art/cotton-drape.png" placeholder="Draped bed linen — folds, soft interior light"></image-slot></div>
+<div style="padding:14px 16px;border-top:1px solid hsl(40 12% 76%);font:400 11.5px/1.6 Archivo;color:hsl(228 20% 28%)"><b>Living with it.</b> Bed linen drape, for the recovery and success screens. Same light, same ivory — the tee world and the linen world must look shot the same morning.</div>
+</div>
+<div style="flex:1 1 280px;padding:22px 24px">
+<div style="font:600 10px Archivo;letter-spacing:.16em;color:hsl(38 52% 32%);text-transform:uppercase">Composition rules</div>
+<div style="font:400 12px/1.7 Archivo;color:hsl(228 20% 28%);margin-top:12px">The material is the hero, so it is never fully contained: <b>top edge is cut by the ivory band</b>, left and bottom edges run past the frame. The secondary crop overlaps both the hero and the ivory ground, and is itself cut by the bottom edge. Type crosses the seam once per screen. Nothing else breaks the grid — the form column obeys it absolutely.</div>
+<div style="font:400 11.5px/1.6 Archivo;color:hsl(228 14% 45%);margin-top:14px;border-top:1px solid hsl(40 12% 82%);padding-top:12px">Placeholders are procedurally generated cotton plates, not stock photography. They are here so the composition can be judged; replace them with the real shoot. Slots share ids across frames — one drop fills every screen (reload to propagate).</div>
+</div>
+</div>
+
+<div style="display:flex;align-items:baseline;gap:14px;padding:40px 0 16px;border-top:2px solid hsl(228 40% 14%);margin-top:32px">
+<span style="font:600 11px Archivo;letter-spacing:.18em;color:hsl(38 52% 32%)">C</span>
+<span style="font:700 21px Archivo;letter-spacing:-.01em;color:hsl(228 40% 14%)">Desktop — 1440 × 900</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:52px">
+
+<div id="2a" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:20px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 10px Archivo;letter-spacing:.1em;background:hsl(228 40% 14%);color:hsl(42 45% 97%);padding:4px 8px">2a</span><span style="font:400 11.5px Archivo;color:hsl(228 14% 45%)">Login · default</span></div>
+<div dir="rtl" data-screen-label="Login desktop v2 / default" style="width:1440px;height:900px;position:relative;overflow:hidden;background:hsl(42 45% 97%);border:1px solid hsl(40 12% 74%);box-shadow:0 2px 6px rgba(32,30,29,.16);font-family:'IBM Plex Sans Arabic',sans-serif">
+<div style="position:absolute;left:0;top:76px;width:720px;bottom:-64px;overflow:hidden"><div style="position:absolute;inset:0;animation:nkDrift 26s ease-in-out infinite alternate"><image-slot id="nk-weave" shape="rect" src="art/cotton-weave.png" placeholder="Macro Egyptian cotton weave"></image-slot></div></div>
+<div style="position:absolute;left:0;top:76px;width:720px;bottom:-64px;pointer-events:none;background:linear-gradient(200deg,rgba(255,252,244,.34),rgba(21,26,46,.06) 46%,rgba(21,26,46,.16))"></div>
+<svg viewBox="0 0 48 96" style="position:absolute;left:-46px;bottom:-56px;width:196px;height:392px;opacity:.09;pointer-events:none" fill="none"><g stroke="hsl(228 40% 14%)" stroke-width="5"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<div style="position:absolute;left:720px;top:76px;height:100px;width:1px;background:hsl(42 78% 55%);opacity:.5;pointer-events:none"></div>
+<div style="position:absolute;left:720px;top:300px;bottom:0;width:1px;background:hsl(42 78% 55%);opacity:.5;pointer-events:none"></div>
+<div style="position:absolute;left:600px;bottom:-72px;width:252px;height:340px;overflow:hidden;box-shadow:-14px -14px 34px rgba(32,30,29,.13)"><image-slot id="nk-stack" shape="rect" src="art/cotton-stack.png" placeholder="Folded cotton stack — crease and stitch"></image-slot></div>
+<div style="position:absolute;left:0;right:0;top:0;height:76px;background:hsl(42 45% 97%);border-bottom:1px solid hsl(40 12% 80%);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 34px;box-sizing:border-box;z-index:4">
+<a href="#" aria-label="القائمة" style="justify-self:start;display:grid;place-items:center;width:44px;height:44px;color:hsl(228 30% 22%)"><svg viewBox="0 0 21 21" style="width:22px;height:22px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 6.4h13.8"></path><path d="M3.6 10.5h13.8"></path><path d="M3.6 14.6h13.8"></path></svg></a>
+<img src="uploads/logo-lapis-a8ffcda4.png" alt="قطن ملوك النيل" style="height:58px;width:auto;display:block;justify-self:center">
+<div style="justify-self:end;display:flex;align-items:center;gap:20px;color:hsl(228 30% 22%)">
+<a href="#" aria-label="المفضلة" style="display:grid;place-items:center;width:40px;height:40px;color:inherit"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 17.6C6.2 14.5 3.2 12 3.2 8.8 3.2 6.6 4.9 5 7 5c1.4 0 2.7.8 3.5 2 .8-1.2 2.1-2 3.5-2 2.1 0 3.8 1.6 3.8 3.8 0 3.2-3 5.7-7.3 8.8z"></path></svg></a>
+<a href="#" aria-label="سلة التسوق" style="display:grid;place-items:center;width:40px;height:40px;color:inherit;position:relative"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 6.6h11.4l-.9 10.8H5.7z"></path><path d="M8 6.6V5.2a2.5 2.5 0 0 1 5 0v1.4"></path></svg><span dir="ltr" style="position:absolute;top:4px;left:4px;font:500 10px Archivo;color:hsl(228 40% 14%)">3</span></a>
+<a href="#" aria-label="حسابي" style="display:grid;place-items:center;width:40px;height:40px;color:hsl(228 40% 14%);border-bottom:1px solid hsl(42 78% 55%)"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="7.6" r="3.1"></circle><path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8"></path></svg></a>
+</div>
+</div>
+<div style="position:absolute;left:424px;top:188px;width:500px;display:flex;align-items:center;gap:20px;pointer-events:none;animation:nkRise .7s cubic-bezier(.2,.7,.2,1) both">
+<span style="font:700 46px Amiri;color:hsl(228 40% 14%)">المصري</span>
+<svg viewBox="0 0 48 96" style="width:19px;height:38px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="7"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<span style="font:700 46px Amiri;color:hsl(228 40% 14%)">للمصري</span>
+</div>
+<div style="position:absolute;left:424px;top:262px;width:340px;font:400 14.5px/1.9 'IBM Plex Sans Arabic';color:hsl(228 26% 24%);pointer-events:none;animation:nkRise .7s cubic-bezier(.2,.7,.2,1) .12s both">قطن مصري أصيل، جودة تحسها من أول لمسة.</div>
+<div style="position:absolute;left:40px;bottom:34px;font:400 11.5px 'IBM Plex Sans Arabic';color:hsl(228 26% 26%);pointer-events:none">توصيل إلى <span dir="ltr" style="font:500 11.5px Archivo">27</span> محافظة · دفع عند الاستلام</div>
+<div style="position:absolute;right:88px;top:152px;width:404px;animation:nkRise .7s cubic-bezier(.2,.7,.2,1) .18s both">
+<div style="font:500 12px 'IBM Plex Sans Arabic';letter-spacing:.02em;color:hsl(38 52% 32%)">حسابك</div>
+<h2 style="font:700 42px/1.15 Amiri;color:hsl(228 40% 14%);margin:12px 0 8px">تسجيل الدخول</h2>
+<p style="font:400 14px/1.7 'IBM Plex Sans Arabic';color:hsl(228 18% 38%);margin:0 0 34px">رقم هاتفك هو معرّف حسابك.</p>
+<div style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">رقم الهاتف</label>
+<div style="display:flex;height:52px;border:1px solid hsl(40 12% 70%);background:transparent">
+<div style="flex:1;display:flex;align-items:center;padding:0 14px"><span dir="ltr" style="font:400 16px Archivo;letter-spacing:.06em;color:hsl(228 40% 14%)">100 123 4567</span></div>
+<div style="display:flex;align-items:center;gap:8px;padding:0 14px;border-right:1px solid hsl(40 12% 70%)">
+<span dir="ltr" style="font:500 14px Archivo;color:hsl(228 40% 14%)">+20</span>
+<span style="font:400 13.5px 'IBM Plex Sans Arabic';color:hsl(228 20% 28%)">مصر</span>
+<svg width="10" height="6" viewBox="0 0 10 6" fill="none" style="display:block"><path d="M1 1l4 4 4-4" stroke="hsl(228 14% 45%)" stroke-width="1.2"></path></svg>
+</div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:baseline;justify-content:space-between">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">كلمة المرور</label>
+<a href="#" style="font:400 12px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%)">نسيت كلمة المرور؟</a>
+</div>
+<div style="display:flex;height:52px;border:1px solid hsl(40 12% 70%);background:transparent;align-items:center;padding:0 14px;justify-content:space-between">
+<span dir="ltr" style="font:400 18px Archivo;letter-spacing:.3em;color:hsl(228 40% 14%)">••••••••</span>
+<button style="font:500 12px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%);background:none;border:0;cursor:pointer;padding:0">إظهار</button>
+</div>
+</div>
+<div style="height:1px;background:hsl(42 78% 55%);opacity:.55;margin:2px 0"></div>
+<button style="height:56px;background:hsl(228 40% 14%);color:hsl(42 45% 97%);border:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 15px 'IBM Plex Sans Arabic';cursor:pointer" style-hover="background:hsl(228 30% 26%)">تسجيل الدخول
+<svg viewBox="0 0 48 96" style="width:11px;height:22px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg></button>
+<div style="display:flex;align-items:center;gap:8px">
+<span style="font:400 13px 'IBM Plex Sans Arabic';color:hsl(228 18% 38%)">ليس لديك حساب؟</span>
+<a href="#" style="font:500 13px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%);border-bottom:1px solid hsl(42 78% 55%);padding-bottom:1px">إنشاء حساب</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="2b" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:20px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 10px Archivo;letter-spacing:.1em;background:hsl(228 40% 14%);color:hsl(42 45% 97%);padding:4px 8px">2b</span><span style="font:400 11.5px Archivo;color:hsl(228 14% 45%)">Login · wrong password, invalid phone</span></div>
+<div dir="rtl" data-screen-label="Login desktop v2 / error" style="width:1440px;height:900px;position:relative;overflow:hidden;background:hsl(42 45% 97%);border:1px solid hsl(40 12% 74%);box-shadow:0 2px 6px rgba(32,30,29,.16);font-family:'IBM Plex Sans Arabic',sans-serif">
+<div style="position:absolute;left:0;top:76px;width:720px;bottom:-64px;overflow:hidden"><div style="position:absolute;inset:0;transform:scale(1.12) translate(-2%,1%)"><image-slot id="nk-weave" shape="rect" src="art/cotton-weave.png" placeholder="Macro Egyptian cotton weave"></image-slot></div></div>
+<div style="position:absolute;left:0;top:76px;width:720px;bottom:-64px;pointer-events:none;background:linear-gradient(200deg,rgba(255,252,244,.34),rgba(21,26,46,.06) 46%,rgba(21,26,46,.16))"></div>
+<svg viewBox="0 0 48 96" style="position:absolute;left:-46px;bottom:-56px;width:196px;height:392px;opacity:.09;pointer-events:none" fill="none"><g stroke="hsl(228 40% 14%)" stroke-width="5"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<div style="position:absolute;left:720px;top:76px;height:100px;width:1px;background:hsl(42 78% 55%);opacity:.5;pointer-events:none"></div>
+<div style="position:absolute;left:720px;top:300px;bottom:0;width:1px;background:hsl(42 78% 55%);opacity:.5;pointer-events:none"></div>
+<div style="position:absolute;left:600px;bottom:-72px;width:252px;height:340px;overflow:hidden;box-shadow:-14px -14px 34px rgba(32,30,29,.13)"><image-slot id="nk-stack" shape="rect" src="art/cotton-stack.png" placeholder="Folded cotton stack"></image-slot></div>
+<div style="position:absolute;left:0;right:0;top:0;height:76px;background:hsl(42 45% 97%);border-bottom:1px solid hsl(40 12% 80%);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 34px;box-sizing:border-box;z-index:4">
+<a href="#" aria-label="القائمة" style="justify-self:start;display:grid;place-items:center;width:44px;height:44px;color:hsl(228 30% 22%)"><svg viewBox="0 0 21 21" style="width:22px;height:22px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 6.4h13.8"></path><path d="M3.6 10.5h13.8"></path><path d="M3.6 14.6h13.8"></path></svg></a>
+<img src="uploads/logo-lapis-a8ffcda4.png" alt="قطن ملوك النيل" style="height:58px;width:auto;display:block;justify-self:center">
+<div style="justify-self:end;display:flex;align-items:center;gap:20px;color:hsl(228 30% 22%)">
+<a href="#" aria-label="المفضلة" style="display:grid;place-items:center;width:40px;height:40px;color:inherit"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 17.6C6.2 14.5 3.2 12 3.2 8.8 3.2 6.6 4.9 5 7 5c1.4 0 2.7.8 3.5 2 .8-1.2 2.1-2 3.5-2 2.1 0 3.8 1.6 3.8 3.8 0 3.2-3 5.7-7.3 8.8z"></path></svg></a>
+<a href="#" aria-label="سلة التسوق" style="display:grid;place-items:center;width:40px;height:40px;color:inherit;position:relative"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 6.6h11.4l-.9 10.8H5.7z"></path><path d="M8 6.6V5.2a2.5 2.5 0 0 1 5 0v1.4"></path></svg><span dir="ltr" style="position:absolute;top:4px;left:4px;font:500 10px Archivo;color:hsl(228 40% 14%)">3</span></a>
+<a href="#" aria-label="حسابي" style="display:grid;place-items:center;width:40px;height:40px;color:hsl(228 40% 14%);border-bottom:1px solid hsl(42 78% 55%)"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="7.6" r="3.1"></circle><path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8"></path></svg></a>
+</div>
+</div>
+<div style="position:absolute;left:424px;top:188px;width:500px;display:flex;align-items:center;gap:20px;pointer-events:none">
+<span style="font:700 46px Amiri;color:hsl(228 40% 14%)">المصري</span>
+<svg viewBox="0 0 48 96" style="width:19px;height:38px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="7"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<span style="font:700 46px Amiri;color:hsl(228 40% 14%)">للمصري</span>
+</div>
+<div style="position:absolute;left:424px;top:262px;width:340px;font:400 14.5px/1.9 'IBM Plex Sans Arabic';color:hsl(228 26% 24%);pointer-events:none">قطن مصري أصيل، جودة تحسها من أول لمسة.</div>
+<div style="position:absolute;right:88px;top:132px;width:404px">
+<div style="font:500 12px 'IBM Plex Sans Arabic';letter-spacing:.02em;color:hsl(38 52% 32%)">حسابك</div>
+<h2 style="font:700 42px/1.15 Amiri;color:hsl(228 40% 14%);margin:12px 0 22px">تسجيل الدخول</h2>
+<div style="border:1px solid hsl(6 58% 42%);padding:13px 15px;font:400 13px/1.6 'IBM Plex Sans Arabic';color:hsl(6 58% 34%);background:hsl(6 60% 98%);margin-bottom:22px">رقم الهاتف أو كلمة المرور غير صحيحة. تبقّى لك <span dir="ltr" style="font:500 13px Archivo">4</span> محاولات.</div>
+<div style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(6 58% 42%)">رقم الهاتف</label>
+<div style="display:flex;height:52px;border:1px solid hsl(6 58% 42%);background:hsl(6 60% 98%)">
+<div style="flex:1;display:flex;align-items:center;padding:0 14px"><span dir="ltr" style="font:400 16px Archivo;letter-spacing:.06em;color:hsl(228 40% 14%)">015</span></div>
+<div style="display:flex;align-items:center;gap:8px;padding:0 14px;border-right:1px solid hsl(6 58% 42%);border-right-color:hsl(6 40% 78%)">
+<span dir="ltr" style="font:500 14px Archivo;color:hsl(228 40% 14%)">+20</span>
+<span style="font:400 13.5px 'IBM Plex Sans Arabic';color:hsl(228 20% 28%)">مصر</span>
+<svg width="10" height="6" viewBox="0 0 10 6" fill="none" style="display:block"><path d="M1 1l4 4 4-4" stroke="hsl(228 14% 45%)" stroke-width="1.2"></path></svg>
+</div>
+</div>
+<span style="font:400 12px 'IBM Plex Sans Arabic';color:hsl(6 58% 42%)">رقم غير مكتمل — الأرقام المصرية <span dir="ltr" style="font:500 12px Archivo">10</span> خانات.</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:baseline;justify-content:space-between">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">كلمة المرور</label>
+<a href="#" style="font:400 12px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%)">نسيت كلمة المرور؟</a>
+</div>
+<div style="display:flex;height:52px;border:1px solid hsl(40 12% 70%);background:transparent;align-items:center;padding:0 14px;justify-content:space-between">
+<span dir="ltr" style="font:400 18px Archivo;letter-spacing:.3em;color:hsl(228 40% 14%)">•••••</span>
+<button style="font:500 12px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%);background:none;border:0;cursor:pointer;padding:0">إظهار</button>
+</div>
+</div>
+<div style="height:1px;background:hsl(42 78% 55%);opacity:.55;margin:2px 0"></div>
+<button style="height:56px;background:hsl(228 40% 14%);color:hsl(42 45% 97%);border:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 15px 'IBM Plex Sans Arabic';cursor:pointer">تسجيل الدخول
+<svg viewBox="0 0 48 96" style="width:11px;height:22px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg></button>
+<div style="display:flex;align-items:center;gap:8px">
+<span style="font:400 13px 'IBM Plex Sans Arabic';color:hsl(228 18% 38%)">ليس لديك حساب؟</span>
+<a href="#" style="font:500 13px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%);border-bottom:1px solid hsl(42 78% 55%);padding-bottom:1px">إنشاء حساب</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="2c" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:20px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 10px Archivo;letter-spacing:.1em;background:hsl(228 40% 14%);color:hsl(42 45% 97%);padding:4px 8px">2c</span><span style="font:400 11.5px Archivo;color:hsl(228 14% 45%)">Register · step 1, arriving from checkout — cart preserved</span></div>
+<div dir="rtl" data-screen-label="Register desktop v2 / phone from checkout" style="width:1440px;height:900px;position:relative;overflow:hidden;background:hsl(42 45% 97%);border:1px solid hsl(40 12% 74%);box-shadow:0 2px 6px rgba(32,30,29,.16);font-family:'IBM Plex Sans Arabic',sans-serif">
+<div style="position:absolute;left:0;top:76px;width:720px;bottom:-64px;overflow:hidden"><div style="position:absolute;inset:0;transform:scale(1.18) translate(3%,-2%)"><image-slot id="nk-weave" shape="rect" src="art/cotton-weave.png" placeholder="Macro Egyptian cotton weave"></image-slot></div></div>
+<div style="position:absolute;left:0;top:76px;width:720px;bottom:-64px;pointer-events:none;background:linear-gradient(200deg,rgba(255,252,244,.34),rgba(21,26,46,.06) 46%,rgba(21,26,46,.16))"></div>
+<svg viewBox="0 0 48 96" style="position:absolute;left:-46px;bottom:-56px;width:196px;height:392px;opacity:.09;pointer-events:none" fill="none"><g stroke="hsl(228 40% 14%)" stroke-width="5"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<div style="position:absolute;left:720px;top:76px;height:100px;width:1px;background:hsl(42 78% 55%);opacity:.5;pointer-events:none"></div>
+<div style="position:absolute;left:720px;top:300px;bottom:0;width:1px;background:hsl(42 78% 55%);opacity:.5;pointer-events:none"></div>
+<div style="position:absolute;left:600px;bottom:-72px;width:252px;height:340px;overflow:hidden;box-shadow:-14px -14px 34px rgba(32,30,29,.13)"><image-slot id="nk-stack" shape="rect" src="art/cotton-stack.png" placeholder="Folded cotton stack"></image-slot></div>
+<div style="position:absolute;left:0;right:0;top:0;height:76px;background:hsl(42 45% 97%);border-bottom:1px solid hsl(40 12% 80%);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 34px;box-sizing:border-box;z-index:4">
+<a href="#" aria-label="القائمة" style="justify-self:start;display:grid;place-items:center;width:44px;height:44px;color:hsl(228 30% 22%)"><svg viewBox="0 0 21 21" style="width:22px;height:22px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 6.4h13.8"></path><path d="M3.6 10.5h13.8"></path><path d="M3.6 14.6h13.8"></path></svg></a>
+<img src="uploads/logo-lapis-a8ffcda4.png" alt="قطن ملوك النيل" style="height:58px;width:auto;display:block;justify-self:center">
+<div style="justify-self:end;display:flex;align-items:center;gap:20px;color:hsl(228 30% 22%)">
+<a href="#" aria-label="المفضلة" style="display:grid;place-items:center;width:40px;height:40px;color:inherit"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 17.6C6.2 14.5 3.2 12 3.2 8.8 3.2 6.6 4.9 5 7 5c1.4 0 2.7.8 3.5 2 .8-1.2 2.1-2 3.5-2 2.1 0 3.8 1.6 3.8 3.8 0 3.2-3 5.7-7.3 8.8z"></path></svg></a>
+<a href="#" aria-label="سلة التسوق" style="display:grid;place-items:center;width:40px;height:40px;color:inherit;position:relative"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 6.6h11.4l-.9 10.8H5.7z"></path><path d="M8 6.6V5.2a2.5 2.5 0 0 1 5 0v1.4"></path></svg><span dir="ltr" style="position:absolute;top:4px;left:4px;font:500 10px Archivo;color:hsl(228 40% 14%)">3</span></a>
+<a href="#" aria-label="حسابي" style="display:grid;place-items:center;width:40px;height:40px;color:hsl(228 40% 14%);border-bottom:1px solid hsl(42 78% 55%)"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="7.6" r="3.1"></circle><path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8"></path></svg></a>
+</div>
+</div>
+<div style="position:absolute;left:424px;top:188px;width:500px;display:flex;align-items:center;gap:20px;pointer-events:none">
+<span style="font:700 46px Amiri;color:hsl(228 40% 14%)">المصري</span>
+<svg viewBox="0 0 48 96" style="width:19px;height:38px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="7"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<span style="font:700 46px Amiri;color:hsl(228 40% 14%)">للمصري</span>
+</div>
+<div style="position:absolute;left:424px;top:262px;width:340px;font:400 14.5px/1.9 'IBM Plex Sans Arabic';color:hsl(228 26% 24%);pointer-events:none">قطن مصري أصيل، جودة تحسها من أول لمسة.</div>
+<div style="position:absolute;right:88px;top:126px;width:404px">
+<div style="background:hsl(228 40% 14%);color:hsl(42 40% 92%);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:24px">
+<span style="font:400 12.5px/1.6 'IBM Plex Sans Arabic'">سلتك محفوظة — <span dir="ltr" style="font:500 12.5px Archivo">3</span> قطع بانتظارك. أكمل الحساب لتضاف تلقائيًا.</span>
+<svg viewBox="0 0 48 96" style="width:10px;height:20px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="10"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+</div>
+<div style="display:flex;border-top:2px solid hsl(40 12% 80%);margin-bottom:24px">
+<div style="flex:1;padding:9px 0 0;border-top:2px solid hsl(228 40% 14%);margin-top:-2px"><span style="font:600 11px 'IBM Plex Sans Arabic';letter-spacing:.1em;color:hsl(228 40% 14%)"><span dir="ltr" style="font-family:Archivo">1</span> · الهاتف</span></div>
+<div style="flex:1;padding:9px 0 0"><span style="font:400 11px 'IBM Plex Sans Arabic';letter-spacing:.1em;color:hsl(228 10% 58%)"><span dir="ltr" style="font-family:Archivo">2</span> · التحقق</span></div>
+<div style="flex:1;padding:9px 0 0"><span style="font:400 11px 'IBM Plex Sans Arabic';letter-spacing:.1em;color:hsl(228 10% 58%)"><span dir="ltr" style="font-family:Archivo">3</span> · بياناتك</span></div>
+</div>
+<h2 style="font:700 38px/1.15 Amiri;color:hsl(228 40% 14%);margin:0 0 8px">أكمل إنشاء حسابك للمتابعة</h2>
+<p style="font:400 14px/1.75 'IBM Plex Sans Arabic';color:hsl(228 18% 38%);margin:0 0 26px">رقم هاتفك أولًا — يؤكد عبر واتساب ثم يكمل الشراء من حيث توقفت.</p>
+<div style="display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">رقم الهاتف</label>
+<div style="display:flex;height:52px;border:2px solid hsl(228 40% 14%);border-bottom-color:hsl(42 78% 55%);background:transparent">
+<div style="flex:1;display:flex;align-items:center;padding:0 14px"><span dir="ltr" style="font:400 16px Archivo;letter-spacing:.06em;color:hsl(228 40% 14%)">100 123 4567</span><span style="width:1px;height:22px;background:hsl(42 78% 55%);margin-inline-start:3px"></span></div>
+<div style="display:flex;align-items:center;gap:8px;padding:0 14px;border-right:1px solid hsl(40 12% 70%)">
+<span dir="ltr" style="font:500 14px Archivo;color:hsl(228 40% 14%)">+20</span>
+<span style="font:400 13.5px 'IBM Plex Sans Arabic';color:hsl(228 20% 28%)">مصر</span>
+<svg width="10" height="6" viewBox="0 0 10 6" fill="none" style="display:block"><path d="M1 1l4 4 4-4" stroke="hsl(228 14% 45%)" stroke-width="1.2"></path></svg>
+</div>
+</div>
+<span style="font:400 12px 'IBM Plex Sans Arabic';color:hsl(228 10% 52%)">يصل إلى <span dir="ltr" style="font:500 12px Archivo">22</span> دولة — اختر دولتك من القائمة.</span>
+</div>
+<div style="border:1px solid hsl(183 38% 36%);border-color:hsl(183 30% 62%);padding:13px 15px;font:400 12.5px/1.7 'IBM Plex Sans Arabic';color:hsl(183 42% 22%);background:hsl(183 40% 97%)">سيتم إرسال رمز التحقق عبر واتساب إلى هذا الرقم — تأكد أن الرقم مرتبط بحساب واتساب.</div>
+<div style="height:1px;background:hsl(42 78% 55%);opacity:.55"></div>
+<button style="height:56px;background:hsl(228 40% 14%);color:hsl(42 45% 97%);border:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 15px 'IBM Plex Sans Arabic';cursor:pointer">إرسال رمز واتساب
+<svg viewBox="0 0 48 96" style="width:11px;height:22px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg></button>
+<div style="display:flex;align-items:center;gap:8px">
+<span style="font:400 13px 'IBM Plex Sans Arabic';color:hsl(228 18% 38%)">لديك حساب؟</span>
+<a href="#" style="font:500 13px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%);border-bottom:1px solid hsl(42 78% 55%);padding-bottom:1px">تسجيل الدخول</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="2d" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:20px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 10px Archivo;letter-spacing:.1em;background:hsl(228 40% 14%);color:hsl(42 45% 97%);padding:4px 8px">2d</span><span style="font:400 11.5px Archivo;color:hsl(228 14% 45%)">Register · step 2, WhatsApp OTP + resend cooldown</span></div>
+<div dir="rtl" data-screen-label="Register desktop v2 / OTP" style="width:1440px;height:900px;position:relative;overflow:hidden;background:hsl(42 45% 97%);border:1px solid hsl(40 12% 74%);box-shadow:0 2px 6px rgba(32,30,29,.16);font-family:'IBM Plex Sans Arabic',sans-serif">
+<div style="position:absolute;left:0;top:76px;width:720px;bottom:-64px;overflow:hidden"><div style="position:absolute;inset:0;transform:scale(1.3) translate(-4%,3%)"><image-slot id="nk-weave" shape="rect" src="art/cotton-weave.png" placeholder="Macro Egyptian cotton weave"></image-slot></div></div>
+<div style="position:absolute;left:0;top:76px;width:720px;bottom:-64px;pointer-events:none;background:linear-gradient(200deg,rgba(255,252,244,.34),rgba(21,26,46,.06) 46%,rgba(21,26,46,.16))"></div>
+<svg viewBox="0 0 48 96" style="position:absolute;left:-46px;bottom:-56px;width:196px;height:392px;opacity:.09;pointer-events:none" fill="none"><g stroke="hsl(228 40% 14%)" stroke-width="5"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<div style="position:absolute;left:720px;top:76px;height:100px;width:1px;background:hsl(42 78% 55%);opacity:.5;pointer-events:none"></div>
+<div style="position:absolute;left:720px;top:300px;bottom:0;width:1px;background:hsl(42 78% 55%);opacity:.5;pointer-events:none"></div>
+<div style="position:absolute;left:600px;bottom:-72px;width:252px;height:340px;overflow:hidden;box-shadow:-14px -14px 34px rgba(32,30,29,.13)"><image-slot id="nk-stack" shape="rect" src="art/cotton-stack.png" placeholder="Folded cotton stack"></image-slot></div>
+<div style="position:absolute;left:0;right:0;top:0;height:76px;background:hsl(42 45% 97%);border-bottom:1px solid hsl(40 12% 80%);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 34px;box-sizing:border-box;z-index:4">
+<a href="#" aria-label="القائمة" style="justify-self:start;display:grid;place-items:center;width:44px;height:44px;color:hsl(228 30% 22%)"><svg viewBox="0 0 21 21" style="width:22px;height:22px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 6.4h13.8"></path><path d="M3.6 10.5h13.8"></path><path d="M3.6 14.6h13.8"></path></svg></a>
+<img src="uploads/logo-lapis-a8ffcda4.png" alt="قطن ملوك النيل" style="height:58px;width:auto;display:block;justify-self:center">
+<div style="justify-self:end;display:flex;align-items:center;gap:20px;color:hsl(228 30% 22%)">
+<a href="#" aria-label="المفضلة" style="display:grid;place-items:center;width:40px;height:40px;color:inherit"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 17.6C6.2 14.5 3.2 12 3.2 8.8 3.2 6.6 4.9 5 7 5c1.4 0 2.7.8 3.5 2 .8-1.2 2.1-2 3.5-2 2.1 0 3.8 1.6 3.8 3.8 0 3.2-3 5.7-7.3 8.8z"></path></svg></a>
+<a href="#" aria-label="سلة التسوق" style="display:grid;place-items:center;width:40px;height:40px;color:inherit;position:relative"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 6.6h11.4l-.9 10.8H5.7z"></path><path d="M8 6.6V5.2a2.5 2.5 0 0 1 5 0v1.4"></path></svg><span dir="ltr" style="position:absolute;top:4px;left:4px;font:500 10px Archivo;color:hsl(228 40% 14%)">3</span></a>
+<a href="#" aria-label="حسابي" style="display:grid;place-items:center;width:40px;height:40px;color:hsl(228 40% 14%);border-bottom:1px solid hsl(42 78% 55%)"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="7.6" r="3.1"></circle><path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8"></path></svg></a>
+</div>
+</div>
+<div style="position:absolute;left:424px;top:188px;width:500px;display:flex;align-items:center;gap:20px;pointer-events:none">
+<span style="font:700 46px Amiri;color:hsl(228 40% 14%)">المصري</span>
+<svg viewBox="0 0 48 96" style="width:19px;height:38px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="7"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<span style="font:700 46px Amiri;color:hsl(228 40% 14%)">للمصري</span>
+</div>
+<div style="position:absolute;left:424px;top:262px;width:340px;font:400 14.5px/1.9 'IBM Plex Sans Arabic';color:hsl(228 26% 24%);pointer-events:none">قطن مصري أصيل، جودة تحسها من أول لمسة.</div>
+<div style="position:absolute;right:88px;top:150px;width:452px">
+<div style="display:flex;border-top:2px solid hsl(40 12% 80%);margin-bottom:26px">
+<div style="flex:1;padding:9px 0 0;border-top:2px solid hsl(228 40% 14%);margin-top:-2px"><span style="font:400 12.5px 'IBM Plex Sans Arabic';letter-spacing:.08em;color:hsl(228 14% 45%)"><span dir="ltr" style="font-family:Archivo">1</span> · الهاتف</span></div>
+<div style="flex:1;padding:9px 0 0;border-top:2px solid hsl(228 40% 14%);margin-top:-2px"><span style="font:600 12.5px 'IBM Plex Sans Arabic';letter-spacing:.08em;color:hsl(228 40% 14%)"><span dir="ltr" style="font-family:Archivo">2</span> · التحقق</span></div>
+<div style="flex:1;padding:9px 0 0"><span style="font:400 12.5px 'IBM Plex Sans Arabic';letter-spacing:.08em;color:hsl(228 10% 58%)"><span dir="ltr" style="font-family:Archivo">3</span> · بياناتك</span></div>
+</div>
+<h2 style="font:700 40px/1.15 Amiri;color:hsl(228 40% 14%);margin:0 0 10px">تأكيد رقم هاتفك</h2>
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:30px">
+<span style="font:400 15.5px 'IBM Plex Sans Arabic';color:hsl(228 18% 38%)">أرسلنا رمزًا عبر واتساب إلى</span>
+<span dir="ltr" style="font:500 17px Archivo;letter-spacing:.05em;color:hsl(228 40% 14%)">+20 100 123 4567</span>
+<a href="#" style="font:400 13.5px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%);border-bottom:1px solid hsl(42 78% 55%)">تغيير</a>
+</div>
+<div dir="ltr" style="display:flex;gap:10px;margin-bottom:22px">
+<div style="width:64px;height:76px;border:1px solid hsl(40 12% 70%);background:#fff;display:grid;place-items:center;font:500 28px Archivo;color:hsl(228 40% 14%)">4</div>
+<div style="width:64px;height:76px;border:1px solid hsl(40 12% 70%);background:#fff;display:grid;place-items:center;font:500 28px Archivo;color:hsl(228 40% 14%)">8</div>
+<div style="width:64px;height:76px;border:1px solid hsl(40 12% 70%);background:#fff;display:grid;place-items:center;font:500 28px Archivo;color:hsl(228 40% 14%)">1</div>
+<div style="width:64px;height:76px;border:2px solid hsl(228 40% 14%);border-bottom-color:hsl(42 78% 55%);background:#fff;display:grid;place-items:center"><span style="width:1px;height:30px;background:hsl(42 78% 55%);display:block"></span></div>
+<div style="width:64px;height:76px;border:1px solid hsl(40 12% 70%);background:#fff"></div>
+<div style="width:64px;height:76px;border:1px solid hsl(40 12% 70%);background:#fff"></div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;font:400 14.5px 'IBM Plex Sans Arabic';color:hsl(228 10% 52%);margin-bottom:20px">
+<span>لم يصلك الرمز؟</span><span style="color:hsl(228 8% 62%)">إعادة الإرسال بعد <span dir="ltr" style="font:500 14.5px Archivo">42</span> ثانية</span>
+</div>
+<div style="height:1px;background:hsl(42 78% 55%);opacity:.55;margin-bottom:20px"></div>
+<button style="width:404px;height:56px;background:hsl(228 40% 14%);color:hsl(42 45% 97%);border:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 15px 'IBM Plex Sans Arabic';cursor:pointer">تأكيد الرمز
+<svg viewBox="0 0 48 96" style="width:11px;height:22px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg></button>
+<div style="font:400 13.5px/1.7 'IBM Plex Sans Arabic';color:hsl(228 10% 52%);margin-top:16px">الرمز صالح <span dir="ltr" style="font:500 13.5px Archivo">10</span> دقائق · سلتك محفوظة طوال هذه الخطوة.</div>
+</div>
+</div>
+</div>
+
+<div id="2e" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:20px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 10px Archivo;letter-spacing:.1em;background:hsl(228 40% 14%);color:hsl(42 45% 97%);padding:4px 8px">2e</span><span style="font:400 11.5px Archivo;color:hsl(228 14% 45%)">Register · step 3, profile — verified, password mismatch</span></div>
+<div dir="rtl" data-screen-label="Register desktop v2 / profile" style="width:1440px;height:900px;position:relative;overflow:hidden;background:hsl(42 45% 97%);border:1px solid hsl(40 12% 74%);box-shadow:0 2px 6px rgba(32,30,29,.16);font-family:'IBM Plex Sans Arabic',sans-serif">
+<div style="position:absolute;left:0;top:76px;width:720px;bottom:-64px;overflow:hidden"><div style="position:absolute;inset:0;transform:scale(1.1) translate(2%,4%)"><image-slot id="nk-weave" shape="rect" src="art/cotton-weave.png" placeholder="Macro Egyptian cotton weave"></image-slot></div></div>
+<div style="position:absolute;left:0;top:76px;width:720px;bottom:-64px;pointer-events:none;background:linear-gradient(200deg,rgba(255,252,244,.34),rgba(21,26,46,.06) 46%,rgba(21,26,46,.16))"></div>
+<svg viewBox="0 0 48 96" style="position:absolute;left:-46px;bottom:-56px;width:196px;height:392px;opacity:.09;pointer-events:none" fill="none"><g stroke="hsl(228 40% 14%)" stroke-width="5"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<div style="position:absolute;left:720px;top:76px;height:100px;width:1px;background:hsl(42 78% 55%);opacity:.5;pointer-events:none"></div>
+<div style="position:absolute;left:720px;top:300px;bottom:0;width:1px;background:hsl(42 78% 55%);opacity:.5;pointer-events:none"></div>
+<div style="position:absolute;left:600px;bottom:-72px;width:252px;height:340px;overflow:hidden;box-shadow:-14px -14px 34px rgba(32,30,29,.13)"><image-slot id="nk-stack" shape="rect" src="art/cotton-stack.png" placeholder="Folded cotton stack"></image-slot></div>
+<div style="position:absolute;left:0;right:0;top:0;height:76px;background:hsl(42 45% 97%);border-bottom:1px solid hsl(40 12% 80%);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 34px;box-sizing:border-box;z-index:4">
+<a href="#" aria-label="القائمة" style="justify-self:start;display:grid;place-items:center;width:44px;height:44px;color:hsl(228 30% 22%)"><svg viewBox="0 0 21 21" style="width:22px;height:22px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 6.4h13.8"></path><path d="M3.6 10.5h13.8"></path><path d="M3.6 14.6h13.8"></path></svg></a>
+<img src="uploads/logo-lapis-a8ffcda4.png" alt="قطن ملوك النيل" style="height:58px;width:auto;display:block;justify-self:center">
+<div style="justify-self:end;display:flex;align-items:center;gap:20px;color:hsl(228 30% 22%)">
+<a href="#" aria-label="المفضلة" style="display:grid;place-items:center;width:40px;height:40px;color:inherit"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 17.6C6.2 14.5 3.2 12 3.2 8.8 3.2 6.6 4.9 5 7 5c1.4 0 2.7.8 3.5 2 .8-1.2 2.1-2 3.5-2 2.1 0 3.8 1.6 3.8 3.8 0 3.2-3 5.7-7.3 8.8z"></path></svg></a>
+<a href="#" aria-label="سلة التسوق" style="display:grid;place-items:center;width:40px;height:40px;color:inherit;position:relative"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 6.6h11.4l-.9 10.8H5.7z"></path><path d="M8 6.6V5.2a2.5 2.5 0 0 1 5 0v1.4"></path></svg><span dir="ltr" style="position:absolute;top:4px;left:4px;font:500 10px Archivo;color:hsl(228 40% 14%)">3</span></a>
+<a href="#" aria-label="حسابي" style="display:grid;place-items:center;width:40px;height:40px;color:hsl(228 40% 14%);border-bottom:1px solid hsl(42 78% 55%)"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="7.6" r="3.1"></circle><path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8"></path></svg></a>
+</div>
+</div>
+<div style="position:absolute;left:424px;top:188px;width:500px;display:flex;align-items:center;gap:20px;pointer-events:none">
+<span style="font:700 46px Amiri;color:hsl(228 40% 14%)">المصري</span>
+<svg viewBox="0 0 48 96" style="width:19px;height:38px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="7"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<span style="font:700 46px Amiri;color:hsl(228 40% 14%)">للمصري</span>
+</div>
+<div style="position:absolute;right:88px;top:120px;width:452px">
+<div style="display:flex;border-top:2px solid hsl(40 12% 80%);margin-bottom:22px">
+<div style="flex:1;padding:9px 0 0;border-top:2px solid hsl(228 40% 14%);margin-top:-2px"><span style="font:400 11px 'IBM Plex Sans Arabic';letter-spacing:.1em;color:hsl(228 14% 45%)"><span dir="ltr" style="font-family:Archivo">1</span> · الهاتف</span></div>
+<div style="flex:1;padding:9px 0 0;border-top:2px solid hsl(228 40% 14%);margin-top:-2px"><span style="font:400 11px 'IBM Plex Sans Arabic';letter-spacing:.1em;color:hsl(228 14% 45%)"><span dir="ltr" style="font-family:Archivo">2</span> · التحقق</span></div>
+<div style="flex:1;padding:9px 0 0;border-top:2px solid hsl(228 40% 14%);margin-top:-2px"><span style="font:600 11px 'IBM Plex Sans Arabic';letter-spacing:.1em;color:hsl(228 40% 14%)"><span dir="ltr" style="font-family:Archivo">3</span> · بياناتك</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+<h2 style="font:700 38px/1.15 Amiri;color:hsl(228 40% 14%);margin:0">بياناتك</h2>
+<span style="display:flex;align-items:center;gap:6px;font:400 12.5px 'IBM Plex Sans Arabic';color:hsl(150 36% 28%)">
+<svg viewBox="0 0 48 96" style="width:8px;height:16px" fill="none"><g stroke="hsl(150 36% 30%)" stroke-width="11" stroke-dasharray="150" style="animation:nkDraw .9s ease-out .3s both"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+الرقم مؤكد</span>
+</div>
+<p style="font:400 13.5px/1.7 'IBM Plex Sans Arabic';color:hsl(228 18% 38%);margin:0 0 22px">خطوة أخيرة — ثم نعيدك إلى إتمام الشراء.</p>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;gap:7px">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">الاسم الكامل</label>
+<div style="height:52px;border:1px solid hsl(40 12% 70%);display:flex;align-items:center;padding:0 14px"><span style="font:400 15px 'IBM Plex Sans Arabic';color:hsl(228 40% 14%)">يوسف طارق</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:7px">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">البريد الإلكتروني <span style="color:hsl(228 10% 58%)">— اختياري، للفواتير</span></label>
+<div style="height:52px;border:1px solid hsl(40 12% 70%);display:flex;align-items:center;padding:0 14px"><span dir="ltr" style="font:400 14px Archivo;color:hsl(228 8% 62%)">name@example.com</span></div>
+</div>
+<div style="display:flex;gap:14px">
+<div style="flex:1;display:flex;flex-direction:column;gap:7px">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">كلمة المرور</label>
+<div style="height:52px;border:1px solid hsl(40 12% 70%);display:flex;align-items:center;padding:0 14px"><span dir="ltr" style="font:400 17px Archivo;letter-spacing:.3em;color:hsl(228 40% 14%)">••••••••</span></div>
+<span style="font:400 11.5px 'IBM Plex Sans Arabic';color:hsl(228 10% 52%)"><span dir="ltr" style="font:500 11.5px Archivo">8</span> أحرف على الأقل</span>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:7px">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(6 58% 42%)">تأكيد كلمة المرور</label>
+<div style="height:52px;border:1px solid hsl(6 58% 42%);background:hsl(6 60% 98%);display:flex;align-items:center;padding:0 14px"><span dir="ltr" style="font:400 17px Archivo;letter-spacing:.3em;color:hsl(228 40% 14%)">••••••</span></div>
+<span style="font:400 11.5px 'IBM Plex Sans Arabic';color:hsl(6 58% 42%)">الكلمتان غير متطابقتين</span>
+</div>
+</div>
+<div style="height:1px;background:hsl(42 78% 55%);opacity:.55"></div>
+<button style="width:404px;height:56px;background:hsl(228 40% 14%);color:hsl(42 45% 97%);border:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 15px 'IBM Plex Sans Arabic';cursor:pointer">إنشاء الحساب ومتابعة الشراء
+<svg viewBox="0 0 48 96" style="width:11px;height:22px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg></button>
+</div>
+</div>
+</div>
+</div>
+
+<div id="2f" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:20px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 10px Archivo;letter-spacing:.1em;background:hsl(228 40% 14%);color:hsl(42 45% 97%);padding:4px 8px">2f</span><span style="font:400 11.5px Archivo;color:hsl(228 14% 45%)">Recovery · new password — linen crop, does not auto-login</span></div>
+<div dir="rtl" data-screen-label="Forgot desktop v2 / new password" style="width:1440px;height:900px;position:relative;overflow:hidden;background:hsl(42 45% 97%);border:1px solid hsl(40 12% 74%);box-shadow:0 2px 6px rgba(32,30,29,.16);font-family:'IBM Plex Sans Arabic',sans-serif">
+<div style="position:absolute;left:0;top:76px;width:720px;bottom:-64px;overflow:hidden"><div style="position:absolute;inset:0;animation:nkDrift 26s ease-in-out infinite alternate"><image-slot id="nk-drape" shape="rect" src="art/cotton-drape.png" placeholder="Draped Egyptian cotton bed linen"></image-slot></div></div>
+<div style="position:absolute;left:0;top:76px;width:720px;bottom:-64px;pointer-events:none;background:linear-gradient(200deg,rgba(255,252,244,.34),rgba(21,26,46,.06) 46%,rgba(21,26,46,.16))"></div>
+<svg viewBox="0 0 48 96" style="position:absolute;left:-46px;bottom:-56px;width:196px;height:392px;opacity:.09;pointer-events:none" fill="none"><g stroke="hsl(228 40% 14%)" stroke-width="5"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<div style="position:absolute;left:720px;top:76px;height:100px;width:1px;background:hsl(42 78% 55%);opacity:.5;pointer-events:none"></div>
+<div style="position:absolute;left:720px;top:300px;bottom:0;width:1px;background:hsl(42 78% 55%);opacity:.5;pointer-events:none"></div>
+<div style="position:absolute;left:600px;bottom:-72px;width:252px;height:340px;overflow:hidden;box-shadow:-14px -14px 34px rgba(32,30,29,.13)"><image-slot id="nk-stack" shape="rect" src="art/cotton-stack.png" placeholder="Folded cotton stack"></image-slot></div>
+<div style="position:absolute;left:0;right:0;top:0;height:76px;background:hsl(42 45% 97%);border-bottom:1px solid hsl(40 12% 80%);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 34px;box-sizing:border-box;z-index:4">
+<a href="#" aria-label="القائمة" style="justify-self:start;display:grid;place-items:center;width:44px;height:44px;color:hsl(228 30% 22%)"><svg viewBox="0 0 21 21" style="width:22px;height:22px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 6.4h13.8"></path><path d="M3.6 10.5h13.8"></path><path d="M3.6 14.6h13.8"></path></svg></a>
+<img src="uploads/logo-lapis-a8ffcda4.png" alt="قطن ملوك النيل" style="height:58px;width:auto;display:block;justify-self:center">
+<div style="justify-self:end;display:flex;align-items:center;gap:20px;color:hsl(228 30% 22%)">
+<a href="#" aria-label="المفضلة" style="display:grid;place-items:center;width:40px;height:40px;color:inherit"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 17.6C6.2 14.5 3.2 12 3.2 8.8 3.2 6.6 4.9 5 7 5c1.4 0 2.7.8 3.5 2 .8-1.2 2.1-2 3.5-2 2.1 0 3.8 1.6 3.8 3.8 0 3.2-3 5.7-7.3 8.8z"></path></svg></a>
+<a href="#" aria-label="سلة التسوق" style="display:grid;place-items:center;width:40px;height:40px;color:inherit;position:relative"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 6.6h11.4l-.9 10.8H5.7z"></path><path d="M8 6.6V5.2a2.5 2.5 0 0 1 5 0v1.4"></path></svg><span dir="ltr" style="position:absolute;top:4px;left:4px;font:500 10px Archivo;color:hsl(228 40% 14%)">3</span></a>
+<a href="#" aria-label="حسابي" style="display:grid;place-items:center;width:40px;height:40px;color:hsl(228 40% 14%);border-bottom:1px solid hsl(42 78% 55%)"><svg viewBox="0 0 21 21" style="width:21px;height:21px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="7.6" r="3.1"></circle><path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8"></path></svg></a>
+</div>
+</div>
+<div style="position:absolute;left:424px;top:188px;width:500px;display:flex;align-items:center;gap:20px;pointer-events:none">
+<span style="font:700 46px Amiri;color:hsl(228 40% 14%)">المصري</span>
+<svg viewBox="0 0 48 96" style="width:19px;height:38px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="7"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<span style="font:700 46px Amiri;color:hsl(228 40% 14%)">للمصري</span>
+</div>
+<div style="position:absolute;left:424px;top:262px;width:340px;font:400 14.5px/1.9 'IBM Plex Sans Arabic';color:hsl(228 26% 24%);pointer-events:none">قطن مصري أصيل، جودة تحسها من أول لمسة.</div>
+<div style="position:absolute;right:88px;top:158px;width:404px">
+<div style="font:500 12px 'IBM Plex Sans Arabic';letter-spacing:.02em;color:hsl(38 52% 32%)">استعادة كلمة المرور · الخطوة <span dir="ltr" style="font-family:Archivo">3</span></div>
+<h2 style="font:700 40px/1.15 Amiri;color:hsl(228 40% 14%);margin:12px 0 10px">كلمة مرور جديدة</h2>
+<p style="font:400 14px/1.75 'IBM Plex Sans Arabic';color:hsl(228 18% 38%);margin:0 0 28px">تم تأكيد الرقم <span dir="ltr" style="font:500 14px Archivo;color:hsl(228 40% 14%)">+20 100 123 4567</span> عبر واتساب.</p>
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">كلمة المرور الجديدة</label>
+<div style="height:52px;border:2px solid hsl(228 40% 14%);border-bottom-color:hsl(42 78% 55%);display:flex;align-items:center;padding:0 14px;justify-content:space-between"><span dir="ltr" style="font:400 18px Archivo;letter-spacing:.3em;color:hsl(228 40% 14%)">•••••••••</span><button style="font:500 12px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%);background:none;border:0;cursor:pointer;padding:0">إظهار</button></div>
+<div style="display:flex;align-items:center;gap:10px;margin-top:2px">
+<span style="height:2px;width:58px;background:hsl(150 36% 30%)"></span><span style="height:2px;width:58px;background:hsl(150 36% 30%)"></span><span style="height:2px;width:58px;background:hsl(40 12% 82%)"></span>
+<span style="font:400 11.5px 'IBM Plex Sans Arabic';color:hsl(150 36% 28%)">قوية</span>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">تأكيد كلمة المرور</label>
+<div style="height:52px;border:1px solid hsl(40 12% 70%);display:flex;align-items:center;padding:0 14px"><span dir="ltr" style="font:400 18px Archivo;letter-spacing:.3em;color:hsl(228 40% 14%)">•••••••••</span></div>
+</div>
+<div style="height:1px;background:hsl(42 78% 55%);opacity:.55"></div>
+<button style="height:56px;background:hsl(228 40% 14%);color:hsl(42 45% 97%);border:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 15px 'IBM Plex Sans Arabic';cursor:pointer">حفظ كلمة المرور
+<svg viewBox="0 0 48 96" style="width:11px;height:22px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg></button>
+<div style="font:400 12px/1.7 'IBM Plex Sans Arabic';color:hsl(228 10% 52%)">لن يتم تسجيل دخولك تلقائيًا — ستعود إلى صفحة الدخول لاستخدام كلمة المرور الجديدة.</div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+
+<div style="display:flex;align-items:baseline;gap:14px;padding:44px 0 16px;border-top:2px solid hsl(228 40% 14%);margin-top:40px">
+<span style="font:600 11px Archivo;letter-spacing:.18em;color:hsl(38 52% 32%)">D</span>
+<span style="font:700 21px Archivo;letter-spacing:-.01em;color:hsl(228 40% 14%)">Mobile — 402 × 874</span>
+<span style="font:400 12px Archivo;color:hsl(228 14% 45%);margin-inline-start:10px">Not the desktop stacked: the cotton is cropped hard to a top band, the fold crop escapes the right edge, and the form sheet overlaps the material.</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:36px">
+
+<div id="2g" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:20px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 10px Archivo;letter-spacing:.1em;background:hsl(228 40% 14%);color:hsl(42 45% 97%);padding:4px 8px">2g</span><span style="font:400 11.5px Archivo;color:hsl(228 14% 45%)">Login · mobile</span></div>
+<div dir="rtl" data-screen-label="Login mobile v2" style="width:402px;height:874px;position:relative;overflow:hidden;background:hsl(42 45% 97%);border:1px solid hsl(40 12% 74%);box-shadow:0 2px 6px rgba(32,30,29,.16);font-family:'IBM Plex Sans Arabic',sans-serif">
+<div style="position:absolute;left:0;right:0;top:100px;height:284px;overflow:hidden"><div style="position:absolute;inset:0;animation:nkDrift 26s ease-in-out infinite alternate"><image-slot id="nk-weave" shape="rect" src="art/cotton-weave.png" placeholder="Macro Egyptian cotton weave"></image-slot></div></div>
+<div style="position:absolute;left:0;right:0;top:100px;height:284px;pointer-events:none;background:linear-gradient(190deg,rgba(255,252,244,.30),rgba(21,26,46,.04) 50%,rgba(21,26,46,.14))"></div>
+<div style="position:absolute;left:0;right:0;top:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;box-sizing:border-box;font:500 12px Archivo;color:hsl(228 40% 14%);z-index:3"><span dir="ltr">9:41</span><span style="display:flex;gap:4px"><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span></span></div>
+<div style="position:absolute;left:0;right:0;top:44px;height:56px;background:hsl(42 45% 97%);border-bottom:1px solid hsl(40 12% 80%);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 8px;box-sizing:border-box;z-index:4">
+<a href="#" aria-label="القائمة" style="justify-self:start;display:grid;place-items:center;width:44px;height:44px;color:hsl(228 30% 22%)"><svg viewBox="0 0 21 21" style="width:20px;height:20px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 6.4h13.8"></path><path d="M3.6 10.5h13.8"></path><path d="M3.6 14.6h13.8"></path></svg></a>
+<img src="uploads/logo-lapis-a8ffcda4.png" alt="قطن ملوك النيل" style="height:42px;width:auto;display:block;justify-self:center">
+<div style="justify-self:end;display:flex;align-items:center;gap:0;color:hsl(228 30% 22%)">
+<a href="#" aria-label="المفضلة" style="display:grid;place-items:center;width:44px;height:44px;color:inherit"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 17.6C6.2 14.5 3.2 12 3.2 8.8 3.2 6.6 4.9 5 7 5c1.4 0 2.7.8 3.5 2 .8-1.2 2.1-2 3.5-2 2.1 0 3.8 1.6 3.8 3.8 0 3.2-3 5.7-7.3 8.8z"></path></svg></a>
+<a href="#" aria-label="سلة التسوق" style="display:grid;place-items:center;width:44px;height:44px;color:inherit;position:relative"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 6.6h11.4l-.9 10.8H5.7z"></path><path d="M8 6.6V5.2a2.5 2.5 0 0 1 5 0v1.4"></path></svg><span dir="ltr" style="position:absolute;top:7px;left:3px;font:500 9.5px Archivo;color:hsl(228 40% 14%)">3</span></a>
+<a href="#" aria-label="حسابي" style="display:grid;place-items:center;width:44px;height:44px;color:hsl(228 40% 14%);position:relative"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="7.6" r="3.1"></circle><path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8"></path></svg><span style="position:absolute;bottom:6px;width:19px;height:1px;background:hsl(42 78% 55%)"></span></a>
+</div>
+</div>
+<div style="position:absolute;right:24px;top:186px;display:flex;align-items:center;gap:12px;z-index:3;pointer-events:none;animation:nkRise .7s cubic-bezier(.2,.7,.2,1) both">
+<span style="font:700 30px Amiri;color:hsl(228 40% 14%)">المصري</span>
+<svg viewBox="0 0 48 96" style="width:13px;height:26px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<span style="font:700 30px Amiri;color:hsl(228 40% 14%)">للمصري</span>
+</div>
+
+<div style="position:absolute;left:0;right:0;top:318px;bottom:0;background:hsl(42 45% 97%);border-top:1px solid hsl(40 12% 80%);z-index:3;padding:30px 24px 22px;box-sizing:border-box;display:flex;flex-direction:column">
+<h2 style="font:700 32px/1.2 Amiri;color:hsl(228 40% 14%);margin:0 0 6px">تسجيل الدخول</h2>
+<p style="font:400 13.5px/1.7 'IBM Plex Sans Arabic';color:hsl(228 18% 38%);margin:0 0 26px">رقم هاتفك هو معرّف حسابك.</p>
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">رقم الهاتف</label>
+<div style="display:flex;height:56px;border:1px solid hsl(40 12% 70%)">
+<div style="flex:1;display:flex;align-items:center;padding:0 13px"><span dir="ltr" style="font:400 16px Archivo;letter-spacing:.06em;color:hsl(228 40% 14%)">100 123 4567</span></div>
+<div style="display:flex;align-items:center;gap:7px;padding:0 13px;border-right:1px solid hsl(40 12% 70%)">
+<span dir="ltr" style="font:500 14px Archivo;color:hsl(228 40% 14%)">+20</span>
+<svg width="10" height="6" viewBox="0 0 10 6" fill="none" style="display:block"><path d="M1 1l4 4 4-4" stroke="hsl(228 14% 45%)" stroke-width="1.2"></path></svg>
+</div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">كلمة المرور</label>
+<div style="display:flex;height:56px;border:1px solid hsl(40 12% 70%);align-items:center;padding:0 13px;justify-content:space-between"><span dir="ltr" style="font:400 18px Archivo;letter-spacing:.3em;color:hsl(228 40% 14%)">••••••••</span><button style="font:500 12px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%);background:none;border:0;padding:0;cursor:pointer">إظهار</button></div>
+<a href="#" style="font:400 12.5px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%);align-self:flex-start">نسيت كلمة المرور؟</a>
+</div>
+<div style="height:1px;background:hsl(42 78% 55%);opacity:.55"></div>
+<button style="height:58px;background:hsl(228 40% 14%);color:hsl(42 45% 97%);border:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 15px 'IBM Plex Sans Arabic';cursor:pointer">تسجيل الدخول
+<svg viewBox="0 0 48 96" style="width:11px;height:22px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg></button>
+<button style="height:58px;background:transparent;color:hsl(228 40% 14%);border:1px solid hsl(228 40% 14%);display:flex;align-items:center;padding:0 20px;font:600 15px 'IBM Plex Sans Arabic';cursor:pointer">إنشاء حساب جديد</button>
+</div>
+<div style="margin-top:auto;display:flex;align-items:center;justify-content:space-between">
+<span style="font:400 11px 'IBM Plex Sans Arabic';color:hsl(228 10% 55%)">توصيل إلى <span dir="ltr" style="font:500 11px Archivo">27</span> محافظة</span>
+<div style="width:110px;height:4px;background:hsl(228 40% 14%)"></div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="2h" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:20px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 10px Archivo;letter-spacing:.1em;background:hsl(228 40% 14%);color:hsl(42 45% 97%);padding:4px 8px">2h</span><span style="font:400 11.5px Archivo;color:hsl(228 14% 45%)">Register · mobile, from checkout</span></div>
+<div dir="rtl" data-screen-label="Register mobile v2 / phone" style="width:402px;height:874px;position:relative;overflow:hidden;background:hsl(42 45% 97%);border:1px solid hsl(40 12% 74%);box-shadow:0 2px 6px rgba(32,30,29,.16);font-family:'IBM Plex Sans Arabic',sans-serif">
+<div style="position:absolute;left:0;right:0;top:100px;height:214px;overflow:hidden"><div style="position:absolute;inset:0;transform:scale(1.2) translate(-3%,2%)"><image-slot id="nk-weave" shape="rect" src="art/cotton-weave.png" placeholder="Macro Egyptian cotton weave"></image-slot></div></div>
+<div style="position:absolute;left:0;right:0;top:100px;height:214px;pointer-events:none;background:linear-gradient(190deg,rgba(255,252,244,.30),rgba(21,26,46,.04) 50%,rgba(21,26,46,.14))"></div>
+<div style="position:absolute;left:0;right:0;top:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;box-sizing:border-box;font:500 12px Archivo;color:hsl(228 40% 14%);z-index:3"><span dir="ltr">9:41</span><span style="display:flex;gap:4px"><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span></span></div>
+<div style="position:absolute;left:0;right:0;top:44px;height:56px;background:hsl(42 45% 97%);border-bottom:1px solid hsl(40 12% 80%);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 8px;box-sizing:border-box;z-index:4">
+<a href="#" aria-label="القائمة" style="justify-self:start;display:grid;place-items:center;width:44px;height:44px;color:hsl(228 30% 22%)"><svg viewBox="0 0 21 21" style="width:20px;height:20px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 6.4h13.8"></path><path d="M3.6 10.5h13.8"></path><path d="M3.6 14.6h13.8"></path></svg></a>
+<img src="uploads/logo-lapis-a8ffcda4.png" alt="قطن ملوك النيل" style="height:42px;width:auto;display:block;justify-self:center">
+<div style="justify-self:end;display:flex;align-items:center;gap:0;color:hsl(228 30% 22%)">
+<a href="#" aria-label="المفضلة" style="display:grid;place-items:center;width:44px;height:44px;color:inherit"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 17.6C6.2 14.5 3.2 12 3.2 8.8 3.2 6.6 4.9 5 7 5c1.4 0 2.7.8 3.5 2 .8-1.2 2.1-2 3.5-2 2.1 0 3.8 1.6 3.8 3.8 0 3.2-3 5.7-7.3 8.8z"></path></svg></a>
+<a href="#" aria-label="سلة التسوق" style="display:grid;place-items:center;width:44px;height:44px;color:inherit;position:relative"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 6.6h11.4l-.9 10.8H5.7z"></path><path d="M8 6.6V5.2a2.5 2.5 0 0 1 5 0v1.4"></path></svg><span dir="ltr" style="position:absolute;top:7px;left:3px;font:500 9.5px Archivo;color:hsl(228 40% 14%)">3</span></a>
+<a href="#" aria-label="حسابي" style="display:grid;place-items:center;width:44px;height:44px;color:hsl(228 40% 14%);position:relative"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="7.6" r="3.1"></circle><path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8"></path></svg><span style="position:absolute;bottom:6px;width:19px;height:1px;background:hsl(42 78% 55%)"></span></a>
+</div>
+</div>
+<div style="position:absolute;right:24px;top:150px;display:flex;align-items:center;gap:11px;z-index:3;pointer-events:none">
+<span style="font:700 26px Amiri;color:hsl(228 40% 14%)">المصري</span>
+<svg viewBox="0 0 48 96" style="width:12px;height:24px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<span style="font:700 26px Amiri;color:hsl(228 40% 14%)">للمصري</span>
+</div>
+
+<div style="position:absolute;left:0;right:0;top:248px;bottom:0;background:hsl(42 45% 97%);border-top:1px solid hsl(40 12% 80%);z-index:3;padding:0 24px 20px;box-sizing:border-box;display:flex;flex-direction:column">
+<div style="background:hsl(228 40% 14%);color:hsl(42 40% 92%);margin:0 -24px 22px;padding:13px 24px;display:flex;align-items:center;gap:10px">
+<svg viewBox="0 0 48 96" style="width:9px;height:18px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="10"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<span style="font:400 12px/1.6 'IBM Plex Sans Arabic'">سلتك محفوظة — <span dir="ltr" style="font:500 12px Archivo">3</span> قطع تضاف بعد التسجيل.</span>
+</div>
+<div style="display:flex;border-top:2px solid hsl(40 12% 80%);margin-bottom:20px">
+<div style="flex:1;padding:8px 0 0;border-top:2px solid hsl(228 40% 14%);margin-top:-2px"><span style="font:600 10.5px 'IBM Plex Sans Arabic';letter-spacing:.08em;color:hsl(228 40% 14%)"><span dir="ltr" style="font-family:Archivo">1</span> · الهاتف</span></div>
+<div style="flex:1;padding:8px 0 0"><span style="font:400 10.5px 'IBM Plex Sans Arabic';letter-spacing:.08em;color:hsl(228 10% 58%)"><span dir="ltr" style="font-family:Archivo">2</span> · التحقق</span></div>
+<div style="flex:1;padding:8px 0 0"><span style="font:400 10.5px 'IBM Plex Sans Arabic';letter-spacing:.08em;color:hsl(228 10% 58%)"><span dir="ltr" style="font-family:Archivo">3</span> · بياناتك</span></div>
+</div>
+<h2 style="font:700 27px/1.25 Amiri;color:hsl(228 40% 14%);margin:0 0 20px">أكمل حسابك للمتابعة</h2>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<label style="font:500 12.5px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">رقم الهاتف</label>
+<div style="display:flex;height:56px;border:2px solid hsl(228 40% 14%);border-bottom-color:hsl(42 78% 55%)">
+<div style="flex:1;display:flex;align-items:center;padding:0 13px"><span dir="ltr" style="font:400 16px Archivo;letter-spacing:.06em;color:hsl(228 40% 14%)">100 123 4567</span><span style="width:1px;height:22px;background:hsl(42 78% 55%);margin-inline-start:3px"></span></div>
+<div style="display:flex;align-items:center;gap:7px;padding:0 13px;border-right:1px solid hsl(40 12% 70%)">
+<span dir="ltr" style="font:500 14px Archivo;color:hsl(228 40% 14%)">+20</span>
+<svg width="10" height="6" viewBox="0 0 10 6" fill="none" style="display:block"><path d="M1 1l4 4 4-4" stroke="hsl(228 14% 45%)" stroke-width="1.2"></path></svg>
+</div>
+</div>
+</div>
+<div style="border:1px solid hsl(183 30% 62%);background:hsl(183 40% 97%);padding:12px 14px;font:400 12.5px/1.7 'IBM Plex Sans Arabic';color:hsl(183 42% 22%)">سيتم إرسال رمز التحقق عبر واتساب إلى هذا الرقم — تأكد أن الرقم مرتبط بحساب واتساب.</div>
+<div style="height:1px;background:hsl(42 78% 55%);opacity:.55"></div>
+<button style="height:58px;background:hsl(228 40% 14%);color:hsl(42 45% 97%);border:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 15px 'IBM Plex Sans Arabic';cursor:pointer">إرسال رمز واتساب
+<svg viewBox="0 0 48 96" style="width:11px;height:22px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg></button>
+<div style="font:400 11px/1.65 'IBM Plex Sans Arabic';color:hsl(228 10% 52%)">بإنشاء الحساب أنت توافق على <a href="#" style="color:hsl(38 52% 32%)">الشروط</a> و<a href="#" style="color:hsl(38 52% 32%)">سياسة الخصوصية</a>.</div>
+</div>
+<div style="margin-top:auto;display:flex;align-items:center;justify-content:space-between">
+<div style="display:flex;align-items:center;gap:7px"><span style="font:400 11.5px 'IBM Plex Sans Arabic';color:hsl(228 18% 38%)">لديك حساب؟</span><a href="#" style="font:500 11.5px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%);border-bottom:1px solid hsl(42 78% 55%)">تسجيل الدخول</a></div>
+<div style="width:110px;height:4px;background:hsl(228 40% 14%)"></div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="2i" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:20px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 10px Archivo;letter-spacing:.1em;background:hsl(228 40% 14%);color:hsl(42 45% 97%);padding:4px 8px">2i</span><span style="font:400 11.5px Archivo;color:hsl(228 14% 45%)">OTP · mobile — live state, switch in Tweaks</span></div>
+<div dir="rtl" data-screen-label="OTP mobile v2 / states" style="width:402px;height:874px;position:relative;overflow:hidden;background:hsl(42 45% 97%);border:1px solid hsl(40 12% 74%);box-shadow:0 2px 6px rgba(32,30,29,.16);font-family:'IBM Plex Sans Arabic',sans-serif">
+<div style="position:absolute;left:0;right:0;top:100px;height:160px;overflow:hidden"><div style="position:absolute;inset:0;transform:scale(1.34) translate(4%,-3%)"><image-slot id="nk-weave" shape="rect" src="art/cotton-weave.png" placeholder="Macro Egyptian cotton weave"></image-slot></div></div>
+<div style="position:absolute;left:0;right:0;top:100px;height:160px;pointer-events:none;background:linear-gradient(190deg,rgba(255,252,244,.30),rgba(21,26,46,.04) 50%,rgba(21,26,46,.14))"></div>
+<div style="position:absolute;left:0;right:0;top:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;box-sizing:border-box;font:500 12px Archivo;color:hsl(228 40% 14%);z-index:3"><span dir="ltr">9:41</span><span style="display:flex;gap:4px"><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span></span></div>
+<div style="position:absolute;left:0;right:0;top:44px;height:56px;background:hsl(42 45% 97%);border-bottom:1px solid hsl(40 12% 80%);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 8px;box-sizing:border-box;z-index:4">
+<a href="#" aria-label="القائمة" style="justify-self:start;display:grid;place-items:center;width:44px;height:44px;color:hsl(228 30% 22%)"><svg viewBox="0 0 21 21" style="width:20px;height:20px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 6.4h13.8"></path><path d="M3.6 10.5h13.8"></path><path d="M3.6 14.6h13.8"></path></svg></a>
+<img src="uploads/logo-lapis-a8ffcda4.png" alt="قطن ملوك النيل" style="height:42px;width:auto;display:block;justify-self:center">
+<div style="justify-self:end;display:flex;align-items:center;gap:0;color:hsl(228 30% 22%)">
+<a href="#" aria-label="المفضلة" style="display:grid;place-items:center;width:44px;height:44px;color:inherit"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 17.6C6.2 14.5 3.2 12 3.2 8.8 3.2 6.6 4.9 5 7 5c1.4 0 2.7.8 3.5 2 .8-1.2 2.1-2 3.5-2 2.1 0 3.8 1.6 3.8 3.8 0 3.2-3 5.7-7.3 8.8z"></path></svg></a>
+<a href="#" aria-label="سلة التسوق" style="display:grid;place-items:center;width:44px;height:44px;color:inherit;position:relative"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 6.6h11.4l-.9 10.8H5.7z"></path><path d="M8 6.6V5.2a2.5 2.5 0 0 1 5 0v1.4"></path></svg><span dir="ltr" style="position:absolute;top:7px;left:3px;font:500 9.5px Archivo;color:hsl(228 40% 14%)">3</span></a>
+<a href="#" aria-label="حسابي" style="display:grid;place-items:center;width:44px;height:44px;color:hsl(228 40% 14%);position:relative"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="7.6" r="3.1"></circle><path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8"></path></svg><span style="position:absolute;bottom:6px;width:19px;height:1px;background:hsl(42 78% 55%)"></span></a>
+</div>
+</div>
+<div style="position:absolute;right:24px;top:132px;display:flex;align-items:center;gap:10px;z-index:3;pointer-events:none">
+<span style="font:700 22px Amiri;color:hsl(228 40% 14%)">المصري</span>
+<svg viewBox="0 0 48 96" style="width:11px;height:22px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="10"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<span style="font:700 22px Amiri;color:hsl(228 40% 14%)">للمصري</span>
+</div>
+
+<div style="position:absolute;left:0;right:0;top:196px;bottom:0;background:hsl(42 45% 97%);border-top:1px solid hsl(40 12% 80%);z-index:3;padding:26px 24px 20px;box-sizing:border-box;display:flex;flex-direction:column">
+<div style="display:flex;border-top:2px solid hsl(40 12% 80%);margin-bottom:20px">
+<div style="flex:1;padding:8px 0 0;border-top:2px solid hsl(228 40% 14%);margin-top:-2px"><span style="font:400 10.5px 'IBM Plex Sans Arabic';letter-spacing:.08em;color:hsl(228 14% 45%)"><span dir="ltr" style="font-family:Archivo">1</span> · الهاتف</span></div>
+<div style="flex:1;padding:8px 0 0;border-top:2px solid hsl(228 40% 14%);margin-top:-2px"><span style="font:600 10.5px 'IBM Plex Sans Arabic';letter-spacing:.08em;color:hsl(228 40% 14%)"><span dir="ltr" style="font-family:Archivo">2</span> · التحقق</span></div>
+<div style="flex:1;padding:8px 0 0"><span style="font:400 10.5px 'IBM Plex Sans Arabic';letter-spacing:.08em;color:hsl(228 10% 58%)"><span dir="ltr" style="font-family:Archivo">3</span> · بياناتك</span></div>
+</div>
+<h2 style="font:700 28px/1.25 Amiri;color:hsl(228 40% 14%);margin:0 0 8px">تأكيد رقم هاتفك</h2>
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:22px">
+<span style="font:400 12.5px 'IBM Plex Sans Arabic';color:hsl(228 18% 38%)">الرمز عبر واتساب إلى</span>
+<span dir="ltr" style="font:500 13px Archivo;letter-spacing:.05em;color:hsl(228 40% 14%)">+20 100 123 4567</span>
+<a href="#" style="font:400 11.5px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%);border-bottom:1px solid hsl(42 78% 55%)">تغيير</a>
+</div>
+<sc-if value="{{ isCooldown }}">
+<div dir="ltr" style="display:flex;gap:7px;margin-bottom:16px">
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 70%);background:#fff;display:grid;place-items:center;font:500 24px Archivo;color:hsl(228 40% 14%)">4</div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 70%);background:#fff;display:grid;place-items:center;font:500 24px Archivo;color:hsl(228 40% 14%)">8</div>
+<div style="flex:1;height:66px;border:2px solid hsl(228 40% 14%);border-bottom-color:hsl(42 78% 55%);background:#fff;display:grid;place-items:center"><span style="width:1px;height:26px;background:hsl(42 78% 55%);display:block"></span></div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 70%);background:#fff"></div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 70%);background:#fff"></div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 70%);background:#fff"></div>
+</div>
+<div style="font:400 12.5px 'IBM Plex Sans Arabic';color:hsl(228 10% 55%);margin-bottom:18px">{{ resendText }}</div>
+</sc-if>
+<sc-if value="{{ isWrong }}" hint-placeholder-val="{{ true }}">
+<div dir="ltr" style="display:flex;gap:7px;margin-bottom:14px">
+<div style="flex:1;height:66px;border:1px solid hsl(6 58% 42%);background:hsl(6 60% 98%);display:grid;place-items:center;font:500 24px Archivo;color:hsl(6 58% 36%)">4</div>
+<div style="flex:1;height:66px;border:1px solid hsl(6 58% 42%);background:hsl(6 60% 98%);display:grid;place-items:center;font:500 24px Archivo;color:hsl(6 58% 36%)">8</div>
+<div style="flex:1;height:66px;border:1px solid hsl(6 58% 42%);background:hsl(6 60% 98%);display:grid;place-items:center;font:500 24px Archivo;color:hsl(6 58% 36%)">1</div>
+<div style="flex:1;height:66px;border:1px solid hsl(6 58% 42%);background:hsl(6 60% 98%);display:grid;place-items:center;font:500 24px Archivo;color:hsl(6 58% 36%)">0</div>
+<div style="flex:1;height:66px;border:1px solid hsl(6 58% 42%);background:hsl(6 60% 98%);display:grid;place-items:center;font:500 24px Archivo;color:hsl(6 58% 36%)">9</div>
+<div style="flex:1;height:66px;border:1px solid hsl(6 58% 42%);background:hsl(6 60% 98%);display:grid;place-items:center;font:500 24px Archivo;color:hsl(6 58% 36%)">1</div>
+</div>
+<div style="border:1px solid hsl(6 58% 42%);background:hsl(6 60% 98%);padding:12px 14px;font:400 12.5px/1.6 'IBM Plex Sans Arabic';color:hsl(6 58% 34%);margin-bottom:18px">الرمز غير صحيح. راجع رسالة واتساب — تبقّى لك <span dir="ltr" style="font:500 12.5px Archivo">4</span> محاولات.</div>
+</sc-if>
+<sc-if value="{{ isExpired }}">
+<div dir="ltr" style="display:flex;gap:7px;margin-bottom:14px">
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 82%);background:hsl(42 20% 96%);display:grid;place-items:center;font:500 24px Archivo;color:hsl(228 8% 62%)">4</div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 82%);background:hsl(42 20% 96%);display:grid;place-items:center;font:500 24px Archivo;color:hsl(228 8% 62%)">8</div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 82%);background:hsl(42 20% 96%);display:grid;place-items:center;font:500 24px Archivo;color:hsl(228 8% 62%)">1</div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 82%);background:hsl(42 20% 96%);display:grid;place-items:center;font:500 24px Archivo;color:hsl(228 8% 62%)">0</div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 82%);background:hsl(42 20% 96%);display:grid;place-items:center;font:500 24px Archivo;color:hsl(228 8% 62%)">3</div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 82%);background:hsl(42 20% 96%);display:grid;place-items:center;font:500 24px Archivo;color:hsl(228 8% 62%)">7</div>
+</div>
+<div style="border:1px solid hsl(40 12% 76%);background:#fff;padding:12px 14px;font:400 12.5px/1.6 'IBM Plex Sans Arabic';color:hsl(228 20% 30%);margin-bottom:18px">انتهت صلاحية الرمز. اطلب رمزًا جديدًا — سيستغرق ثوانٍ.</div>
+</sc-if>
+<sc-if value="{{ isLocked }}">
+<div dir="ltr" style="display:flex;gap:7px;margin-bottom:14px;opacity:.45">
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 82%);background:hsl(42 20% 96%)"></div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 82%);background:hsl(42 20% 96%)"></div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 82%);background:hsl(42 20% 96%)"></div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 82%);background:hsl(42 20% 96%)"></div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 82%);background:hsl(42 20% 96%)"></div>
+<div style="flex:1;height:66px;border:1px solid hsl(40 12% 82%);background:hsl(42 20% 96%)"></div>
+</div>
+<div style="border:1px solid hsl(6 58% 42%);background:hsl(6 60% 98%);padding:13px 14px;font:400 12.5px/1.7 'IBM Plex Sans Arabic';color:hsl(6 58% 34%);margin-bottom:18px">أوقفنا المحاولات مؤقتًا لحماية حسابك. جرّب بعد <span dir="ltr" style="font:500 12.5px Archivo">15</span> دقيقة، أو <a href="#" style="color:hsl(6 58% 34%);border-bottom:1px solid hsl(6 58% 42%)">تواصل معنا على واتساب</a>.</div>
+</sc-if>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="height:1px;background:hsl(42 78% 55%);opacity:.55"></div>
+<button style="height:58px;background:hsl(228 40% 14%);color:hsl(42 45% 97%);border:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 15px 'IBM Plex Sans Arabic';cursor:pointer">تأكيد الرمز
+<svg viewBox="0 0 48 96" style="width:11px;height:22px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg></button>
+<button style="height:58px;background:transparent;color:hsl(228 40% 14%);border:1px solid hsl(228 40% 14%);display:flex;align-items:center;padding:0 20px;font:600 15px 'IBM Plex Sans Arabic';cursor:pointer">إعادة إرسال الرمز</button>
+</div>
+<div style="margin-top:auto;display:flex;align-items:center;justify-content:space-between">
+<span style="font:400 11px 'IBM Plex Sans Arabic';color:hsl(228 10% 55%)">الرمز صالح <span dir="ltr" style="font:500 11px Archivo">10</span> دقائق</span>
+<div style="width:110px;height:4px;background:hsl(228 40% 14%)"></div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="2j" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:20px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 10px Archivo;letter-spacing:.1em;background:hsl(228 40% 14%);color:hsl(42 45% 97%);padding:4px 8px">2j</span><span style="font:400 11.5px Archivo;color:hsl(228 14% 45%)">Register · mobile profile, verified</span></div>
+<div dir="rtl" data-screen-label="Register mobile v2 / profile" style="width:402px;height:874px;position:relative;overflow:hidden;background:hsl(42 45% 97%);border:1px solid hsl(40 12% 74%);box-shadow:0 2px 6px rgba(32,30,29,.16);font-family:'IBM Plex Sans Arabic',sans-serif">
+<div style="position:absolute;left:0;right:0;top:100px;height:215px;overflow:hidden"><div style="position:absolute;inset:0;transform:scale(1.16) translate(2%,3%)"><image-slot id="nk-weave" shape="rect" src="art/cotton-weave.png" placeholder="Macro Egyptian cotton weave"></image-slot></div></div>
+<div style="position:absolute;left:0;right:0;top:100px;height:215px;pointer-events:none;background:linear-gradient(190deg,rgba(255,252,244,.30),rgba(21,26,46,.04) 50%,rgba(21,26,46,.14))"></div>
+<div style="position:absolute;left:0;right:0;top:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;box-sizing:border-box;font:500 12px Archivo;color:hsl(228 40% 14%);z-index:3"><span dir="ltr">9:41</span><span style="display:flex;gap:4px"><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span></span></div>
+<div style="position:absolute;left:0;right:0;top:44px;height:56px;background:hsl(42 45% 97%);border-bottom:1px solid hsl(40 12% 80%);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 8px;box-sizing:border-box;z-index:4">
+<a href="#" aria-label="القائمة" style="justify-self:start;display:grid;place-items:center;width:44px;height:44px;color:hsl(228 30% 22%)"><svg viewBox="0 0 21 21" style="width:20px;height:20px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 6.4h13.8"></path><path d="M3.6 10.5h13.8"></path><path d="M3.6 14.6h13.8"></path></svg></a>
+<img src="uploads/logo-lapis-a8ffcda4.png" alt="قطن ملوك النيل" style="height:42px;width:auto;display:block;justify-self:center">
+<div style="justify-self:end;display:flex;align-items:center;gap:0;color:hsl(228 30% 22%)">
+<a href="#" aria-label="المفضلة" style="display:grid;place-items:center;width:44px;height:44px;color:inherit"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 17.6C6.2 14.5 3.2 12 3.2 8.8 3.2 6.6 4.9 5 7 5c1.4 0 2.7.8 3.5 2 .8-1.2 2.1-2 3.5-2 2.1 0 3.8 1.6 3.8 3.8 0 3.2-3 5.7-7.3 8.8z"></path></svg></a>
+<a href="#" aria-label="سلة التسوق" style="display:grid;place-items:center;width:44px;height:44px;color:inherit;position:relative"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 6.6h11.4l-.9 10.8H5.7z"></path><path d="M8 6.6V5.2a2.5 2.5 0 0 1 5 0v1.4"></path></svg><span dir="ltr" style="position:absolute;top:7px;left:3px;font:500 9.5px Archivo;color:hsl(228 40% 14%)">3</span></a>
+<a href="#" aria-label="حسابي" style="display:grid;place-items:center;width:44px;height:44px;color:hsl(228 40% 14%);position:relative"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="7.6" r="3.1"></circle><path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8"></path></svg><span style="position:absolute;bottom:6px;width:19px;height:1px;background:hsl(42 78% 55%)"></span></a>
+</div>
+</div>
+
+<div style="position:absolute;left:0;right:0;top:255px;bottom:0;background:hsl(42 45% 97%);border-top:1px solid hsl(40 12% 80%);z-index:3;padding:22px 24px 20px;box-sizing:border-box;display:flex;flex-direction:column">
+<div style="display:flex;border-top:2px solid hsl(40 12% 80%);margin-bottom:18px">
+<div style="flex:1;padding:8px 0 0;border-top:2px solid hsl(228 40% 14%);margin-top:-2px"><span style="font:400 10.5px 'IBM Plex Sans Arabic';letter-spacing:.08em;color:hsl(228 14% 45%)"><span dir="ltr" style="font-family:Archivo">1</span> · الهاتف</span></div>
+<div style="flex:1;padding:8px 0 0;border-top:2px solid hsl(228 40% 14%);margin-top:-2px"><span style="font:400 10.5px 'IBM Plex Sans Arabic';letter-spacing:.08em;color:hsl(228 14% 45%)"><span dir="ltr" style="font-family:Archivo">2</span> · التحقق</span></div>
+<div style="flex:1;padding:8px 0 0;border-top:2px solid hsl(228 40% 14%);margin-top:-2px"><span style="font:600 10.5px 'IBM Plex Sans Arabic';letter-spacing:.08em;color:hsl(228 40% 14%)"><span dir="ltr" style="font-family:Archivo">3</span> · بياناتك</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+<h2 style="font:700 27px/1.25 Amiri;color:hsl(228 40% 14%);margin:0">بياناتك</h2>
+<span style="display:flex;align-items:center;gap:5px;font:400 11.5px 'IBM Plex Sans Arabic';color:hsl(150 36% 28%)">
+<svg viewBox="0 0 48 96" style="width:7px;height:14px" fill="none"><g stroke="hsl(150 36% 30%)" stroke-width="12" stroke-dasharray="150" style="animation:nkDraw .9s ease-out .3s both"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+مؤكد</span>
+</div>
+<p style="font:400 12.5px/1.7 'IBM Plex Sans Arabic';color:hsl(228 18% 38%);margin:0 0 20px">خطوة أخيرة ثم نعيدك إلى الشراء.</p>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;flex-direction:column;gap:7px">
+<label style="font:500 12px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">الاسم الكامل</label>
+<div style="height:54px;border:1px solid hsl(40 12% 70%);display:flex;align-items:center;padding:0 13px"><span style="font:400 15px 'IBM Plex Sans Arabic';color:hsl(228 40% 14%)">يوسف طارق</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:7px">
+<label style="font:500 12px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">البريد الإلكتروني <span style="color:hsl(228 10% 58%)">— اختياري</span></label>
+<div style="height:54px;border:1px solid hsl(40 12% 70%);display:flex;align-items:center;padding:0 13px"><span dir="ltr" style="font:400 14px Archivo;color:hsl(228 8% 62%)">name@example.com</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:7px">
+<label style="font:500 12px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">كلمة المرور</label>
+<div style="height:54px;border:1px solid hsl(40 12% 70%);display:flex;align-items:center;padding:0 13px;justify-content:space-between"><span dir="ltr" style="font:400 17px Archivo;letter-spacing:.3em;color:hsl(228 40% 14%)">••••••••</span><button style="font:500 12px 'IBM Plex Sans Arabic';color:hsl(38 52% 32%);background:none;border:0;padding:0;cursor:pointer">إظهار</button></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:7px">
+<label style="font:500 12px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">تأكيد كلمة المرور</label>
+<div style="height:54px;border:1px solid hsl(40 12% 70%);display:flex;align-items:center;padding:0 13px"><span dir="ltr" style="font:400 17px Archivo;letter-spacing:.3em;color:hsl(228 40% 14%)">••••••••</span></div>
+</div>
+<div style="height:1px;background:hsl(42 78% 55%);opacity:.55"></div>
+<button style="height:58px;background:hsl(228 40% 14%);color:hsl(42 45% 97%);border:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 15px 'IBM Plex Sans Arabic';cursor:pointer">إنشاء الحساب ومتابعة الشراء
+<svg viewBox="0 0 48 96" style="width:11px;height:22px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg></button>
+</div>
+<div style="margin-top:auto;display:flex;justify-content:center"><div style="width:110px;height:4px;background:hsl(228 40% 14%)"></div></div>
+</div>
+</div>
+</div>
+
+<div id="2k" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:20px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 10px Archivo;letter-spacing:.1em;background:hsl(228 40% 14%);color:hsl(42 45% 97%);padding:4px 8px">2k</span><span style="font:400 11.5px Archivo;color:hsl(228 14% 45%)">Recovery · mobile success — login, linen crop</span></div>
+<div dir="rtl" data-screen-label="Forgot mobile v2 / success" style="width:402px;height:874px;position:relative;overflow:hidden;background:hsl(42 45% 97%);border:1px solid hsl(40 12% 74%);box-shadow:0 2px 6px rgba(32,30,29,.16);font-family:'IBM Plex Sans Arabic',sans-serif">
+<div style="position:absolute;left:0;right:0;top:100px;height:236px;overflow:hidden"><div style="position:absolute;inset:0;animation:nkDrift 26s ease-in-out infinite alternate"><image-slot id="nk-drape" shape="rect" src="art/cotton-drape.png" placeholder="Draped Egyptian cotton bed linen"></image-slot></div></div>
+<div style="position:absolute;left:0;right:0;top:100px;height:236px;pointer-events:none;background:linear-gradient(190deg,rgba(255,252,244,.30),rgba(21,26,46,.04) 50%,rgba(21,26,46,.14))"></div>
+<div style="position:absolute;left:0;right:0;top:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;box-sizing:border-box;font:500 12px Archivo;color:hsl(228 40% 14%);z-index:3"><span dir="ltr">9:41</span><span style="display:flex;gap:4px"><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span><span style="width:4px;height:4px;background:hsl(228 40% 14%);display:block"></span></span></div>
+<div style="position:absolute;left:0;right:0;top:44px;height:56px;background:hsl(42 45% 97%);border-bottom:1px solid hsl(40 12% 80%);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 8px;box-sizing:border-box;z-index:4">
+<a href="#" aria-label="القائمة" style="justify-self:start;display:grid;place-items:center;width:44px;height:44px;color:hsl(228 30% 22%)"><svg viewBox="0 0 21 21" style="width:20px;height:20px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 6.4h13.8"></path><path d="M3.6 10.5h13.8"></path><path d="M3.6 14.6h13.8"></path></svg></a>
+<img src="uploads/logo-lapis-a8ffcda4.png" alt="قطن ملوك النيل" style="height:42px;width:auto;display:block;justify-self:center">
+<div style="justify-self:end;display:flex;align-items:center;gap:0;color:hsl(228 30% 22%)">
+<a href="#" aria-label="المفضلة" style="display:grid;place-items:center;width:44px;height:44px;color:inherit"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 17.6C6.2 14.5 3.2 12 3.2 8.8 3.2 6.6 4.9 5 7 5c1.4 0 2.7.8 3.5 2 .8-1.2 2.1-2 3.5-2 2.1 0 3.8 1.6 3.8 3.8 0 3.2-3 5.7-7.3 8.8z"></path></svg></a>
+<a href="#" aria-label="سلة التسوق" style="display:grid;place-items:center;width:44px;height:44px;color:inherit;position:relative"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 6.6h11.4l-.9 10.8H5.7z"></path><path d="M8 6.6V5.2a2.5 2.5 0 0 1 5 0v1.4"></path></svg><span dir="ltr" style="position:absolute;top:7px;left:3px;font:500 9.5px Archivo;color:hsl(228 40% 14%)">3</span></a>
+<a href="#" aria-label="حسابي" style="display:grid;place-items:center;width:44px;height:44px;color:hsl(228 40% 14%);position:relative"><svg viewBox="0 0 21 21" style="width:19px;height:19px;display:block" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="7.6" r="3.1"></circle><path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8"></path></svg><span style="position:absolute;bottom:6px;width:19px;height:1px;background:hsl(42 78% 55%)"></span></a>
+</div>
+</div>
+<svg viewBox="0 0 48 96" style="position:absolute;left:-26px;top:122px;width:120px;height:240px;opacity:.14;z-index:2;pointer-events:none" fill="none"><g stroke="hsl(228 40% 14%)" stroke-width="6"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<div style="position:absolute;right:24px;top:152px;display:flex;align-items:center;gap:11px;z-index:3;pointer-events:none">
+<span style="font:700 26px Amiri;color:hsl(228 40% 14%)">المصري</span>
+<svg viewBox="0 0 48 96" style="width:12px;height:24px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+<span style="font:700 26px Amiri;color:hsl(228 40% 14%)">للمصري</span>
+</div>
+<div style="position:absolute;left:0;right:0;top:276px;bottom:0;background:hsl(42 45% 97%);border-top:1px solid hsl(40 12% 80%);z-index:3;padding:26px 24px 20px;box-sizing:border-box;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:9px;border:1px solid hsl(150 30% 62%);background:hsl(150 34% 97%);padding:13px 14px;font:400 12.5px/1.6 'IBM Plex Sans Arabic';color:hsl(150 36% 22%);margin-bottom:26px">
+<svg viewBox="0 0 48 96" style="width:8px;height:16px;flex:none" fill="none"><g stroke="hsl(150 36% 30%)" stroke-width="11" stroke-dasharray="150" style="animation:nkDraw .9s ease-out .2s both"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg>
+تم تعيين كلمة مرور جديدة لحسابك.</div>
+<h2 style="font:700 28px/1.25 Amiri;color:hsl(228 40% 14%);margin:0 0 8px">سجّل الدخول للمتابعة</h2>
+<p style="font:400 12.5px/1.75 'IBM Plex Sans Arabic';color:hsl(228 18% 38%);margin:0 0 24px">لحمايتك لم نسجّل دخولك تلقائيًا. استخدم كلمة المرور الجديدة الآن.</p>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<label style="font:500 12px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">رقم الهاتف</label>
+<div style="display:flex;height:54px;border:1px solid hsl(40 12% 82%);background:hsl(42 20% 96%)">
+<div style="flex:1;display:flex;align-items:center;padding:0 13px"><span dir="ltr" style="font:400 16px Archivo;letter-spacing:.06em;color:hsl(228 20% 32%)">100 123 4567</span></div>
+<div style="display:flex;align-items:center;padding:0 13px;border-right:1px solid hsl(40 12% 82%)"><span dir="ltr" style="font:500 14px Archivo;color:hsl(228 20% 32%)">+20</span></div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<label style="font:500 12px 'IBM Plex Sans Arabic';letter-spacing:.04em;color:hsl(228 14% 42%)">كلمة المرور الجديدة</label>
+<div style="display:flex;height:54px;border:2px solid hsl(228 40% 14%);border-bottom-color:hsl(42 78% 55%);align-items:center;padding:0 13px"><span style="width:1px;height:24px;background:hsl(42 78% 55%);display:block"></span></div>
+</div>
+<div style="height:1px;background:hsl(42 78% 55%);opacity:.55"></div>
+<button style="height:58px;background:hsl(228 40% 14%);color:hsl(42 45% 97%);border:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 15px 'IBM Plex Sans Arabic';cursor:pointer">تسجيل الدخول
+<svg viewBox="0 0 48 96" style="width:11px;height:22px;flex:none" fill="none"><g stroke="hsl(42 78% 55%)" stroke-width="9"><path d="M13.5 44V28a10.5 10.5 0 0 1 21 0v16"></path><path d="M6 50h37"></path><path d="M24 50v43"></path></g></svg></button>
+</div>
+<div style="margin-top:auto;display:flex;justify-content:center"><div style="width:110px;height:4px;background:hsl(228 40% 14%)"></div></div>
+</div>
+</div>
+</div>
+
+</div>
+
+<div dir="ltr" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:2px solid hsl(228 40% 14%);border-bottom:2px solid hsl(228 40% 14%);margin-top:44px">
+<div style="padding:20px 28px 22px 0;border-right:1px solid hsl(40 12% 76%);font:400 13px/1.7 Archivo;color:hsl(228 20% 28%)"><b>Whitespace, re-purposed.</b> v1's empty ivory half became material; the ivory that remains now frames one thing each time — the lockup, the form, the CTA. Form measure went 440 → 404 and sits 152px from the top instead of centred, so the page has a top-left weight and a bottom-right release.</div>
+<div style="padding:20px 28px 22px;border-right:1px solid hsl(40 12% 76%);font:400 13px/1.7 Archivo;color:hsl(228 20% 28%)"><b>Conversion is untouched.</b> One primary action per screen, labels above fields, errors above the CTA, 52–58px targets, country code before the number, WhatsApp promise stated before the send button. The art direction happens entirely on the material side of the seam.</div>
+<div style="padding:20px 0 22px 28px;font:400 13px/1.7 Archivo;color:hsl(228 20% 28%)"><b>Still open.</b> The 22-country list panel; the login lockout screen; whether the Ankh replaces the crown as the app mark (this pass proves it can carry favicon and watermark duty). Say the word on any of them.</div>
+</div>
+<div dir="ltr" style="font:400 12.5px/1.7 Archivo;color:hsl(228 14% 45%);padding:16px 0 6px">Try next: "open the burger menu as a full-screen panel" · "push the fold crop further over the form" · "try the linen crop on login too" · "drop the ivory band and let the cotton run to the top edge" · "show it with our real photography"</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1620,&quot;height&quot;:1100},&quot;otpState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;wrong&quot;,&quot;expired&quot;,&quot;cooldown&quot;,&quot;locked&quot;],&quot;default&quot;:&quot;wrong&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;OTP state (screen 2i)&quot;},&quot;resendSeconds&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:42,&quot;min&quot;:5,&quot;max&quot;:120,&quot;unit&quot;:&quot;s&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;OTP state (screen 2i)&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.props.otpState ?? 'wrong';
+    const secs = this.props.resendSeconds ?? 42;
+    return {
+      isWrong: s === 'wrong',
+      isExpired: s === 'expired',
+      isLocked: s === 'locked',
+      isCooldown: s === 'cooldown',
+      resendText: 'لم يصلك الرمز؟ إعادة الإرسال بعد ' + secs + ' ثانية'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -6,13 +6,21 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from "@/lib/country-codes";
+import { Ankh } from "@/components/brand/ankh";
+import { OtpBoxes, classifyOtpVerifyError, type OtpBoxState } from "@/components/auth/otp-boxes";
+import { useAuthVisual } from "../auth-visual-context";
+import {
+  authLabelClass,
+  authFieldBoxClass,
+  authBareInputClass,
+  authBareSelectClass,
+  AuthDivider,
+  AuthSubmitButton,
+  PasswordFieldBox,
+} from "@/components/auth/auth-ui";
 
 const MIN_PASSWORD_LEN = 8;
 const OTP_LENGTH = 6;
@@ -40,6 +48,44 @@ function fullPhone(countryCode: string, national: string): string {
 }
 
 type Step = "phone" | "otp" | "profile";
+
+const STEP_INDEX: Record<Step, 1 | 2 | 3> = { phone: 1, otp: 2, profile: 3 };
+
+/** Canvas's 3-part "1 · الهاتف / 2 · التحقق / 3 · بياناتك" step tracker, screens 2c/2d/2e. */
+function StepTracker({ current }: { current: 1 | 2 | 3 }) {
+  const steps: [1 | 2 | 3, string][] = [
+    [1, "الهاتف"],
+    [2, "التحقق"],
+    [3, "بياناتك"],
+  ];
+  return (
+    <div className="mb-6 flex border-t-2 border-[hsl(40_12%_80%)]">
+      {steps.map(([n, label]) => (
+        <div
+          key={n}
+          className={
+            n <= current
+              ? "-mt-0.5 flex-1 border-t-2 border-[hsl(228_40%_14%)] pt-2"
+              : "flex-1 pt-2"
+          }
+        >
+          <span
+            className={
+              n === current
+                ? "font-plex-arabic text-[11px] font-semibold tracking-[0.1em] text-[hsl(228_40%_14%)]"
+                : "font-plex-arabic text-[11px] tracking-[0.1em] text-[hsl(228_10%_58%)]"
+            }
+          >
+            <span dir="ltr" className="font-archivo">
+              {n}
+            </span>{" "}
+            · {label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /**
  * Backlog 4.4 (WhatsApp OTP via WaPilot): reinstates OTP verification at registration —
@@ -74,11 +120,21 @@ function RegisterContent() {
   const [step, setStep] = useState<Step>("phone");
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+  const [otpState, setOtpState] = useState<OtpBoxState>("idle");
+  const [otpMessage, setOtpMessage] = useState<string | undefined>();
   const [resendCooldown, setResendCooldown] = useState(0);
   const [registerToken, setRegisterToken] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const { toast } = useToast();
   const router = useRouter();
+  const { setVariant } = useAuthVisual();
+
+  // See login-form.tsx's identical effect: the (auth) layout persists across sibling-route
+  // navigations, so assert this screen's own hero variant on mount rather than trusting
+  // whatever forgot-password may have last set it to.
+  useEffect(() => {
+    setVariant("weave");
+  }, [setVariant]);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
@@ -132,6 +188,8 @@ function RegisterContent() {
       }
       setStep("otp");
       setOtpDigits(Array(OTP_LENGTH).fill(""));
+      setOtpState("idle");
+      setOtpMessage(undefined);
       setResendCooldown(data?.data?.cooldownSeconds ?? RESEND_COOLDOWN_SEC);
       toast({
         title: "تم إرسال رمز التحقق عبر واتساب",
@@ -157,6 +215,8 @@ function RegisterContent() {
         toast({ title: data?.error?.message ?? "فشل إعادة الإرسال", variant: "destructive" });
         return;
       }
+      setOtpState("idle");
+      setOtpMessage(undefined);
       setResendCooldown(data?.data?.cooldownSeconds ?? RESEND_COOLDOWN_SEC);
       toast({ title: "تم إرسال رمز جديد عبر واتساب", variant: "default" });
     } catch {
@@ -215,7 +275,13 @@ function RegisterContent() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast({ title: data?.error?.message ?? "رمز غير صحيح", variant: "destructive" });
+        // OTP verify failures show the canvas's inline state banner (OtpBoxes below) instead of
+        // also toasting the identical message — the two together would be a redundant, doubly
+        // announced (both are alert/aria-live regions) duplicate of the same text. Every other
+        // error on this screen still toasts, unchanged.
+        const message = data?.error?.message ?? "رمز غير صحيح";
+        setOtpState(classifyOtpVerifyError(res.status, message));
+        setOtpMessage(message);
         return;
       }
       setRegisterToken(data?.data?.registerToken ?? null);
@@ -287,217 +353,314 @@ function RegisterContent() {
   };
 
   return (
-    <div className="w-full rounded-2xl border border-border bg-card p-6 shadow-card">
-      <Form {...form}>
-        {step === "phone" && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleContinue();
-            }}
-            className="space-y-4"
-          >
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>رقم الهاتف</FormLabel>
-                  <div className="flex gap-2">
-                    <FormControl>
-                      <Input
-                        type="tel"
-                        placeholder="1xxxxxxxxx"
-                        dir="ltr"
-                        autoComplete="tel-national"
-                        className="flex-1"
-                        {...field}
-                      />
-                    </FormControl>
-                    <Select
-                      {...form.register("countryCode")}
-                      defaultValue={DEFAULT_COUNTRY_CODE}
-                      dir="ltr"
-                      aria-label="رمز الدولة"
-                      className="w-auto min-w-[7rem] flex-none cursor-pointer"
-                    >
-                      {COUNTRY_CODES.map(({ code, country }) => (
-                        <option key={code} value={code}>
-                          {code} {country}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                  <FormDescription>سيصلك رمز التحقق عبر واتساب على هذا الرقم.</FormDescription>
-                </FormItem>
-              )}
-            />
+    <div className="w-full">
+      <StepTracker current={STEP_INDEX[step]} />
 
-            <Button type="submit" className="w-full" disabled={otpLoading}>
-              {otpLoading ? "جاري الإرسال…" : "متابعة"}
-            </Button>
-          </form>
-        )}
-
-        {step === "otp" && (
-          <form onSubmit={handleVerifyOtp} className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              أدخل الرمز المرسل عبر واتساب إلى {form.getValues("countryCode")} {form.getValues("phone")}
-            </p>
-            <div className="flex justify-center gap-2" dir="ltr">
-              {Array.from({ length: OTP_LENGTH }, (_, i) => (
-                <Input
-                  key={i}
-                  ref={(el) => {
-                    inputRefs.current[i] = el;
-                  }}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={otpDigits[i]}
-                  onChange={(e) => handleOtpChange(i, e.target.value)}
-                  onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                  className={cn(
-                    "h-12 w-11 rounded-xl px-0 text-center text-lg font-semibold",
-                    otpDigits[i] ? "border-primary" : ""
-                  )}
-                  aria-label={`رقم ${i + 1}`}
-                />
-              ))}
-            </div>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={otpLoading || otpDigits.join("").length !== OTP_LENGTH}
+      {step === "phone" && (
+        <>
+          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+            إنشاء حساب جديد
+          </h1>
+          <p className="mt-2 mb-7 font-plex-arabic text-sm leading-[1.7] text-[hsl(228_18%_38%)]">
+            رقم هاتفك أولًا — يؤكد عبر واتساب ثم يكمل الباقي.
+          </p>
+          <Form {...form}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleContinue();
+              }}
+              className="flex flex-col gap-[18px]"
             >
-              تحقق ومتابعة
-            </Button>
-            <div className="flex flex-col items-center gap-2">
-              <Button
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel className={authLabelClass}>رقم الهاتف</FormLabel>
+                    <div className={authFieldBoxClass()}>
+                      <FormControl>
+                        <input
+                          type="tel"
+                          placeholder="1xxxxxxxxx"
+                          dir="ltr"
+                          autoComplete="tel-national"
+                          className={authBareInputClass}
+                          {...field}
+                        />
+                      </FormControl>
+                      <select
+                        {...form.register("countryCode")}
+                        defaultValue={DEFAULT_COUNTRY_CODE}
+                        dir="ltr"
+                        aria-label="رمز الدولة"
+                        className={authBareSelectClass}
+                      >
+                        {COUNTRY_CODES.map(({ code, country }) => (
+                          <option key={code} value={code}>
+                            {code} {country}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {/* Exact original copy ("سيصلك رمز التحقق عبر واتساب على هذا الرقم.") kept
+                        as a leading substring — tests/e2e/auth-register.spec.ts asserts on it. */}
+                    <FormDescription className="font-plex-arabic text-xs text-[hsl(228_10%_52%)]">
+                      سيصلك رمز التحقق عبر واتساب على هذا الرقم.
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+
+              <div className="border border-[hsl(183_30%_62%)] bg-[hsl(183_40%_97%)] px-[15px] py-[13px] font-plex-arabic text-[12.5px] leading-[1.7] text-[hsl(183_42%_22%)]">
+                تأكد أن رقمك مرتبط بحساب واتساب — سيصلك رمز التحقق هناك.
+              </div>
+
+              <AuthDivider />
+
+              {/* Label kept as "متابعة" (not the canvas's "إرسال رمز واتساب") — this is the
+                  existing, already-verified copy from backlog 4.4's WhatsApp-OTP register flow,
+                  and tests/e2e/auth-register.spec.ts locates this button by that exact name;
+                  the canvas's copy differs here and isn't a rebrand-driven change, so parity
+                  wins per this task's own "compare carefully" instruction. */}
+              <AuthSubmitButton disabled={otpLoading}>
+                {otpLoading ? "جاري الإرسال…" : "متابعة"}
+              </AuthSubmitButton>
+
+              <p className="font-plex-arabic text-[11px] leading-[1.65] text-[hsl(228_10%_52%)]">
+                بإنشاء الحساب أنت توافق على{" "}
+                <Link href="/terms" className="text-gold-600 underline">
+                  الشروط
+                </Link>{" "}
+                و
+                <Link href="/privacy" className="text-gold-600 underline">
+                  سياسة الخصوصية
+                </Link>
+                .
+              </p>
+            </form>
+          </Form>
+        </>
+      )}
+
+      {step === "otp" && (
+        <>
+          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+            تأكيد رقم هاتفك
+          </h1>
+          <div className="mt-2 mb-6 flex flex-wrap items-center gap-2 font-plex-arabic text-sm text-[hsl(228_18%_38%)]">
+            {/* Exact original copy — tests/e2e/auth-register.spec.ts checks this precise
+                string (kept in its own element so the sibling "تغيير" button doesn't get
+                folded into the same exact-text match). */}
+            <p>
+              أدخل الرمز المرسل عبر واتساب إلى{" "}
+              <span dir="ltr" className="font-archivo font-medium text-[hsl(228_40%_14%)]">
+                {form.getValues("countryCode")} {form.getValues("phone")}
+              </span>
+            </p>
+            {/* Exact original label "تغيير الرقم" (not the canvas's shorter "تغيير") — this is
+                the existing back-navigation control tests/e2e/auth-register.spec.ts locates by
+                name; kept functionally identical, just re-styled per the canvas's inline
+                placement next to the phone number instead of its previous spot at the form's
+                bottom. */}
+            <button
+              type="button"
+              onClick={() => setStep("phone")}
+              className="border-b border-gold-500 text-xs text-gold-600"
+            >
+              تغيير الرقم
+            </button>
+          </div>
+          <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
+            <OtpBoxes
+              digits={otpDigits}
+              state={otpState}
+              message={otpMessage}
+              onChange={handleOtpChange}
+              onKeyDown={handleOtpKeyDown}
+              setInputRef={(i, el) => {
+                inputRefs.current[i] = el;
+              }}
+            />
+            <div className="flex items-center gap-2 font-plex-arabic text-[13px] text-[hsl(228_10%_52%)]">
+              <span>لم يصلك الرمز؟</span>
+              <button
                 type="button"
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground"
                 onClick={handleResend}
                 disabled={resendCooldown > 0 || otpLoading}
+                className="text-gold-600 underline decoration-gold-500 underline-offset-2 disabled:no-underline disabled:text-[hsl(228_8%_62%)]"
               >
                 {resendCooldown > 0
-                  ? `إعادة الإرسال بعد ${resendCooldown} ثانية`
+                  ? (
+                    <>
+                      إعادة الإرسال بعد <span dir="ltr" className="font-archivo">{resendCooldown}</span> ثانية
+                    </>
+                  )
                   : "إعادة إرسال الرمز"}
-              </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setStep("phone")}>
-                تغيير الرقم
-              </Button>
+              </button>
             </div>
-          </form>
-        )}
-
-        {step === "profile" && (
-          <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>الاسم الكامل</FormLabel>
-                  <FormControl>
-                    <Input type="text" placeholder="الاسم الكامل" autoComplete="name" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>البريد الإلكتروني (اختياري)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="البريد الإلكتروني (اختياري)"
-                      autoComplete="email"
-                      {...field}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>كلمة المرور</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      placeholder={`كلمة المرور (${MIN_PASSWORD_LEN} أحرف على الأقل)`}
-                      autoComplete="new-password"
-                      {...field}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>تأكيد كلمة المرور</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="تأكيد كلمة المرور"
-                      autoComplete="new-password"
-                      {...field}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <p className="text-xs text-muted-foreground">
-              بإنشاء الحساب، أنت توافق على{" "}
-              <Link href="/terms" className="font-medium text-primary underline hover:no-underline">
-                الشروط والأحكام
-              </Link>{" "}
-              و
-              <Link href="/privacy" className="font-medium text-primary underline hover:no-underline">
-                سياسة الخصوصية
-              </Link>
-              .
-            </p>
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "جاري إنشاء الحساب…" : "إنشاء الحساب"}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="w-full"
-              onClick={() => setStep("otp")}
+            <AuthDivider />
+            {/* "تحقق ومتابعة" (not the canvas's "تأكيد الرمز") — exact original label, matches
+                forgot-password's identical OTP-confirm button; tests/e2e/auth-register.spec.ts
+                locates this button by name. */}
+            <AuthSubmitButton
+              disabled={otpLoading || otpState === "locked" || otpDigits.join("").length !== OTP_LENGTH}
             >
-              العودة لتغيير الرمز
-            </Button>
+              تحقق ومتابعة
+            </AuthSubmitButton>
+            <p className="font-plex-arabic text-[13.5px] leading-[1.7] text-[hsl(228_10%_52%)]">
+              الرمز صالح <span dir="ltr" className="font-archivo font-medium">10</span> دقائق ·
+              سلتك محفوظة طوال هذه الخطوة.
+            </p>
           </form>
-        )}
-      </Form>
+        </>
+      )}
 
-      <p className="mt-4 text-center text-sm text-muted-foreground">
+      {step === "profile" && (
+        <>
+          <div className="flex items-center gap-3">
+            <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+              بياناتك
+            </h1>
+            <span className="flex items-center gap-1.5 font-plex-arabic text-xs text-[hsl(150_36%_28%)]">
+              <Ankh animateDraw drawDelayMs={300} size={16} strokeWidth={11} className="text-[hsl(150_36%_30%)]" />
+              الرقم مؤكد
+            </span>
+          </div>
+          <p className="mt-1.5 mb-6 font-plex-arabic text-[13.5px] leading-[1.7] text-[hsl(228_18%_38%)]">
+            خطوة أخيرة — ثم نعيدك إلى إتمام الشراء.
+          </p>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className={authLabelClass}>الاسم الكامل</FormLabel>
+                    <div className={authFieldBoxClass()}>
+                      <FormControl>
+                        <input
+                          type="text"
+                          placeholder="الاسم الكامل"
+                          autoComplete="name"
+                          className={authBareInputClass}
+                          {...field}
+                        />
+                      </FormControl>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className={authLabelClass}>
+                      البريد الإلكتروني{" "}
+                      <span className="font-normal text-[hsl(228_10%_58%)]">— اختياري، للفواتير</span>
+                    </FormLabel>
+                    <div className={authFieldBoxClass()}>
+                      <FormControl>
+                        <input
+                          type="email"
+                          placeholder="name@example.com"
+                          dir="ltr"
+                          autoComplete="email"
+                          className={authBareInputClass}
+                          {...field}
+                        />
+                      </FormControl>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex gap-3.5">
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem className="flex-1 space-y-1.5">
+                      <FormLabel className={authLabelClass}>كلمة المرور</FormLabel>
+                      <FormControl>
+                        <PasswordFieldBox
+                          placeholder=""
+                          autoComplete="new-password"
+                          {...field}
+                        />
+                      </FormControl>
+                      <p className="font-plex-arabic text-[11.5px] text-[hsl(228_10%_52%)]">
+                        <span dir="ltr" className="font-archivo font-medium">8</span> أحرف على الأقل
+                      </p>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem className="flex-1 space-y-1.5">
+                      <FormLabel className={authLabelClass}>تأكيد كلمة المرور</FormLabel>
+                      <FormControl>
+                        <PasswordFieldBox
+                          placeholder=""
+                          autoComplete="new-password"
+                          {...field}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <p className="font-plex-arabic text-xs text-[hsl(228_10%_52%)]">
+                بإنشاء الحساب، أنت توافق على{" "}
+                <Link href="/terms" className="font-medium text-gold-600 underline">
+                  الشروط والأحكام
+                </Link>{" "}
+                و
+                <Link href="/privacy" className="font-medium text-gold-600 underline">
+                  سياسة الخصوصية
+                </Link>
+                .
+              </p>
+
+              <AuthDivider />
+
+              {/* "إنشاء الحساب" (not the canvas's "إنشاء الحساب ومتابعة الشراء") — same parity
+                  reasoning as the phone step's button above; tests/e2e/auth-register.spec.ts
+                  locates this exact button name. */}
+              <AuthSubmitButton disabled={loading}>
+                {loading ? "جاري إنشاء الحساب…" : "إنشاء الحساب"}
+              </AuthSubmitButton>
+              <button
+                type="button"
+                onClick={() => setStep("otp")}
+                className="font-plex-arabic text-sm text-[hsl(228_10%_52%)] underline"
+              >
+                العودة لتغيير الرمز
+              </button>
+            </form>
+          </Form>
+        </>
+      )}
+
+      <p className="mt-6 flex items-center gap-2 font-plex-arabic text-[11.5px] text-[hsl(228_18%_38%)]">
         لديك حساب؟{" "}
-        <Link href="/login" className="font-medium text-primary underline hover:no-underline">
+        <Link
+          href="/login"
+          className="font-medium text-gold-600 underline decoration-gold-500 underline-offset-2 hover:no-underline"
+        >
           تسجيل الدخول
         </Link>
       </p>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        <Link href="/" className="underline hover:text-foreground">
+      <p className="mt-4 font-plex-arabic text-sm text-[hsl(228_10%_55%)]">
+        <Link href="/" className="underline hover:text-[hsl(228_40%_14%)]">
           العودة للمتجر
         </Link>
       </p>
@@ -508,9 +671,7 @@ function RegisterContent() {
 export function RegisterForm() {
   return (
     <Suspense
-      fallback={
-        <div className="h-80 w-full animate-pulse rounded-2xl border border-border bg-card p-6 shadow-card" />
-      }
+      fallback={<div className="h-80 w-full animate-pulse border border-[hsl(40_12%_80%)] bg-white/40" />}
     >
       <RegisterContent />
     </Suspense>

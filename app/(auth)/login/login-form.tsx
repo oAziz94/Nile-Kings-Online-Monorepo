@@ -1,17 +1,24 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from "@/lib/country-codes";
+import { useAuthVisual } from "../auth-visual-context";
+import {
+  authLabelClass,
+  authFieldBoxClass,
+  authBareInputClass,
+  authBareSelectClass,
+  AuthDivider,
+  AuthSubmitButton,
+  PasswordFieldBox,
+} from "@/components/auth/auth-ui";
 
 /**
  * Only allow same-origin relative paths; reject protocol-relative ("//evil.com") and
@@ -58,6 +65,15 @@ function LoginContent() {
   const redirectTo = searchParams.get("redirect");
   const { toast } = useToast();
   const router = useRouter();
+  const { setVariant } = useAuthVisual();
+
+  // The (auth) layout persists across sibling-route navigations (login/register/forgot-password
+  // share one Next.js layout instance), so `AuthVisualProvider`'s hero-photography state can
+  // otherwise leak in from forgot-password's "drape" step — assert this screen's own default on
+  // mount rather than trusting the context's initial value.
+  useEffect(() => {
+    setVariant("weave");
+  }, [setVariant]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -96,7 +112,11 @@ function LoginContent() {
   // destructive toast as before (phone checked before password), not an inline red
   // border/helper text — see login.md's "Error state" ("no inline field-level error UI ...
   // only global toasts"). react-hook-form/Zod still drive validation itself; only the visual
-  // surface for *these two* checks intentionally stays toast-only for parity.
+  // surface for *these two* checks intentionally stays toast-only for parity. The design
+  // canvas's screen 2b sketches a persistent inline error banner for wrong-credential
+  // responses too, but that's intentionally NOT built here — see docs/redesign/04-decisions.md
+  // 2026-09-11's error-architecture note confirming this toast-only pattern is tested parity
+  // from the original app, not something this visual-refresh task should replace.
   const onInvalid = (errors: FieldErrors<LoginFormValues>) => {
     if (errors.phone) {
       toast({ title: errors.phone.message ?? "أدخل رقم الجوال", variant: "destructive" });
@@ -108,39 +128,39 @@ function LoginContent() {
   };
 
   return (
-    <div className="w-full rounded-2xl border border-border bg-card p-6 shadow-card">
+    <div className="w-full">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-[22px]">
           <FormField
             control={form.control}
             name="phone"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>رقم الهاتف</FormLabel>
-                <div className="flex gap-2">
+              <FormItem className="space-y-2">
+                <FormLabel className={authLabelClass}>رقم الهاتف</FormLabel>
+                <div className={authFieldBoxClass()}>
                   <FormControl>
-                    <Input
+                    <input
                       type="tel"
                       placeholder="1xxxxxxxxx"
                       dir="ltr"
                       autoComplete="tel-national"
-                      className="flex-1"
+                      className={authBareInputClass}
                       {...field}
                     />
                   </FormControl>
-                  <Select
+                  <select
                     {...form.register("countryCode")}
                     defaultValue={DEFAULT_COUNTRY_CODE}
                     dir="ltr"
                     aria-label="رمز الدولة"
-                    className="w-auto min-w-[7rem] flex-none cursor-pointer"
+                    className={authBareSelectClass}
                   >
                     {COUNTRY_CODES.map(({ code, country }) => (
                       <option key={code} value={code}>
                         {code} {country}
                       </option>
                     ))}
-                  </Select>
+                  </select>
                 </div>
               </FormItem>
             )}
@@ -150,11 +170,18 @@ function LoginContent() {
             control={form.control}
             name="password"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>كلمة المرور</FormLabel>
+              <FormItem className="space-y-2">
+                <div className="flex items-baseline justify-between">
+                  <FormLabel className={authLabelClass}>كلمة المرور</FormLabel>
+                  <Link
+                    href="/forgot-password"
+                    className="font-plex-arabic text-xs text-gold-600 hover:underline"
+                  >
+                    نسيت كلمة المرور؟
+                  </Link>
+                </div>
                 <FormControl>
-                  <Input
-                    type="password"
+                  <PasswordFieldBox
                     placeholder="كلمة المرور"
                     autoComplete="current-password"
                     {...field}
@@ -164,30 +191,26 @@ function LoginContent() {
             )}
           />
 
-          <p className="-mt-2 text-left text-sm">
-            <Link
-              href="/forgot-password"
-              className="font-semibold text-primary underline hover:no-underline"
-            >
-              نسيت كلمة المرور؟
-            </Link>
-          </p>
+          <AuthDivider className="my-0.5" />
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <AuthSubmitButton disabled={loading}>
             {loading ? "جاري تسجيل الدخول…" : "تسجيل الدخول"}
-          </Button>
+          </AuthSubmitButton>
         </form>
       </Form>
 
-      <p className="mt-4 text-center text-sm text-muted-foreground">
+      <p className="mt-5 flex items-center gap-2 font-plex-arabic text-[13px] text-[hsl(228_18%_38%)]">
         ليس لديك حساب؟{" "}
-        <Link href="/register" className="font-medium text-primary underline hover:no-underline">
+        <Link
+          href="/register"
+          className="font-medium text-gold-600 underline decoration-gold-500 underline-offset-2 hover:no-underline"
+        >
           إنشاء حساب
         </Link>
       </p>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        <Link href="/" className="underline hover:text-foreground">
+      <p className="mt-6 font-plex-arabic text-sm text-[hsl(228_10%_55%)]">
+        <Link href="/" className="underline hover:text-[hsl(228_40%_14%)]">
           العودة للمتجر
         </Link>
       </p>
@@ -198,9 +221,7 @@ function LoginContent() {
 export function LoginForm() {
   return (
     <Suspense
-      fallback={
-        <div className="h-80 w-full animate-pulse rounded-2xl border border-border bg-card p-6 shadow-card" />
-      }
+      fallback={<div className="h-80 w-full animate-pulse border border-[hsl(40_12%_80%)] bg-white/40" />}
     >
       <LoginContent />
     </Suspense>

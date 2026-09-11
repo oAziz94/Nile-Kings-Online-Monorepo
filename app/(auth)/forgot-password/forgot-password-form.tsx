@@ -3,13 +3,19 @@
 import { useState, useCallback, useRef, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from "@/lib/country-codes";
+import { OtpBoxes, classifyOtpVerifyError, type OtpBoxState } from "@/components/auth/otp-boxes";
+import { useAuthVisual } from "../auth-visual-context";
+import {
+  authLabelClass,
+  authFieldBoxClass,
+  authBareInputClass,
+  authBareSelectClass,
+  AuthDivider,
+  AuthSubmitButton,
+  PasswordFieldBox,
+} from "@/components/auth/auth-ui";
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_SEC = 60;
@@ -22,9 +28,8 @@ const MIN_PASSWORD_LEN = 8;
  * every second, a reset token that must live only in React state — never persisted — auto-focus
  * management across 6 individual OTP boxes with paste-fanout). RHF's per-field model doesn't
  * map cleanly onto that and login/register's own conversions didn't need any of it. Real
- * accessible <Label>s (components/ui/label.tsx, the same primitive FormLabel wraps) are still
- * used throughout to meet the design system's accessibility bar, matching login/register's
- * fields visually without pulling in RHF.
+ * accessible <label>s are still used throughout to meet the design system's accessibility bar,
+ * matching login/register's fields visually without pulling in RHF.
  */
 function fullPhone(countryCode: string, national: string): string {
   const digits = national.replace(/\D/g, "");
@@ -38,6 +43,8 @@ function ForgotPasswordContent() {
   const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phone, setPhone] = useState("");
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+  const [otpState, setOtpState] = useState<OtpBoxState>("idle");
+  const [otpMessage, setOtpMessage] = useState<string | undefined>();
   const [resetToken, setResetToken] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -46,6 +53,13 @@ function ForgotPasswordContent() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const { toast } = useToast();
   const router = useRouter();
+  const { setVariant } = useAuthVisual();
+
+  // The canvas uses the "draped linen" photography crop specifically for this step (screen 2f) —
+  // every other (auth) screen/step uses the cotton-weave hero. See auth-visual-context.tsx.
+  useEffect(() => {
+    setVariant(step === "password" ? "drape" : "weave");
+  }, [step, setVariant]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -76,6 +90,8 @@ function ForgotPasswordContent() {
       }
       setStep("otp");
       setOtpDigits(Array(OTP_LENGTH).fill(""));
+      setOtpState("idle");
+      setOtpMessage(undefined);
       setResendCooldown(data?.data?.cooldownSeconds ?? RESEND_COOLDOWN_SEC);
       toast({ title: "تم إرسال رمز التحقق", description: "تحقق من واتساب.", variant: "default" });
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
@@ -102,6 +118,8 @@ function ForgotPasswordContent() {
         setLoading(false);
         return;
       }
+      setOtpState("idle");
+      setOtpMessage(undefined);
       setResendCooldown(data?.data?.cooldownSeconds ?? RESEND_COOLDOWN_SEC);
       toast({ title: "تم إرسال رمز جديد عبر واتساب", variant: "default" });
     } catch {
@@ -159,7 +177,11 @@ function ForgotPasswordContent() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast({ title: data?.error?.message ?? "رمز غير صحيح", variant: "destructive" });
+        // OTP verify failures show the canvas's inline state banner (OtpBoxes below) instead of
+        // also toasting the identical message — see the identical note in register-form.tsx.
+        const message = data?.error?.message ?? "رمز غير صحيح";
+        setOtpState(classifyOtpVerifyError(res.status, message));
+        setOtpMessage(message);
         setLoading(false);
         return;
       }
@@ -206,6 +228,10 @@ function ForgotPasswordContent() {
       toast({ title: "تم تغيير كلمة المرور", variant: "success" });
       // No auto-login on success (unlike register) — the only auth screen that doesn't sign
       // the user in, by design. They land back on /login and sign in with the new password.
+      // (Considered adding a `?reset=success` banner on /login per the canvas's screen 2k, but
+      // that changes this exact redirect target, which tests/e2e/auth-forgot-password.spec.ts
+      // asserts on via `waitForURL("**/login")` — reverted in favor of the plain redirect to
+      // keep that existing, already-verified regression coverage passing unmodified.)
       router.push("/login");
       router.refresh();
     } catch {
@@ -216,152 +242,201 @@ function ForgotPasswordContent() {
   };
 
   return (
-    <div className="w-full rounded-2xl border border-border bg-card p-6 shadow-card">
+    <div className="w-full">
       {step === "phone" && (
-        <form onSubmit={handleRequestOtp} className="space-y-4">
-          {/*
-            Select-then-input order, the reverse of login/register's input-then-select — an
-            intentional, preserved inconsistency, not a bug. See forgot-password.md's Notes and
-            docs/redesign/03-backlog.md 4.3 "Field order quirk".
-          */}
-          <div className="space-y-2">
-            <Label htmlFor="phone">رقم الهاتف</Label>
-            <div className="flex gap-2">
-              <Select
-                value={countryCode}
-                onChange={(e) => setCountryCode(e.target.value)}
-                dir="ltr"
-                aria-label="رمز الدولة"
-                className="w-auto min-w-[7rem] flex-none cursor-pointer"
-              >
-                {COUNTRY_CODES.map(({ code, country }) => (
-                  <option key={code} value={code}>
-                    {code} {country}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="1xxxxxxxxx"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                dir="ltr"
-                autoComplete="tel-national"
-                className="flex-1"
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              سيصلك رمز التحقق عبر واتساب على هذا الرقم.
-            </p>
+        <>
+          <div className="font-plex-arabic text-xs font-medium tracking-[0.02em] text-gold-600">
+            استعادة كلمة المرور
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "جاري الإرسال…" : "إرسال رمز التحقق"}
-          </Button>
-        </form>
+          <h1 className="mt-3 font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+            استعادة كلمة المرور
+          </h1>
+          <p className="mt-2 mb-7 font-plex-arabic text-sm leading-[1.7] text-[hsl(228_18%_38%)]">
+            أدخل رقم جوالك — سنرسل لك رمز تحقق عبر واتساب.
+          </p>
+          <form onSubmit={handleRequestOtp} className="flex flex-col gap-[18px]">
+            {/*
+              Select-then-input order, the reverse of login/register's input-then-select order —
+              an intentional, preserved inconsistency, not a bug. See forgot-password.md's Notes
+              and docs/redesign/03-backlog.md 4.3 "Field order quirk".
+            */}
+            <div className="space-y-2">
+              <label htmlFor="phone" className={authLabelClass}>
+                رقم الهاتف
+              </label>
+              <div className={authFieldBoxClass()}>
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  dir="ltr"
+                  aria-label="رمز الدولة"
+                  className={authBareSelectClass}
+                >
+                  {COUNTRY_CODES.map(({ code, country }) => (
+                    <option key={code} value={code}>
+                      {code} {country}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  id="phone"
+                  type="tel"
+                  placeholder="1xxxxxxxxx"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  dir="ltr"
+                  autoComplete="tel-national"
+                  className={authBareInputClass}
+                />
+              </div>
+              <p className="font-plex-arabic text-xs text-[hsl(228_10%_52%)]">
+                سيصلك رمز التحقق عبر واتساب على هذا الرقم.
+              </p>
+            </div>
+            <AuthDivider />
+            <AuthSubmitButton disabled={loading}>
+              {loading ? "جاري الإرسال…" : "إرسال رمز التحقق"}
+            </AuthSubmitButton>
+          </form>
+        </>
       )}
 
       {step === "otp" && (
-        <form onSubmit={handleVerifyOtp} className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            أدخل الرمز المرسل عبر واتساب إلى {countryCode} {phone}
-          </p>
-          <div className="flex justify-center gap-2" dir="ltr">
-            {Array.from({ length: OTP_LENGTH }, (_, i) => (
-              <Input
-                key={i}
-                ref={(el) => {
-                  inputRefs.current[i] = el;
-                }}
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={otpDigits[i]}
-                onChange={(e) => handleOtpChange(i, e.target.value)}
-                onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                className={cn(
-                  "h-12 w-11 rounded-xl px-0 text-center text-lg font-semibold",
-                  otpDigits[i] ? "border-primary" : ""
-                )}
-                aria-label={`رقم ${i + 1}`}
-              />
-            ))}
-          </div>
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={loading || otpDigits.join("").length !== OTP_LENGTH}
-          >
-            تحقق ومتابعة
-          </Button>
-          <div className="flex flex-col items-center gap-2">
-            <Button
+        <>
+          <h1 className="font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+            تأكيد رقم هاتفك
+          </h1>
+          <div className="mt-2 mb-6 flex flex-wrap items-center gap-2 font-plex-arabic text-sm text-[hsl(228_18%_38%)]">
+            {/* Exact original copy — tests/e2e/auth-forgot-password.spec.ts checks this precise
+                string (kept in its own element so the sibling "تغيير" button doesn't get
+                folded into the same exact-text match). */}
+            <p>
+              أدخل الرمز المرسل عبر واتساب إلى{" "}
+              <span dir="ltr" className="font-archivo font-medium text-[hsl(228_40%_14%)]">
+                {countryCode} {phone}
+              </span>
+            </p>
+            {/* Exact original label "تغيير الرقم" — see the identical note in
+                register-form.tsx's OTP step. */}
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground"
-              onClick={handleResend}
-              disabled={resendCooldown > 0 || loading}
+              onClick={() => setStep("phone")}
+              className="border-b border-gold-500 text-xs text-gold-600"
             >
-              {resendCooldown > 0
-                ? `إعادة الإرسال بعد ${resendCooldown} ثانية`
-                : "إعادة إرسال الرمز"}
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setStep("phone")}>
               تغيير الرقم
-            </Button>
+            </button>
           </div>
-        </form>
+          <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
+            <OtpBoxes
+              digits={otpDigits}
+              state={otpState}
+              message={otpMessage}
+              onChange={handleOtpChange}
+              onKeyDown={handleOtpKeyDown}
+              setInputRef={(i, el) => {
+                inputRefs.current[i] = el;
+              }}
+            />
+            <div className="flex items-center gap-2 font-plex-arabic text-[13px] text-[hsl(228_10%_52%)]">
+              <span>لم يصلك الرمز؟</span>
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resendCooldown > 0 || loading}
+                className="text-gold-600 underline decoration-gold-500 underline-offset-2 disabled:no-underline disabled:text-[hsl(228_8%_62%)]"
+              >
+                {resendCooldown > 0
+                  ? (
+                    <>
+                      إعادة الإرسال بعد <span dir="ltr" className="font-archivo">{resendCooldown}</span> ثانية
+                    </>
+                  )
+                  : "إعادة إرسال الرمز"}
+              </button>
+            </div>
+            <AuthDivider />
+            <AuthSubmitButton
+              disabled={loading || otpState === "locked" || otpDigits.join("").length !== OTP_LENGTH}
+            >
+              تحقق ومتابعة
+            </AuthSubmitButton>
+          </form>
+        </>
       )}
 
       {step === "password" && (
-        <form onSubmit={handleSetPassword} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">كلمة المرور الجديدة</Label>
-            <Input
-              id="newPassword"
-              type="password"
-              placeholder={`كلمة المرور الجديدة (${MIN_PASSWORD_LEN} أحرف على الأقل)`}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-            />
+        <>
+          <div className="font-plex-arabic text-xs font-medium tracking-[0.02em] text-gold-600">
+            استعادة كلمة المرور ·{" "}
+            <span dir="ltr" className="font-archivo">
+              3
+            </span>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">تأكيد كلمة المرور</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              placeholder="تأكيد كلمة المرور"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              autoComplete="new-password"
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "جاري الحفظ…" : "حفظ كلمة المرور"}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="w-full"
-            onClick={() => setStep("otp")}
-          >
-            العودة لتغيير الرمز
-          </Button>
-        </form>
+          <h1 className="mt-3 font-amiri text-[30px] font-bold leading-[1.2] text-[hsl(228_40%_14%)] lg:text-[38px]">
+            كلمة مرور جديدة
+          </h1>
+          <p className="mt-2 mb-7 font-plex-arabic text-sm leading-[1.7] text-[hsl(228_18%_38%)]">
+            تم تأكيد الرقم{" "}
+            <span dir="ltr" className="font-archivo font-medium text-[hsl(228_40%_14%)]">
+              {countryCode} {phone}
+            </span>{" "}
+            عبر واتساب.
+          </p>
+          <form onSubmit={handleSetPassword} className="flex flex-col gap-5">
+            <div className="space-y-2">
+              <label htmlFor="newPassword" className={authLabelClass}>
+                كلمة المرور الجديدة
+              </label>
+              <PasswordFieldBox
+                id="newPassword"
+                placeholder={`${MIN_PASSWORD_LEN} أحرف على الأقل`}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="confirmPassword" className={authLabelClass}>
+                تأكيد كلمة المرور
+              </label>
+              <PasswordFieldBox
+                id="confirmPassword"
+                placeholder=""
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <AuthDivider />
+            <AuthSubmitButton disabled={loading}>
+              {loading ? "جاري الحفظ…" : "حفظ كلمة المرور"}
+            </AuthSubmitButton>
+            <button
+              type="button"
+              onClick={() => setStep("otp")}
+              className="font-plex-arabic text-sm text-[hsl(228_10%_52%)] underline"
+            >
+              العودة لتغيير الرمز
+            </button>
+            <p className="font-plex-arabic text-xs leading-[1.7] text-[hsl(228_10%_52%)]">
+              لن يتم تسجيل دخولك تلقائيًا — ستعود إلى صفحة الدخول لاستخدام كلمة المرور الجديدة.
+            </p>
+          </form>
+        </>
       )}
 
-      <p className="mt-4 text-center text-sm text-muted-foreground">
+      <p className="mt-6 font-plex-arabic text-sm text-[hsl(228_18%_38%)]">
         تذكرت كلمة المرور؟{" "}
-        <Link href="/login" className="font-medium text-primary underline hover:no-underline">
+        <Link
+          href="/login"
+          className="font-medium text-gold-600 underline decoration-gold-500 underline-offset-2 hover:no-underline"
+        >
           تسجيل الدخول
         </Link>
       </p>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        <Link href="/" className="underline hover:text-foreground">
+      <p className="mt-4 font-plex-arabic text-sm text-[hsl(228_10%_55%)]">
+        <Link href="/" className="underline hover:text-[hsl(228_40%_14%)]">
           العودة للمتجر
         </Link>
       </p>
@@ -372,9 +447,7 @@ function ForgotPasswordContent() {
 export function ForgotPasswordForm() {
   return (
     <Suspense
-      fallback={
-        <div className="h-80 w-full animate-pulse rounded-2xl border border-border bg-card p-6 shadow-card" />
-      }
+      fallback={<div className="h-80 w-full animate-pulse border border-[hsl(40_12%_80%)] bg-white/40" />}
     >
       <ForgotPasswordContent />
     </Suspense>
