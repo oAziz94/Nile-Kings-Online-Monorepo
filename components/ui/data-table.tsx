@@ -17,6 +17,11 @@
  * Styling matches `docs/redesign/design-canvas/Components.dc.html`'s `table.dt` (white,
  * rounded-xl, stone-200 border, stone-100 header, 12px/800 header text) and
  * `PartnerOrders-Desktop.dc.html`'s sticky `th` background.
+ *
+ * Added by 4.18: when `getRowId` is provided, each `<tr>` carries `data-row-id` (whether
+ * or not selection is enabled) so `hooks/use-row-scroll-restore.ts`'s
+ * `document.querySelector('[data-row-id="…"]')` pattern keeps working for lists rendered
+ * through this shell.
  */
 import * as React from "react";
 import { flexRender } from "@tanstack/react-table/flex-render";
@@ -203,6 +208,7 @@ export function DataTable<TData extends Record<string, unknown>>({
           {table.getRowModel().rows.map((row) => (
             <tr
               key={row.id}
+              data-row-id={getRowId ? getRowId(row.original as TData) : undefined}
               onClick={onRowClick ? () => onRowClick(row.original as TData) : undefined}
               className={cn(
                 "border-t border-stone-200",
