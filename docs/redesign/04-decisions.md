@@ -1,3 +1,18 @@
+## 2026-09-12 — Multi-image-per-colour PDP gallery: idea verified, schema + storefront shipped (v2.0.17), admin UI deferred
+
+User idea: the PDP should show a colour's full photo set, and switching colour swaps the whole set. Verified against the data model first (a "variant" is really a size row today, one per size per colour, each carrying a single `imageUrl`; there is no image-upload pipeline anywhere — every image in the system is a pasted external URL). The idea is correct and fixes a real gap, but is a data-model change, not a PDP-only tweak, so the PM asked the user four scoping questions before building:
+
+1. **Image ownership**: per colour, shared across sizes (not duplicated per size row) — matches how products are actually photographed.
+2. **Upload method**: real file upload is the right long-term answer (not a bigger paste-URL field) — but that is a future admin-UI task; this task does not touch admin.
+3. **Scope now**: schema + PDP only. Existing products get real galleries later, either by a future admin upload task or by someone seeding real per-colour photography directly into `VariantImage`.
+4. **Colour-switch behaviour**: swap the whole gallery and reset to the first photo (not try to preserve scroll position across two different sets).
+
+Shipped: additive `VariantImage` model (`schema.prisma`), pushed to the `redesign` DB only; `Variant.imageUrl` untouched and remains the fallback for any colour not yet given a gallery, so nothing regresses. PDP gallery/thumbnail logic rewritten to browse the active colour's photo set (thumbnail clicks no longer double as a colour picker — that was fighting with the separate colour-swatch control). Verified live against a real in-stock product, then the placeholder verification photos were removed — no product has a real gallery yet, and building one is content work, not something this task supplies.
+
+One unrelated, pre-existing issue surfaced while pushing the schema: the `redesign` database's `Variant.slug` unique index doesn't match what `prisma db push` expects (confirmed via `git log` that this predates today, and confirmed no duplicate slugs exist, so it's safe but unresolved). It blocks a plain `db push` until someone drops and recreates that one index to match the schema — flagged for the user, not fixed here since it's unrelated to this task and applying an unreviewed index change under time pressure is the wrong call.
+
+Also recorded: during this work, one stale `npm run dev` (production DB, not `dev:redesign`) briefly served a single read-only page load of `/products/nk-3456` before being caught and killed. No write occurred — Prisma queries only. Standing rule reaffirmed: `dev:redesign` / `.env.redesign` only, never `dev`/`.env`, for this branch's work.
+
 ## 2026-09-12 — Storefront edits, second review round (v2.0.16)
 
 Four user notes on the v2.0.15 home page, all applied directly by the PM:

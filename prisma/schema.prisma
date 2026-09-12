@@ -175,10 +175,30 @@ model Product {
 
   category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   variants Variant[]
+  variantImages VariantImage[]
 
   @@index([categoryId])
   @@index([slug])
   @@index([active])
+}
+
+// A colour's photo gallery for the PDP (backlog: multi-image-per-variant, 2026-09-12). Grouped by
+// `colorKey` (`${colorName ?? ""}|${colorHex ?? ""}`, the same key `hooks/use-variant-selection.ts`
+// already uses to group size rows into one colour) rather than by an individual Variant row, since
+// one colour is several Variant rows today (one per size) and should not repeat its photos per size.
+// Additive: Variant.imageUrl is untouched and stays the single representative image used on cards,
+// in the cart, and as the fallback gallery for any colour with no VariantImage rows yet.
+model VariantImage {
+  id        String   @id @default(cuid())
+  productId String
+  colorKey  String
+  url       String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, colorKey, sortOrder])
 }
 
 model Variant {

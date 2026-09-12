@@ -51,6 +51,9 @@ type Product = {
   inStock: boolean;
   initialVariantId?: string | null;
   variants: Variant[];
+  /** Colour → ordered photo URLs (backlog: multi-image-per-variant, 2026-09-12). A colour absent
+   * here has no gallery yet — the component falls back to its single variant image. */
+  variantGalleries?: Record<string, string[]>;
 };
 
 type RelatedItem = {
@@ -137,28 +140,28 @@ export function ProductPageContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVariant?.id]);
 
-  // Gallery: the product's own image plus each distinct in-database variant image, deduped by
-  // URL — no schema change, no multi-image-per-variant (that waits on admin work per 04-decisions.md).
-  const thumbs = useMemo(() => {
-    const seen = new Set<string>();
-    const list: { url: string; colorName: string | null; colorKeyId: string | null }[] = [];
-    const productImg = product.imageUrl?.trim();
-    if (productImg) {
-      seen.add(productImg);
-      list.push({ url: productImg, colorName: null, colorKeyId: null });
-    }
-    for (const v of product.variants) {
-      const url = v.imageUrl?.trim();
-      if (!url || seen.has(url)) continue;
-      seen.add(url);
-      list.push({ url, colorName: v.colorName?.trim() || null, colorKeyId: colorKey(v) });
-    }
-    if (list.length === 0) list.push({ url: PLACEHOLDER_IMAGE, colorName: null, colorKeyId: null });
-    return list;
-  }, [product.imageUrl, product.variants]);
+  // Gallery — backlog: multi-image-per-variant (2026-09-12 user idea, verified against the data
+  // model). The active colour's full photo set from `VariantImage`, grouped server-side by the
+  // same `colorKey` used to group a colour's size rows; a colour with no rows yet falls back to
+  // its single `Variant.imageUrl`, then to the product's own image, so unmigrated products are
+  // unaffected. The gallery is keyed by COLOUR, not by individual size — sizes of the same colour
+  // share one set of photos.
+  const activeColorKey = selectedColorId ?? (displayVariantForImage ? colorKey(displayVariantForImage) : null);
+  const gallery = useMemo(() => {
+    const fromGalleries = activeColorKey ? product.variantGalleries?.[activeColorKey] : undefined;
+    if (fromGalleries && fromGalleries.length > 0) return fromGalleries;
+    const fallback = displayVariantForImage?.imageUrl?.trim() || product.imageUrl?.trim();
+    return [fallback || PLACEHOLDER_IMAGE];
+  }, [activeColorKey, product.variantGalleries, product.imageUrl, displayVariantForImage]);
 
-  const mainImageUrl =
-    displayVariantForImage?.imageUrl?.trim() || product.imageUrl?.trim() || PLACEHOLDER_IMAGE;
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  // Selecting a new colour swaps the whole gallery and resets to its first photo (user decision,
+  // 2026-09-12) rather than trying to preserve the shopper's position across two different sets.
+  useEffect(() => {
+    setGalleryIndex(0);
+  }, [activeColorKey]);
+
+  const mainImageUrl = gallery[galleryIndex] ?? gallery[0] ?? PLACEHOLDER_IMAGE;
   const imageKey = `${selectedVariant?.id ?? "product"}-${selectedColorId ?? "none"}-${mainImageUrl}`;
 
   const handleAdd = async (intent: "cart" | "buy") => {
@@ -217,22 +220,22 @@ export function ProductPageContent({
         {/* Gallery */}
         <div className="grid grid-cols-[64px_1fr] gap-3 md:grid-cols-[84px_1fr] md:gap-4">
           <div role="list" aria-label="صور المنتج" className="flex flex-col gap-2.5">
-            {thumbs.map((t) => {
-              const active = t.url === mainImageUrl;
+            {gallery.map((url, i) => {
+              const active = i === galleryIndex;
               return (
                 <button
-                  key={t.url}
+                  key={`${url}-${i}`}
                   role="listitem"
                   type="button"
-                  aria-label={t.colorName ? `عرض اللون ${t.colorName}` : "عرض صورة المنتج"}
+                  aria-label={`صورة ${i + 1} من ${gallery.length}`}
                   aria-current={active || undefined}
-                  onClick={() => setSelectedColorId(t.colorKeyId)}
+                  onClick={() => setGalleryIndex(i)}
                   className={cn(
                     "relative aspect-[4/5] w-full overflow-hidden border bg-[hsl(38_22%_93%)]",
                     active ? "border-[hsl(228_40%_14%)]" : "border-[hsl(228_16%_84%)]"
                   )}
                 >
-                  <Image src={t.url} alt="" fill className="object-cover" sizes="84px" />
+                  <Image src={url} alt="" fill className="object-cover" sizes="84px" />
                 </button>
               );
             })}

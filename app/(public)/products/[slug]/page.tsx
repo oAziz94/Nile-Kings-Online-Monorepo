@@ -58,6 +58,10 @@ const getProductRowCatalog = unstable_cache(
               },
               orderBy: { name: "asc" },
             },
+            variantImages: {
+              select: { colorKey: true, url: true },
+              orderBy: { sortOrder: "asc" },
+            },
           },
         },
       },
@@ -82,6 +86,10 @@ const getProductRowCatalog = unstable_cache(
               imageUrl: true,
             },
             orderBy: { name: "asc" },
+          },
+          variantImages: {
+            select: { colorKey: true, url: true },
+            orderBy: { sortOrder: "asc" },
           },
         },
       });
@@ -145,6 +153,15 @@ async function getProduct(slug: string, partnerId: string | null) {
     ? discountPercentFromPrices(originalPriceEgp, priceEgp)
     : undefined;
 
+  // Group each colour's gallery photos by the same `colorKey` (`${colorName}|${colorHex}`)
+  // `hooks/use-variant-selection.ts` uses to group a colour's size rows — see `VariantImage` in
+  // `schema.prisma`. A colour with no rows yet falls back to its single `Variant.imageUrl` in the
+  // PDP component, so products not yet given a multi-photo gallery are unaffected.
+  const variantGalleries: Record<string, string[]> = {};
+  for (const img of product.variantImages) {
+    (variantGalleries[img.colorKey] ??= []).push(img.url);
+  }
+
   return {
     id: product.id,
     categoryId: product.categoryId,
@@ -160,6 +177,7 @@ async function getProduct(slug: string, partnerId: string | null) {
     discountPercent,
     inStock: product.variants.some((v) => v.stockAvailable > 0),
     initialVariantId,
+    variantGalleries,
     variants: product.variants.map((v) => {
       const variantPriceEgp = piastresToEgp(v.pricePiastres);
       const variantOriginalPriceEgp = originalPriceFromVariant(v.basePricePiastres, v.pricePiastres);
