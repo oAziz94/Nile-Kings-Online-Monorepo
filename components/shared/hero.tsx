@@ -1,51 +1,54 @@
 import Image from "next/image";
+import Link from "next/link";
+import { Ankh } from "@/components/brand/ankh";
 
-/** Hero: product / flat lay image (e.g. folded cotton, underwear on dark surface). Replace /hero.png with your asset. */
-const HERO_IMAGE = "/hero.png";
-
+/**
+ * Home hero — backlog 4.7, artboard 1a/1b of `Storefront v3.dc.html`. Full-bleed campaign
+ * photograph below the (opaque, per `04-decisions.md` 2026-09-12 decision 11) navbar, the
+ * "قطن ملوك النيل" display heading, the "المصري ☥ للمصري" slogan line with the drawn Ankh
+ * (sanctioned use #1, slogan separator), the one approved promise line and a single CTA into the
+ * catalog. No invented numbers, no free-shipping claim (standing rules 1–2).
+ */
 export function Hero() {
   return (
-    <section
-      className="relative flex min-h-[70vh] flex-col md:min-h-[88vh] md:flex-row"
-      aria-label="الرئيسية"
-    >
-      {/* Background image — unchanged */}
-      <div className="absolute inset-0">
+    <section aria-label="الحملة الحالية" className="relative overflow-hidden">
+      <div className="relative h-[460px] w-full sm:h-[560px] lg:h-[760px]">
         <Image
-          src={HERO_IMAGE}
-          alt="قطن ملوك النيل — قطن مصري أصلي"
+          src="/brand/storefront/hero.jpg"
+          alt="قطن ملوك النيل — قطن مصري أصيل"
           fill
-          className="object-cover object-[20%_center] md:object-center"
-          sizes="100vw"
           priority
+          sizes="100vw"
+          className="object-cover"
         />
-        {/* Full overlay: on mobile fades center-to-bottom; on desktop fades right-to-left */}
         <div
-          className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent md:bg-gradient-to-l md:from-black/70 md:via-black/40 md:to-transparent"
           aria-hidden
+          className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[hsl(228_40%_14%)]/55 to-transparent lg:h-56"
         />
       </div>
 
-      {/* Text block — mobile: bottom-centered; desktop: right 1/3 */}
-      <div className="relative z-10 flex h-full min-h-[70vh] w-full flex-col items-center justify-center text-center md:min-h-[88vh] md:w-1/3 md:shrink-0 md:pe-6 md:ps-4 lg:pe-4">
-        <div className="w-full px-6 py-2 md:px-0 md:py-0">
-          <p className="mb-1 text-base font-semibold uppercase tracking-widest md:mb-2 md:text-lg text-[hsl(43,85%,78%)] [text-shadow:0_1px_3px_rgba(0,0,0,0.9),0_0_24px_rgba(212,175,55,0.6)]">
-            المصري للمصري
-          </p>
-
-          <h1 className="text-4xl font-extrabold leading-snug text-white md:text-5xl lg:text-6xl xl:text-7xl">
-            قطن مصري أصلي
-            <br />
-            <span className="text-gold">إحساس يبان</span>
-            {" "}
-            من أول لمسة
+      <div className="relative px-4 pb-2 pt-6 sm:px-6 lg:absolute lg:inset-x-0 lg:bottom-16 lg:px-12 lg:pb-0 lg:pt-0">
+        <div className="max-w-[640px]">
+          <h1 className="mb-3 font-amiri text-[42px] font-bold leading-[1.05] text-[hsl(228_40%_14%)] sm:text-6xl lg:text-[88px]">
+            قطن ملوك النيل
           </h1>
-
-          <p className="mt-4 text-sm leading-relaxed text-white/85 md:mt-5 md:text-base md:leading-loose">
-            جودة وتصميم يناسبك — اكتشف تشكيلتنا من المنتجات
-            <br className="hidden md:block" />
-            المصنوعة من أفضل الخامات المصرية.
+          <p className="mb-4 flex items-center gap-3 border-b border-[hsl(228_40%_14%)]/28 pb-4 font-amiri text-2xl text-[hsl(228_40%_14%)] sm:gap-4 sm:text-3xl lg:text-[40px]">
+            <span>المصري</span>
+            <Ankh size={36} strokeWidth={2} className="text-gold-500" />
+            <span>للمصري</span>
           </p>
+          <p className="mb-6 max-w-[480px] text-sm leading-relaxed text-[hsl(228_26%_24%)] sm:text-base lg:text-[19px] lg:leading-[1.7]">
+            قطن مصري أصيل، وراحة تحسها من أول لمسة.
+          </p>
+          <Link
+            href="/products"
+            className="flex h-[52px] w-full items-center justify-center gap-3 bg-[hsl(228_40%_14%)] px-8 font-medium text-papyrus transition-colors hover:bg-[hsl(228_40%_20%)] sm:inline-flex sm:h-14 sm:w-auto"
+          >
+            تسوق الكولكشن
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden="true">
+              <path d="M19 12H5M11 6l-6 6 6 6" />
+            </svg>
+          </Link>
         </div>
       </div>
     </section>

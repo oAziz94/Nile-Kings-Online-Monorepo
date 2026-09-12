@@ -8,7 +8,8 @@ import { test, expect } from "@playwright/test";
 
 test("home page loads and shows the hero", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /قطن مصري أصلي/ })).toBeVisible();
+  // Backlog 4.7: hero heading rebuilt as "قطن ملوك النيل" (was "قطن مصري أصلي").
+  await expect(page.getByRole("heading", { name: "قطن ملوك النيل" })).toBeVisible();
 });
 
 test("login page renders the phone/password form", async ({ page }) => {
