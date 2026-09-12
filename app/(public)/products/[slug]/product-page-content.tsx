@@ -13,7 +13,6 @@ import { Disclosure } from "@/components/shared/disclosure";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import {
-  ChevronRight,
   ShoppingCart,
   Minus,
   Plus,
@@ -74,8 +73,8 @@ type RelatedItem = {
 const FABRIC_POINTS = [
   {
     icon: Shirt,
-    title: "نسيج بوبلين محكم",
-    body: "نُسج بإحكام من خيوط قطنية مختارة بعناية، ليمنحك سطحًا أملسًا ومظهرًا أنيقًا يدوم مع الاستخدام.",
+    title: "قطن مصري مختار",
+    body: "خيوط قطنية مصرية مختارة بعناية، تمنحك ملمسًا أملسًا ومظهرًا أنيقًا يدوم مع الاستخدام.",
   },
   {
     icon: Wind,
@@ -243,17 +242,6 @@ export function ProductPageContent({
 
   return (
     <>
-      <nav className="mb-4 flex items-center gap-2 text-sm text-[hsl(228_18%_50%)]" aria-label="مسار التصفح">
-        <Link href="/" className="hover:text-[hsl(228_40%_14%)]">
-          الرئيسية
-        </Link>
-        <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        <Link href={`/categories/${product.categorySlug}`} className="hover:text-[hsl(228_40%_14%)]">
-          {product.categoryName}
-        </Link>
-        <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        <span className="text-[hsl(228_40%_14%)]">{product.name}</span>
-      </nav>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         {/* Gallery */}
