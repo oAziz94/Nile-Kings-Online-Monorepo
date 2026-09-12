@@ -33,6 +33,7 @@ const config: Config = {
         ink: "hsl(var(--ink))",
         "ink-soft": "hsl(var(--ink-soft))",
         stone: {
+          50: "hsl(var(--stone-50))",
           100: "hsl(var(--stone-100))",
           200: "hsl(var(--stone-200))",
           300: "hsl(var(--stone-300))",

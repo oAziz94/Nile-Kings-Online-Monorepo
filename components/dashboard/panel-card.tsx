@@ -1,6 +1,11 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+/**
+ * Rebuilt to `docs/redesign/design-canvas/Components.dc.html`'s `.panel`/`.panel-head`
+ * (white, radius 14, 1px stone-200 border) — backlog 4.16. Same prop API as before
+ * (title/description/icon/toolbar/children/className/contentClassName/noPadding); admin
+ * call sites keep compiling and rendering unchanged, they just pick up the new look.
+ */
 export function PanelCard({
   title,
   description,
@@ -21,25 +26,25 @@ export function PanelCard({
   noPadding?: boolean;
 }) {
   return (
-    <Card className={cn("rounded-lg border-border shadow-card", className)}>
-      <CardHeader
+    <div className={cn("overflow-hidden rounded-[14px] border border-stone-200 bg-white", className)}>
+      <div
         className={cn(
-          "gap-4 border-b border-border bg-muted/20 px-4 py-3 sm:px-5",
+          "gap-4 border-b border-stone-200 px-4 py-4 sm:px-[22px]",
           toolbar ? "flex flex-col sm:flex-row sm:items-center sm:justify-between" : undefined
         )}
       >
         <div>
-          <CardTitle className="flex items-center gap-2 text-base">
+          <h2 className="flex items-center gap-2 text-base font-extrabold text-ink">
             {icon}
             {title}
-          </CardTitle>
-          {description && <CardDescription className="mt-1">{description}</CardDescription>}
+          </h2>
+          {description && <p className="mt-1 text-[13px] text-ink-soft">{description}</p>}
         </div>
         {toolbar}
-      </CardHeader>
-      <CardContent className={cn(!noPadding && "p-4 sm:p-5", noPadding && "p-0", contentClassName)}>
+      </div>
+      <div className={cn(!noPadding && "p-4 sm:p-[22px]", noPadding && "p-0", contentClassName)}>
         {children}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

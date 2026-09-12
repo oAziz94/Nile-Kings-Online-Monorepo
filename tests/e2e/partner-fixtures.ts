@@ -1,0 +1,147 @@
+import type { Page } from "@playwright/test";
+import { PrismaClient } from "@prisma/client";
+import crypto from "node:crypto";
+
+/**
+ * Shared partner e2e fixture helpers (backlog 4.16, standing rule 9: "e2e fixtures come
+ * from `tests/e2e/partner-fixtures.ts`, under `test-env.ts`'s production guard, and clean
+ * up after themselves"). Every spec importing this file must call `loadRedesignTestEnv()`
+ * (from `./test-env`) *before* importing/constructing a `PrismaClient`, exactly like
+ * `auth-login.spec.ts` — this module does not call it itself, so it stays safe to import
+ * from a spec that has already guarded its own env loading.
+ *
+ * Public API (kept small/typed for 4.17–4.23's specs):
+ *   const pair = await seedPartnerPair();      // AGENT + linked DISTRIBUTOR, unique phones
+ *   await loginAs(page, pair, "AGENT");        // logs in as either role via the real /login form
+ *   await cleanupPartnerPair(pair);            // deletes everything seedPartnerPair created
+ */
+
+const PASSWORD = "PartnerTest123!";
+
+function scryptAsync(password: string, salt: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, 64, { N: 16384, r: 8, p: 1 }, (err, key) => {
+      if (err) reject(err);
+      else resolve(key);
+    });
+  });
+}
+
+async function hashPassword(plain: string): Promise<string> {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const key = await scryptAsync(plain, salt);
+  return `${salt}:${key.toString("hex")}`;
+}
+
+export type PartnerFixtureSide = {
+  userId: string;
+  partnerId: string;
+  phone: string; // E.164, e.g. "+201099912345"
+  localPhone: string; // what the login form's phone input expects, e.g. "1099912345"
+  name: string;
+};
+
+export type PartnerFixturePair = {
+  agent: PartnerFixtureSide;
+  distributor: PartnerFixtureSide;
+  password: string;
+};
+
+/** Unique-per-run Egyptian mobile number, distinct across a single test process. */
+let seq = 0;
+function uniqueLocalPhone(): string {
+  seq += 1;
+  const suffix = String(Date.now()).slice(-7) + String(seq).padStart(2, "0");
+  return `10${suffix}`.slice(0, 10);
+}
+
+export async function seedPartnerPair(prisma: PrismaClient): Promise<PartnerFixturePair> {
+  const passwordHash = await hashPassword(PASSWORD);
+
+  const agentLocalPhone = uniqueLocalPhone();
+  const agentPhone = `+20${agentLocalPhone}`;
+  const agentUser = await prisma.user.create({
+    data: { phone: agentPhone, role: "CUSTOMER", passwordHash },
+  });
+  const agentPartner = await prisma.partner.create({
+    data: {
+      userId: agentUser.id,
+      partnerType: "AGENT",
+      name: "وكيل الاختبار",
+      governorate: "القاهرة",
+      phone: agentPhone,
+      isActive: true,
+    },
+  });
+
+  const distributorLocalPhone = uniqueLocalPhone();
+  const distributorPhone = `+20${distributorLocalPhone}`;
+  const distributorUser = await prisma.user.create({
+    data: { phone: distributorPhone, role: "CUSTOMER", passwordHash },
+  });
+  const distributorPartner = await prisma.partner.create({
+    data: {
+      userId: distributorUser.id,
+      partnerType: "DISTRIBUTOR",
+      name: "موزع الاختبار",
+      governorate: "الجيزة",
+      phone: distributorPhone,
+      linkedAgentId: agentPartner.id,
+      isActive: true,
+    },
+  });
+
+  return {
+    agent: {
+      userId: agentUser.id,
+      partnerId: agentPartner.id,
+      phone: agentPhone,
+      localPhone: agentLocalPhone,
+      name: agentPartner.name,
+    },
+    distributor: {
+      userId: distributorUser.id,
+      partnerId: distributorPartner.id,
+      phone: distributorPhone,
+      localPhone: distributorLocalPhone,
+      name: distributorPartner.name,
+    },
+    password: PASSWORD,
+  };
+}
+
+/** Logs in via the real `/login` form (phone + password) as the given fixture side. */
+export async function loginAs(
+  page: Page,
+  pair: PartnerFixturePair,
+  role: "AGENT" | "DISTRIBUTOR"
+): Promise<void> {
+  const side = role === "AGENT" ? pair.agent : pair.distributor;
+  await page.goto("/login");
+  await page.getByLabel("رقم الهاتف").fill(side.localPhone);
+  await page.getByLabel("كلمة المرور").fill(pair.password);
+  await page.getByRole("button", { name: "تسجيل الدخول" }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 15_000 });
+}
+
+/** Removes everything `seedPartnerPair` created, plus any inventory/orders/requests/receipts tied to it. */
+export async function cleanupPartnerPair(prisma: PrismaClient, pair: PartnerFixturePair): Promise<void> {
+  const partnerIds = [pair.agent.partnerId, pair.distributor.partnerId];
+
+  await prisma.stockReceiptLine.deleteMany({ where: { receipt: { partnerId: { in: partnerIds } } } });
+  await prisma.stockReceipt.deleteMany({ where: { partnerId: { in: partnerIds } } });
+  await prisma.restockRequestItem.deleteMany({
+    where: { restockRequest: { OR: [{ sourcePartnerId: { in: partnerIds } }, { destinationPartnerId: { in: partnerIds } }] } },
+  });
+  await prisma.restockRequest.deleteMany({
+    where: { OR: [{ sourcePartnerId: { in: partnerIds } }, { destinationPartnerId: { in: partnerIds } }] },
+  });
+  await prisma.inventoryLedger.deleteMany({ where: { partnerId: { in: partnerIds } } });
+  await prisma.partnerInventory.deleteMany({ where: { partnerId: { in: partnerIds } } });
+  await prisma.order.updateMany({
+    where: { assignedPartnerId: { in: partnerIds } },
+    data: { assignedPartnerId: null },
+  });
+  await prisma.partner.deleteMany({ where: { id: { in: partnerIds } } });
+  await prisma.user.deleteMany({ where: { id: { in: [pair.agent.userId, pair.distributor.userId] } } });
+}
