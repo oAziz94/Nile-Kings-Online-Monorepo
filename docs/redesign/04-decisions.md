@@ -1,3 +1,7 @@
+## 2026-09-12 — Footer switched to navy (v2.0.24)
+
+User: "I think it will be better if we make the footer navy instead of white." Footer background changed from papyrus to ink (`hsl(228 40% 14%)`); logo swapped to the cream variant; body/link/heading text to papyrus at varying opacity (85% links, 65% description, 55% muted); border and watermark tokens follow. No layout or link changes.
+
 ## 2026-09-12 — Batch 2 merged (4.12 checkout v2.0.23, 4.13 profile v2.0.22, 4.15 legal v2.0.21): three things learned
 
 1. **`overflow-x: hidden` on `html`/`body` silently disabled `position: sticky` site-wide.** Found by the legal implementer while making the TOC stick, proven by measurement by its verifier (TOC at −1183px with `hidden`, 108px with `clip`), swept for horizontal-overflow regressions on six pages × three viewports. Rule: never put `overflow-x: hidden` on `html`/`body`; use `clip`. Any earlier "sticky" element in the redesign (the cart summary) had in fact never stuck — and with a full cart it still can't, because the summary box is taller than its grid row; if a sticky cart summary is wanted, the aside needs `self-start` and a shorter summary, a separate small task.

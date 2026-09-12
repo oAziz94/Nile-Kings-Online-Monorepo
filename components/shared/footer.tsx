@@ -4,9 +4,10 @@ import { Ankh } from "@/components/brand/ankh";
 import { MENU_SECTIONS } from "@/lib/menu-config";
 
 /**
- * Storefront footer — backlog 4.6, artboard 1a/1b of `Storefront v3.dc.html`. Ivory ground
- * (continuity with the rest of the public surface, not a dark band like the pre-redesign
- * footer), a 1px ink top rule, a faint Ankh watermark (sanctioned use #4, "cropped watermark").
+ * Storefront footer — backlog 4.6, artboard 1a/1b of `Storefront v3.dc.html`, later switched from
+ * the canvas's ivory ground to navy ink (user note, 2026-09-12: "I think it will be better if we
+ * make the footer navy instead of white") — the one dark band on an otherwise all-papyrus
+ * storefront, cream logo, papyrus text, faint papyrus Ankh watermark.
  *
  * Every link here resolves to a real route or a real contact channel already wired elsewhere in
  * the app (`components/shared/menu-drawer.tsx`) — no invented handles, no dead `#` hrefs, no
@@ -76,25 +77,25 @@ export function Footer() {
   const social = socialLinks();
 
   return (
-    <footer className="relative overflow-hidden border-t border-[hsl(228_16%_84%)] bg-papyrus text-[hsl(228_26%_24%)]">
+    <footer className="relative overflow-hidden bg-[hsl(228_40%_14%)] text-papyrus/85">
       <Ankh
         size={280}
         strokeWidth={0.9}
-        className="pointer-events-none absolute -bottom-24 -end-6 text-[hsl(228_40%_14%)] opacity-[0.06]"
+        className="pointer-events-none absolute -bottom-24 -end-6 text-papyrus opacity-[0.05]"
       />
       <div className="relative mx-auto max-w-[1400px] px-6 py-12 md:px-12 md:py-16">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-12">
           <div className="flex flex-col items-center gap-5 text-center md:items-start md:text-right">
             <Link href="/" aria-label="العودة للمتجر — قطن ملوك النيل">
               <Image
-                src="/brand/logo-lapis.png"
+                src="/brand/logo-cream.png"
                 alt="قطن ملوك النيل"
                 width={700}
                 height={437}
                 className="h-16 w-auto md:h-20"
               />
             </Link>
-            <p className="max-w-[320px] text-sm leading-relaxed text-[hsl(228_18%_40%)]">
+            <p className="max-w-[320px] text-sm leading-relaxed text-papyrus/65">
               ملابس من القطن المصري طويل التيلة، تُصنع بالكامل في مصر.
             </p>
             {social.length > 0 && (
@@ -106,7 +107,7 @@ export function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={s.label}
-                    className="flex h-11 w-11 items-center justify-center text-[hsl(228_40%_14%)] transition-colors hover:text-gold-600"
+                    className="flex h-11 w-11 items-center justify-center text-papyrus/85 transition-colors hover:text-gold-500"
                   >
                     {s.icon}
                   </a>
@@ -127,7 +128,7 @@ export function Footer() {
           <FooterColumn title="قانوني" links={LEGAL_LINKS} />
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-[hsl(228_16%_86%)] pt-6 text-xs text-[hsl(228_18%_45%)] md:flex-row">
+        <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-papyrus/15 pt-6 text-xs text-papyrus/55 md:flex-row">
           <span>
             © <span className="font-archivo" style={{ direction: "ltr" }}>{new Date().getFullYear()}</span> قطن ملوك النيل. جميع الحقوق محفوظة.
           </span>
@@ -141,7 +142,7 @@ export function Footer() {
 function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) {
   return (
     <div className="text-center md:text-right">
-      <h3 className="mb-4 text-[13px] font-medium tracking-wide text-[hsl(228_18%_45%)]">{title}</h3>
+      <h3 className="mb-4 text-[13px] font-medium tracking-wide text-papyrus/55">{title}</h3>
       <ul className="flex flex-col items-center gap-3 md:items-start">
         {links.map((l) =>
           l.external ? (
@@ -150,7 +151,7 @@ function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) 
                 href={l.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-[hsl(228_26%_24%)] transition-colors hover:text-gold-600"
+                className="text-sm text-papyrus/85 transition-colors hover:text-gold-500"
               >
                 {l.label}
               </a>
@@ -159,7 +160,7 @@ function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) 
             <li key={l.href}>
               <Link
                 href={l.href}
-                className="text-sm text-[hsl(228_26%_24%)] transition-colors hover:text-gold-600"
+                className="text-sm text-papyrus/85 transition-colors hover:text-gold-500"
               >
                 {l.label}
               </Link>
