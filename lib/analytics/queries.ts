@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/db";
 import { REPORT_ORDER_STATUS } from "./types";
 import type { DateGranularity } from "./types";
+import { ORDER_STATUSES } from "@/lib/constants/order-status";
 
 function parseRange(from?: string | null, to?: string | null): { from: Date; to: Date } {
   const toDate = to ? new Date(to) : new Date();
@@ -214,4 +215,160 @@ export async function getProductVariantReport(
       lineRevenuePiastres: sold?.lineRevenuePiastres ?? 0,
     };
   });
+}
+
+/**
+ * Partner stock report (backlog 4.22) — per active variant, scoped to one partner's own
+ * inventory: available/reserved/sellable, units sold in the trailing 30 days of DELIVERED
+ * orders assigned to the partner, daily velocity, and days of cover. `low`/`out` are
+ * evaluated against `Partner.lowStockThreshold` (mutually exclusive: `out` when sellable
+ * is at or below zero, `low` when sellable is positive but at/below the threshold).
+ * Unlike `getProductVariantReport`, this is partner-only (no admin/no-scope caller) and the
+ * 30-day sales window is fixed — independent of the report page's selected date range.
+ */
+export type StockReportRow = {
+  variantId: string;
+  productId: string;
+  productName: string;
+  variantName: string;
+  colorName: string | null;
+  sku: string;
+  stockAvailable: number;
+  stockReserved: number;
+  sellable: number;
+  unitsSold30d: number;
+  dailyVelocity: number;
+  daysOfCover: number | null;
+  low: boolean;
+  out: boolean;
+};
+
+export type StockRowMetrics = {
+  sellable: number;
+  dailyVelocity: number;
+  daysOfCover: number | null;
+  low: boolean;
+  out: boolean;
+};
+
+/**
+ * Pure calculation for one stock-report row, split out of `getStockReport` so it can be
+ * unit-tested without a database. `out`/`low` are mutually exclusive: `out` wins when
+ * sellable is at or below zero (even if that's also `<= threshold`).
+ */
+export function computeStockRowMetrics({
+  stockAvailable,
+  stockReserved,
+  unitsSold30d,
+  threshold,
+}: {
+  stockAvailable: number;
+  stockReserved: number;
+  unitsSold30d: number;
+  threshold: number;
+}): StockRowMetrics {
+  const sellable = stockAvailable - stockReserved;
+  const dailyVelocity = unitsSold30d / 30;
+  const daysOfCover = dailyVelocity > 0 ? sellable / dailyVelocity : null;
+  return {
+    sellable,
+    dailyVelocity,
+    daysOfCover,
+    out: sellable <= 0,
+    low: sellable > 0 && sellable <= threshold,
+  };
+}
+
+export async function getStockReport(partnerId: string): Promise<StockReportRow[]> {
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const [partner, variants, salesGroups] = await Promise.all([
+    prisma.partner.findUnique({
+      where: { id: partnerId },
+      select: { lowStockThreshold: true },
+    }),
+    // Scoped to variants the partner actually stocks (has a `PartnerInventory` row for) —
+    // unlike `getProductVariantReport` (which lists every active variant store-wide, with a
+    // fallback to global stock, for the store-wide admin view this scope is shared with),
+    // a partner's own stock report about products they don't carry is both noise and, at
+    // full-catalog scale (thousands of variants), an unpaginated client-side render that
+    // makes the page unusably slow for no benefit.
+    prisma.variant.findMany({
+      where: { product: { active: true }, partnerInventories: { some: { partnerId } } },
+      include: {
+        product: { select: { id: true, name: true } },
+        partnerInventories: {
+          where: { partnerId },
+          select: { stockAvailable: true, stockReserved: true },
+        },
+      },
+      orderBy: [{ product: { name: "asc" } }, { sku: "asc" }],
+    }),
+    prisma.orderItem.groupBy({
+      by: ["variantId"],
+      where: {
+        order: {
+          status: REPORT_ORDER_STATUS,
+          assignedPartnerId: partnerId,
+          createdAt: { gte: thirtyDaysAgo, lte: now },
+        },
+      },
+      _sum: { quantity: true },
+    }),
+  ]);
+
+  const threshold = partner?.lowStockThreshold ?? 5;
+  const soldMap = new Map(salesGroups.map((g) => [g.variantId, g._sum.quantity ?? 0]));
+
+  return variants.map((v) => {
+    const inv = v.partnerInventories[0] ?? null;
+    const stockAvailable = inv?.stockAvailable ?? v.stockAvailable;
+    const stockReserved = inv?.stockReserved ?? v.stockReserved;
+    const unitsSold30d = soldMap.get(v.id) ?? 0;
+    const metrics = computeStockRowMetrics({ stockAvailable, stockReserved, unitsSold30d, threshold });
+    return {
+      variantId: v.id,
+      productId: v.product.id,
+      productName: v.product.name,
+      variantName: v.name,
+      colorName: v.colorName,
+      sku: v.sku,
+      stockAvailable,
+      stockReserved,
+      unitsSold30d,
+      ...metrics,
+    };
+  });
+}
+
+/**
+ * Partner order funnel (backlog 4.22) — counts of orders assigned to the partner, created
+ * within the selected period, grouped by current status (all statuses, cancelled included).
+ * Unlike the revenue/KPI queries, this deliberately does not filter to `DELIVERED` only —
+ * the whole point is to show where orders currently sit across the funnel.
+ */
+export type OrderFunnelRow = {
+  status: string;
+  count: number;
+};
+
+export async function getOrderFunnel(
+  from?: string | null,
+  to?: string | null,
+  scope: AnalyticsScope = {}
+): Promise<OrderFunnelRow[]> {
+  const { from: fromDate, to: toDate } = parseRange(from, to);
+
+  const groups = await prisma.order.groupBy({
+    by: ["status"],
+    where: {
+      createdAt: { gte: fromDate, lte: toDate },
+      ...(scope.partnerId ? { assignedPartnerId: scope.partnerId } : {}),
+    },
+    _count: true,
+  });
+
+  const map = new Map(groups.map((g) => [g.status, g._count]));
+  return ORDER_STATUSES.map((status) => ({ status, count: map.get(status) ?? 0 }));
 }
