@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -71,6 +72,7 @@ export function CatalogMobileFilters({
   onClear,
   className,
 }: CatalogMobileFiltersProps) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
   function update(partial: Partial<CatalogDraftFilters>) {
     onDraftChange({ ...draft, ...partial });
   }
@@ -103,6 +105,7 @@ export function CatalogMobileFilters({
 
         <Sheet open={open} onOpenChange={onOpenChange}>
           <Button
+            ref={triggerRef}
             type="button"
             variant="outline"
             className="relative h-10 shrink-0 gap-1.5 rounded-none"
@@ -117,7 +120,16 @@ export function CatalogMobileFilters({
             )}
           </Button>
 
-          <SheetContent side="bottom" className="max-h-[92vh] gap-0 overflow-y-auto p-0">
+          <SheetContent
+            side="bottom"
+            className="max-h-[92vh] gap-0 overflow-y-auto p-0"
+            // The trigger is a plain button (not a SheetTrigger), so Radix has no "previously
+            // focused element" to restore — put focus back on it ourselves (verifier finding, 4.8).
+            onCloseAutoFocus={(e) => {
+              e.preventDefault();
+              triggerRef.current?.focus();
+            }}
+          >
             <div className="flex items-center justify-between border-b border-[hsl(228_16%_88%)] p-4">
               <SheetTitle>تصفية</SheetTitle>
               <SheetClose asChild>
