@@ -185,7 +185,11 @@ test.describe("Mini-cart drawer", () => {
 
     // The PDP's own add-to-cart also calls `openDrawer()` (same as `QuickShopModal`) — exercises
     // the same code path without needing to drive the card's quick-shop dialog.
-    const sizeButton = page.getByRole("button", { name: SIMPLE_VARIANT_SIZE_LABEL, exact: true }).first();
+    // The PDP's size chips are a radiogroup since backlog 4.9 (real `role="radio"` items).
+    const sizeButton = page
+      .getByRole("radiogroup", { name: "المقاس" })
+      .getByRole("radio", { name: SIMPLE_VARIANT_SIZE_LABEL, exact: true })
+      .first();
     await sizeButton.click();
 
     // The PDP's own CTA is the first match — "من نفس الفئة" related-product cards below it repeat
