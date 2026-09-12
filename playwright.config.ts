@@ -3,10 +3,11 @@ import { defineConfig, devices } from "@playwright/test";
 // Runs against the redesign branch's dev server (never `npm run dev`, which
 // points at the production database via .env) — see docs/redesign/04-decisions.md.
 //
-// `PLAYWRIGHT_PORT` override (backlog 4.8): multiple isolated worktrees can run this suite at
-// the same time, each needing its own port — falls back to 3100 (the documented default) when
-// unset.
-const PORT = process.env.PLAYWRIGHT_PORT ?? "3100";
+// `PLAYWRIGHT_PORT` (backlog 4.9): multiple isolated worktrees can be verifying different
+// tasks at once, and they'd otherwise all fight over the same long-running port-3100 server
+// (see the 2026-09-11 ".next/ dir shared across two dev servers" gotcha in 04-decisions.md).
+// Defaults to 3100 (unchanged) when unset.
+const PORT = process.env.PLAYWRIGHT_PORT ? Number(process.env.PLAYWRIGHT_PORT) : 3100;
 
 export default defineConfig({
   testDir: "./tests/e2e",

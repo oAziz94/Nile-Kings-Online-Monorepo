@@ -25,6 +25,15 @@ export type CartItemPayload = {
   variantSlug: string | null;
   imageUrl: string | null;
   variantName: string;
+  /**
+   * Additive, display-only fields (backlog 4.10 / `04-decisions.md` 2026-09-12 decision 8) so the
+   * UI can show a friendly "المقاس M · أسود" label instead of the slug-derived `variantName`
+   * string. `variantName` itself (and `OrderItem.variantName`, a historical snapshot) is
+   * untouched — these are purely additive. `size` is the raw, unmapped variant `name` (the kids
+   * relabel table lives on the PDP/quick-shop only, per `cart.md`'s Notes).
+   */
+  size: string;
+  colorName: string | null;
   sku: string;
   priceEgp: number;
   maxQty: number;
@@ -166,6 +175,8 @@ export async function getCartPayload(cartId: string): Promise<CartPayload | null
       variantSlug: v.slug ?? null,
       imageUrl: v.imageUrl?.trim() || p.imageUrl,
       variantName: variantDisplayName(p.slug, v.name, v.colorName),
+      size: v.name,
+      colorName: v.colorName ?? null,
       sku: v.sku,
       priceEgp: piastresToEgp(v.pricePiastres),
       maxQty,

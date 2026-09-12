@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata = pageMetadata({
   title: "الرئيسية",
-  description: "متجر قطن ملوك النيل أونلاين - تسوق من أفضل المنتجات مع توصيل لجميع المحافظات",
+  description: "قطن ملوك النيل — ملابس من القطن المصري طويل التيلة للرجال والسيدات والأطفال.",
   path: "",
 });
 
@@ -18,9 +18,7 @@ export default async function StorefrontPage() {
     <>
       <Hero />
       <div className="overflow-x-hidden">
-        <div className="max-w-[1400px] mx-auto px-6 py-6 md:py-8">
-          <HomeSections data={data} />
-        </div>
+        <HomeSections data={data} />
       </div>
     </>
   );

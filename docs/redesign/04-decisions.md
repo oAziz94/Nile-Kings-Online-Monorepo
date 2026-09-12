@@ -1,3 +1,16 @@
+## 2026-09-12 — 4.7 (home) verified and merged, v2.0.11; the bed-linen tile is a merchandising question for the user
+
+Home is in (`67a7ed3`). One thing the build surfaced that the canvas could not know: **there is no bed-linen inventory** — the redesign catalog has only men/women/kids categories and no product matches any bedding term — yet the canvas's collage (built from the user's own generated photography) leads with a "مفروشات فاخرة" tile. The implementer kept the tile and pointed it at `/products` (the full catalog) rather than inventing a filter; the verifier confirmed the numbers. PM call for now: keep it as built, because the user supplied that photograph deliberately and may be planning the line — but a tile advertising a product line the store does not sell is a promise the page cannot keep, so **the user decides**: (a) bedding is coming → keep; (b) not planned → drop the tile and reflow the collage to four. Flagged in chat.
+
+Collage links the implementer chose from real search totals (`/products?q=…`): تيشيرتات → "تي شيرت" (115), بيجامات → "بيجام" (21), جوارب → "شراب" (2 — colloquial; "جورب" returns 0), ملابس داخلية → "داخلي" (25).
+
+## 2026-09-12 — No breadcrumbs on the storefront; fabric-story copy must be fabric-agnostic
+
+Two rules that were decided during the storefront canvas round but never written here, both surfaced by the PM's own read of the 4.9 build:
+
+1. **No breadcrumb on any storefront screen.** The user dropped it explicitly when the canvas's section list was being shaped ("i think we should also drop the breadcrumps"); the reviewed 1g/1h PDP artboards carry only the category chip. The inventory's "Breadcrumb" element in `products-pdp.md` is therefore a *removed* parity item, not a preserved one. Applies to listing and cart too.
+2. **The PDP fabric-story section describes Egyptian cotton in general, never the specific product.** The canvas's four points were written for a sample poplin shirt ("نسيج بوبلين محكم", yarn counts, cultivar); the real catalog is mostly underwear, tanks, socks and pyjamas. Titles and bodies must contain no weave names, cultivars, numbers or per-product construction claims — the section is brand storytelling, not a spec sheet. If a per-product fabric spec is ever wanted, it comes from a product field, not static copy.
+
 ## 2026-09-12 — 4.6 (storefront shell) verified and merged, v2.0.10; two small decisions
 
 Implementer (`430b982`) and verifier both clean; full report in `03-backlog.md` 4.6. Two things settled at merge time:
