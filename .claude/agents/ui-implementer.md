@@ -26,7 +26,7 @@ You implement exactly one task from the Nile Kings Online UI redesign backlog (`
 - If your task touches a public storefront route, do not change its URL/path — that's a parity requirement (SEO), not just a technical detail. Flag it to the PM instead of changing it yourself if you think a route change is warranted.
 - If your task needs a Prisma schema change, use `npm run db:push:redesign` / `db:migrate:redesign` (reads `.env.redesign`, the `redesign` Neon branch) — never `db:push`/`db:migrate` directly, those hit production via `.env`. If `.env.redesign` doesn't exist yet, stop and report back — it's a precondition the PM/user needs to set up, not something to work around.
 - Prefer Server Components; only mark a component client when it needs interactivity/state.
-- Work on a dedicated branch for the task, branched off `redesign` (not `main` — `main` is production, see `docs/redesign/04-decisions.md`): `redesign/<surface>/<screen-slug>`. PR target is `redesign`, never `main`.
+- Work on a dedicated branch for the task, branched off `redesign` (not `main` — `main` is production, see `docs/redesign/04-decisions.md`): `<surface>/<screen-slug>` (e.g. `public/home` — no `redesign/` prefix, see `04-decisions.md` 2026-09-10 "Task branch naming"). PR target is `redesign`, never `main`.
 
 ## Before finishing
 
