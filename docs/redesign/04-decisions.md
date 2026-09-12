@@ -1,3 +1,7 @@
+## 2026-09-12 — 4.18 merged (v2.0.29): every stock read-modify-write must hold a row lock
+
+The products verifier fired two parallel `delta:+1` requests and got one lost update with two ledger rows — the audit trail disagreed with the stock. Rule, now standing for every partner/admin task that mutates `PartnerInventory`: the read, the floor check and the write happen under `SELECT … FOR UPDATE` (or an atomic `increment` with the floor re-checked in the same transaction); a rejected edit throws so the transaction rolls back; and the task's spec includes a parallel-request assertion. `lib/inventory/restock-requests.ts` already did this; `app/api/partner/inventory/route.ts` now does too.
+
 ## 2026-09-12 — Partner portal: scope decided with the user; tasks 4.16–4.23
 
 User: "make the decisions, designs, and what should we include and in which order so that we make the partner's workflow easier, we need also the partner to have some analytics and reporting and alerts on his inventory ... lets decide on this with each other." PM proposed; user decided:
