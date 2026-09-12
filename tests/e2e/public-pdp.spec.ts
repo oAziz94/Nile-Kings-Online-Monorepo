@@ -37,6 +37,37 @@ async function findInStockProductSlug(baseURL: string): Promise<string> {
   return inStock.slug;
 }
 
+async function resolveVariant(page: Page) {
+  const sizeGroup = page.getByRole("radiogroup", { name: "المقاس" });
+  const colorGroup = page.getByRole("radiogroup", { name: "اللون" });
+  if ((await sizeGroup.count()) === 0) return;
+
+  const sizeRadios = sizeGroup.getByRole("radio");
+  const count = await sizeRadios.count();
+  for (let i = 0; i < count; i++) {
+    const radio = sizeRadios.nth(i);
+    if ((await radio.getAttribute("aria-disabled")) !== "true") {
+      await radio.click();
+      break;
+    }
+  }
+
+  if ((await colorGroup.count()) > 0) {
+    const needsColor = await page.getByText("يجب اختيار اللون").isVisible().catch(() => false);
+    if (needsColor) {
+      const colorRadios = colorGroup.getByRole("radio");
+      const cCount = await colorRadios.count();
+      for (let i = 0; i < cCount; i++) {
+        const radio = colorRadios.nth(i);
+        if ((await radio.getAttribute("aria-disabled")) !== "true") {
+          await radio.click();
+          break;
+        }
+      }
+    }
+  }
+}
+
 test.describe("Public PDP (backlog 4.9)", () => {
   test("renders h1/price/size radiogroup, validates add-to-cart, adds to cart, lightbox, tag pill", async ({
     page,
@@ -131,6 +162,31 @@ test.describe("Public PDP (backlog 4.9)", () => {
       const href = await tagLinks.first().getAttribute("href");
       expect(href).toContain("/products?q=");
     }
+  });
+
+  test("اشتر الآن (buy now) adds to cart then navigates straight to /cart", async ({
+    page,
+    baseURL,
+  }) => {
+    const base = baseURL ?? "http://localhost:3100";
+    await setStorefrontLocation(page, base);
+
+    const slug = await findInStockProductSlug(base);
+    await page.goto(`/products/${slug}`);
+
+    const actions = page.getByTestId("pdp-actions");
+    const buyNowButton = actions.getByRole("button", { name: "اشتر الآن" });
+
+    // Buy-now without a size still runs full validation (no blind add).
+    await buyNowButton.click();
+    const toastRegion = page.getByRole("region", { name: /Notifications/ });
+    await expect(toastRegion.getByText("يرجى اختيار المقاس")).toBeVisible();
+
+    await resolveVariant(page);
+
+    await buyNowButton.click();
+    await page.waitForURL("**/cart", { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/cart$/);
   });
 
   test("a variant slug of an inactive product 404s", async ({ page, baseURL }) => {
