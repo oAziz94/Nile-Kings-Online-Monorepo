@@ -1,3 +1,13 @@
+## 2026-09-12 — Incident: an ad-hoc verification script ran against production (no data changed); rules hardened
+
+During 4.22's verification the verifier ran a one-off Node cleanup script without `--env-file=.env.redesign`. Prisma auto-loads the root `.env`, which holds the **production** `DATABASE_URL`, so the `deleteMany` calls executed against production. They matched zero rows (the ids only existed on the redesign branch); the verifier checked immediately afterwards and reported production counts intact (3 partners / 2100 users / 1149 orders). Nothing was altered — by luck, not by design. This is the second time the default-`.env`-is-production layout has bitten (first: 2026-09-10, e2e fixtures written to production, fixed with `test-env.ts`'s host guard).
+
+Done now: both agent definitions (`.claude/agents/ui-verifier.md`, `ui-implementer.md`) carry a "Database safety" section — no ad-hoc Prisma script without `--env-file=.env.redesign` and the host-guard check; prefer seeding inside the spec; report any suspected production touch at the top of the report.
+
+Recommended to the user, not done (it changes their secrets file): stop keeping the production database URL in the default-loaded `.env` on the dev machine — e.g. move `DATABASE_URL`/`DIRECT_URL` to a file only production builds load, or add `NILE_DB_ROLE=production` to `.env` and `NILE_DB_ROLE=redesign` to `.env.redesign` so `lib/db.ts` can refuse to construct a client against production unless `VERCEL` is set or an explicit override is present. Either makes the mistake impossible rather than merely forbidden.
+
+Also in this entry: 4.22 (reports) merged as v2.0.30 — see the backlog close-out for the rulings (partner-scoped stock report accepted; the inventory's `loading`/`fetching` line was wrong for this page).
+
 ## 2026-09-12 — 4.18 merged (v2.0.29): every stock read-modify-write must hold a row lock
 
 The products verifier fired two parallel `delta:+1` requests and got one lost update with two ledger rows — the audit trail disagreed with the stock. Rule, now standing for every partner/admin task that mutates `PartnerInventory`: the read, the floor check and the write happen under `SELECT … FOR UPDATE` (or an atomic `increment` with the floor re-checked in the same transaction); a rejected edit throws so the transaction rolls back; and the task's spec includes a parallel-request assertion. `lib/inventory/restock-requests.ts` already did this; `app/api/partner/inventory/route.ts` now does too.
