@@ -1,27 +1,12 @@
 import { NextRequest } from "next/server";
 import { requirePartner } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
 import { apiBadRequest, apiForbidden, apiSuccess, apiUnauthorized } from "@/lib/api/response";
 import * as queries from "@/lib/analytics/queries";
 import type { DateGranularity } from "@/lib/analytics/types";
 
-async function requireAgent() {
-  const user = await requirePartner();
-  const partner = await prisma.partner.findUnique({
-    where: { id: user.partnerId },
-    select: { partnerType: true },
-  });
-  if (partner?.partnerType !== "AGENT") {
-    const err = new Error("FORBIDDEN");
-    (err as Error & { status?: number }).status = 403;
-    throw err;
-  }
-  return user;
-}
-
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireAgent();
+    const user = await requirePartner();
     const { searchParams } = new URL(req.url);
     const section = searchParams.get("section") ?? "all";
     const from = searchParams.get("from");
@@ -34,13 +19,17 @@ export async function GET(req: NextRequest) {
       return apiSuccess(await queries.getRevenueOverTime(granularity, from, to, scope));
     }
     if (section === "products") return apiSuccess(await queries.getProductVariantReport(from, to, scope));
+    if (section === "stock") return apiSuccess(await queries.getStockReport(user.partnerId));
+    if (section === "funnel") return apiSuccess(await queries.getOrderFunnel(from, to, scope));
     if (section === "all") {
-      const [kpis, revenue, products] = await Promise.all([
+      const [kpis, revenue, products, stock, funnel] = await Promise.all([
         queries.getKpis(from, to, scope),
         queries.getRevenueOverTime(granularity, from, to, scope),
         queries.getProductVariantReport(from, to, scope),
+        queries.getStockReport(user.partnerId),
+        queries.getOrderFunnel(from, to, scope),
       ]);
-      return apiSuccess({ kpis, revenue, products });
+      return apiSuccess({ kpis, revenue, products, stock, funnel });
     }
     return apiBadRequest("قسم غير صالح");
   } catch (error: unknown) {

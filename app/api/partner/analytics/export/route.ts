@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { requirePartner } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
 import { apiBadRequest, apiForbidden, apiUnauthorized } from "@/lib/api/response";
 import * as queries from "@/lib/analytics/queries";
 import type { DateGranularity } from "@/lib/analytics/types";
+import { getOrderStatusLabel } from "@/lib/constants/order-status";
 
 function piastresToEgp(piastres: number): string {
   return (piastres / 100).toFixed(2);
@@ -25,23 +25,9 @@ function csvResponse(csv: string, filename: string): Response {
   });
 }
 
-async function requireAgent() {
-  const user = await requirePartner();
-  const partner = await prisma.partner.findUnique({
-    where: { id: user.partnerId },
-    select: { partnerType: true },
-  });
-  if (partner?.partnerType !== "AGENT") {
-    const err = new Error("FORBIDDEN");
-    (err as Error & { status?: number }).status = 403;
-    throw err;
-  }
-  return user;
-}
-
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireAgent();
+    const user = await requirePartner();
     const { searchParams } = new URL(req.url);
     const report = searchParams.get("report");
     const from = searchParams.get("from") ?? undefined;
@@ -50,7 +36,7 @@ export async function GET(req: NextRequest) {
     const scope = { partnerId: user.partnerId };
     const stamp = new Date().toISOString().slice(0, 10);
 
-    if (!report) return apiBadRequest("يجب تحديد نوع التقرير (summary | revenue | products)");
+    if (!report) return apiBadRequest("يجب تحديد نوع التقرير (summary | revenue | products | stock | funnel)");
 
     if (report === "summary") {
       const kpis = await queries.getKpis(from, to, scope);
@@ -111,7 +97,42 @@ export async function GET(req: NextRequest) {
       return csvResponse(lines.join("\n"), `partner-analytics-products-${stamp}.csv`);
     }
 
-    return apiBadRequest("تقرير غير صالح. استخدم: summary | revenue | products");
+    if (report === "stock") {
+      const rows = await queries.getStockReport(user.partnerId);
+      const lines = [
+        "Product,Variant,Color,SKU,Stock Available,Stock Reserved,Sellable,Units Sold (30d),Daily Velocity,Days of Cover,Low,Out",
+        ...rows.map((r) =>
+          [
+            escapeCsvCell(r.productName),
+            escapeCsvCell(r.variantName),
+            escapeCsvCell(r.colorName ?? ""),
+            escapeCsvCell(r.sku),
+            escapeCsvCell(r.stockAvailable),
+            escapeCsvCell(r.stockReserved),
+            escapeCsvCell(r.sellable),
+            escapeCsvCell(r.unitsSold30d),
+            escapeCsvCell(r.dailyVelocity.toFixed(2)),
+            escapeCsvCell(r.daysOfCover === null ? "" : r.daysOfCover.toFixed(2)),
+            escapeCsvCell(r.low ? "1" : "0"),
+            escapeCsvCell(r.out ? "1" : "0"),
+          ].join(",")
+        ),
+      ];
+      return csvResponse(lines.join("\n"), `partner-analytics-stock-${stamp}.csv`);
+    }
+
+    if (report === "funnel") {
+      const rows = await queries.getOrderFunnel(from, to, scope);
+      const lines = [
+        "Status,Status (Arabic),Count",
+        ...rows.map((r) =>
+          [escapeCsvCell(r.status), escapeCsvCell(getOrderStatusLabel(r.status)), escapeCsvCell(r.count)].join(",")
+        ),
+      ];
+      return csvResponse(lines.join("\n"), `partner-analytics-funnel-${stamp}.csv`);
+    }
+
+    return apiBadRequest("تقرير غير صالح. استخدم: summary | revenue | products | stock | funnel");
   } catch (error: unknown) {
     const err = error as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
