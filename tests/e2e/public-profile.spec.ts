@@ -78,14 +78,14 @@ test("unauthenticated visit redirects to login", async ({ page }) => {
   await expect(page).toHaveURL(/\/login\?redirect=(%2Fprofile|\/profile)$/);
 });
 
-test("nav shows all four sections including العرض الخاص, and account save works", async ({ page }) => {
+test("nav shows the three sections (العرض الخاص is hidden until it launches), and account save works", async ({ page }) => {
   await loginViaUi(page);
   await page.goto("/profile/account");
 
   await expect(page.getByRole("heading", { name: "حسابي" }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: "طلباتي" })).toBeVisible();
   await expect(page.getByRole("link", { name: "عناويني" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "العرض الخاص" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "العرض الخاص" })).toHaveCount(0);
 
   const phoneInput = page.getByLabel("رقم الجوال");
   await expect(phoneInput).toBeDisabled();
@@ -143,10 +143,9 @@ test("orders: renders the empty state for a fixture user with no orders", async 
   await expect(shopLink).toHaveAttribute("href", "/categories");
 });
 
-test("senior page is reachable from the nav and shows the verification form", async ({ page }) => {
+test("senior page still renders by direct URL (unlinked while hidden) and shows the verification form", async ({ page }) => {
   await loginViaUi(page);
-  await page.goto("/profile/account");
-  await page.getByRole("link", { name: "العرض الخاص" }).click();
+  await page.goto("/profile/senior");
   await expect(page).toHaveURL(/\/profile\/senior$/);
 
   await expect(page.getByRole("heading", { name: "العرض الخاص" })).toBeVisible();

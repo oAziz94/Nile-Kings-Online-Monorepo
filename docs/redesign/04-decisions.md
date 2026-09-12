@@ -1,3 +1,11 @@
+## 2026-09-12 — Senior promo hidden, not removed (v2.0.25); Phase 4 continues with the partner portal
+
+User: "the العرض الخاص should be invisible for now .. it is not ready yet". Applied as *hidden*: the "العرض الخاص" nav item and the account page's "أنت مسجّل في العرض الخاص" status line are removed from the UI; `/profile/senior` still renders by direct URL (as it did before the redesign), its API and the pricing rule are untouched, and both `profile-nav.tsx` and `account/page.tsx` carry a one-line note on what to put back when it launches. Spec updated accordingly (5/5).
+
+**Supersedes** the 2026-09-10 Phase 0 triage line "the senior-citizen discount feature is removed entirely" — that call was made when the feature was (mis)read as an accessibility variant; the inventory's own correction (`profile-senior.md`) established it is a real, admin-toggled discount mechanic, and today's direction is "not ready yet", i.e. shelved, not deleted. Nothing is removed until the user says so explicitly.
+
+Next: Phase 4's third surface, the partner portal — tasks written from `00-feature-inventory/partner/*` against the Phase 1 design system (lapis sidebar, gold active mark, Cairo, TanStack Table/Query, react-hook-form) and its `PartnerOrders-Desktop` artboard.
+
 ## 2026-09-12 — Footer switched to navy (v2.0.24)
 
 User: "I think it will be better if we make the footer navy instead of white." Footer background changed from papyrus to ink (`hsl(228 40% 14%)`); logo swapped to the cream variant; body/link/heading text to papyrus at varying opacity (85% links, 65% description, 55% muted); border and watermark tokens follow. No layout or link changes.

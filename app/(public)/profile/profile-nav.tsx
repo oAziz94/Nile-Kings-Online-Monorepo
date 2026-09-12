@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils";
 
 /**
  * Profile section nav — backlog 4.13. Text links only (no icons), same "gold hairline under the
- * current item" language as `components/shared/site-navbar.tsx`'s `CurrentMark`. Gains a fourth
- * item, "العرض الخاص" (`/profile/senior`) — the page existed but was unreachable from any
- * navigation (`04-decisions.md` 2026-09-12 "Second storefront batch", item 3).
+ * current item" language as `components/shared/site-navbar.tsx`'s `CurrentMark`. Three items:
+ * "العرض الخاص" (`/profile/senior`) is deliberately NOT linked — user direction 2026-09-12, "it is
+ * not ready yet"; the route still renders for anyone who has the URL, exactly as before the
+ * redesign. Re-add `{ href: "/profile/senior", label: "العرض الخاص" }` here when it launches.
  *
  * Same active-match rule as the pre-redesign nav: exact match, or `pathname.startsWith(href)`
  * (every one of these routes is a leaf, so this only ever matches its own route).
@@ -18,7 +19,6 @@ const nav = [
   { href: "/profile/orders", label: "طلباتي" },
   { href: "/profile/addresses", label: "عناويني" },
   { href: "/profile/account", label: "حسابي" },
-  { href: "/profile/senior", label: "العرض الخاص" },
 ];
 
 function isActiveHref(pathname: string, href: string): boolean {

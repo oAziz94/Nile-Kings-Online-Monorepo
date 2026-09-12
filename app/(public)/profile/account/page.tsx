@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/shared/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -184,14 +183,10 @@ export default function ProfileAccountPage() {
       {/* No page-level h2 here: the shell's h1 is already "حسابي" and this route IS the account page
           (verifier a11y finding 2026-09-12 — a duplicate heading is noise in the outline). The two
           section headings are the page's h2s instead. */}
-      {seniorVerified && (
-        <p className="border-y border-gold-500/60 bg-[hsl(42_60%_97%)] px-4 py-3 text-sm text-[hsl(228_26%_24%)]">
-          أنت مسجّل في العرض الخاص —{" "}
-          <Link href="/profile/senior" className="border-b border-gold-500 pb-0.5 text-[hsl(228_40%_14%)] hover:text-gold-600">
-            عرض التفاصيل
-          </Link>
-        </p>
-      )}
+      {/* The "أنت مسجّل في العرض الخاص" status line is intentionally not rendered while the senior
+          promo is hidden (user direction 2026-09-12, "not ready yet") — `seniorVerified` is still
+          read so the line can come back with one condition when the promo launches. */}
+      {seniorVerified && null}
 
       <div className="mt-6 flex flex-col gap-14">
         <section aria-labelledby="account-info-heading">
