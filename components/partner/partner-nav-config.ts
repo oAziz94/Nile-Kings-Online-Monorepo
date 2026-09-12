@@ -1,32 +1,20 @@
 /**
- * Partner-shell navigation config (backlog 4.16).
+ * Partner-shell v2 navigation config (backlog 5.1, `05-partner-portal-v2.md` §2
+ * "Information architecture"). Organised around the partner's day, not the database
+ * tables — six top-level items, role differences live inside items (`roles`), not
+ * separate menus. Replaces the v1 config (4.16) one-for-one; the mobile bottom tab bar
+ * (`اليوم · الطلبات · المخزون · التقارير`, backlog 5.1) is built from the same section
+ * data in `PartnerShell`.
  *
- * Single source of truth for `PartnerShell`'s sidebar/drawer nav — sectioned per the
- * design-canvas sidebar (`docs/redesign/design-canvas/PartnerOrders-Desktop.dc.html`:
- * النظرة العامة / المخزون / الشبكة / التقارير / الحساب) and per
- * `docs/redesign/03-backlog.md`'s Partner-portal intro + standing rule (10): "nav items
- * live in `components/partner/partner-nav-config.ts` — a task that adds a screen appends
- * its item there, in the section the task names."
- *
- * Shape contract for later tasks (4.17–4.23): each `PartnerNavItem` is
- * `{ href, label, icon, roles }` where `roles` is the subset of `PartnerType` that can
- * see the item (`["AGENT"]`, `["DISTRIBUTOR"]`, or both). Sections are ordered arrays,
- * each `PartnerNavSection` is `{ id, label, items }`. Append new items to the correct
- * section's `items` array — do not invent a new file or a second nav source.
- *
- * Every route below except `/partner/settings` (4.17) and `/partner/receipts` (4.23)
- * already exists in the app today (pre-redesign pages 4.18–4.22 will re-skin in place),
- * so those items render now per the backlog's exact nav list; the two truly-new routes
- * are commented out with a `TODO(4.NN)` marker and uncommented by their own task rather
- * than linking to a 404.
+ * Shape contract unchanged from v1: each `PartnerNavItem` is
+ * `{ href, label, icon, roles }`; sections are ordered arrays. Append new items to the
+ * correct section per whichever v2 task names it (5.2–5.6).
  */
 import type { ComponentType, SVGProps } from "react";
 import {
   BarChart3,
   Boxes,
-  ClipboardList,
   LayoutDashboard,
-  PackageSearch,
   Truck,
   Users,
 } from "lucide-react";
@@ -51,35 +39,40 @@ export const PARTNER_NAV_SECTIONS: readonly PartnerNavSection[] = [
     id: "home",
     label: "الرئيسية",
     items: [
-      { href: "/partner", label: "النظرة العامة", icon: LayoutDashboard, roles: ["AGENT", "DISTRIBUTOR"] },
-      { href: "/partner/routed-orders", label: "الطلبات", icon: Truck, roles: ["AGENT", "DISTRIBUTOR"] },
+      { href: "/partner", label: "اليوم", icon: LayoutDashboard, roles: ["AGENT", "DISTRIBUTOR"] },
+      { href: "/partner/orders", label: "الطلبات", icon: Truck, roles: ["AGENT", "DISTRIBUTOR"] },
     ],
   },
   {
     id: "inventory",
     label: "المخزون",
     items: [
-      { href: "/partner/products", label: "مخزون المنتجات", icon: PackageSearch, roles: ["AGENT", "DISTRIBUTOR"] },
-      { href: "/partner/distributor-requests", label: "طلبات الموزعين", icon: ClipboardList, roles: ["AGENT"] },
-      { href: "/partner/receipts", label: "الاستلام من المصنع", icon: Boxes, roles: ["AGENT"] },
-      { href: "/partner/restock-requests", label: "طلب إعادة توريد", icon: ClipboardList, roles: ["DISTRIBUTOR"] },
+      { href: "/partner/stock", label: "المخزون", icon: Boxes, roles: ["AGENT", "DISTRIBUTOR"] },
     ],
   },
   {
     id: "network",
     label: "الشبكة",
     items: [
-      { href: "/partner/distributors", label: "الموزعون", icon: Users, roles: ["AGENT"] },
+      { href: "/partner/network", label: "الموزعون", icon: Users, roles: ["AGENT"] },
     ],
   },
   {
     id: "reports",
     label: "التقارير",
     items: [
-      { href: "/partner/reports", label: "التقارير", icon: BarChart3, roles: ["AGENT", "DISTRIBUTOR"] },
+      { href: "/partner/reports/sales", label: "التقارير", icon: BarChart3, roles: ["AGENT", "DISTRIBUTOR"] },
     ],
   },
 ] as const;
+
+/** Bottom mobile tab bar (backlog 5.1 visual system: "اليوم · الطلبات · المخزون · التقارير"). */
+export const PARTNER_MOBILE_TABS: readonly { href: string; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
+  { href: "/partner", label: "اليوم", icon: LayoutDashboard },
+  { href: "/partner/orders", label: "الطلبات", icon: Truck },
+  { href: "/partner/stock", label: "المخزون", icon: Boxes },
+  { href: "/partner/reports/sales", label: "التقارير", icon: BarChart3 },
+];
 
 /** Static "الحساب" section — not role-filtered: settings, store link, logout. */
 export const PARTNER_ACCOUNT_NAV = {

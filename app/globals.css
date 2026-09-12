@@ -19,6 +19,9 @@
     --lapis-800: 228 40% 14%;
     --lapis-700: 227 34% 20%;
     --lapis-600: 226 30% 28%;
+    /* Partner portal v2 (backlog 5.1) — active nav pill background, exactly
+       design-canvas/partner-v2/build.mjs's T.lapis50. */
+    --lapis-50: 228 40% 96%;
 
     --ink: 228 22% 14%;
     --ink-soft: 225 10% 42%;
