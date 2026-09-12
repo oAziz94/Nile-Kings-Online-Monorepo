@@ -1,3 +1,16 @@
+## 2026-09-12 — Partner portal: scope decided with the user; tasks 4.16–4.23
+
+User: "make the decisions, designs, and what should we include and in which order so that we make the partner's workflow easier, we need also the partner to have some analytics and reporting and alerts on his inventory ... lets decide on this with each other." PM proposed; user decided:
+
+1. **Alerts: in-app only.** No WhatsApp. A bell in the topbar plus the home page's attention panels; alerts are computed from live data (new assigned orders, low stock, restock events, orders unshipped > 24h) against a per-partner `alertsSeenAt` — no notification table.
+2. **Low-stock threshold: per partner, default 5**, on a settings page. Replaces the hidden fixed `<= 3` everywhere (home, bell, products colouring, stock report). Schema: `Partner.lowStockThreshold`.
+3. **Distributors get the same reports**, scoped to themselves (the analytics gate becomes `requirePartner()`; scope stays `partnerId`).
+4. **All four workflow shortcuts**: bulk status change and a per-row next-status button on the orders list (backed by extracting the single-order transition into `lib/orders/partner-status-transition.ts`, byte-equivalent, plus a per-order-transaction bulk endpoint), a `delta` quick adjust on stock (server applies it to the fresh row; no client totals), and a distributor cancel of a pending restock request.
+5. **Factory intake + import/export (4.23)** — user requirement. Design: SKU is the key, `xlsx` is the format (already a dependency), and the same exported file is the intake/count template (two input columns: received quantity, physical count). Nothing applies without a server-side preview; a `StockReceipt` record with lines is the durable, printable proof of every intake or count, and every applied line writes the ledger (`FACTORY_RECEIPT` / `STOCK_COUNT`). Receipts are agent-only (the factory ships to agents; distributors receive via restock requests); the export is for both roles.
+6. **Order**: foundation (4.16, incl. all schema additions in one push) → home/alerts/settings, products, orders, restock, distributors, reports in parallel → receipts last (needs the products screen's export link).
+
+Also from the PM brief: the canvas's topbar search is omitted (no global partner search exists); the bell is built; the dashboard primitives are shared with admin, which picks up the new look before its own rebuild.
+
 ## 2026-09-12 — Senior promo hidden, not removed (v2.0.25); Phase 4 continues with the partner portal
 
 User: "the العرض الخاص should be invisible for now .. it is not ready yet". Applied as *hidden*: the "العرض الخاص" nav item and the account page's "أنت مسجّل في العرض الخاص" status line are removed from the UI; `/profile/senior` still renders by direct URL (as it did before the redesign), its API and the pricing rule are untouched, and both `profile-nav.tsx` and `account/page.tsx` carry a one-line note on what to put back when it launches. Spec updated accordingly (5/5).
