@@ -7,7 +7,7 @@ import { AlertTriangle } from "lucide-react";
 import { ProductCard } from "@/components/shared/product-card";
 import { CatalogFilterBar, type CatalogFilterCategory } from "@/components/shared/catalog-filter-bar";
 import { CatalogMobileFilters, type CatalogDraftFilters } from "@/components/shared/catalog-mobile-filters";
-import { SortDropdown, type SortOptionValue } from "@/components/shared/sort-dropdown";
+import type { SortOptionValue } from "@/components/shared/sort-dropdown";
 import { ProductGridSkeleton, ProductCardSkeleton } from "@/components/shared/skeleton";
 import { Button } from "@/components/ui/button";
 import { useNavigateBackRestore } from "@/hooks/use-navigate-back-restore";
@@ -368,9 +368,10 @@ export function CatalogListing({ lockedCategory }: CatalogListingProps) {
 
   function openMobileFilters() {
     setMobileDraft({ category, size, priceRange: displayRange, inStock, sort });
-    // Seed with the currently-known total so the apply button reads a real number immediately
-    // instead of flashing "0" while the first debounced preview fetch is still in flight.
-    setPreviewTotal(total);
+    // Seed with `null` (renders "عرض المنتجات", no number) rather than the last-known `total` —
+    // that number describes the *previous* filter set, not the freshly-reset draft, and showing
+    // it (or a stale 0) as if it were a live count would be misleading, not just imprecise.
+    setPreviewTotal(null);
     setMobileFilterOpen(true);
   }
 
@@ -418,10 +419,12 @@ export function CatalogListing({ lockedCategory }: CatalogListingProps) {
         .then((res) => res.json())
         .then((json) => {
           if (cancelled) return;
-          setPreviewTotal(json.success ? (json.data?.total ?? 0) : 0);
+          // A failed/malformed response leaves the count unknown ("عرض المنتجات") rather than
+          // asserting 0 — 0 must only ever mean the server actually said zero matches.
+          setPreviewTotal(json.success ? (json.data?.total ?? null) : null);
         })
         .catch(() => {
-          if (!cancelled) setPreviewTotal(0);
+          if (!cancelled) setPreviewTotal(null);
         });
     }, 300);
     return () => {
@@ -505,7 +508,7 @@ export function CatalogListing({ lockedCategory }: CatalogListingProps) {
         className="mb-6"
       />
 
-      <div aria-live="polite" className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div aria-live="polite" className="mb-4">
         <p className="text-sm text-muted-foreground">
           {loading ? "جارٍ التحميل" : (
             <>
@@ -516,9 +519,6 @@ export function CatalogListing({ lockedCategory }: CatalogListingProps) {
             </>
           )}
         </p>
-        <div className="hidden md:block">
-          <SortDropdown value={sort} onChange={(v) => setSort(v as SortOptionValue)} />
-        </div>
       </div>
 
       {error ? (

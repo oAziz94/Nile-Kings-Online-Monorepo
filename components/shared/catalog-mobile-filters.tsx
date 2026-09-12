@@ -6,11 +6,11 @@ import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet";
 import { SortDropdown, type SortOptionValue } from "@/components/shared/sort-dropdown";
 import { PriceRangeControl, type PriceRangeValue } from "@/components/shared/price-range-control";
 import type { CatalogFilterCategory } from "@/components/shared/catalog-filter-bar";
@@ -101,7 +101,7 @@ export function CatalogMobileFilters({
           className="flex-1 min-w-0"
         />
 
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Sheet open={open} onOpenChange={onOpenChange}>
           <Button
             type="button"
             variant="outline"
@@ -117,12 +117,10 @@ export function CatalogMobileFilters({
             )}
           </Button>
 
-          <DialogContent className="max-w-md rounded-none p-0">
+          <SheetContent side="bottom" className="max-h-[92vh] gap-0 overflow-y-auto p-0">
             <div className="flex items-center justify-between border-b border-[hsl(228_16%_88%)] p-4">
-              <DialogTitle className="font-amiri text-lg font-bold text-[hsl(228_40%_14%)]">
-                تصفية
-              </DialogTitle>
-              <DialogClose asChild>
+              <SheetTitle>تصفية</SheetTitle>
+              <SheetClose asChild>
                 <button
                   type="button"
                   aria-label="إغلاق التصفية"
@@ -130,10 +128,10 @@ export function CatalogMobileFilters({
                 >
                   <X className="h-4 w-4" aria-hidden />
                 </button>
-              </DialogClose>
+              </SheetClose>
             </div>
 
-            <div className="flex flex-col gap-5 p-4">
+            <div className="flex flex-col gap-5 overflow-y-auto p-4">
               {showCategory ? (
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="catalog-category-mobile" className="text-xs font-medium text-[hsl(228_18%_40%)]">
@@ -205,7 +203,7 @@ export function CatalogMobileFilters({
               </div>
             </div>
 
-            <div className="flex gap-2 border-t border-[hsl(228_16%_88%)] p-4">
+            <div className="flex shrink-0 gap-2 border-t border-[hsl(228_16%_88%)] p-4">
               <Button
                 type="button"
                 variant="outline"
@@ -217,18 +215,18 @@ export function CatalogMobileFilters({
               >
                 مسح
               </Button>
-              <DialogClose asChild>
+              <SheetClose asChild>
                 <Button
                   type="button"
                   className="flex-1 rounded-none bg-[hsl(228_40%_14%)] text-papyrus hover:bg-[hsl(228_40%_20%)]"
                   onClick={onApply}
                 >
-                  عرض {(previewTotal ?? 0).toLocaleString("en-US")} منتجًا
+                  {previewTotal == null ? "عرض المنتجات" : `عرض ${previewTotal.toLocaleString("en-US")} منتجًا`}
                 </Button>
-              </DialogClose>
+              </SheetClose>
             </div>
-          </DialogContent>
-        </Dialog>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   );

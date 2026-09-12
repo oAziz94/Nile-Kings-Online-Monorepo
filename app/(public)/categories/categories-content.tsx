@@ -70,10 +70,7 @@ export function CategoriesContent() {
 
   return (
     <div className="container px-4 py-6 md:py-8">
-      <h1 className="mb-5 flex items-center gap-2 text-2xl font-bold text-foreground md:text-3xl">
-        <Package className="h-7 w-7" aria-hidden />
-        التصنيفات
-      </h1>
+      <h1 className="mb-5 text-2xl font-bold text-foreground md:text-3xl">التصنيفات</h1>
 
       {error ? (
         <div role="alert" className="flex flex-col items-center gap-3 border border-[hsl(0_70%_45%)]/30 bg-[hsl(0_70%_97%)] p-10 text-center">
