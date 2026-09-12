@@ -19,6 +19,8 @@ import { seedPartnerPair, loginAs, cleanupPartnerPair, type PartnerFixturePair }
  * makes "most recently created variant" queries flaky), cleaned up once at the end.
  */
 test.describe.configure({ mode: "serial" });
+// Cold Turbopack compiles plus Neon round-trips push this multi-screen flow past the default 30s.
+test.setTimeout(90_000);
 
 const prisma = new PrismaClient();
 let pair: PartnerFixturePair;
@@ -122,6 +124,8 @@ test("distributor creates then cancels one request; creates another; agent sees 
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "إلغاء", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
+  // Focus returns to the plain-button trigger (shared dialog fix, 2026-09-12 — verifier finding).
+  await expect(card.getByRole("button", { name: "تنفيذ التحويل" })).toBeFocused();
   await expect(card.getByText("قيد المراجعة")).toBeVisible();
 
   // Confirm the transfer.
