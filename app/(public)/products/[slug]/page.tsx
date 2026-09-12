@@ -31,9 +31,13 @@ export const dynamic = "force-dynamic";
  */
 const getProductRowCatalog = unstable_cache(
   async (slug: string) => {
-    // Resolve by variant slug first (productSlug_size_colorHexCode), then by product slug
+    // Resolve by variant slug first (productSlug_size_colorHexCode), then by product slug.
+    // Hardening approved in `04-decisions.md` 2026-09-12 decision 7 / `products-pdp.md` edge
+    // case: the variant-slug path must also require the parent product to be active, otherwise
+    // a direct link to a variant of a deactivated product would bypass the product-slug path's
+    // own `active: true` filter and still render.
     const variantBySlug = await prisma.variant.findFirst({
-      where: { slug },
+      where: { slug, product: { active: true } },
       include: {
         product: {
           include: {

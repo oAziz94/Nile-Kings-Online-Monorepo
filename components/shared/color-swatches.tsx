@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { cn } from "@/lib/utils";
 
 export interface ColorOption {
@@ -16,38 +17,77 @@ interface ColorSwatchesProps {
   className?: string;
   /** "circle" (default) or "square" */
   shape?: "circle" | "square";
+  /** Accessible name for the radiogroup — defaults to "اللون". */
+  ariaLabel?: string;
 }
 
-const swatchSize = "h-6 w-6";
+const swatchSize = "h-8 w-8";
 
+/** Colour selector as a real `radiogroup` (backlog 4.9) — arrow-key roving tabindex navigation. */
 export function ColorSwatches({
   options,
   value,
   onSelect,
   className,
   shape = "circle",
+  ariaLabel = "اللون",
 }: ColorSwatchesProps) {
+  const refs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const firstEnabledId = options.find((o) => !o.disabled)?.id;
+
+  function focusByOffset(currentId: string, offset: number) {
+    const idx = options.findIndex((o) => o.id === currentId);
+    if (idx === -1) return;
+    let next = idx;
+    for (let i = 0; i < options.length; i++) {
+      next = (next + offset + options.length) % options.length;
+      if (!options[next].disabled) break;
+    }
+    const target = options[next];
+    refs.current[target.id]?.focus();
+    onSelect?.(target.id);
+  }
+
   return (
-    <div className={cn("flex flex-wrap gap-2", className)}>
-      {options.map((opt) => (
-        <button
-          key={opt.id}
-          type="button"
-          disabled={opt.disabled}
-          onClick={() => onSelect?.(opt.id)}
-          title={opt.name}
-          className={cn(
-            "border-2 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-            swatchSize,
-            shape === "square" ? "rounded-md" : "rounded-full",
-            value === opt.id
-              ? "border-foreground ring-2 ring-offset-2 ring-foreground/20"
-              : "border-border hover:border-foreground/50",
-            opt.disabled && "cursor-not-allowed opacity-50"
-          )}
-          style={{ backgroundColor: opt.hex }}
-        />
-      ))}
+    <div role="radiogroup" aria-label={ariaLabel} className={cn("flex flex-wrap gap-2.5", className)}>
+      {options.map((opt) => {
+        const selected = value === opt.id;
+        return (
+          <button
+            key={opt.id}
+            ref={(el) => {
+              refs.current[opt.id] = el;
+            }}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            aria-disabled={opt.disabled || undefined}
+            aria-label={opt.name}
+            title={opt.name}
+            tabIndex={selected || (value == null && opt.id === firstEnabledId) ? 0 : -1}
+            onClick={() => !opt.disabled && onSelect?.(opt.id)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+                e.preventDefault();
+                focusByOffset(opt.id, 1);
+              } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+                e.preventDefault();
+                focusByOffset(opt.id, -1);
+              }
+            }}
+            className={cn(
+              "border transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2",
+              swatchSize,
+              shape === "square" ? "rounded-md" : "rounded-full",
+              selected
+                ? "border-[hsl(228_40%_14%)] shadow-[0_0_0_2px_#F7F4EE,0_0_0_3px_hsl(228_40%_14%)]"
+                : "border-[hsl(228_16%_78%)] hover:scale-110",
+              opt.disabled && "cursor-not-allowed opacity-40"
+            )}
+            style={{ backgroundColor: opt.hex }}
+          />
+        );
+      })}
     </div>
   );
 }
