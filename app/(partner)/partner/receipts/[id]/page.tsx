@@ -106,7 +106,8 @@ export default function PartnerReceiptDetailPage() {
       <style jsx global>{`
         @media print {
           aside,
-          header {
+          header,
+          [data-partner-chrome] {
             display: none !important;
           }
           main {

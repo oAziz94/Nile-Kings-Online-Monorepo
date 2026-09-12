@@ -169,6 +169,13 @@ test("a typed FACTORY receipt raises stock and writes a FACTORY_RECEIPT ledger r
     timeout: 15_000,
   });
 
+  // The receipt is the printable record: under print media every piece of app chrome (sidebar,
+  // mobile header, desktop topbar with the bell) is hidden (4.23 verifier finding, 2026-09-13).
+  await page.emulateMedia({ media: "print" });
+  for (const el of await page.locator("[data-partner-chrome]").all()) await expect(el).toBeHidden();
+  await expect(page.getByRole("button", { name: /الإشعارات/ })).toBeHidden();
+  await page.emulateMedia({ media: "screen" });
+
   const inventoryRow = await prisma.partnerInventory.findUnique({
     where: { partnerId_variantId: { partnerId: pair.agent.partnerId, variantId: factoryVariantId } },
   });
