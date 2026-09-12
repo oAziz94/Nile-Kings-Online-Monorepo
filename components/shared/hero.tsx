@@ -39,7 +39,8 @@ export function Hero() {
           </h1>
           <p className="mb-4 flex items-center gap-3 border-b border-[hsl(228_40%_14%)]/28 pb-4 font-amiri text-2xl text-[hsl(228_40%_14%)] sm:gap-4 sm:text-3xl lg:text-[44px]">
             <span>المصري</span>
-            <Ankh size={36} strokeWidth={2} className="text-gold-500" />
+            {/* Weight 7 on the 48×96 viewBox (2 rendered under 1px and vanished — user note, 2026-09-12); ink like the slogan so it never blends into the photograph. */}
+            <Ankh size={40} strokeWidth={7} className="text-[hsl(228_40%_14%)]" />
             <span>للمصري</span>
           </p>
           <p className="mb-6 max-w-[480px] text-sm leading-relaxed text-[hsl(228_26%_24%)] sm:text-base lg:text-[20px] lg:leading-[1.7]">

@@ -1,3 +1,12 @@
+## 2026-09-12 — Storefront edits, second review round (v2.0.16)
+
+Four user notes on the v2.0.15 home page, all applied directly by the PM:
+
+1. **Hero Ankh invisible.** Root cause was weight, not colour: `strokeWidth={2}` on the Ankh's 48×96 viewBox renders under 1px at 40px tall. Now weight 7 (the component's documented display weight) in ink, matching the slogan text, so it reads over the photograph and the papyrus wash alike.
+2. **Category and collage overlays missing.** Same gotcha as the hero's top gradient: Tailwind gradient classes with arbitrary `hsl(...)` stops plus opacity modifiers compute to `background-image: none` in dev. Both overlays are now inline `linear-gradient` styles. Rule going forward: on the storefront, gradients are inline styles, never `bg-gradient-to-*` with arbitrary colour stops.
+3. **Bed linen is "coming soon".** The bed-linen collage tile no longer links to the full listing (there are no bed-linen products yet). It is a button that toasts "المفروشات قريبًا"; its link line reads "قريبًا". The collage spec now expects three links plus one coming-soon button. Revisit when the bedding category exists.
+4. **Fabric-story copy**: "من الدلتا إلى مصانع المحلة" → "من الدلتا إلى مصانعنا" (user's wording).
+
 ## 2026-09-12 — Storefront edits after the user's first review of the merged build (v2.0.15)
 
 Eleven corrections from the user's own walk of home/PDP, applied directly by the PM (all presentation or small merchandising logic; no route, API, cart or checkout change):

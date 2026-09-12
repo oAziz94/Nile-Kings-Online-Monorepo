@@ -11,6 +11,7 @@ import { Ankh } from "@/components/brand/ankh";
 import { Package, Shield, Leaf, Hand } from "lucide-react";
 import type { getHomeData } from "@/lib/storefront-data";
 import { productCardLabel } from "@/lib/catalog";
+import { useToast } from "@/hooks/use-toast";
 
 /** Home category tiles — backlog 4.7, canvas copy/heights (artboard 1a `cats`). Hrefs unchanged. */
 const CATEGORY_TILES = [
@@ -57,9 +58,10 @@ const COLLAGE_TILES = [
   {
     key: "bed-linen",
     text: "مفروشات فاخرة",
-    link: "تصفح المتجر",
-    aria: "مفروشات فاخرة — تصفح المتجر",
+    link: "قريبًا",
+    aria: "مفروشات فاخرة — قريبًا",
     href: "/products",
+    comingSoon: true,
     image: "/brand/storefront/bed-linen.jpg",
     tone: "bg-[hsl(35_38%_60%)]",
   },
@@ -140,6 +142,35 @@ const RAIL_DEFS = [
   },
 ];
 
+type CollageTileDef = (typeof COLLAGE_TILES)[number];
+
+/**
+ * Collage tile. Bed linen is not in the catalog yet (user decision, 2026-09-12): its tile is a
+ * button that toasts "coming soon" instead of a link into the full listing, so the home page never
+ * sends a shopper to a page that does not have what the tile promised.
+ */
+function CollageTile({ tile, children }: { tile: CollageTileDef; children: React.ReactNode }) {
+  const { toast } = useToast();
+  const className = `group relative block w-full overflow-hidden text-start text-papyrus no-underline ${tile.tone}`;
+  if ("comingSoon" in tile && tile.comingSoon) {
+    return (
+      <button
+        type="button"
+        aria-label={`${tile.text} — قريبًا`}
+        className={`${className} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500`}
+        onClick={() => toast({ title: "المفروشات قريبًا", description: "نجهّز كولكشن المفروشات — ترقّبوه في المتجر قريبًا." })}
+      >
+        {children}
+      </button>
+    );
+  }
+  return (
+    <Link href={tile.href} aria-label={tile.aria} className={className}>
+      {children}
+    </Link>
+  );
+}
+
 type HomeData = Awaited<ReturnType<typeof getHomeData>>;
 
 function toCardProps(p: HomeData extends null ? never : NonNullable<HomeData>["bestSellers"][number]) {
@@ -219,7 +250,12 @@ export function HomeSections({ data }: { data: HomeData }) {
                 className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
                 style={{ objectPosition: c.focus }}
               />
-              <span aria-hidden className="absolute inset-x-0 bottom-0 h-[78%] bg-gradient-to-t from-[hsl(228_40%_14%)]/92 via-[hsl(228_40%_14%)]/55 to-transparent" />
+              {/* Inline gradient, not a Tailwind class — see hero.tsx / 04-decisions.md 2026-09-12. */}
+              <span
+                aria-hidden
+                className="absolute inset-x-0 bottom-0 h-[82%]"
+                style={{ background: "linear-gradient(to top, hsl(228 40% 14% / 0.94), hsl(228 40% 14% / 0.6) 55%, hsl(228 40% 14% / 0))" }}
+              />
               <span className="absolute inset-x-5 bottom-5 flex flex-col items-start gap-2 lg:inset-x-7 lg:bottom-7">
                 <span className="font-amiri text-[28px] font-bold leading-none lg:text-[34px]">{c.name}</span>
                 <span className="text-[13px] text-papyrus/85 lg:text-sm">{c.line}</span>
@@ -270,7 +306,7 @@ export function HomeSections({ data }: { data: HomeData }) {
             قطن واحد فقط في العالم يُسمّى باسم بلده.
           </h2>
           <p className="max-w-[480px] text-sm leading-[1.8] text-papyrus/78 lg:text-base">
-            تيلة أطول، خيط أنعم، وقماش يتنفس. من الدلتا إلى مصانع المحلة، نختار القطن المصري طويل التيلة ونفصّله بأيدٍ مصرية — لأن الأفضل في العالم لا يجب أن يُصدَّر كله.
+            تيلة أطول، خيط أنعم، وقماش يتنفس. من الدلتا إلى مصانعنا، نختار القطن المصري طويل التيلة ونفصّله بأيدٍ مصرية — لأن الأفضل في العالم لا يجب أن يُصدَّر كله.
           </p>
         </div>
       </section>
@@ -292,12 +328,7 @@ export function HomeSections({ data }: { data: HomeData }) {
       <section aria-label="مختارات من الكولكشن" className="px-4 pt-14 sm:px-6 lg:px-12 lg:pt-[104px]">
         <div className="grid grid-cols-2 auto-rows-[220px] gap-2.5 lg:grid-cols-4 lg:auto-rows-[400px] lg:gap-4">
           {COLLAGE_TILES.map((c) => (
-            <Link
-              key={c.key}
-              href={c.href}
-              aria-label={c.aria}
-              className={`group relative block overflow-hidden text-papyrus no-underline ${c.tone}`}
-            >
+            <CollageTile key={c.key} tile={c}>
               <Image
                 src={c.image}
                 alt=""
@@ -306,14 +337,18 @@ export function HomeSections({ data }: { data: HomeData }) {
                 className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
               />
               {/* Dark overlay so the type reads on any photograph (user note, 2026-09-12). */}
-              <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-[hsl(228_40%_14%)]/85 via-[hsl(228_40%_14%)]/30 to-[hsl(228_40%_14%)]/10" />
+              <span
+                aria-hidden
+                className="absolute inset-0"
+                style={{ background: "linear-gradient(to top, hsl(228 40% 14% / 0.9), hsl(228 40% 14% / 0.45) 45%, hsl(228 40% 14% / 0.15))" }}
+              />
               <span className="pointer-events-none absolute inset-x-3.5 bottom-10 max-w-[90%] font-amiri text-2xl font-bold leading-[1.15] lg:inset-x-6 lg:bottom-14 lg:text-[30px]">
                 {c.text}
               </span>
               <span className="pointer-events-none absolute inset-x-3.5 bottom-3 self-start border-b border-current pb-0.5 text-xs lg:inset-x-6 lg:bottom-[22px] lg:text-[13px]">
                 {c.link}
               </span>
-            </Link>
+            </CollageTile>
           ))}
         </div>
       </section>

@@ -50,8 +50,10 @@ test("collage tiles never link to a dead '#' href", async ({ page, baseURL }) =>
   await page.goto("/");
   const collage = page.getByRole("region", { name: "مختارات من الكولكشن" });
   await collage.scrollIntoViewIfNeeded();
+  // Three links; the bed-linen tile is a "coming soon" button (2026-09-12 user decision).
   const hrefs = await collage.getByRole("link").evaluateAll((links) => links.map((l) => l.getAttribute("href")));
-  expect(hrefs.length).toBe(4);
+  expect(hrefs.length).toBe(3);
+  await expect(collage.getByRole("button", { name: /قريبًا/ })).toHaveCount(1);
   for (const href of hrefs) {
     expect(href).not.toBe("#");
     expect(href).toBeTruthy();
