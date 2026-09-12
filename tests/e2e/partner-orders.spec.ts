@@ -284,7 +284,8 @@ test("order detail notes round-trip", async ({ page }) => {
   await expect(page.getByText("تم حفظ الملاحظات").first()).toBeVisible({ timeout: 15_000 });
 
   const order = await prisma.order.findUniqueOrThrow({ where: { id: orderAId } });
-  expect(order.adminNotes).toBe("null");
+  // PM fix 2026-09-12: clearing the note now stores a real NULL (it used to store the text "null").
+  expect(order.adminNotes).toBeNull();
 });
 
 test("'رجوع للطلبات' is a real link back to the orders list", async ({ page }) => {

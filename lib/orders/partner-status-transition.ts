@@ -120,7 +120,8 @@ export async function transitionPartnerOrderStatus(params: {
   const data: Prisma.OrderUpdateInput = {};
   if (nextStatus) data.status = nextStatus as OrderStatus;
   if (adminNotes !== undefined) {
-    data.adminNotes = adminNotes === "" ? null : String(adminNotes).trim();
+    // null and "" both clear the note (PM fix 2026-09-12; `String(null)` used to store "null").
+    data.adminNotes = adminNotes === null || adminNotes === "" ? null : String(adminNotes).trim() || null;
   }
 
   if (transitioningToCancelled) {

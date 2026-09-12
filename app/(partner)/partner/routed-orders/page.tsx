@@ -187,6 +187,9 @@ function PartnerOrdersPageInner() {
   const [exportingShipping, setExportingShipping] = React.useState(false);
   const [rowUpdating, setRowUpdating] = React.useState<string | null>(null);
   const [bulkDialogOpen, setBulkDialogOpen] = React.useState(false);
+  // The dialog is opened from a plain button (not a Radix `DialogTrigger`), so focus is restored
+  // by hand on close — same pattern as `components/shared/catalog-mobile-filters.tsx`.
+  const bulkTriggerRef = React.useRef<HTMLButtonElement>(null);
   const [bulkTargetStatus, setBulkTargetStatus] = React.useState<string>(ORDER_STATUSES[0]);
   const [bulkSubmitting, setBulkSubmitting] = React.useState(false);
 
@@ -505,7 +508,7 @@ function PartnerOrdersPageInner() {
               ))}
             </Select>
             {isAgent && selectedCount > 0 && (
-              <Button type="button" variant="outline" className="rounded-full" onClick={() => setBulkDialogOpen(true)}>
+              <Button ref={bulkTriggerRef} type="button" variant="outline" className="rounded-full" onClick={() => setBulkDialogOpen(true)}>
                 تغيير حالة المحددة ({selectedCount})
               </Button>
             )}
@@ -560,7 +563,13 @@ function PartnerOrdersPageInner() {
       </PanelCard>
 
       <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
-        <DialogContent className="rounded-2xl border-stone-200 bg-white">
+        <DialogContent
+          className="rounded-2xl border-stone-200 bg-white"
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            bulkTriggerRef.current?.focus();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>تغيير حالة الطلبات المحددة</DialogTitle>
             <DialogDescription>

@@ -157,7 +157,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const data: Prisma.OrderUpdateInput = {};
     if (nextStatus) data.status = nextStatus as OrderStatus;
     if (body.adminNotes !== undefined) {
-      data.adminNotes = body.adminNotes === "" ? null : String(body.adminNotes).trim();
+      // PM fix 2026-09-12 (found by the 4.19 verifier): the page sends `null` to clear the note;
+      // `String(null)` stored the literal text "null". null and "" both mean "clear".
+      data.adminNotes =
+        body.adminNotes === null || body.adminNotes === "" ? null : String(body.adminNotes).trim() || null;
     }
 
     if (nextItems) {
