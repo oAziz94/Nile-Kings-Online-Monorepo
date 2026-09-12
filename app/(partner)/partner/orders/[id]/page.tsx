@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowRight, Loader2, MapPin, Package, ShoppingBag, UserRound } from "lucide-react";
-import { EmptyState } from "@/components/dashboard/empty-state";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { AlertTriangle, ArrowRight, Loader2, MapPin, Package, ShoppingBag, UserRound, WifiOff } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
 import { TableScroll } from "@/components/dashboard/table-scroll";
@@ -22,10 +22,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   ORDER_STATUSES,
-  ORDER_STATUS_BADGE_CLASSES as STATUS_BADGE_CLASSES,
   ORDER_STATUS_LABELS as STATUS_LABELS,
 } from "@/lib/constants/order-status";
-import { cn } from "@/lib/utils";
 
 type ShippingAddress = {
   governorate?: string;
@@ -86,6 +84,17 @@ type VariantOption = {
   pricePiastres: number;
 };
 
+/** Distinguishes the three failure shapes the old page collapsed into one "not found"
+ * empty state (`orders.md` States: "the UI cannot distinguish order-doesn't-exist from
+ * network/API error", and its Permission-restricted note about the silently-swallowed
+ * 403). PM-decided (backlog 4.19): 403 and network failures get their own alerts. */
+type LoadState =
+  | { kind: "loading" }
+  | { kind: "ready"; order: OrderDetail }
+  | { kind: "not-found" }
+  | { kind: "forbidden" }
+  | { kind: "network"; message: string };
+
 function addressLines(address: ShippingAddress) {
   return [
     address.governorate,
@@ -98,48 +107,71 @@ function addressLines(address: ShippingAddress) {
   ].filter(Boolean);
 }
 
+const STATUS_PILL_VARIANT: Record<string, "neutral" | "info" | "warning" | "success" | "danger"> = {
+  CREATED: "neutral",
+  CONFIRMED: "info",
+  PROCESSING: "warning",
+  READY_TO_SHIP: "warning",
+  SHIPPED: "info",
+  DELIVERED: "success",
+  CANCELLED: "danger",
+};
+
 export default function PartnerOrderDetailPage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
   const orderId = params.id;
   const { toast } = useToast();
-  const [order, setOrder] = React.useState<OrderDetail | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [updating, setUpdating] = React.useState(false);
-  const [savingNotes, setSavingNotes] = React.useState(false);
+  const [state, setState] = React.useState<LoadState>({ kind: "loading" });
   const [status, setStatus] = React.useState("");
   const [adminNotes, setAdminNotes] = React.useState("");
   const [editableItems, setEditableItems] = React.useState<EditableItem[]>([]);
+  const [updating, setUpdating] = React.useState(false);
+  const [savingNotes, setSavingNotes] = React.useState(false);
   const [savingItems, setSavingItems] = React.useState(false);
   const [variantSearch, setVariantSearch] = React.useState("");
   const [variantOptions, setVariantOptions] = React.useState<VariantOption[]>([]);
   const [selectedVariantId, setSelectedVariantId] = React.useState("");
   const [newItemQty, setNewItemQty] = React.useState(1);
 
-  React.useEffect(() => {
+  const hydrateFromOrder = React.useCallback((data: OrderDetail) => {
+    setState({ kind: "ready", order: data });
+    setStatus(data.status);
+    setAdminNotes(data.adminNotes ?? "");
+    setEditableItems(
+      data.items.map((item) => ({
+        variantId: item.variantId,
+        productName: item.productName,
+        variantName: item.variantName,
+        unitPricePiastres: item.unitPricePiastres,
+        quantity: item.quantity,
+        imageUrl: item.imageUrl,
+      }))
+    );
+  }, []);
+
+  const loadOrder = React.useCallback(async () => {
     if (!orderId) return;
-    fetch(`/api/partner/orders/${orderId}`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((json: { success?: boolean; data?: OrderDetail }) => {
-        if (json?.success && json.data) {
-          setOrder(json.data);
-          setStatus(json.data.status);
-          setAdminNotes(json.data.adminNotes ?? "");
-          setEditableItems(
-            json.data.items.map((item) => ({
-              variantId: item.variantId,
-              productName: item.productName,
-              variantName: item.variantName,
-              unitPricePiastres: item.unitPricePiastres,
-              quantity: item.quantity,
-              imageUrl: item.imageUrl,
-            }))
-          );
-        }
-      })
-      .catch(() => toast({ title: "فشل تحميل الطلب", variant: "destructive" }))
-      .finally(() => setLoading(false));
-  }, [orderId, toast]);
+    setState({ kind: "loading" });
+    try {
+      const res = await fetch(`/api/partner/orders/${orderId}`, { credentials: "include" });
+      const json = await res.json().catch(() => null);
+      if (res.status === 403) {
+        setState({ kind: "forbidden" });
+        return;
+      }
+      if (res.status === 404 || !json?.success || !json.data) {
+        setState({ kind: "not-found" });
+        return;
+      }
+      hydrateFromOrder(json.data as OrderDetail);
+    } catch (error) {
+      setState({ kind: "network", message: error instanceof Error ? error.message : "تعذر الاتصال بالخادم" });
+    }
+  }, [orderId, hydrateFromOrder]);
+
+  React.useEffect(() => {
+    loadOrder();
+  }, [loadOrder]);
 
   React.useEffect(() => {
     const ac = new AbortController();
@@ -180,6 +212,8 @@ export default function PartnerOrderDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editableItems]);
 
+  const order = state.kind === "ready" ? state.order : null;
+
   const saveAdminNotes = async () => {
     if (!order) return;
     setSavingNotes(true);
@@ -192,8 +226,7 @@ export default function PartnerOrderDetailPage() {
       });
       const json = await res.json();
       if (res.ok && json?.success) {
-        setOrder(json.data);
-        setAdminNotes(json.data.adminNotes ?? "");
+        hydrateFromOrder(json.data);
         toast({ title: "تم حفظ الملاحظات" });
       } else toast({ title: json?.error?.message ?? "فشل", variant: "destructive" });
     } catch {
@@ -215,7 +248,7 @@ export default function PartnerOrderDetailPage() {
       });
       const json = await res.json();
       if (res.ok && json?.success) {
-        setOrder(json.data);
+        hydrateFromOrder(json.data);
         toast({ title: "تم تحديث الحالة" });
       } else toast({ title: json?.error?.message ?? "فشل التحديث", variant: "destructive" });
     } catch {
@@ -287,17 +320,7 @@ export default function PartnerOrderDetailPage() {
       });
       const json = await res.json();
       if (res.ok && json?.success) {
-        setOrder(json.data);
-        setEditableItems(
-          json.data.items.map((item: OrderDetail["items"][number]) => ({
-            variantId: item.variantId,
-            productName: item.productName,
-            variantName: item.variantName,
-            unitPricePiastres: item.unitPricePiastres,
-            quantity: item.quantity,
-            imageUrl: item.imageUrl,
-          }))
-        );
+        hydrateFromOrder(json.data);
         toast({ title: "تم تحديث بنود الطلب وإعادة حساب الإجمالي والشحن" });
       } else {
         toast({ title: json?.error?.message ?? "فشل تحديث البنود", variant: "destructive" });
@@ -363,22 +386,67 @@ export default function PartnerOrderDetailPage() {
     }
   };
 
-  if (loading) {
+  const BackLink = (
+    <Button asChild type="button" variant="outline" className="rounded-full">
+      <Link href="/partner/routed-orders">
+        <ArrowRight className="h-4 w-4" />
+        رجوع للطلبات
+      </Link>
+    </Button>
+  );
+
+  if (state.kind === "loading") {
     return (
-      <div className="flex min-h-[24rem] items-center justify-center text-sm text-muted-foreground">
+      <div className="flex min-h-[24rem] items-center justify-center text-sm text-ink-soft">
         <Loader2 className="ml-2 h-4 w-4 animate-spin" />
         جاري تحميل الطلب
       </div>
     );
   }
 
-  if (!order) {
+  if (state.kind === "forbidden") {
     return (
-      <EmptyState
-        icon={<ShoppingBag className="h-12 w-12" />}
-        title="الطلب غير موجود"
-        description="ارجع إلى قائمة الطلبات واختر طلباً آخر."
-      />
+      <div className="space-y-6">
+        <PageHeader title="الوصول غير مسموح" actions={BackLink} />
+        <div role="alert" className="flex flex-col items-start gap-3 rounded-2xl border border-danger-text/30 bg-danger-bg p-6 text-danger-text">
+          <p className="flex items-center gap-2 text-sm font-extrabold">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            هذا الطلب متاح للوكلاء فقط
+          </p>
+          <p className="text-sm">حسابك غير مصرح له بفتح تفاصيل هذا الطلب.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.kind === "network") {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="تعذر تحميل الطلب" actions={BackLink} />
+        <div role="alert" className="flex flex-col items-start gap-3 rounded-2xl border border-danger-text/30 bg-danger-bg p-6 text-danger-text">
+          <p className="flex items-center gap-2 text-sm font-extrabold">
+            <WifiOff className="h-5 w-5 shrink-0" />
+            خطأ في الاتصال
+          </p>
+          <p className="text-sm">{state.message}</p>
+          <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={loadOrder}>
+            إعادة المحاولة
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.kind === "not-found" || !order) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="الطلب غير موجود" actions={BackLink} />
+        <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-white py-10 text-center">
+          <ShoppingBag className="h-10 w-10 text-stone-300" strokeWidth={1.5} />
+          <p className="text-[15px] font-extrabold text-ink">الطلب غير موجود</p>
+          <p className="max-w-sm text-[13px] text-ink-soft">ارجع إلى قائمة الطلبات واختر طلباً آخر.</p>
+        </div>
+      </div>
     );
   }
 
@@ -389,29 +457,24 @@ export default function PartnerOrderDetailPage() {
       <PageHeader
         title={`طلب #${order.id.slice(0, 8)}`}
         badge={
-          <Badge variant="outline" className={cn("rounded-md font-normal", STATUS_BADGE_CLASSES[order.status] ?? "")}>
+          <Badge variant={STATUS_PILL_VARIANT[order.status] ?? "neutral"} className="rounded-full font-extrabold">
             {STATUS_LABELS[order.status] ?? order.status}
           </Badge>
         }
-        actions={
-          <Button type="button" variant="outline" className="rounded-md" onClick={() => router.back()}>
-            <ArrowRight className="h-4 w-4" />
-            رجوع للطلبات
-          </Button>
-        }
+        actions={BackLink}
       />
 
-      <PanelCard title="الحالة" description="تحديث حالة الطلب." icon={<Package className="h-5 w-5 text-burgundy" />}>
+      <PanelCard title="الحالة" description="تحديث حالة الطلب." icon={<Package className="h-5 w-5 text-lapis-800" />}>
         <div className="flex flex-wrap items-end gap-4">
           <div className="grid gap-2">
             <Label>الحالة</Label>
-            <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full sm:w-48">
+            <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full rounded-lg sm:w-48">
               {ORDER_STATUSES.map((s) => (
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
             </Select>
           </div>
-          <Button onClick={updateStatus} disabled={updating || status === order.status} className="rounded-md">
+          <Button onClick={updateStatus} disabled={updating || status === order.status} className="rounded-full">
             {updating ? "جاري…" : "تحديث الحالة"}
           </Button>
         </div>
@@ -420,7 +483,7 @@ export default function PartnerOrderDetailPage() {
       <PanelCard
         title="ملاحظات الطلب"
         description="ملاحظات داخلية للفريق — لا تظهر للعميل ولا تُرسل لشركة الشحن."
-        icon={<Package className="h-5 w-5 text-burgundy" />}
+        icon={<Package className="h-5 w-5 text-lapis-800" />}
       >
         <div className="space-y-3">
           <div className="grid gap-2">
@@ -428,7 +491,7 @@ export default function PartnerOrderDetailPage() {
             <textarea
               id="partner-notes"
               rows={3}
-              className="flex w-full resize-none rounded-lg border border-input bg-background px-4 py-3 text-sm leading-6 shadow-subtle transition-colors placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-burgundy/40 focus-visible:border-burgundy/40"
+              className="flex w-full resize-none rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm leading-6 text-ink placeholder:text-ink-soft/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
               placeholder="أضف ملاحظة عن هذا الطلب…"
               value={adminNotes}
               onChange={(e) => setAdminNotes(e.target.value)}
@@ -437,7 +500,7 @@ export default function PartnerOrderDetailPage() {
           <Button
             variant="outline"
             size="sm"
-            className="rounded-md"
+            className="rounded-full"
             onClick={saveAdminNotes}
             disabled={savingNotes || adminNotes === (order.adminNotes ?? "")}
           >
@@ -447,26 +510,26 @@ export default function PartnerOrderDetailPage() {
       </PanelCard>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <PanelCard title="العميل" icon={<UserRound className="h-5 w-5 text-burgundy" />}>
+        <PanelCard title="العميل" icon={<UserRound className="h-5 w-5 text-lapis-800" />}>
           <div className="space-y-2 text-sm">
-            <p className="font-medium">{order.user?.name ?? "عميل بدون اسم"}</p>
-            <p className="text-muted-foreground">{order.user?.phone}</p>
+            <p className="font-bold text-ink">{order.user?.name ?? "عميل بدون اسم"}</p>
+            <p dir="ltr" className="text-right text-ink-soft">{order.user?.phone}</p>
           </div>
         </PanelCard>
 
-        <PanelCard title="عنوان الشحن" icon={<MapPin className="h-5 w-5 text-burgundy" />}>
+        <PanelCard title="عنوان الشحن" icon={<MapPin className="h-5 w-5 text-lapis-800" />}>
           <div className="space-y-2 text-sm">
-            <p className="font-medium">{addressLines(addr).join("، ") || "لا يوجد عنوان"}</p>
+            <p className="font-bold text-ink">{addressLines(addr).join("، ") || "لا يوجد عنوان"}</p>
             {addr.notes && (
-              <p className="text-muted-foreground">
-                <strong>ملاحظات العميل على العنوان:</strong> {addr.notes}
+              <p className="text-ink-soft">
+                <strong className="text-ink">ملاحظات العميل على العنوان:</strong> {addr.notes}
               </p>
             )}
           </div>
         </PanelCard>
       </div>
 
-      <PanelCard title="بنود الطلب" icon={<Package className="h-5 w-5 text-burgundy" />}>
+      <PanelCard title="بنود الطلب" icon={<Package className="h-5 w-5 text-lapis-800" />}>
         <TableScroll>
           <Table>
             <TableHeader>
@@ -486,13 +549,10 @@ export default function PartnerOrderDetailPage() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt={item.productName}
-                          className="h-12 w-12 rounded-md border object-cover"
-                        />
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.imageUrl} alt={item.productName} className="h-12 w-12 rounded-lg border border-stone-200 object-cover" />
                       ) : (
-                        <div className="h-12 w-12 rounded-md border bg-muted" />
+                        <div className="h-12 w-12 rounded-lg border border-stone-200 bg-stone-100" />
                       )}
                       <span>{item.productName} – {item.variantName}</span>
                     </div>
@@ -501,21 +561,18 @@ export default function PartnerOrderDetailPage() {
                     <input
                       type="number"
                       min={1}
+                      aria-label={`الكمية — ${item.productName}`}
                       value={item.quantity}
                       onChange={(e) => changeItemQty(item.variantId, Number(e.target.value))}
-                      className="h-9 w-24 rounded-xl border border-input bg-background px-3 text-sm"
+                      className="h-9 w-24 rounded-lg border border-stone-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
                     />
                   </TableCell>
                   <TableCell>{(item.unitPricePiastres / 100).toFixed(0)} ج.م</TableCell>
                   <TableCell>{((item.quantity * item.unitPricePiastres) / 100).toFixed(0)} ج.م</TableCell>
+                  <TableCell>{getSize(item.variantName)}</TableCell>
+                  <TableCell>{getColor(item.variantName)}</TableCell>
                   <TableCell>
-                    {getSize(item.variantName)}
-                  </TableCell>
-                  <TableCell>
-                    {getColor(item.variantName)}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="destructive" size="sm" onClick={() => removeItem(item.variantId)}>
+                    <Button variant="destructive" size="sm" className="rounded-full" onClick={() => removeItem(item.variantId)}>
                       حذف
                     </Button>
                   </TableCell>
@@ -524,16 +581,22 @@ export default function PartnerOrderDetailPage() {
             </TableBody>
           </Table>
         </TableScroll>
-        <div className="mt-4 space-y-2 rounded-2xl border p-3">
-          <Label>إضافة بند من مخزونك</Label>
+        <div className="mt-4 space-y-2 rounded-xl border border-stone-200 p-3">
+          <Label htmlFor="add-item-search">إضافة بند من مخزونك</Label>
           <input
-            className="flex h-10 w-full rounded-2xl border border-input bg-background px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            id="add-item-search"
+            className="flex h-10 w-full rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
             placeholder="ابحث عن منتج"
             value={variantSearch}
             onChange={(e) => setVariantSearch(e.target.value)}
           />
           <div className="flex flex-wrap items-end gap-2">
-            <Select value={selectedVariantId} onChange={(e) => setSelectedVariantId(e.target.value)} className="min-w-64">
+            <Select
+              aria-label="اختر متغيرًا"
+              value={selectedVariantId}
+              onChange={(e) => setSelectedVariantId(e.target.value)}
+              className="min-w-64 rounded-lg"
+            >
               <option value="">اختر متغيرًا</option>
               {variantOptions.map((v) => (
                 <option key={v.id} value={v.id}>
@@ -544,24 +607,25 @@ export default function PartnerOrderDetailPage() {
             <input
               type="number"
               min={1}
+              aria-label="الكمية المضافة"
               value={newItemQty}
               onChange={(e) => setNewItemQty(Math.max(1, Number(e.target.value) || 1))}
-              className="h-10 w-24 rounded-xl border border-input bg-background px-3 text-sm"
+              className="h-10 w-24 rounded-lg border border-stone-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
             />
-            <Button onClick={addSelectedVariant} disabled={!selectedVariantId}>إضافة</Button>
+            <Button className="rounded-full" onClick={addSelectedVariant} disabled={!selectedVariantId}>إضافة</Button>
           </div>
         </div>
-        <Button className="mt-4" onClick={saveItems} disabled={savingItems || editableItems.length === 0}>
+        <Button className="mt-4 rounded-full" onClick={saveItems} disabled={savingItems || editableItems.length === 0}>
           {savingItems ? "جاري…" : "حفظ البنود وإعادة الحساب"}
         </Button>
-        <div className="mt-4 flex flex-col gap-1 text-sm">
+        <div className="mt-4 flex flex-col gap-1 text-sm text-ink">
           <p>المجموع الفرعي: {(order.subtotalPiastres / 100).toFixed(0)} ج.م</p>
           {order.discountPiastres + order.seniorFreeValuePiastres > 0 && (
             <p>الخصم: {((order.discountPiastres + order.seniorFreeValuePiastres) / 100).toFixed(0)} ج.م {order.couponCode && `(${order.couponCode})`}</p>
           )}
           <p>الشحن: {(order.shippingPiastres / 100).toFixed(0)} ج.م ({order.shippingProvider})</p>
           {order.codFeePiastres > 0 && <p>رسوم الدفع عند الاستلام: {(order.codFeePiastres / 100).toFixed(0)} ج.م</p>}
-          <p className="font-semibold">الإجمالي: {(order.totalPiastres / 100).toFixed(0)} ج.م</p>
+          <p className="font-extrabold">الإجمالي: {(order.totalPiastres / 100).toFixed(0)} ج.م</p>
         </div>
       </PanelCard>
     </div>

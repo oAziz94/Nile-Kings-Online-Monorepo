@@ -12,11 +12,13 @@ import {
   commitPartnerReservation,
   InsufficientPartnerStockError,
   reconcilePartnerStockForAdminOrderItemEdit,
-  releasePartnerReservation,
-  restorePartnerCommittedStock,
-  orderUsesPartnerReservationOnly,
 } from "@/lib/inventory/partner-inventory";
-import { logOrderCancelled, logOrderConfirmed, logOrderStatusChange } from "@/lib/audit/order-audit";
+import { logOrderConfirmed, logOrderStatusChange } from "@/lib/audit/order-audit";
+import {
+  mapPartnerOrder,
+  PartnerOrderTransitionError,
+  transitionPartnerOrderStatus,
+} from "@/lib/orders/partner-status-transition";
 
 const ORDER_STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
 const INT32_MAX = 2_147_483_647;
@@ -124,6 +126,26 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
     if (nextItems && existing.status === "CANCELLED") {
       return apiBadRequest("لا يمكن تعديل أصناف طلب ملغى");
+    }
+
+    // No item edits in this request: the status/notes-only path (including cancellation and
+    // leaving CREATED) is byte-equivalent to `transitionPartnerOrderStatus` — delegate to it
+    // (also the function the new bulk-status endpoint calls) rather than duplicating it here.
+    if (!nextItems) {
+      try {
+        const order = await transitionPartnerOrderStatus({
+          partnerId: user.partnerId,
+          orderId: id,
+          nextStatus,
+          adminNotes: body.adminNotes,
+        });
+        return apiSuccess(mapPartnerOrder(order));
+      } catch (error) {
+        if (error instanceof PartnerOrderTransitionError) {
+          return error.status === 404 ? apiNotFound(error.message) : apiBadRequest(error.message);
+        }
+        throw error;
+      }
     }
 
     const oldItemStockLines: StockLine[] = existing.items.map((i) => ({
@@ -269,22 +291,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       }
     }
 
-    if (transitioningToCancelled) {
-      data.cancellationReason = "partner_agent";
-      const order = await prisma.$transaction(
-        async (tx) => {
-          if (orderUsesPartnerReservationOnly(existing.status)) {
-            await releasePartnerReservation(tx, user.partnerId, oldItemStockLines, existing.id, "Partner order cancellation");
-          } else {
-            await restorePartnerCommittedStock(tx, user.partnerId, oldItemStockLines, existing.id, "Partner order cancellation");
-          }
-          await logOrderCancelled(tx, existing.id, "partner_agent", existing.status);
-          return tx.order.update({ where: { id }, data, include: orderInclude });
-        },
-        { maxWait: 15_000, timeout: 60_000 }
-      );
-      return apiSuccess(mapOrder(order));
-    }
+    // `transitioningToCancelled` can never be true past this point: the combo guard above
+    // already 400s when CANCELLED is combined with items, and the `!nextItems` branch (which
+    // delegates cancellation to `transitionPartnerOrderStatus`) has already returned.
 
     if (itemEditChangesStock) {
       try {
