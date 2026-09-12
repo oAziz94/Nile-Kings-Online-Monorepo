@@ -1,3 +1,10 @@
+## 2026-09-12 — No breadcrumbs on the storefront; fabric-story copy must be fabric-agnostic
+
+Two rules that were decided during the storefront canvas round but never written here, both surfaced by the PM's own read of the 4.9 build:
+
+1. **No breadcrumb on any storefront screen.** The user dropped it explicitly when the canvas's section list was being shaped ("i think we should also drop the breadcrumps"); the reviewed 1g/1h PDP artboards carry only the category chip. The inventory's "Breadcrumb" element in `products-pdp.md` is therefore a *removed* parity item, not a preserved one. Applies to listing and cart too.
+2. **The PDP fabric-story section describes Egyptian cotton in general, never the specific product.** The canvas's four points were written for a sample poplin shirt ("نسيج بوبلين محكم", yarn counts, cultivar); the real catalog is mostly underwear, tanks, socks and pyjamas. Titles and bodies must contain no weave names, cultivars, numbers or per-product construction claims — the section is brand storytelling, not a spec sheet. If a per-product fabric spec is ever wanted, it comes from a product field, not static copy.
+
 ## 2026-09-12 — 4.6 (storefront shell) verified and merged, v2.0.10; two small decisions
 
 Implementer (`430b982`) and verifier both clean; full report in `03-backlog.md` 4.6. Two things settled at merge time:
