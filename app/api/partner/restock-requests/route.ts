@@ -36,7 +36,56 @@ export async function GET() {
       },
       orderBy: { createdAt: "desc" },
     });
-    return apiSuccess({ requests });
+
+    // Backlog 4.20 (b), additive: for an AGENT caller only, attach the destination
+    // partner's current stockAvailable/stockReserved per requested variant, so the
+    // agent can see the requesting distributor's stock inline before approving/
+    // fulfilling — DISTRIBUTOR callers' payload is byte-identical to before this change.
+    let responseRequests: typeof requests | Array<(typeof requests)[number] & {
+      items: Array<
+        (typeof requests)[number]["items"][number] & {
+          destinationStock: { stockAvailable: number; stockReserved: number };
+        }
+      >;
+    }> = requests;
+
+    if (partner?.partnerType === "AGENT" && requests.length > 0) {
+      const variantIds = Array.from(
+        new Set(requests.flatMap((request) => request.items.map((item) => item.variantId)))
+      );
+      const destinationPartnerIds = Array.from(
+        new Set(requests.map((request) => request.destinationPartnerId))
+      );
+      const stockRows =
+        variantIds.length > 0 && destinationPartnerIds.length > 0
+          ? await prisma.partnerInventory.findMany({
+              where: {
+                partnerId: { in: destinationPartnerIds },
+                variantId: { in: variantIds },
+              },
+              select: { partnerId: true, variantId: true, stockAvailable: true, stockReserved: true },
+            })
+          : [];
+      const stockMap = new Map(
+        stockRows.map((row) => [`${row.partnerId}:${row.variantId}`, row])
+      );
+
+      responseRequests = requests.map((request) => ({
+        ...request,
+        items: request.items.map((item) => {
+          const stock = stockMap.get(`${request.destinationPartnerId}:${item.variantId}`);
+          return {
+            ...item,
+            destinationStock: {
+              stockAvailable: stock?.stockAvailable ?? 0,
+              stockReserved: stock?.stockReserved ?? 0,
+            },
+          };
+        }),
+      }));
+    }
+
+    return apiSuccess({ requests: responseRequests });
   } catch (error: unknown) {
     const err = error as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");

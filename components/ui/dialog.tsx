@@ -40,13 +40,34 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, onEscapeKeyDown, onInteractOutside, ...props }, ref) => {
+>(({ className, children, onEscapeKeyDown, onInteractOutside, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
   const closeOnOverlayClick = React.useContext(CloseGateContext);
+  // Focus return for controlled dialogs (2026-09-12, verifier findings on 4.19 and 4.20): Radix
+  // restores focus to its `DialogTrigger`, but most dialogs in this app are opened from a plain
+  // button via state, so Radix had nothing to restore to and focus fell to <body>. Remember the
+  // element that was focused when Radix is about to move focus into the dialog (`onOpenAutoFocus`
+  // fires before that move — a mount effect would run after it, child effects first) and give
+  // focus back to it on close, unless the caller handles `onCloseAutoFocus` itself.
+  const openerRef = React.useRef<HTMLElement | null>(null);
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={ref}
+        onOpenAutoFocus={(e) => {
+          const active = document.activeElement;
+          openerRef.current = active instanceof HTMLElement ? active : null;
+          onOpenAutoFocus?.(e);
+        }}
+        onCloseAutoFocus={(e) => {
+          onCloseAutoFocus?.(e);
+          if (e.defaultPrevented) return;
+          const opener = openerRef.current;
+          if (opener && opener.isConnected) {
+            e.preventDefault();
+            opener.focus();
+          }
+        }}
         onEscapeKeyDown={(e) => {
           if (!closeOnOverlayClick) e.preventDefault();
           onEscapeKeyDown?.(e);

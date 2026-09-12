@@ -45,7 +45,7 @@ export async function createRestockRequest(input: {
   }
 
   const sourcePartnerId = input.sourceAgentPartnerId ?? destination.linkedAgentId;
-  if (!sourcePartnerId) throw new Error("Distributor has no linked source agent");
+  if (!sourcePartnerId) throw new Error("لا يوجد وكيل مرتبط بحسابك — تواصل مع الإدارة");
 
   const source = await prisma.partner.findUnique({
     where: { id: sourcePartnerId },

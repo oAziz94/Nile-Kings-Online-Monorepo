@@ -25,18 +25,38 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const request = await prisma.restockRequest.findUnique({
     where: { id },
-    select: { id: true, sourcePartnerId: true },
+    select: { id: true, sourcePartnerId: true, destinationPartnerId: true, status: true },
   });
   if (!request) return apiNotFound("طلب إعادة التوريد غير موجود");
-  if (request.sourcePartnerId !== user.partnerId) {
-    return apiForbidden("غير مصرح بتعديل هذا الطلب");
-  }
 
   let body: { action?: string; responseNotes?: string | null };
   try {
     body = await req.json();
   } catch {
     return apiBadRequest("جسم الطلب غير صالح");
+  }
+
+  // Backlog 4.20 (d), allowed change: the *destination* partner (the distributor who
+  // created the request) may cancel it while it is still PENDING. No stock movement,
+  // ownership check independent of the source-partner check below (approve/reject/
+  // fulfill's ownership check is otherwise untouched).
+  if (body.action === "cancel") {
+    if (request.destinationPartnerId !== user.partnerId) {
+      return apiForbidden("غير مصرح بتعديل هذا الطلب");
+    }
+    if (request.status !== "PENDING") {
+      return apiBadRequest("لا يمكن إلغاء الطلب في حالته الحالية");
+    }
+    const cancelled = await prisma.restockRequest.update({
+      where: { id },
+      data: { status: "CANCELLED", cancelledAt: new Date() },
+      include: { items: true, sourcePartner: true, destinationPartner: true },
+    });
+    return apiSuccess(cancelled, "تم إلغاء الطلب");
+  }
+
+  if (request.sourcePartnerId !== user.partnerId) {
+    return apiForbidden("غير مصرح بتعديل هذا الطلب");
   }
 
   const responseNotes = body.responseNotes?.trim() || null;
