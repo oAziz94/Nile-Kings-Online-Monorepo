@@ -49,3 +49,6 @@ prisma/migrations/**/migration_lock.toml
 # Design canvas: regenerable seeded output (source .dc.html files are versioned)
 docs/redesign/design-canvas/*.html
 !docs/redesign/design-canvas/*.dc.html
+
+# seeded design canvases are generated from build.mjs; publish output only
+design-canvas/**/nile-kings-*.html
