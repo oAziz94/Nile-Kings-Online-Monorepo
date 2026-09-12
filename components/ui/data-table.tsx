@@ -51,6 +51,8 @@ export type DataTableProps<TData extends Record<string, unknown>> = {
   /** Selection column (checkbox) — controlled by the caller, keyed by `getRowId`. */
   selectedIds?: Set<string>;
   onSelectedIdsChange?: (ids: Set<string>) => void;
+  /** Extra attributes merged onto each `<tr>` (e.g. `data-row-id` for `useRowScrollRestore`). */
+  getRowProps?: (row: TData) => React.HTMLAttributes<HTMLTableRowElement>;
   loading?: boolean;
   loadingRowCount?: number;
   emptyTitle?: string;
@@ -68,6 +70,7 @@ export function DataTable<TData extends Record<string, unknown>>({
   onSortingChange,
   selectedIds,
   onSelectedIdsChange,
+  getRowProps,
   loading,
   loadingRowCount = 5,
   emptyTitle = "لا توجد بيانات",
@@ -205,14 +208,18 @@ export function DataTable<TData extends Record<string, unknown>>({
           ))}
         </thead>
         <tbody>
-          {table.getRowModel().rows.map((row) => (
+          {table.getRowModel().rows.map((row) => {
+            const extraProps = getRowProps?.(row.original as TData);
+            return (
             <tr
               key={row.id}
               data-row-id={getRowId ? getRowId(row.original as TData) : undefined}
               onClick={onRowClick ? () => onRowClick(row.original as TData) : undefined}
+              {...extraProps}
               className={cn(
                 "border-t border-stone-200",
-                onRowClick && "cursor-pointer hover:bg-stone-50"
+                onRowClick && "cursor-pointer hover:bg-stone-50",
+                extraProps?.className
               )}
             >
               {row.getVisibleCells().map((cell) => (
@@ -221,7 +228,8 @@ export function DataTable<TData extends Record<string, unknown>>({
                 </td>
               ))}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

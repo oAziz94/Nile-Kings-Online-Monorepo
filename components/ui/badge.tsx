@@ -17,6 +17,8 @@ const badgeVariants = cva(
         success: "border-transparent bg-malachite-bg text-malachite-text",
         warning: "border-transparent bg-warn-bg text-warn-text",
         info: "border-transparent bg-info-bg text-info-text",
+        neutral: "border-transparent bg-neutral-bg text-neutral-text",
+        danger: "border-transparent bg-danger-bg text-danger-text",
       },
     },
     defaultVariants: {
