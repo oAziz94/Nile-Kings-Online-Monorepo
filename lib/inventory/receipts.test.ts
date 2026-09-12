@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildImportPreview,
   buildInventoryExportRows,
+  computeUnitCostPiastres,
   inventoryExportFilename,
   parseInventoryWorkbookRows,
   type RawImportRow,
@@ -192,5 +193,23 @@ describe("buildImportPreview", () => {
     const rows: RawImportRow[] = [{ sku: "SKU-OK", rawValue: null }];
     const preview = buildImportPreview(rows, "receipt", variantsBySku);
     expect(preview).toHaveLength(0);
+  });
+});
+
+describe("computeUnitCostPiastres (backlog 5.1 settlement snapshot)", () => {
+  it("rounds pricePiastres * costRateBps / 10000", () => {
+    // 75% of 12000 piastres = 9000 exactly.
+    expect(computeUnitCostPiastres(12000, 7500)).toBe(9000);
+  });
+
+  it("rounds to the nearest piastre for a non-round rate", () => {
+    // 72% of 12500 = 9000 exactly; 72% of 12501 = 9000.72 -> rounds to 9001.
+    expect(computeUnitCostPiastres(12500, 7200)).toBe(9000);
+    expect(computeUnitCostPiastres(12501, 7200)).toBe(9001);
+  });
+
+  it("is zero at a zero rate and equal to price at a 100% rate", () => {
+    expect(computeUnitCostPiastres(5000, 0)).toBe(0);
+    expect(computeUnitCostPiastres(5000, 10000)).toBe(5000);
   });
 });

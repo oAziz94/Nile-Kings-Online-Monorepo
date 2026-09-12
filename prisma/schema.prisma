@@ -152,6 +152,7 @@ model Category {
   updatedAt   DateTime @updatedAt
 
   products Product[]
+  partnerStockThresholds PartnerStockThreshold[]
 
   @@index([slug])
   @@index([sortOrder])
@@ -176,6 +177,7 @@ model Product {
   category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   variants Variant[]
   variantImages VariantImage[]
+  partnerStockThresholds PartnerStockThreshold[]
 
   @@index([categoryId])
   @@index([slug])
@@ -531,6 +533,19 @@ model Partner {
   // in-app alert feed (backlog 4.17).
   lowStockThreshold Int      @default(5)
   alertsSeenAt      DateTime?
+  // Partner portal v2 foundation (backlog 5.1) — working profile, thresholds, alerts,
+  // service areas and the factory settlement rate. All additive, all read by
+  // `lib/partner/*` helpers rather than compared to directly (05-partner-portal-v2.md §6).
+  workingDays       String[] @default(["SAT", "SUN", "MON", "TUE", "WED", "THU", "FRI"])
+  dailyOrderCapacity Int?
+  confirmSlaHours   Int      @default(24)
+  shipSlaHours      Int      @default(48)
+  handoverMethod    HandoverMethod @default(COURIER)
+  serviceAreas      Json?
+  alertPrefs        Json?
+  // The partner's buying rate in basis points (7500 = 75%) — admin-write only
+  // (`04-decisions.md`/backlog rule 18: "a partner API that accepts it is a defect").
+  costRateBps       Int      @default(7500)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -546,6 +561,8 @@ model Partner {
   sourceRestockRequests RestockRequest[] @relation("RestockRequestSourcePartner")
   destinationRestockRequests RestockRequest[] @relation("RestockRequestDestinationPartner")
   stockReceipts StockReceipt[]
+  stockThresholds PartnerStockThreshold[]
+  payments      PartnerPayment[]
 
   @@index([userId])
   @@index([phone])
@@ -553,6 +570,62 @@ model Partner {
   @@index([linkedAgentId])
   @@index([isActive])
   @@index([governorate])
+}
+
+enum HandoverMethod {
+  COURIER
+  PICKUP
+  OWN_DELIVERY
+}
+
+enum PartnerPaymentKind {
+  DOWN_PAYMENT
+  INSTALLMENT
+}
+
+// Per-category / per-product low-stock threshold override (backlog 5.1). Resolution
+// order product -> category -> Partner.lowStockThreshold, via lib/partner/resolve-threshold.ts's
+// `resolveThreshold(partnerId)` — no screen compares against `Partner.lowStockThreshold` directly.
+model PartnerStockThreshold {
+  id         String   @id @default(cuid())
+  partnerId  String
+  categoryId String?
+  productId  String?
+  threshold  Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  partner  Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  product  Product?  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerId, categoryId])
+  @@unique([partnerId, productId])
+  @@index([partnerId])
+}
+
+// Admin-recorded settlement payments against factory receipts (backlog 5.1 — wholesale
+// settlement model, 05-partner-portal-v2.md §1). Written only by
+// `POST /api/admin/partners/[id]/payments` (requireAdmin); partners read it.
+model PartnerPayment {
+  id               String             @id @default(cuid())
+  partnerId        String
+  kind             PartnerPaymentKind
+  amountPiastres   Int
+  paidAt           DateTime
+  stockReceiptId   String?
+  dueAt            DateTime?
+  reference        String?
+  notes            String?
+  recordedByUserId String
+  createdAt        DateTime           @default(now())
+
+  partner      Partner       @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  stockReceipt StockReceipt? @relation(fields: [stockReceiptId], references: [id], onDelete: SetNull)
+
+  @@index([partnerId])
+  @@index([stockReceiptId])
+  @@index([paidAt])
 }
 
 // ---------------------------------------------------------------------------
@@ -683,11 +756,16 @@ model StockReceipt {
   kind      StockReceiptKind
   reference String?
   notes     String?
+  // Settlement (backlog 5.1) — sum of the FACTORY lines' `unitCostPiastres * quantity`,
+  // snapshotted at apply time from the partner's rate at that moment. Null for COUNT
+  // receipts (a count is a correction, not a purchase).
+  totalCostPiastres Int?
   createdAt DateTime         @default(now())
 
   partner Partner              @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   lines   StockReceiptLine[]
   ledgerEntries InventoryLedger[]
+  payments PartnerPayment[]
 
   @@index([partnerId])
   @@index([kind])
@@ -701,6 +779,10 @@ model StockReceiptLine {
   quantity          Int
   previousAvailable Int
   newAvailable      Int
+  // Settlement (backlog 5.1) — `round(pricePiastres * partner.costRateBps / 10000)` snapshotted
+  // at apply time for FACTORY lines; null for COUNT lines (never recomputed later, so a
+  // rate change never rewrites history — 05-partner-portal-v2.md §1 "Settlement model").
+  unitCostPiastres  Int?
 
   receipt StockReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
   variant Variant      @relation(fields: [variantId], references: [id], onDelete: Restrict)

@@ -32,6 +32,18 @@ export const COUNT_VALUE_HEADER = "جرد فعلي" as const;
 
 export type ReceiptMode = "receipt" | "count";
 
+// ---------------------------------------------------------------------------
+// Settlement cost snapshot (backlog 5.1) — FACTORY receipt lines snapshot the
+// partner's buying cost from the variant's selling price at apply time, so a later
+// rate change never rewrites history (`05-partner-portal-v2.md` §1/§6 rule 14).
+// COUNT receipts never carry a cost (a count is a correction, not a purchase).
+// ---------------------------------------------------------------------------
+
+/** `round(pricePiastres * costRateBps / 10000)` — the partner's cost for one unit. */
+export function computeUnitCostPiastres(pricePiastres: number, costRateBps: number): number {
+  return Math.round((pricePiastres * costRateBps) / 10000);
+}
+
 export type InventoryExportVariant = {
   sku: string;
   productName: string;
