@@ -104,6 +104,24 @@ test.describe("Cart page", () => {
     const occurrences = summaryText.split(subtotalStr).length - 1;
     expect(occurrences).toBe(2);
 
+    // "+" must disable exactly at the line's live maxQty (verifier-added: the
+    // stepper-bounds rule was previously only exercised implicitly by the enabled-at-qty-2 check
+    // above). Drive the line up to maxQty via the UI, confirm "+" disables there and the server
+    // agrees no further increment is possible (a direct PATCH one past it 422s), then decrement
+    // back down before the remove step below.
+    const maxQty: number = cartJson.data.items[0].maxQty;
+    expect(maxQty).toBeGreaterThanOrEqual(2);
+    for (let qty = 3; qty <= maxQty; qty++) {
+      await incrementBtn.click();
+      await expect(line.getByText(String(qty), { exact: true }).first()).toBeVisible();
+    }
+    await expect(incrementBtn).toBeDisabled();
+
+    const overLimitRes = await page.request.patch(`/api/cart/items/${cartJson.data.items[0].id}`,
+      { data: { quantity: maxQty + 1 } }
+    );
+    expect(overLimitRes.status()).toBe(422);
+
     // Decrement back to 1.
     await decrementBtn.click();
     await expect(line.getByText("1", { exact: true }).first()).toBeVisible();
