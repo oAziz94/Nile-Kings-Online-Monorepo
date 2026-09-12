@@ -1,3 +1,12 @@
+## 2026-09-12 — 4.9 and 4.10 merged (v2.0.12 / v2.0.13); two parallel-worktree gotchas worth keeping
+
+Both merged after APPROVE; details in `03-backlog.md`. Two environment lessons from running four worktrees at once, recorded so the next parallel batch doesn't relearn them:
+
+1. **`reuseExistingServer` + a shared port = testing the wrong build.** Playwright reuses whatever answers on its port. With several worktrees each starting `next dev` on ad-hoc ports, a leftover server from another worktree (or a zombie that listens but never answers) gets reused silently — the PDP specs "failed" against a dead server and the cart spec rendered the *old* cart page from a different branch. Rule: before any Playwright run pick a port that `netstat -ano | findstr :31xx` shows as NOT listening; after the run confirm it is free again. `PLAYWRIGHT_PORT` (added in 4.9/4.10) makes this possible; it doesn't make it automatic.
+2. **Vitest was crawling `.claude/worktrees/**`.** Every worktree copy's Playwright specs were picked up as Vitest files (28 "failed files", 0 failed tests). `vitest.config.ts` now excludes `.claude/**`. Real count on `redesign` after 4.10: 11 files / 115 tests.
+
+Also: hardcoded catalog SKUs in e2e fixtures do not survive a shared dev database — parallel runs and manual sessions drain stock. The cart spec now resolves a stocked variant at run time; future specs should do the same (`findStockedVariant` in `tests/e2e/public-cart.spec.ts` is the pattern).
+
 ## 2026-09-12 — 4.7 (home) verified and merged, v2.0.11; the bed-linen tile is a merchandising question for the user
 
 Home is in (`67a7ed3`). One thing the build surfaced that the canvas could not know: **there is no bed-linen inventory** — the redesign catalog has only men/women/kids categories and no product matches any bedding term — yet the canvas's collage (built from the user's own generated photography) leads with a "مفروشات فاخرة" tile. The implementer kept the tile and pointed it at `/products` (the full catalog) rather than inventing a filter; the verifier confirmed the numbers. PM call for now: keep it as built, because the user supplied that photograph deliberately and may be planning the line — but a tile advertising a product line the store does not sell is a promise the page cannot keep, so **the user decides**: (a) bedding is coming → keep; (b) not planned → drop the tile and reflow the collage to four. Flagged in chat.
