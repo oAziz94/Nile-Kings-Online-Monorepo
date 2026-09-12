@@ -1,3 +1,9 @@
+## 2026-09-12 — 4.7 (home) verified and merged, v2.0.11; the bed-linen tile is a merchandising question for the user
+
+Home is in (`67a7ed3`). One thing the build surfaced that the canvas could not know: **there is no bed-linen inventory** — the redesign catalog has only men/women/kids categories and no product matches any bedding term — yet the canvas's collage (built from the user's own generated photography) leads with a "مفروشات فاخرة" tile. The implementer kept the tile and pointed it at `/products` (the full catalog) rather than inventing a filter; the verifier confirmed the numbers. PM call for now: keep it as built, because the user supplied that photograph deliberately and may be planning the line — but a tile advertising a product line the store does not sell is a promise the page cannot keep, so **the user decides**: (a) bedding is coming → keep; (b) not planned → drop the tile and reflow the collage to four. Flagged in chat.
+
+Collage links the implementer chose from real search totals (`/products?q=…`): تيشيرتات → "تي شيرت" (115), بيجامات → "بيجام" (21), جوارب → "شراب" (2 — colloquial; "جورب" returns 0), ملابس داخلية → "داخلي" (25).
+
 ## 2026-09-12 — No breadcrumbs on the storefront; fabric-story copy must be fabric-agnostic
 
 Two rules that were decided during the storefront canvas round but never written here, both surfaced by the PM's own read of the 4.9 build:
