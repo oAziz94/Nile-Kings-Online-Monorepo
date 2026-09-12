@@ -100,6 +100,7 @@ export function SiteNavbar({
   accountMenu = false,
   sticky = false,
   transparent = false,
+  transparentTone = "cream",
 }: {
   current?: SiteNavbarSection;
   /** Live cart item count; supplied by the caller (see file header — never read via `useCart()` here). */
@@ -118,16 +119,27 @@ export function SiteNavbar({
    * once the page scrolls. Every other page keeps the opaque bar.
    */
   transparent?: boolean;
+  /**
+   * What the marks look like while the bar is transparent. `"cream"` (home): the cream logo and
+   * ivory controls, for a dark photograph under the bar. `"ink"` (auth, user direction
+   * 2026-09-12 "the auth page should have the same transparent navbar"): the lapis logo and ink
+   * controls with no ground and no rule, for the auth surface's light cotton photograph and ivory
+   * ground — the cream marks would vanish on the ivory half there.
+   */
+  transparentTone?: "cream" | "ink";
 }) {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    if (!transparent) return;
+    // Only a bar that stays in the viewport (`sticky`) turns opaque on scroll; an `absolute` bar
+    // scrolls away with the page and simply stays transparent.
+    if (!transparent || !sticky) return;
     const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [transparent]);
-  const onDark = transparent && !scrolled;
+  }, [transparent, sticky]);
+  const isTransparent = transparent && !scrolled;
+  const onDark = isTransparent && transparentTone === "cream";
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<NavbarUser>(null);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -163,7 +175,7 @@ export function SiteNavbar({
         className={cn(
           sticky ? "fixed" : "absolute",
           "inset-x-0 top-0 z-40 grid h-[60px] grid-cols-[1fr_auto_1fr] items-center border-b px-2 transition-colors duration-300 motion-reduce:transition-none lg:h-[84px] lg:px-8",
-          onDark ? "border-transparent bg-transparent" : "border-[hsl(40_14%_84%)] bg-papyrus"
+          isTransparent ? "border-transparent bg-transparent" : "border-[hsl(40_14%_84%)] bg-papyrus"
         )}
       >
         <button

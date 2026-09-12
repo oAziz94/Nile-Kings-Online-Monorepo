@@ -118,10 +118,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         className={cn("font-plex-arabic text-[hsl(228_26%_24%)]")}
       >
         <div className="relative min-h-screen w-full overflow-hidden bg-papyrus" style={layoutVars}>
-          <SiteNavbar current="account" />
+          {/* Transparent over the photograph like the home hero (user direction 2026-09-12), in the
+              ink tone: the auth surface's ground is ivory and its photographs are light cotton. */}
+          <SiteNavbar current="account" transparent transparentTone="ink" />
 
           {/* ============================= Mobile / tablet band (< lg) ============================= */}
-          <div className="absolute inset-x-0 top-[60px] h-[272px] overflow-hidden md:h-[320px] lg:hidden">
+          <div className="absolute inset-x-0 top-0 h-[332px] overflow-hidden md:h-[380px] lg:hidden">
             <AuthHeroImage sizes="140vw" className="nk-drift object-cover" crops={HERO_CROPS_MOBILE} />
             <div
               aria-hidden="true"
@@ -144,7 +146,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </div>
 
           {/* ============================= Desktop material block (lg+) ============================= */}
-          <div className="absolute bottom-[-80px] left-0 top-[84px] hidden w-[var(--auth-photo-w)] overflow-hidden lg:block">
+          <div className="absolute bottom-[-80px] left-0 top-0 hidden w-[var(--auth-photo-w)] overflow-hidden lg:block">
             <AuthHeroImage sizes="75vw" className="nk-drift object-cover" crops={HERO_CROPS_DESKTOP} />
           </div>
           {/* Slogan + brand promise — inline start on the ivory, the Ankh on the photograph's edge. */}

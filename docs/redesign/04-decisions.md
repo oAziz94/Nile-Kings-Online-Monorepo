@@ -1,3 +1,9 @@
+## 2026-09-12 — Redesign DB index drift fixed; auth navbar transparent (v2.0.19)
+
+**Database.** The `redesign` Neon branch's `Variant_slug_key` was a hand-made *partial* unique index (`WHERE slug IS NOT NULL`), which `prisma db push` can't reconcile with the schema's plain `@unique` — every push failed on "relation already exists". Fix, user-directed: confirmed zero duplicate slugs, dropped the partial index, re-ran `db:push:redesign` (which recreated it as the plain unique index Prisma expects; Postgres treats NULLs as distinct so nullable rows are unaffected). `prisma migrate diff` against the branch is now empty. Production untouched.
+
+**Auth navbar.** User: "the auth page should have the same transparent navbar as the whole website." `SiteNavbar` gains `transparentTone: "cream" | "ink"` — home keeps the cream marks over its dark hero gradient; `(auth)` uses the ink tone (lapis logo, ink controls, no ground, no rule) because its ground is ivory and its photographs are light cotton, where cream marks would vanish. The auth photographs now run under the bar (mobile band from `top-0`, desktop block from `top-0`; same bottom edges, so the form column's offsets are unchanged). The scroll-to-opaque flip is now tied to `sticky` — the auth bar is `absolute` and simply stays transparent. `auth-visual-refresh.spec.ts`'s "lapis logo on all three auth screens" assertion still holds.
+
 ## 2026-09-12 — Home category tiles: equal height (v2.0.18)
 
 User note: the three home category tiles (men/women/kids) had unequal heights, copied from the canvas's editorial staggered layout (600/520/460px desktop). Changed all three to the same height (560px desktop, 220px mobile) — same widths as before, no other change.
