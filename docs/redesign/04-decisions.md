@@ -1,3 +1,11 @@
+## 2026-09-12 — Batch 2 merged (4.12 checkout v2.0.23, 4.13 profile v2.0.22, 4.15 legal v2.0.21): three things learned
+
+1. **`overflow-x: hidden` on `html`/`body` silently disabled `position: sticky` site-wide.** Found by the legal implementer while making the TOC stick, proven by measurement by its verifier (TOC at −1183px with `hidden`, 108px with `clip`), swept for horizontal-overflow regressions on six pages × three viewports. Rule: never put `overflow-x: hidden` on `html`/`body`; use `clip`. Any earlier "sticky" element in the redesign (the cart summary) had in fact never stuck — and with a full cart it still can't, because the summary box is taller than its grid row; if a sticky cart summary is wanted, the aside needs `self-start` and a shorter summary, a separate small task.
+2. **Verifier sessions may lack a screenshot tool.** The checkout verifier could only run Playwright headless assertions, not look at renders, and said so. The nine-viewport rule then falls to the PM — done here. Going forward the PM checks for that gap in every verifier report rather than assuming the pass happened.
+3. **"Normalise 401s everywhere" includes mutation paths.** The profile implementer normalised GETs only; the verifier caught the PATCH/POST/DELETE branches still toasting. Applied.
+
+Also decided: the account page has no page-level h2 of its own (the shell's h1 is already "حسابي"); its two section headings are the h2s.
+
 ## 2026-09-12 — 4.14 (partners) merged (v2.0.20): reuse-the-primitive means the keyboard pattern too
 
 The verifier caught that the new type selector matched `SizeChips` visually but not behaviourally — two Tab stops, arrow keys did nothing. `SizeChips` could not be dropped in (its options have no description line), so the PM copied its roving-tabindex/arrow-key logic into the page instead. Rule sharpened for the rest of the batch: "styled like X" includes X's keyboard and ARIA behaviour; a verifier tabs through every new control group.
