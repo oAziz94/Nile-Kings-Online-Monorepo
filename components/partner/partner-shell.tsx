@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
-import { AlertTriangle, Bell, LogOut, Menu, Store } from "lucide-react";
+import { AlertTriangle, LogOut, Menu, Settings, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/shared/skeleton";
 import {
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sheet";
 import { usePartnerMe, type PartnerType } from "@/hooks/use-partner-me";
 import { PARTNER_ACCOUNT_NAV, getPartnerNavForRole, type PartnerNavSection } from "@/components/partner/partner-nav-config";
+import { PartnerAlertsBell } from "@/components/partner/partner-alerts-bell";
 import { cn } from "@/lib/utils";
 
 /**
@@ -130,6 +131,21 @@ function NavSections({
           الحساب
         </p>
         <Link
+          href={PARTNER_ACCOUNT_NAV.settingsHref}
+          onClick={onNavigate}
+          aria-current={isActivePath(pathname, PARTNER_ACCOUNT_NAV.settingsHref) ? "page" : undefined}
+          className={cn(
+            "flex items-center gap-2.5 rounded-[10px] px-3 py-[11px] text-sm font-semibold transition-colors",
+            isActivePath(pathname, PARTNER_ACCOUNT_NAV.settingsHref)
+              ? "bg-lapis-700 text-gold-500"
+              : "text-[hsl(220_25%_72%)] hover:bg-lapis-700/60 hover:text-gold-50",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-lapis-900"
+          )}
+        >
+          <Settings className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
+          {PARTNER_ACCOUNT_NAV.settingsLabel}
+        </Link>
+        <Link
           href={PARTNER_ACCOUNT_NAV.storeHref}
           onClick={onNavigate}
           className="flex items-center gap-2.5 rounded-[10px] px-3 py-[11px] text-sm font-semibold text-[hsl(220_25%_72%)] transition-colors hover:bg-lapis-700/60 hover:text-gold-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-lapis-900"
@@ -194,15 +210,7 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
             <p className="truncate text-sm font-bold text-ink">{displayName}</p>
           )}
         </div>
-        <button
-          type="button"
-          aria-label="الإشعارات"
-          title="قريبًا"
-          disabled
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stone-100 text-ink-soft disabled:opacity-60"
-        >
-          <Bell className="h-4 w-4" strokeWidth={1.6} />
-        </button>
+        <PartnerAlertsBell className="shrink-0 rounded-lg" />
       </header>
 
       <SheetContent side="right" className="w-[min(18rem,88vw)] bg-lapis-900 p-0 lg:hidden">
@@ -250,15 +258,7 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
         <div className="hidden items-center justify-between border-b border-stone-200 bg-white px-8 py-4 lg:flex">
           <div />
           <div className="flex items-center gap-4">
-            <button
-              type="button"
-              aria-label="الإشعارات"
-              title="قريبًا"
-              disabled
-              className="relative flex h-9 w-9 items-center justify-center rounded-[10px] bg-stone-100 text-ink-soft disabled:opacity-60"
-            >
-              <Bell className="h-4 w-4" strokeWidth={1.6} />
-            </button>
+            <PartnerAlertsBell />
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-lapis-800 text-[13px] font-extrabold text-gold-500">
               {isLoading ? "" : initials(displayName)}
             </div>
