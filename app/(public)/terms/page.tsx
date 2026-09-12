@@ -206,7 +206,6 @@ const sections: LegalSection[] = [
 export default function TermsPage() {
   return (
     <LegalPage
-      kind="terms"
       title="الشروط والأحكام"
       description="يرجى قراءة هذه الشروط بعناية قبل استخدام موقع قطن ملوك النيل أو إتمام أي طلب شراء."
       updatedAt="6 أغسطس 2026"

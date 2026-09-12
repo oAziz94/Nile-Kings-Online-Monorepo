@@ -147,7 +147,6 @@ const sections: LegalSection[] = [
 export default function PrivacyPage() {
   return (
     <LegalPage
-      kind="privacy"
       title="سياسة الخصوصية"
       description="توضح هذه السياسة كيفية تعامل قطن ملوك النيل مع بيانات العملاء والزوار أثناء استخدام الموقع وخدمات الشراء والتوصيل."
       updatedAt="6 أغسطس 2026"
