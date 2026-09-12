@@ -1,3 +1,7 @@
+## 2026-09-12 — 4.14 (partners) merged (v2.0.20): reuse-the-primitive means the keyboard pattern too
+
+The verifier caught that the new type selector matched `SizeChips` visually but not behaviourally — two Tab stops, arrow keys did nothing. `SizeChips` could not be dropped in (its options have no description line), so the PM copied its roving-tabindex/arrow-key logic into the page instead. Rule sharpened for the rest of the batch: "styled like X" includes X's keyboard and ARIA behaviour; a verifier tabs through every new control group.
+
 ## 2026-09-12 — Second storefront batch (checkout, profile, partners, legal): PM-designed in prose, no canvas
 
 User direction: "the checkout, profile, become-a-partner, and the legal pages are for you to design and implement ... They will not have a separate design from the whole storefront." So there is no Claude Design round for these; the PM wrote the design as a brief in `03-backlog.md` (tasks 4.12–4.15, plus a shared "visual language, stated once" paragraph), and the reference for implementers and verifiers is the merged storefront code and screens, not an artboard. The brief reuses the shipped primitives and the cart/PDP/auth compositions rather than introducing new ones.
