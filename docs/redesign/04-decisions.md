@@ -1,3 +1,16 @@
+## 2026-09-12 — 4.8 (listing) merged, v2.0.14: the storefront canvas is fully implemented; three merge-order test repairs
+
+All five Public storefront tasks (4.6–4.10) are on `redesign`. Two decisions from the listing round and three test repairs caused by merging four parallel branches:
+
+1. **Mobile filters are a bottom sheet, not a centred dialog** — the canvas artboard 1e is the spec; `components/ui/sheet.tsx` (born in 4.10 as the cart's side drawer) gained a `side="bottom"` variant and is now the one primitive for both. A trigger that is not a `SheetTrigger` must restore focus itself via `onCloseAutoFocus` (done in `catalog-mobile-filters.tsx`).
+2. **"عرض N منتجًا" never shows a number it doesn't have** — the preview count seeds `null` and renders "عرض المنتجات" until a real count arrives; a genuine zero result still shows 0.
+
+**Merge-order repairs (specs, not code)**: 4.10's cart-drawer spec clicked a size *button* — the PDP's chips became a `radiogroup` in 4.9; 4.9's PDP spec polled the navbar badge while the cart drawer was open — 4.10 made the drawer a real modal, so the rest of the page is `aria-hidden` until it closes; and the same spec resolved its product with a cookieless `fetch`, which sees every product as out of stock and silently fell back to the first product. All three are fixed on `redesign`; the lesson for parallel batches is that each branch's specs were green against *its own* base and only meet the others' changes at merge — run the full suite on the merged branch before calling the batch done, and read a green worktree run as necessary, not sufficient.
+
+**Open for the user** (unchanged): the generated-faces hero photo (pre-launch swap or crop), and the bed-linen collage tile with no bedding inventory behind it.
+
+**Next**: checkout, profile (4 pages), become-a-partner and the legal pages need their own Claude Design round before their tasks can be written; wishlist (Phase 5.1) is queued right after.
+
 ## 2026-09-12 — 4.9 and 4.10 merged (v2.0.12 / v2.0.13); two parallel-worktree gotchas worth keeping
 
 Both merged after APPROVE; details in `03-backlog.md`. Two environment lessons from running four worktrees at once, recorded so the next parallel batch doesn't relearn them:
