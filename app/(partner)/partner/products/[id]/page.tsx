@@ -3,24 +3,28 @@
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Boxes, ClipboardList, Loader2, Package, RefreshCw, Save, Warehouse } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Boxes,
+  ClipboardList,
+  Loader2,
+  Minus,
+  Package,
+  Plus,
+  RefreshCw,
+  Save,
+  Warehouse,
+} from "lucide-react";
 import { ProductImagePreview } from "@/components/shared/product-image-preview";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { PageHeader, StatusBadge } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
-import { TableScroll } from "@/components/dashboard/table-scroll";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DataTable, type ColumnDef } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
@@ -51,6 +55,7 @@ type ProductRow = {
 };
 
 const STOCK_VERIFY_STATUSES = "CREATED,CONFIRMED,PROCESSING";
+const DEFAULT_LOW_STOCK_THRESHOLD = 5;
 
 function money(piastres: number) {
   return `${formatNumberEn(piastresToEgp(piastres))} ج.م`;
@@ -67,10 +72,14 @@ export default function PartnerProductVariantsPage() {
   const productId = params.id;
   const { toast } = useToast();
   const [product, setProduct] = React.useState<ProductRow | null>(null);
+  const [lowStockThreshold, setLowStockThreshold] = React.useState(DEFAULT_LOW_STOCK_THRESHOLD);
   const [loading, setLoading] = React.useState(true);
   const [fetching, setFetching] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
   const [drafts, setDrafts] = React.useState<Record<string, string>>({});
+  const [adjustDrafts, setAdjustDrafts] = React.useState<Record<string, string>>({});
   const [savingVariantId, setSavingVariantId] = React.useState<string | null>(null);
+  const [notFound, setNotFound] = React.useState(false);
 
   const load = React.useCallback(async () => {
     setFetching(true);
@@ -79,17 +88,22 @@ export default function PartnerProductVariantsPage() {
       const res = await fetch(`/api/partner/inventory?${params}`, { credentials: "include" });
       const json = await res.json();
       if (res.ok && json?.success) {
-        setProduct(json.data.products?.[0] ?? null);
+        const found = json.data.products?.[0] ?? null;
+        setProduct(found);
+        setNotFound(!found);
+        setLowStockThreshold(json.data.partner?.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD);
         setDrafts({});
+        setAdjustDrafts({});
+        setLoadError(null);
       } else {
-        toast({ title: json?.error?.message ?? "فشل تحميل المتغيرات", variant: "destructive" });
+        const message = json?.error?.message ?? "فشل تحميل المتغيرات";
+        setLoadError(message);
+        toast({ title: message, variant: "destructive" });
       }
     } catch (error) {
-      toast({
-        title: "فشل تحميل المتغيرات",
-        description: error instanceof Error ? error.message : "خطأ غير متوقع",
-        variant: "destructive",
-      });
+      const message = error instanceof Error ? error.message : "خطأ غير متوقع";
+      setLoadError("فشل تحميل المتغيرات");
+      toast({ title: "فشل تحميل المتغيرات", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
       setFetching(false);
@@ -108,82 +122,334 @@ export default function PartnerProductVariantsPage() {
         (acc, variant) => {
           acc.available += variant.stockAvailable;
           acc.reserved += variant.stockReserved;
-          if (variant.sellable <= 3) acc.low += 1;
+          if (variant.sellable <= lowStockThreshold) acc.low += 1;
           return acc;
         },
         { available: 0, reserved: 0, low: 0 }
       ),
-    [product]
+    [product, lowStockThreshold]
   );
 
-  async function saveStock(variant: VariantRow) {
-    const raw = drafts[variant.id] ?? String(variant.stockAvailable);
-    const stockAvailable = Number.parseInt(raw, 10);
-    if (!Number.isInteger(stockAvailable) || stockAvailable < 0) {
-      toast({ title: "أدخل رقم مخزون صحيح", variant: "destructive" });
-      return;
-    }
-    if (stockAvailable < variant.stockReserved) {
-      toast({
-        title: `لا يمكن أن يكون المخزون أقل من المحجوز (${variant.stockReserved})`,
-        variant: "destructive",
+  const applyServerRow = React.useCallback(
+    (variantId: string, row: { stockAvailable: number; stockReserved: number; updatedAt: string }) => {
+      setProduct((current) =>
+        current
+          ? {
+              ...current,
+              variants: current.variants.map((item) =>
+                item.id === variantId
+                  ? {
+                      ...item,
+                      stockAvailable: row.stockAvailable,
+                      stockReserved: row.stockReserved,
+                      sellable: Math.max(0, row.stockAvailable - row.stockReserved),
+                      updatedAt: row.updatedAt,
+                    }
+                  : item
+              ),
+            }
+          : current
+      );
+      setDrafts((current) => {
+        const next = { ...current };
+        delete next[variantId];
+        return next;
       });
-      return;
-    }
+      setAdjustDrafts((current) => {
+        const next = { ...current };
+        delete next[variantId];
+        return next;
+      });
+    },
+    []
+  );
 
-    setSavingVariantId(variant.id);
-    try {
-      const res = await fetch("/api/partner/inventory", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ variantId: variant.id, stockAvailable }),
-      });
-      const json = await res.json();
-      if (res.ok && json?.success) {
-        const row = json.data as { stockAvailable: number; stockReserved: number; updatedAt: string };
-        setProduct((current) =>
-          current
-            ? {
-                ...current,
-                variants: current.variants.map((item) =>
-                  item.id === variant.id
-                    ? {
-                        ...item,
-                        stockAvailable: row.stockAvailable,
-                        stockReserved: row.stockReserved,
-                        sellable: Math.max(0, row.stockAvailable - row.stockReserved),
-                        updatedAt: row.updatedAt,
-                      }
-                    : item
-                ),
-              }
-            : current
-        );
-        setDrafts((current) => {
-          const next = { ...current };
-          delete next[variant.id];
-          return next;
+  const patchStock = React.useCallback(
+    async (variantId: string, body: { stockAvailable: number } | { delta: number }) => {
+      setSavingVariantId(variantId);
+      try {
+        const res = await fetch("/api/partner/inventory", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ variantId, ...body }),
         });
-        toast({ title: "تم حفظ المخزون" });
-      } else {
-        toast({ title: json?.error?.message ?? "فشل حفظ المخزون", variant: "destructive" });
+        const json = await res.json();
+        if (res.ok && json?.success) {
+          applyServerRow(variantId, json.data);
+          toast({ title: "تم حفظ المخزون" });
+        } else {
+          toast({ title: json?.error?.message ?? "فشل حفظ المخزون", variant: "destructive" });
+        }
+      } catch (error) {
+        toast({
+          title: "فشل حفظ المخزون",
+          description: error instanceof Error ? error.message : "خطأ غير متوقع",
+          variant: "destructive",
+        });
+      } finally {
+        setSavingVariantId(null);
       }
-    } finally {
-      setSavingVariantId(null);
-    }
-  }
+    },
+    [applyServerRow, toast]
+  );
+
+  const saveStock = React.useCallback(
+    async (variant: VariantRow) => {
+      const raw = drafts[variant.id] ?? String(variant.stockAvailable);
+      const stockAvailable = Number.parseInt(raw, 10);
+      if (!Number.isInteger(stockAvailable) || stockAvailable < 0) {
+        toast({ title: "أدخل رقم مخزون صحيح", variant: "destructive" });
+        return;
+      }
+      if (stockAvailable < variant.stockReserved) {
+        toast({
+          title: `لا يمكن أن يكون المخزون أقل من المحجوز (${variant.stockReserved})`,
+          variant: "destructive",
+        });
+        return;
+      }
+      await patchStock(variant.id, { stockAvailable });
+    },
+    [drafts, patchStock, toast]
+  );
+
+  const adjustStock = React.useCallback(
+    async (variant: VariantRow, sign: 1 | -1) => {
+      const raw = adjustDrafts[variant.id] ?? "";
+      const amount = Number.parseInt(raw, 10);
+      if (!Number.isInteger(amount) || amount <= 0) {
+        toast({ title: "أدخل كمية صحيحة أكبر من صفر", variant: "destructive" });
+        return;
+      }
+      const delta = sign * amount;
+      const projected = variant.stockAvailable + delta;
+      if (projected < variant.stockReserved) {
+        toast({
+          title: `لا يمكن أن يكون المخزون أقل من المحجوز (${variant.stockReserved})`,
+          variant: "destructive",
+        });
+        return;
+      }
+      await patchStock(variant.id, { delta });
+    },
+    [adjustDrafts, patchStock, toast]
+  );
+
+  const columns = React.useMemo<ColumnDef<VariantRow, unknown>[]>(() => {
+    if (!product) return [];
+    return [
+      {
+        id: "image",
+        header: "الصورة",
+        enableSorting: false,
+        cell: ({ row }) => {
+          const variant = row.original;
+          return variant.imageUrl || product.imageUrl ? (
+            <ProductImagePreview
+              src={variant.imageUrl ?? product.imageUrl ?? ""}
+              title={variantName(variant, forKidsSizes)}
+              code={variant.sku}
+              className="overflow-hidden rounded-md border border-stone-200"
+            />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-md border border-dashed border-stone-300 bg-stone-100 text-ink-soft">
+              <Package className="h-5 w-5" />
+            </div>
+          );
+        },
+      },
+      {
+        id: "variant",
+        header: "المتغير",
+        enableSorting: false,
+        cell: ({ row }) => {
+          const variant = row.original;
+          return (
+            <div className="flex min-w-40 items-center gap-2">
+              {variant.colorHex && (
+                <span
+                  className="h-4 w-4 rounded-full border border-stone-300"
+                  style={{ backgroundColor: variant.colorHex }}
+                />
+              )}
+              <span className="font-bold text-ink">{variantName(variant, forKidsSizes)}</span>
+            </div>
+          );
+        },
+      },
+      {
+        id: "sku",
+        header: "SKU",
+        enableSorting: false,
+        cell: ({ row }) => <span className="font-mono text-xs" dir="ltr">{row.original.sku}</span>,
+      },
+      {
+        id: "price",
+        header: "السعر",
+        enableSorting: false,
+        cell: ({ row }) => money(row.original.pricePiastres),
+      },
+      {
+        id: "available",
+        header: "المتاح",
+        enableSorting: false,
+        cell: ({ row }) => {
+          const variant = row.original;
+          const draft = drafts[variant.id] ?? String(variant.stockAvailable);
+          const dirty = draft !== String(variant.stockAvailable);
+          return (
+            <Input
+              inputMode="numeric"
+              aria-label={`المتاح لمتغير ${variantName(variant, forKidsSizes)}`}
+              value={draft}
+              onChange={(e) => setDrafts((current) => ({ ...current, [variant.id]: e.target.value }))}
+              className={cn("h-9 w-24 rounded-md", dirty && "border-gold-500/60 bg-gold-50")}
+            />
+          );
+        },
+      },
+      {
+        id: "quickAdjust",
+        header: "تعديل سريع",
+        enableSorting: false,
+        cell: ({ row }) => {
+          const variant = row.original;
+          const saving = savingVariantId === variant.id;
+          return (
+            <div className="flex items-center gap-1.5">
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className="h-8 w-8 rounded-md"
+                aria-label={`إنقاص المتاح لمتغير ${variantName(variant, forKidsSizes)}`}
+                disabled={saving}
+                onClick={() => adjustStock(variant, -1)}
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </Button>
+              <Input
+                inputMode="numeric"
+                aria-label={`كمية التعديل السريع لمتغير ${variantName(variant, forKidsSizes)}`}
+                placeholder="N"
+                value={adjustDrafts[variant.id] ?? ""}
+                onChange={(e) => setAdjustDrafts((current) => ({ ...current, [variant.id]: e.target.value }))}
+                className="h-8 w-14 rounded-md px-2 text-center"
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className="h-8 w-8 rounded-md"
+                aria-label={`زيادة المتاح لمتغير ${variantName(variant, forKidsSizes)}`}
+                disabled={saving}
+                onClick={() => adjustStock(variant, 1)}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          );
+        },
+      },
+      {
+        id: "reserved",
+        header: "المحجوز",
+        enableSorting: false,
+        cell: ({ row }) => formatNumberEn(row.original.stockReserved),
+      },
+      {
+        id: "sellable",
+        header: "قابل للبيع",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <Badge variant={row.original.sellable > 0 ? "success" : "destructive"}>
+            {formatNumberEn(row.original.sellable)}
+          </Badge>
+        ),
+      },
+      {
+        id: "updatedAt",
+        header: "آخر تحديث",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap text-xs text-ink-soft">
+            {row.original.updatedAt ? formatDateEn(row.original.updatedAt) : "لم يسجل"}
+          </span>
+        ),
+      },
+      {
+        id: "reservedOrders",
+        header: "الطلبات المحجوزة",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <Button asChild type="button" size="sm" variant="outline" className="rounded-md">
+            <Link
+              href={`/partner/routed-orders?variantId=${row.original.id}&status=${STOCK_VERIFY_STATUSES}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ClipboardList className="h-4 w-4" />
+              عرض الطلبات
+            </Link>
+          </Button>
+        ),
+      },
+      {
+        id: "save",
+        header: "حفظ",
+        enableSorting: false,
+        cell: ({ row }) => {
+          const variant = row.original;
+          const draft = drafts[variant.id] ?? String(variant.stockAvailable);
+          const dirty = draft !== String(variant.stockAvailable);
+          const saving = savingVariantId === variant.id;
+          return (
+            <Button
+              type="button"
+              size="sm"
+              variant={dirty ? "default" : "outline"}
+              className="rounded-md"
+              disabled={!dirty || saving}
+              onClick={() => saveStock(variant)}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              حفظ
+            </Button>
+          );
+        },
+      },
+    ];
+  }, [product, forKidsSizes, drafts, adjustDrafts, savingVariantId, saveStock, adjustStock]);
 
   if (loading) {
     return (
-      <div className="flex min-h-[24rem] items-center justify-center text-sm text-muted-foreground">
+      <div className="flex min-h-[24rem] items-center justify-center text-sm text-ink-soft">
         <Loader2 className="ml-2 h-4 w-4 animate-spin" />
         جاري تحميل المتغيرات
       </div>
     );
   }
 
-  if (!product) {
+  if (loadError && !product) {
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-start gap-3 rounded-xl border border-carnelian-500/30 bg-danger-bg p-4 text-danger-text"
+      >
+        <p className="flex items-center gap-2 text-sm font-bold">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          {loadError}
+        </p>
+        <Button type="button" size="sm" variant="outline" className="rounded-lg" onClick={load}>
+          <RefreshCw className="h-4 w-4" />
+          إعادة المحاولة
+        </Button>
+      </div>
+    );
+  }
+
+  if (notFound || !product) {
     return (
       <EmptyState
         icon={<Package className="h-12 w-12" />}
@@ -231,7 +497,7 @@ export default function PartnerProductVariantsPage() {
         <KpiCard
           title="مخزون منخفض"
           value={formatNumberEn(totals.low)}
-          hint="متغيرات 3 أو أقل"
+          hint={`متغيرات ${formatNumberEn(lowStockThreshold)} أو أقل`}
           icon={<Package className="h-5 w-5" />}
           accent={totals.low > 0 ? "gold" : "emerald"}
         />
@@ -239,114 +505,22 @@ export default function PartnerProductVariantsPage() {
 
       <PanelCard
         title="متغيرات المنتج"
-        description="الخانة الوحيدة القابلة للتعديل هي المتاح. المحجوز والقابل للبيع للقراءة فقط."
-        icon={<Boxes className="h-5 w-5 text-burgundy" />}
+        description="الخانة الوحيدة القابلة للتعديل يدوياً هي المتاح، أو استخدم التعديل السريع للإضافة/الخصم. المحجوز والقابل للبيع للقراءة فقط."
+        icon={<Boxes className="h-5 w-5 text-lapis-800" />}
+        noPadding
       >
-        {product.variants.length === 0 ? (
-          <EmptyState icon={<Boxes className="h-12 w-12" />} title="لا توجد متغيرات لهذا المنتج" />
-        ) : (
-          <TableScroll>
-            <Table className={cn(fetching && "opacity-70")}>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40">
-                  <TableHead>الصورة</TableHead>
-                  <TableHead>المتغير</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>السعر</TableHead>
-                  <TableHead>المتاح</TableHead>
-                  <TableHead>المحجوز</TableHead>
-                  <TableHead>قابل للبيع</TableHead>
-                  <TableHead>آخر تحديث</TableHead>
-                  <TableHead className="text-left">الطلبات المحجوزة</TableHead>
-                  <TableHead className="text-left">حفظ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {product.variants.map((variant) => {
-                  const draft = drafts[variant.id] ?? String(variant.stockAvailable);
-                  const dirty = draft !== String(variant.stockAvailable);
-                  return (
-                    <TableRow key={variant.id}>
-                      <TableCell>
-                        {variant.imageUrl || product.imageUrl ? (
-                          <ProductImagePreview
-                            src={variant.imageUrl ?? product.imageUrl ?? ""}
-                            title={variantName(variant, forKidsSizes)}
-                            code={variant.sku}
-                            className="overflow-hidden rounded-md border border-border"
-                          />
-                        ) : (
-                          <div className="flex h-12 w-12 items-center justify-center rounded-md border border-dashed border-border bg-muted text-muted-foreground">
-                            <Package className="h-5 w-5" />
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex min-w-40 items-center gap-2">
-                          {variant.colorHex && (
-                            <span
-                              className="h-4 w-4 rounded-full border border-border"
-                              style={{ backgroundColor: variant.colorHex }}
-                            />
-                          )}
-                          <span className="font-medium">{variantName(variant, forKidsSizes)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{variant.sku}</TableCell>
-                      <TableCell>{money(variant.pricePiastres)}</TableCell>
-                      <TableCell>
-                        <Input
-                          inputMode="numeric"
-                          value={draft}
-                          onChange={(e) => setDrafts((current) => ({ ...current, [variant.id]: e.target.value }))}
-                          className={cn("h-9 w-24 rounded-md", dirty && "border-gold/50 bg-gold/10")}
-                        />
-                      </TableCell>
-                      <TableCell>{formatNumberEn(variant.stockReserved)}</TableCell>
-                      <TableCell>
-                        <Badge variant={variant.sellable > 0 ? "default" : "destructive"}>
-                          {formatNumberEn(variant.sellable)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                        {variant.updatedAt ? formatDateEn(variant.updatedAt) : "لم يسجل"}
-                      </TableCell>
-                      <TableCell className="text-left">
-                        <Button asChild type="button" size="sm" variant="outline" className="rounded-md">
-                          <Link
-                            href={`/partner/routed-orders?variantId=${variant.id}&status=${STOCK_VERIFY_STATUSES}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <ClipboardList className="h-4 w-4" />
-                            عرض الطلبات
-                          </Link>
-                        </Button>
-                      </TableCell>
-                      <TableCell className="text-left">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={dirty ? "default" : "outline"}
-                          className="rounded-md"
-                          disabled={!dirty || savingVariantId === variant.id}
-                          onClick={() => saveStock(variant)}
-                        >
-                          {savingVariantId === variant.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Save className="h-4 w-4" />
-                          )}
-                          حفظ
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableScroll>
-        )}
+        <div className="p-4 sm:p-[22px]">
+          {product.variants.length === 0 ? (
+            <EmptyState icon={<Boxes className="h-12 w-12" />} title="لا توجد متغيرات لهذا المنتج" />
+          ) : (
+            <DataTable
+              columns={columns}
+              data={product.variants}
+              getRowId={(row) => row.id}
+              className={cn(fetching && "opacity-70")}
+            />
+          )}
+        </div>
       </PanelCard>
     </div>
   );

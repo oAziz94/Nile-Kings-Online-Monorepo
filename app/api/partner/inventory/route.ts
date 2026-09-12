@@ -9,7 +9,7 @@ async function requireInventoryPartner() {
   const user = await requirePartner();
   const partner = await prisma.partner.findUnique({
     where: { id: user.partnerId },
-    select: { id: true, name: true, phone: true, partnerType: true, governorate: true },
+    select: { id: true, name: true, phone: true, partnerType: true, governorate: true, lowStockThreshold: true },
   });
   if (!partner || !["AGENT", "DISTRIBUTOR"].includes(partner.partnerType)) {
     const err = new Error("FORBIDDEN");
@@ -26,6 +26,11 @@ export async function GET(req: NextRequest) {
     const q = (searchParams.get("q") ?? "").trim().slice(0, 100);
     const productId = (searchParams.get("productId") ?? "").trim();
     const lowOnly = searchParams.get("lowOnly") === "true";
+    // Backlog 4.18 (allowed API change): `lowStock=1` filters to products with any variant
+    // at/below this partner's own `lowStockThreshold` (user decision 2026-09-12, per-partner
+    // default 5) — distinct from the pre-existing, currently-unused `lowOnly` param above
+    // (hardcoded `<= 3`), which is left byte-for-byte untouched per the standing rule.
+    const lowStock = searchParams.get("lowStock") === "1";
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 50) || 50));
     const offset = Math.max(0, Number(searchParams.get("offset") ?? 0) || 0);
 
@@ -99,7 +104,10 @@ export async function GET(req: NextRequest) {
           };
         }),
       }))
-      .filter((product) => !lowOnly || product.variants.some((variant) => variant.sellable <= 3));
+      .filter((product) => !lowOnly || product.variants.some((variant) => variant.sellable <= 3))
+      .filter(
+        (product) => !lowStock || product.variants.some((variant) => variant.sellable <= partner.lowStockThreshold)
+      );
 
     return apiSuccess({ partner, products: rows, total, limit, offset });
   } catch (error: unknown) {
@@ -113,7 +121,7 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const { user } = await requireInventoryPartner();
-    let body: { variantId?: string; stockAvailable?: number };
+    let body: { variantId?: string; stockAvailable?: number; delta?: number };
     try {
       body = await req.json();
     } catch {
@@ -121,16 +129,34 @@ export async function PATCH(req: NextRequest) {
     }
 
     const variantId = body.variantId?.trim();
-    const stockAvailableInput = body.stockAvailable;
     if (!variantId) return apiBadRequest("variantId مطلوب");
-    if (
-      typeof stockAvailableInput !== "number" ||
-      !Number.isInteger(stockAvailableInput) ||
-      stockAvailableInput < 0
-    ) {
-      return apiBadRequest("المخزون يجب أن يكون رقماً صحيحاً موجباً");
+
+    const stockAvailableInput = body.stockAvailable;
+    const deltaInput = body.delta;
+    const hasStockAvailable = stockAvailableInput !== undefined;
+    const hasDelta = deltaInput !== undefined;
+
+    // Backlog 4.18 (allowed API change): quick-adjust sends `delta` instead of a
+    // client-computed total; exactly one of the two must be present so no request can
+    // accidentally race a stale `stockAvailable` against an intended `delta`, or supply
+    // neither and silently no-op.
+    if (hasStockAvailable === hasDelta) {
+      return apiBadRequest("أرسل قيمة واحدة فقط: stockAvailable أو delta");
     }
-    const stockAvailable = stockAvailableInput;
+
+    if (hasStockAvailable) {
+      if (
+        typeof stockAvailableInput !== "number" ||
+        !Number.isInteger(stockAvailableInput) ||
+        stockAvailableInput < 0
+      ) {
+        return apiBadRequest("المخزون يجب أن يكون رقماً صحيحاً موجباً");
+      }
+    } else {
+      if (typeof deltaInput !== "number" || !Number.isInteger(deltaInput)) {
+        return apiBadRequest("قيمة التعديل يجب أن تكون رقماً صحيحاً");
+      }
+    }
 
     const updated = await prisma.$transaction(async (tx) => {
       const variant = await tx.variant.findUnique({
@@ -143,6 +169,11 @@ export async function PATCH(req: NextRequest) {
         where: { partnerId_variantId: { partnerId: user.partnerId, variantId } },
       });
       const stockReserved = existing?.stockReserved ?? 0;
+      const previousStockAvailable = existing?.stockAvailable ?? 0;
+      const stockAvailable = hasStockAvailable
+        ? (stockAvailableInput as number)
+        : previousStockAvailable + (deltaInput as number);
+
       if (stockAvailable < stockReserved) {
         return { kind: "reserved" as const, stockReserved };
       }
@@ -163,7 +194,7 @@ export async function PATCH(req: NextRequest) {
           partnerId: user.partnerId,
           variantId,
           reason: "MANUAL_ADJUSTMENT",
-          quantityAvailableDelta: stockAvailable - (existing?.stockAvailable ?? 0),
+          quantityAvailableDelta: stockAvailable - previousStockAvailable,
           quantityReservedDelta: 0,
           notes: "Partner dashboard stock edit",
         },
