@@ -23,7 +23,7 @@ const CATEGORY_TILES = [
     href: "/categories/men",
     image: "/brand/storefront/category-men.jpg",
     focus: "48% 42%",
-    heightClass: "h-[220px] lg:h-[600px]",
+    heightClass: "h-[220px] lg:h-[560px]",
   },
   {
     slug: "women",
@@ -33,7 +33,7 @@ const CATEGORY_TILES = [
     href: "/categories/women",
     image: "/brand/storefront/category-women.jpg",
     focus: "40% 45%",
-    heightClass: "h-[200px] lg:h-[520px]",
+    heightClass: "h-[220px] lg:h-[560px]",
   },
   {
     slug: "kids",
@@ -43,7 +43,7 @@ const CATEGORY_TILES = [
     href: "/categories/kids",
     image: "/brand/storefront/category-kids.jpg",
     focus: "50% 45%",
-    heightClass: "h-[200px] lg:h-[460px]",
+    heightClass: "h-[220px] lg:h-[560px]",
   },
 ] as const;
 

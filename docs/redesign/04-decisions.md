@@ -1,3 +1,7 @@
+## 2026-09-12 — Home category tiles: equal height (v2.0.18)
+
+User note: the three home category tiles (men/women/kids) had unequal heights, copied from the canvas's editorial staggered layout (600/520/460px desktop). Changed all three to the same height (560px desktop, 220px mobile) — same widths as before, no other change.
+
 ## 2026-09-12 — Multi-image-per-colour PDP gallery: idea verified, schema + storefront shipped (v2.0.17), admin UI deferred
 
 User idea: the PDP should show a colour's full photo set, and switching colour swaps the whole set. Verified against the data model first (a "variant" is really a size row today, one per size per colour, each carrying a single `imageUrl`; there is no image-upload pipeline anywhere — every image in the system is a pasted external URL). The idea is correct and fixes a real gap, but is a data-model change, not a PDP-only tweak, so the PM asked the user four scoping questions before building:
