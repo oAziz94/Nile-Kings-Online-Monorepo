@@ -41,6 +41,7 @@ import {
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
+import { PartnerAccountPanel } from "@/components/admin/partner-account-panel";
 
 type TabId = "requests" | "agents" | "distributors" | "new";
 
@@ -70,6 +71,8 @@ type PartnerRow = {
   isActive: boolean;
   linkedAgent?: { id: string; name: string; phone: string } | null;
   _count?: { distributors: number };
+  /** Backlog 5.1 admin minimum — the factory settlement rate (basis points, admin-write only). */
+  costRateBps?: number;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -658,6 +661,7 @@ function AgentsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
                   </ul>
                 </div>
               )}
+              {detail && <PartnerAccountPanel partnerId={detail.id} costRateBps={detail.costRateBps ?? 7500} />}
             </div>
           )}
         </DialogContent>
@@ -825,6 +829,7 @@ function DistributorsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"
               <p><strong>رقم التليفون:</strong> {detail.phone}</p>
               <p><strong>الوكيل المرتبط:</strong> {detail.linkedAgent ? detail.linkedAgent.name : "—"}</p>
               <p><strong>الحالة:</strong> {detail.isActive ? "نشط" : "غير نشط"}</p>
+              <PartnerAccountPanel partnerId={detail.id} costRateBps={detail.costRateBps ?? 7500} />
             </div>
           )}
         </DialogContent>

@@ -53,6 +53,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     linkedAgentId?: string | null;
     isActive?: boolean;
     notes?: string | null;
+    // Backlog 5.1 — the factory settlement rate, admin-write only (rule 18: a *partner*
+    // API accepting this is a defect; this is the admin route, so it's the one place
+    // allowed to write it).
+    costRateBps?: number;
   };
   try {
     body = await req.json();
@@ -60,6 +64,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     return apiBadRequest("جسم الطلب غير صالح");
   }
 
+  if (
+    body.costRateBps !== undefined &&
+    (!Number.isInteger(body.costRateBps) || body.costRateBps < 0 || body.costRateBps > 10_000)
+  ) {
+    return apiBadRequest("نسبة الشراء يجب أن تكون رقماً صحيحاً بين 0 و10000 (بالبيسيس بوينت)");
+  }
   if (body.name !== undefined && !body.name?.trim()) return apiBadRequest("الاسم لا يمكن أن يكون فارغاً");
   if (body.governorate !== undefined && !body.governorate?.trim()) return apiBadRequest("المحافظة مطلوبة");
   if (body.phone !== undefined && !body.phone?.trim()) return apiBadRequest("رقم التليفون مطلوب");
@@ -97,6 +107,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       ...(linkedAgentId !== undefined && { linkedAgentId }),
       ...(body.isActive !== undefined && { isActive: body.isActive }),
       ...(body.notes !== undefined && { notes: body.notes?.trim() || null }),
+      ...(body.costRateBps !== undefined && { costRateBps: body.costRateBps }),
     },
   });
   return apiSuccess(updated);
