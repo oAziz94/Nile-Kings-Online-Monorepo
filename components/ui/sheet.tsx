@@ -39,13 +39,22 @@ SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
 // e-commerce cart drawers use even on RTL sites, not the logical inline-end (which would be the
 // left edge under `dir="rtl"`). Kept as an explicit choice, not solved generically, since a
 // truly bidirectional variant isn't needed anywhere else in this app yet.
+//
+// `side="bottom"` (backlog 4.8 rework) — the mobile filter sheet, per artboard 1e: full-width,
+// capped at ~92vh (never the full viewport, so the page behind stays perceptibly present),
+// square corners (radius 0, matching the storefront's flat design language), no drag-handle
+// gesture logic (out of scope — Radix already gives Escape/overlay-click/swipe-down-to-scroll
+// via the header's own close button), just the visual handle bar the artboard draws.
 const sheetVariants = cva(
-  "fixed z-[110] flex h-full w-full max-w-md flex-col gap-0 border-[hsl(228_40%_14%)] bg-papyrus shadow-2xl transition ease-in-out data-[state=closed]:duration-200 data-[state=open]:duration-300 motion-reduce:transition-none motion-reduce:animate-none",
+  "fixed z-[110] flex flex-col gap-0 border-[hsl(228_40%_14%)] bg-papyrus shadow-2xl transition ease-in-out data-[state=closed]:duration-200 data-[state=open]:duration-300 motion-reduce:transition-none motion-reduce:animate-none",
   {
     variants: {
       side: {
-        right: "inset-y-0 right-0 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
-        left: "inset-y-0 left-0 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
+        right:
+          "inset-y-0 right-0 h-full w-full max-w-md border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+        left: "inset-y-0 left-0 h-full w-full max-w-md border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
+        bottom:
+          "inset-x-0 bottom-0 max-h-[92vh] w-full rounded-none border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
       },
     },
     defaultVariants: { side: "right" },
@@ -67,6 +76,11 @@ const SheetContent = React.forwardRef<
       className={cn(sheetVariants({ side }), className)}
       {...props}
     >
+      {side === "bottom" && (
+        <div className="flex shrink-0 justify-center pt-2" aria-hidden>
+          <span className="h-1 w-10 rounded-full bg-[hsl(228_16%_82%)]" />
+        </div>
+      )}
       {children}
     </DialogPrimitive.Content>
   </SheetPortal>

@@ -157,3 +157,39 @@
     background-position: 0 0;
   }
 }
+
+/*
+ * Dual-thumb price range slider (backlog 4.8, listing filter bar) — two overlapping native
+ * `<input type="range">`s share one visual track; the track itself ignores pointer events so
+ * only the round thumb is grabbable, letting both inputs coexist without one blocking the other.
+ */
+.nk-range-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.nk-range-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  height: 16px;
+  width: 16px;
+  border-radius: 9999px;
+  background: hsl(var(--gold-500));
+  border: 2px solid hsl(228 40% 14%);
+  cursor: pointer;
+}
+
+.nk-range-thumb::-moz-range-thumb {
+  pointer-events: auto;
+  height: 16px;
+  width: 16px;
+  border-radius: 9999px;
+  background: hsl(var(--gold-500));
+  border: 2px solid hsl(228 40% 14%);
+  cursor: pointer;
+}
+
+.nk-range-thumb::-moz-range-track {
+  background: transparent;
+}

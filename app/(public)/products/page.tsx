@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { ProductsContent } from "./products-content";
+import { CatalogListing } from "@/components/shared/catalog-listing";
 import { LoadingDots } from "@/components/shared/loading-dots";
 import { pageMetadata } from "@/lib/seo";
 
@@ -13,7 +13,7 @@ export default function ProductsPage() {
   return (
     <div className="container px-4 py-6 md:py-8">
       <Suspense fallback={<LoadingDots />}>
-        <ProductsContent />
+        <CatalogListing />
       </Suspense>
     </div>
   );
