@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
-import { CategoryContent } from "./category-content";
+import { CatalogListing } from "@/components/shared/catalog-listing";
 import { LoadingDots } from "@/components/shared/loading-dots";
 import { pageMetadata } from "@/lib/seo";
 
@@ -50,7 +50,7 @@ export default async function CategoryPage({
   return (
     <div className="container px-4 py-6 md:py-8">
       <Suspense fallback={<LoadingDots />}>
-        <CategoryContent categorySlug={category.slug} categoryName={category.name} />
+        <CatalogListing lockedCategory={{ slug: category.slug, name: category.name }} />
       </Suspense>
     </div>
   );
