@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { Amiri, Archivo, IBM_Plex_Sans_Arabic } from "next/font/google";
 import "./auth-motion.css";
 import { Ankh } from "@/components/brand/ankh";
 import { SiteNavbar } from "@/components/shared/site-navbar";
@@ -40,30 +39,12 @@ import { AuthFormReveal } from "./auth-form-reveal";
  * siblings toggled by the `lg` breakpoint.
  *
  * Fonts: the canvas's 3-family system (Amiri display / IBM Plex Sans Arabic body / Archivo for
- * Latin + Western numerals), scoped to this route group via CSS variables — the rest of the app
- * stays on Cairo per docs/redesign/01-design-system.md.
+ * Latin + Western numerals). Backlog 4.6 moved the three `next/font` loaders to the root
+ * `app/layout.tsx` (loaded once, site-wide) — this route group just opts into the
+ * `font-plex-arabic` utility; the CSS variables (`--font-amiri`/`--font-plex-arabic`/
+ * `--font-archivo`) already live on `<html>`. The rest of the app (admin/partner) stays on Cairo
+ * per docs/redesign/01-design-system.md.
  */
-
-const amiri = Amiri({
-  subsets: ["arabic", "latin"],
-  weight: ["400", "700"],
-  variable: "--font-amiri",
-  display: "swap",
-});
-
-const plexArabic = IBM_Plex_Sans_Arabic({
-  subsets: ["arabic"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-plex-arabic",
-  display: "swap",
-});
-
-const archivo = Archivo({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-archivo",
-  display: "swap",
-});
 
 // Desktop geometry, all derived from the photograph's right edge (`--auth-photo-w`).
 //   photo-w   : a little under half the viewport (686px at 1440), so the slogan can overhang it.
@@ -134,12 +115,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <AuthVisualProvider>
       <div
         dir="rtl"
-        className={cn(
-          amiri.variable,
-          plexArabic.variable,
-          archivo.variable,
-          "font-plex-arabic text-[hsl(228_26%_24%)]"
-        )}
+        className={cn("font-plex-arabic text-[hsl(228_26%_24%)]")}
       >
         <div className="relative min-h-screen w-full overflow-hidden bg-papyrus" style={layoutVars}>
           <SiteNavbar current="account" />

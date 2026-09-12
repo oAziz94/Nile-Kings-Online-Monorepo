@@ -66,12 +66,21 @@ export interface QuickShopModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   productSlug: string | null;
+  /**
+   * Backlog 4.6: `ProductCard`'s two actions ("أضف إلى السلة" / "اشتر الآن") both open this modal
+   * — per standing rule 6, size (and colour, when ambiguous) must always be resolved here before
+   * anything is actually added, so neither button can add blind. This prop is purely which footer
+   * CTA gets `autoFocus` once the product loads; it does not skip or relax the validation above
+   * (`handleAddToCart`/`handleBuyNow` still run their full checks either way).
+   */
+  initialIntent?: "cart" | "buy";
 }
 
 export function QuickShopModal({
   open,
   onOpenChange,
   productSlug,
+  initialIntent = "cart",
 }: QuickShopModalProps) {
   const { toast } = useToast();
   const { openDrawer, setCart } = useCart();
@@ -408,6 +417,7 @@ export function QuickShopModal({
                 size="lg"
                 onClick={handleAddToCart}
                 disabled={!product.inStock || adding}
+                autoFocus={initialIntent === "cart"}
               >
                 <ShoppingCart className="h-5 w-5 ml-2" />
                 {ARABIC.addToCart}
@@ -418,6 +428,7 @@ export function QuickShopModal({
                 size="lg"
                 onClick={handleBuyNow}
                 disabled={!product.inStock || adding}
+                autoFocus={initialIntent === "buy"}
               >
                 {ARABIC.buyNow}
               </Button>

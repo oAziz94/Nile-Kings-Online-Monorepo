@@ -4,8 +4,8 @@
 
 import type { Metadata } from "next";
 
-const SITE_NAME = "نايل كينجز";
-const DEFAULT_DESCRIPTION = "متجر نايل كينجز أونلاين - تسوق من أفضل المنتجات مع توصيل لجميع المحافظات";
+const SITE_NAME = "قطن ملوك النيل";
+const DEFAULT_DESCRIPTION = "متجر قطن ملوك النيل أونلاين - تسوق من أفضل المنتجات مع توصيل لجميع المحافظات";
 
 const DEFAULT_APP_URL = "https://nilekingscotton.com";
 

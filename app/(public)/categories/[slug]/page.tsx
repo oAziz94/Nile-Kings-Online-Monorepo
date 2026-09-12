@@ -30,10 +30,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const category = await getCategory(slug);
-  if (!category) return { title: "تصنيف | نايل كينجز" };
+  if (!category) return { title: "تصنيف | قطن ملوك النيل" };
   return pageMetadata({
     title: category.name,
-    description: `تصفح منتجات ${category.name} من نايل كينجز`,
+    description: `تصفح منتجات ${category.name} من قطن ملوك النيل`,
     path: `categories/${slug}`,
   });
 }

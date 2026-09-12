@@ -4,22 +4,17 @@ function Skeleton({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn("animate-pulse rounded-2xl bg-muted", className)}
-      {...props}
-    />
-  );
+  return <div className={cn("nk-shimmer rounded-none", className)} {...props} />;
 }
 
 export function ProductCardSkeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("overflow-hidden rounded-2xl border border-border bg-card", className)}>
-      <Skeleton className="aspect-square w-full" />
-      <div className="p-4 space-y-2">
+    <div className={cn("overflow-hidden border border-[hsl(228_16%_88%)] bg-papyrus", className)}>
+      <Skeleton className="aspect-[4/5] w-full" />
+      <div className="space-y-2 p-4">
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-5 w-1/3 mt-2" />
+        <Skeleton className="mt-2 h-5 w-1/3" />
       </div>
     </div>
   );

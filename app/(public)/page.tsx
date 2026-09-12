@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata = pageMetadata({
   title: "الرئيسية",
-  description: "متجر نايل كينجز أونلاين - تسوق من أفضل المنتجات مع توصيل لجميع المحافظات",
+  description: "متجر قطن ملوك النيل أونلاين - تسوق من أفضل المنتجات مع توصيل لجميع المحافظات",
   path: "",
 });
 

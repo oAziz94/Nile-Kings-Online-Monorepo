@@ -5,7 +5,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "المنتجات",
-  description: "تصفح جميع المنتجات في متجر نايل كينجز",
+  description: "تصفح جميع المنتجات في متجر قطن ملوك النيل",
   path: "products",
 });
 

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { LegalPage, type LegalSection } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
-  title: "الشروط والأحكام | نايل كينجز",
-  description: "الشروط والأحكام الخاصة باستخدام موقع نايل كينجز وشراء المنتجات.",
+  title: "الشروط والأحكام | قطن ملوك النيل",
+  description: "الشروط والأحكام الخاصة باستخدام موقع قطن ملوك النيل وشراء المنتجات.",
 };
 
 const sections: LegalSection[] = [
@@ -11,7 +11,7 @@ const sections: LegalSection[] = [
     title: "التعريفات",
     body: (
       <p>
-        يقصد بعبارة «الموقع» موقع nilekingscotton.com، ويقصد بعبارة «نايل كينجز» أو «نحن» الجهة المالكة والمشغلة للموقع، بينما يقصد بعبارة «العميل» أو «المستخدم» كل شخص يزور الموقع أو يشتري أحد منتجاته.
+        يقصد بعبارة «الموقع» موقع nilekingscotton.com، ويقصد بعبارة «قطن ملوك النيل» أو «نحن» الجهة المالكة والمشغلة للموقع، بينما يقصد بعبارة «العميل» أو «المستخدم» كل شخص يزور الموقع أو يشتري أحد منتجاته.
       </p>
     ),
   },
@@ -208,7 +208,7 @@ export default function TermsPage() {
     <LegalPage
       kind="terms"
       title="الشروط والأحكام"
-      description="يرجى قراءة هذه الشروط بعناية قبل استخدام موقع نايل كينجز أو إتمام أي طلب شراء."
+      description="يرجى قراءة هذه الشروط بعناية قبل استخدام موقع قطن ملوك النيل أو إتمام أي طلب شراء."
       updatedAt="6 أغسطس 2026"
       sections={sections}
     />

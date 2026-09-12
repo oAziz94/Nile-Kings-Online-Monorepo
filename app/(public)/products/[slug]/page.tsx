@@ -109,14 +109,14 @@ export async function generateMetadata({
   const { slug } = await params;
   const stockContext = await getCurrentStorefrontStockContext();
   const row = await getProductRow(slug, stockContext.partnerId);
-  if (!row) return { title: "منتج | نايل كينجز" };
+  if (!row) return { title: "منتج | قطن ملوك النيل" };
   const product = row.productRow;
   const desc = product.description
     ? product.description.slice(0, 160).replace(/\n/g, " ")
     : undefined;
   return pageMetadata({
     title: product.name,
-    description: desc ?? `اشتري ${product.name} من نايل كينجز`,
+    description: desc ?? `اشتري ${product.name} من قطن ملوك النيل`,
     path: `products/${slug}`,
     imageUrl: product.imageUrl,
   });

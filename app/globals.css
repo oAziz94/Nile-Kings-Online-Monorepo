@@ -123,3 +123,37 @@
     font-weight: 700;
   }
 }
+
+/*
+ * Storefront shimmer skeleton — backlog 4.6 shared primitive. A moving highlight band instead of
+ * a flat pulse, matching the canvas's `nk-shimmer` keyframe name and its
+ * `prefers-reduced-motion` guard (docs/redesign/design-canvas/design-storefront/store-front/
+ * Storefront v3.dc.html's own <style>). Not @layer-scoped so it composes with `.animate-pulse`
+ * fallback classes already used elsewhere in the app.
+ */
+@keyframes nk-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.nk-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    hsl(var(--stone-100)) 30%,
+    hsl(var(--stone-200)) 50%,
+    hsl(var(--stone-100)) 70%
+  );
+  background-size: 200% 100%;
+  animation: nk-shimmer 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nk-shimmer {
+    animation: none;
+    background-position: 0 0;
+  }
+}
