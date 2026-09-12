@@ -9,21 +9,61 @@ import { test, expect, type Page } from "@playwright/test";
 // at checkout, `lib/checkout/place-order.ts`), so adding/removing a real catalog variant here is
 // non-destructive to shared redesign-branch data.
 //
-// Fixtures: real, currently-stocked variants on the redesign branch (found via one-off Prisma
-// queries against `.env.redesign`, not stored in this repo) — a partner in "الجيزة" carries both.
-// If either is ever deleted/restocked to zero, this spec will need new ones — same class of
-// dependency as any e2e test against real catalog data.
+// Fixtures are resolved at run time from the live product API, never hardcoded: the redesign
+// branch is shared by several parallel test runs and manual sessions, and a hardcoded SKU's stock
+// can be drained to zero between runs (it happened during 4.10's verification). Cart-add never
+// touches `stockReserved` (only checkout does, lib/checkout/place-order.ts), so adding/removing a
+// real catalog variant here is non-destructive to shared data.
 const GOVERNORATE = "الجيزة";
-// Has a second colour at the same size (M/رمادي), so it's only used via direct API calls
-// (cart-page test) where no color-chooser UI is involved.
-const PRODUCT_SLUG = "nk-0034-1";
-const VARIANT_SIZE_LABEL = "M";
-const EXPECTED_FRIENDLY_LABEL = "المقاس M · ابيض";
-// Exactly one colour at this size and not a kids product (kids sizes get relabeled for display,
-// e.g. underlying "S" shows as "2" — irrelevant to this test but avoided for a stable selector),
-// so the UI add-to-cart flow (drawer test) only needs the size chip — no color-swatch step.
-const SIMPLE_PRODUCT_SLUG = "nk-9697-2";
-const SIMPLE_VARIANT_SIZE_LABEL = "M";
+
+type ApiVariant = {
+  id: string;
+  name: string;
+  colorName: string | null;
+  stockAvailable: number;
+  priceEgp: number;
+};
+type ApiProduct = {
+  name: string;
+  slug: string;
+  categorySlug: string;
+  variants: ApiVariant[];
+};
+
+/**
+ * Finds a real product + variant that satisfies the test's needs right now. `minStock` keeps the
+ * stepper assertions meaningful; `singleColourAtSize` (drawer test) picks a size that has exactly
+ * one colour so the PDP flow needs only the size chip; kids products are skipped because their
+ * size labels are remapped for display (lib/size-display.ts) and the chip text would not equal
+ * `variant.name`.
+ */
+async function findStockedVariant(
+  page: Page,
+  opts: { minStock: number; singleColourAtSize?: boolean }
+): Promise<{ product: ApiProduct; variant: ApiVariant }> {
+  const listRes = await page.request.get("/api/products?inStock=true&limit=60");
+  expect(listRes.ok()).toBeTruthy();
+  const list = (await listRes.json()).data.products as { slug: string }[];
+  for (const { slug } of list) {
+    const res = await page.request.get(`/api/products/${slug}`);
+    if (!res.ok()) continue;
+    const product = (await res.json()).data as ApiProduct;
+    if (product.categorySlug === "kids") continue;
+    for (const variant of product.variants) {
+      if (variant.stockAvailable < opts.minStock) continue;
+      if (opts.singleColourAtSize) {
+        const sameSize = product.variants.filter((v) => v.name === variant.name);
+        if (sameSize.length !== 1) continue;
+      }
+      return { product, variant };
+    }
+  }
+  throw new Error("No stocked non-kids variant found on the redesign branch for this test.");
+}
+
+function friendlyLabel(v: ApiVariant): string {
+  return v.colorName ? `المقاس ${v.name} · ${v.colorName}` : `المقاس ${v.name}`;
+}
 
 async function setGovernorate(page: Page) {
   const res = await page.request.post("/api/storefront/governorate", {
@@ -51,15 +91,9 @@ test.describe("Cart page", () => {
 
     // Resolve the real variant id + its price from the live product API (never hardcode a piastre
     // amount — the line-math assertions below must trace to what the server actually returns).
-    const productRes = await page.request.get(`/api/products/${PRODUCT_SLUG}`);
-    expect(productRes.ok()).toBeTruthy();
-    const productJson = await productRes.json();
-    const variant = productJson.data.variants.find(
-      (v: { name: string; colorName: string | null }) =>
-        v.name === VARIANT_SIZE_LABEL && v.colorName === "ابيض"
-    );
-    expect(variant, "fixture variant must exist on the redesign branch").toBeTruthy();
-    expect(variant.stockAvailable).toBeGreaterThan(1);
+    const { product, variant } = await findStockedVariant(page, { minStock: 2 });
+    const productJson = { data: product };
+    const EXPECTED_FRIENDLY_LABEL = friendlyLabel(variant);
     const unitPriceEgp: number = variant.priceEgp;
 
     const addRes = await page.request.post("/api/cart/items", {
@@ -87,7 +121,7 @@ test.describe("Cart page", () => {
       line.getByText(unitPriceEgp.toLocaleString("en-US"), { exact: false }).first()
     ).toBeVisible();
 
-    // Increment (stock is 8+, so + must be enabled and actually work).
+    // Increment (stock is ≥2 by fixture selection, so + must be enabled and actually work).
     await incrementBtn.click();
     await expect(line.getByText("2", { exact: true }).first()).toBeVisible();
     await expect(decrementBtn).toBeEnabled();
@@ -111,10 +145,14 @@ test.describe("Cart page", () => {
     // back down before the remove step below.
     const maxQty: number = cartJson.data.items[0].maxQty;
     expect(maxQty).toBeGreaterThanOrEqual(2);
-    for (let qty = 3; qty <= maxQty; qty++) {
-      await incrementBtn.click();
-      await expect(line.getByText(String(qty), { exact: true }).first()).toBeVisible();
-    }
+    // Jump straight to maxQty through the API (clicking "+" once per unit would take minutes on
+    // a well-stocked SKU), then reload and assert the UI reflects the ceiling.
+    const toMaxRes = await page.request.patch(`/api/cart/items/${cartJson.data.items[0].id}`, {
+      data: { quantity: maxQty },
+    });
+    expect(toMaxRes.ok()).toBeTruthy();
+    await page.reload();
+    await expect(line.getByText(String(maxQty), { exact: true }).first()).toBeVisible();
     await expect(incrementBtn).toBeDisabled();
 
     const overLimitRes = await page.request.patch(`/api/cart/items/${cartJson.data.items[0].id}`,
@@ -122,9 +160,10 @@ test.describe("Cart page", () => {
     );
     expect(overLimitRes.status()).toBe(422);
 
-    // Decrement back to 1.
+    // Decrement once from the ceiling — "+" must re-enable, "−" stays enabled above 1.
     await decrementBtn.click();
-    await expect(line.getByText("1", { exact: true }).first()).toBeVisible();
+    await expect(line.getByText(String(maxQty - 1), { exact: true }).first()).toBeVisible();
+    await expect(incrementBtn).toBeEnabled();
 
     // Remove → empty state. The desktop row's remove control is the exact-text "إزالة" button;
     // the mobile row's icon-only twin has a longer aria-label ("إزالة {name} من السلة") that also
@@ -137,7 +176,12 @@ test.describe("Cart page", () => {
 test.describe("Mini-cart drawer", () => {
   test("opens after add-to-cart via the UI and links to /cart", async ({ page }) => {
     await setGovernorate(page);
-    await page.goto(`/products/${SIMPLE_PRODUCT_SLUG}`);
+    const { product: simple, variant: simpleVariant } = await findStockedVariant(page, {
+      minStock: 1,
+      singleColourAtSize: true,
+    });
+    const SIMPLE_VARIANT_SIZE_LABEL = simpleVariant.name;
+    await page.goto(`/products/${simple.slug}`);
 
     // The PDP's own add-to-cart also calls `openDrawer()` (same as `QuickShopModal`) — exercises
     // the same code path without needing to drive the card's quick-shop dialog.
