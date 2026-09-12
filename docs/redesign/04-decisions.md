@@ -1,3 +1,19 @@
+## 2026-09-12 — Second storefront batch (checkout, profile, partners, legal): PM-designed in prose, no canvas
+
+User direction: "the checkout, profile, become-a-partner, and the legal pages are for you to design and implement ... They will not have a separate design from the whole storefront." So there is no Claude Design round for these; the PM wrote the design as a brief in `03-backlog.md` (tasks 4.12–4.15, plus a shared "visual language, stated once" paragraph), and the reference for implementers and verifiers is the merged storefront code and screens, not an artboard. The brief reuses the shipped primitives and the cart/PDP/auth compositions rather than introducing new ones.
+
+Product decisions made while writing the brief (each is in the task text; recorded here so they are findable):
+
+1. **Checkout keeps every rejected/approved call from 2026-09-10**: no guest checkout, COD fee stays folded into "رسوم الشحن", PAYMOB stays UI-dormant. Adds the approved server-side login guard and `noindex`. Shows all cart lines in the review section (the old first-6 cutoff had no indicator — a gap, not a behaviour).
+2. **The InstaPay partner-name string match stays as-is in this batch** — its fix is a schema + admin change (`Partner.instapayIpa`/`instapayQrImageUrl`), logged in the backlog as a later hardening task. Building the new checkout on top of the fragile match is acceptable only because the match itself is untouched and covered by the PM's manual pass.
+3. **Profile nav gains "العرض الخاص"** (`/profile/senior`). The page was reachable only by typing the URL; the feature is real, customer-facing and admin-toggled. Two copy changes on that page: the helper text becomes truthful about storage (the ID *is* stored, encrypted), and the page tells the customer when the promo is currently off (it reads the existing `GET /api/settings/senior-promo`). Verification stays allowed either way, as today.
+4. **Profile hardening folded into the parity pass** because each is a one-line UI fix with no server change: styled delete dialog instead of `confirm()`, save-button submit guard, a real orders error state, the missing `READY_TO_SHIP` status colour, `type="email"` hint, `router.replace` 401s everywhere, `noindex` on the profile layout. The order-detail page / pagination / reorder bundle stays a Phase-5 item.
+5. **Partners form**: consent by links to the legal pages, not a required checkbox; inline phone error from the server's `EGYPT_MOBILE_ERROR_MESSAGE`; discard-confirmation on type switch; in-page success state. No reference id (the API returns none). Role explainer lines must trace to the partner inventories or be omitted.
+6. **Legal pages**: copy stays in code (no CMS); text verbatim, including the two "دليل المقاسات" mentions in terms that point at a size chart that does not exist yet (blocked on the factory — backlog "Blocked" note).
+7. **Size chart** is not part of this batch (blocked, see backlog).
+
+Orchestration: four `ui-implementer` runs in parallel isolated worktrees (`public/checkout`, `public/profile`, `public/partners`, `public/legal`), each followed by an independent `ui-verifier`; checkout gets the revenue-risk walk plus the PM's manual pass and merges last.
+
 ## 2026-09-12 — Redesign DB index drift fixed; auth navbar transparent (v2.0.19)
 
 **Database.** The `redesign` Neon branch's `Variant_slug_key` was a hand-made *partial* unique index (`WHERE slug IS NOT NULL`), which `prisma db push` can't reconcile with the schema's plain `@unique` — every push failed on "relation already exists". Fix, user-directed: confirmed zero duplicate slugs, dropped the partial index, re-ran `db:push:redesign` (which recreated it as the plain unique index Prisma expects; Postgres treats NULLs as distinct so nullable rows are unaffected). `prisma migrate diff` against the branch is now empty. Production untouched.
