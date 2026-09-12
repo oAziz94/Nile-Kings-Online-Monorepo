@@ -27,10 +27,19 @@ function scryptAsync(password: string, salt: string): Promise<Buffer> {
   });
 }
 
-async function hashPassword(plain: string): Promise<string> {
+export async function hashPassword(plain: string): Promise<string> {
   const salt = crypto.randomBytes(16).toString("hex");
   const key = await scryptAsync(plain, salt);
   return `${salt}:${key.toString("hex")}`;
+}
+
+/** Logs in via the real `/login` form given a raw local phone (no fixture pair needed). */
+export async function loginWithPhone(page: Page, localPhone: string, password: string): Promise<void> {
+  await page.goto("/login");
+  await page.getByLabel("رقم الهاتف").fill(localPhone);
+  await page.getByLabel("كلمة المرور").fill(password);
+  await page.getByRole("button", { name: "تسجيل الدخول" }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 15_000 });
 }
 
 export type PartnerFixtureSide = {
