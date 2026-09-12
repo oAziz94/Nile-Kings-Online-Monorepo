@@ -14,12 +14,25 @@ export function Disclosure({
   title,
   children,
   defaultOpen = false,
+  open: openProp,
+  onOpenChange,
 }: {
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  /** Controlled variant (e.g. auto-closing the mobile legal TOC after a link click). Omit for the
+   * existing uncontrolled usage (PDP's description/shipping/returns/payment accordions). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : uncontrolledOpen;
+  const setOpen = (next: boolean | ((prev: boolean) => boolean)) => {
+    const value = typeof next === "function" ? next(open) : next;
+    if (!isControlled) setUncontrolledOpen(value);
+    onOpenChange?.(value);
+  };
   const panelId = useId();
 
   return (

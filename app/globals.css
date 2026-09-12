@@ -92,11 +92,21 @@
   }
 
   html {
-    @apply antialiased overflow-x-hidden;
+    /* `clip`, not `hidden` (backlog 4.15): `overflow-x: hidden` makes the element an official CSS
+       scroll container even though nothing here ever actually scrolls internally (the page always
+       scrolls at the document level — verified: `document.scrollingElement` is `<html>`), which
+       makes it — and `body` below, same reasoning — the nearest "scrolling ancestor" that any
+       descendant `position: sticky` element resolves its stuck offset against instead of the real
+       viewport, so the sticky element never re-computes on scroll and just sits at its static
+       position. `overflow: clip` still clips horizontal overflow (the reason this rule exists) but
+       is excluded from the CSS Overflow spec's scroll-container list, so `position: sticky` on any
+       descendant (this batch's legal-page table of contents; any future one) resolves against the
+       viewport again, as intended. No visual change to the clipping behavior itself. */
+    @apply antialiased overflow-x-clip;
   }
 
   body {
-    @apply bg-background text-foreground font-cairo overflow-x-hidden;
+    @apply bg-background text-foreground font-cairo overflow-x-clip;
   }
 
   a:hover {
