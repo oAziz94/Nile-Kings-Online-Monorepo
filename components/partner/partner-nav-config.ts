@@ -61,8 +61,7 @@ export const PARTNER_NAV_SECTIONS: readonly PartnerNavSection[] = [
     items: [
       { href: "/partner/products", label: "مخزون المنتجات", icon: PackageSearch, roles: ["AGENT", "DISTRIBUTOR"] },
       { href: "/partner/distributor-requests", label: "طلبات الموزعين", icon: ClipboardList, roles: ["AGENT"] },
-      // TODO(4.23): uncomment once /partner/receipts exists.
-      // { href: "/partner/receipts", label: "الاستلام من المصنع", icon: Boxes, roles: ["AGENT"] },
+      { href: "/partner/receipts", label: "الاستلام من المصنع", icon: Boxes, roles: ["AGENT"] },
       { href: "/partner/restock-requests", label: "طلب إعادة توريد", icon: ClipboardList, roles: ["DISTRIBUTOR"] },
     ],
   },

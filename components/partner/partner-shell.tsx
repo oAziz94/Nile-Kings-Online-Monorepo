@@ -190,7 +190,7 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
     <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
     <div className="flex min-h-screen flex-col bg-stone-50 lg:flex-row" dir="rtl">
       {/* Mobile/tablet top bar (<lg) */}
-      <header className="sticky top-0 z-40 flex shrink-0 items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 lg:hidden">
+      <header data-partner-chrome className="sticky top-0 z-40 flex shrink-0 items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 print:hidden lg:hidden">
         <SheetTrigger asChild>
           <Button
             type="button"
@@ -224,7 +224,7 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
       </SheetContent>
 
       {/* Desktop sidebar (lg+) */}
-      <aside className="sticky top-0 hidden h-screen w-[236px] shrink-0 flex-col overflow-y-auto bg-lapis-900 px-4 py-6 lg:flex">
+      <aside data-partner-chrome className="sticky top-0 hidden h-screen w-[236px] shrink-0 flex-col overflow-y-auto bg-lapis-900 px-4 py-6 print:hidden lg:flex">
         <div className="mb-2 flex items-center px-2 pb-6">
           <Image src="/brand/logo-gold-mark.png" alt="نايل كينجز" width={24} height={24} className="h-6 w-auto" />
         </div>
@@ -254,8 +254,8 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        {/* Desktop topbar */}
-        <div className="hidden items-center justify-between border-b border-stone-200 bg-white px-8 py-4 lg:flex">
+        {/* Desktop topbar — `data-partner-chrome` + `print:hidden`: app chrome never prints (4.23 verifier finding). */}
+        <div data-partner-chrome className="hidden items-center justify-between border-b border-stone-200 bg-white px-8 py-4 print:hidden lg:flex">
           <div />
           <div className="flex items-center gap-4">
             <PartnerAlertsBell />

@@ -18,10 +18,9 @@ import { piastresToEgp } from "@/lib/catalog";
 import { formatNumberEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
 
-// TODO(4.23): flip to true once `app/api/partner/inventory/export/route.ts` exists, and
-// point the button below at it. Kept behind this constant per backlog 4.18: the button is
-// link-only and must stay hidden until the export route is real.
-const INVENTORY_EXPORT_ENABLED = false;
+// Backlog 4.23: `app/api/partner/inventory/export/route.ts` now exists, so the button below
+// (link-only, per backlog 4.18) is enabled.
+const INVENTORY_EXPORT_ENABLED = true;
 
 type ProductRow = {
   id: string;
