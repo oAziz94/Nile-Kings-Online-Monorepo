@@ -28,13 +28,20 @@ type ProductListItem = {
   inStock: boolean;
 };
 
-async function findInStockProductSlug(baseURL: string): Promise<string> {
-  const res = await fetch(`${baseURL}/api/products?limit=48`);
+// Uses `page.request` so the governorate cookie set above applies — a cookieless fetch sees
+// every product as out of stock and silently falls back to the first product, whatever its
+// stock (bit the merged suite once). Picks the first product with a sellable variant.
+async function findInStockProductSlug(page: Page): Promise<string> {
+  const res = await page.request.get("/api/products?inStock=true&limit=48");
   const json = (await res.json()) as { data?: { products: ProductListItem[] } };
   const products = json.data?.products ?? [];
-  const inStock = products.find((p) => p.inStock) ?? products[0];
-  if (!inStock) throw new Error("No products available in the redesign DB to test the PDP against.");
-  return inStock.slug;
+  for (const p of products) {
+    const detail = (await (await page.request.get(`/api/products/${p.slug}`)).json()) as {
+      data?: { variants: { stockAvailable: number }[] };
+    };
+    if (detail.data?.variants.some((v) => v.stockAvailable > 0)) return p.slug;
+  }
+  throw new Error("No in-stock product available in the redesign DB to test the PDP against.");
 }
 
 async function resolveVariant(page: Page) {
@@ -53,8 +60,9 @@ async function resolveVariant(page: Page) {
   }
 
   if ((await colorGroup.count()) > 0) {
-    const needsColor = await page.getByText("يجب اختيار اللون").isVisible().catch(() => false);
-    if (needsColor) {
+    // Always pick an enabled colour when the group exists: the "choose a colour" toast only
+    // appears AFTER a failed add, so gating on it can never work before the click.
+    {
       const colorRadios = colorGroup.getByRole("radio");
       const cCount = await colorRadios.count();
       for (let i = 0; i < cCount; i++) {
@@ -76,7 +84,7 @@ test.describe("Public PDP (backlog 4.9)", () => {
     const base = baseURL ?? "http://localhost:3100";
     await setStorefrontLocation(page, base);
 
-    const slug = await findInStockProductSlug(base);
+    const slug = await findInStockProductSlug(page);
     await page.goto(`/products/${slug}`);
 
     // h1 / price
@@ -116,8 +124,9 @@ test.describe("Public PDP (backlog 4.9)", () => {
       // If a colour is now required, pick the first enabled one.
       if ((await colorGroup.count()) > 0) {
         const colorRadios = colorGroup.getByRole("radio");
-        const needsColor = await page.getByText("يجب اختيار اللون").isVisible().catch(() => false);
-        if (needsColor) {
+        // Always pick an enabled colour when the group exists: the "choose a colour" toast only
+        // appears AFTER a failed add, so gating on it can never work before the click.
+        {
           const cCount = await colorRadios.count();
           for (let i = 0; i < cCount; i++) {
             const radio = colorRadios.nth(i);
@@ -137,17 +146,17 @@ test.describe("Public PDP (backlog 4.9)", () => {
 
     await addToCartButton.click();
 
+    // Adding to cart opens the cart drawer (preserved legacy behaviour). Since 4.10 it is a real
+    // modal (Radix Dialog): the rest of the page is aria-hidden while it is open, so the navbar
+    // badge is unreachable by role until the drawer is closed — close it FIRST, then poll.
+    const cartDrawer = page.getByRole("dialog", { name: "سلة التسوق" });
+    await expect(cartDrawer).toBeVisible({ timeout: 10_000 });
+    await cartDrawer.getByRole("button", { name: "إغلاق" }).click();
+    await expect(cartDrawer).not.toBeVisible();
+
     await expect
       .poll(async () => (await cartLink.innerText()).trim(), { timeout: 10_000 })
       .not.toBe(beforeText);
-
-    // Adding to cart opens the cart drawer (preserved legacy behaviour) — close it before
-    // continuing so it doesn't intercept clicks on the underlying PDP.
-    const cartDrawer = page.getByRole("dialog", { name: "سلة التسوق" });
-    if (await cartDrawer.isVisible().catch(() => false)) {
-      await cartDrawer.getByRole("button", { name: "إغلاق" }).click();
-      await expect(cartDrawer).not.toBeVisible();
-    }
 
     // Lightbox opens/closes with Escape.
     await page.getByRole("button", { name: "تكبير الصورة" }).click();
@@ -171,7 +180,7 @@ test.describe("Public PDP (backlog 4.9)", () => {
     const base = baseURL ?? "http://localhost:3100";
     await setStorefrontLocation(page, base);
 
-    const slug = await findInStockProductSlug(base);
+    const slug = await findInStockProductSlug(page);
     await page.goto(`/products/${slug}`);
 
     const actions = page.getByTestId("pdp-actions");
