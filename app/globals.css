@@ -7,6 +7,10 @@
     /* Materials of the pharaohs — v2 design system, see docs/redesign/01-design-system.md
        and the canonical values in docs/redesign/design-canvas/Main.dc.html */
     --papyrus: 42 45% 97%;
+    /* Dashboard content ground (partner/admin shells only — backlog 4.16), one shade
+       lighter than --stone-100, matching design-canvas/PartnerOrders-Desktop.dc.html
+       and Components.dc.html's `:root` exactly. */
+    --stone-50: 40 30% 98%;
     --stone-100: 38 22% 93%;
     --stone-200: 36 16% 87%;
     --stone-300: 34 12% 76%;

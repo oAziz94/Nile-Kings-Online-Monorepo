@@ -223,6 +223,7 @@ model Variant {
   partnerInventories PartnerInventory[]
   inventoryLedgerEntries InventoryLedger[]
   restockRequestItems RestockRequestItem[]
+  stockReceiptLines StockReceiptLine[]
 
   @@index([productId])
   @@index([sku])
@@ -524,6 +525,12 @@ model Partner {
   linkedAgentId String?
   isActive      Boolean     @default(true)
   notes         String?
+  // Partner portal foundation (backlog 4.16) — per-partner low-stock threshold (user decision
+  // 2026-09-12: default 5, replaces the previously hardcoded `<= 3` checks across home/bell/
+  // products colouring/stock report) and the alerts-read watermark for the computed, table-less
+  // in-app alert feed (backlog 4.17).
+  lowStockThreshold Int      @default(5)
+  alertsSeenAt      DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -538,6 +545,7 @@ model Partner {
   inventoryLedgerEntries InventoryLedger[]
   sourceRestockRequests RestockRequest[] @relation("RestockRequestSourcePartner")
   destinationRestockRequests RestockRequest[] @relation("RestockRequestDestinationPartner")
+  stockReceipts StockReceipt[]
 
   @@index([userId])
   @@index([phone])
@@ -562,6 +570,9 @@ enum InventoryLedgerReason {
   RESTOCK_REQUEST_CREATE
   RESTOCK_REQUEST_FULFILL
   LEGACY_BACKFILL
+  // Factory intake / import-export source-of-truth (backlog 4.23)
+  FACTORY_RECEIPT
+  STOCK_COUNT
 }
 
 model PartnerInventory {
@@ -592,17 +603,20 @@ model InventoryLedger {
   orderId            String?
   routedOrderId      String?
   restockRequestId   String?
+  stockReceiptId     String?
   notes              String?
   createdAt          DateTime              @default(now())
 
   partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   variant Variant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  stockReceipt StockReceipt? @relation(fields: [stockReceiptId], references: [id], onDelete: SetNull)
 
   @@index([partnerId])
   @@index([variantId])
   @@index([orderId])
   @@index([routedOrderId])
   @@index([restockRequestId])
+  @@index([stockReceiptId])
   @@index([reason])
   @@index([createdAt])
 }
@@ -650,6 +664,48 @@ model RestockRequestItem {
   variant Variant @relation(fields: [variantId], references: [id], onDelete: Restrict)
 
   @@unique([restockRequestId, variantId])
+  @@index([variantId])
+}
+
+// ---------------------------------------------------------------------------
+// Factory intake / stock-count receipts (backlog 4.23 — source of truth between
+// partner and factory; schema landed in 4.16 so no later task touches schema.prisma)
+// ---------------------------------------------------------------------------
+
+enum StockReceiptKind {
+  FACTORY
+  COUNT
+}
+
+model StockReceipt {
+  id        String           @id @default(cuid())
+  partnerId String
+  kind      StockReceiptKind
+  reference String?
+  notes     String?
+  createdAt DateTime         @default(now())
+
+  partner Partner              @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  lines   StockReceiptLine[]
+  ledgerEntries InventoryLedger[]
+
+  @@index([partnerId])
+  @@index([kind])
+  @@index([createdAt])
+}
+
+model StockReceiptLine {
+  id                String   @id @default(cuid())
+  receiptId         String
+  variantId         String
+  quantity          Int
+  previousAvailable Int
+  newAvailable      Int
+
+  receipt StockReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  variant Variant      @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@index([receiptId])
   @@index([variantId])
 }
 

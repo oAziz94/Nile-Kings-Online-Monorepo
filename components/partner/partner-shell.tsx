@@ -1,248 +1,275 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
-import { BarChart3, Boxes, ClipboardList, LayoutDashboard, LogOut, Menu, PackageSearch, Truck, Users, X } from "lucide-react";
+import { AlertTriangle, Bell, LogOut, Menu, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/shared/skeleton";
+import {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetCloseButton,
+} from "@/components/ui/sheet";
+import { usePartnerMe, type PartnerType } from "@/hooks/use-partner-me";
+import { PARTNER_ACCOUNT_NAV, getPartnerNavForRole, type PartnerNavSection } from "@/components/partner/partner-nav-config";
 import { cn } from "@/lib/utils";
 
-type PartnerIdentity = {
-  name: string;
-  phone: string;
-  partnerType: "AGENT" | "DISTRIBUTOR";
-};
+/**
+ * Partner shell (backlog 4.16) rebuilt to the design-canvas dashboard chrome —
+ * `docs/redesign/design-canvas/PartnerOrders-Desktop.dc.html`: lapis-900 sidebar (236px,
+ * `lg+`) with the crown-only mark, sectioned nav (`partner-nav-config.ts`), gold-on-
+ * lapis-700 active item; white topbar; stone-50 content ground. Below `lg` the sidebar
+ * collapses to a white top bar + a `Sheet` (`side="right"`) drawer carrying the same nav.
+ *
+ * Fixes the flagged bug from `00-feature-inventory/partner/dashboard.md` (Edge cases):
+ * the old shell defaulted `partnerType === null` to the AGENT nav set, so a distributor
+ * could briefly (or permanently, on fetch failure) see agent-only nav items. Now: while
+ * `usePartnerMe()` is loading, the nav renders a skeleton (no role assumed either way);
+ * on a resolved error, an in-page alert with a retry button replaces the nav entirely.
+ */
 
-const AGENT_NAV_ITEMS = [
-  { href: "/partner/products", label: "مخزون المنتجات", icon: PackageSearch },
-  { href: "/partner/routed-orders", label: "الطلبات", icon: Truck },
-  { href: "/partner/distributors", label: "الموزعون", icon: Users },
-  { href: "/partner/distributor-requests", label: "طلبات الموزعين", icon: ClipboardList },
-  { href: "/partner/reports", label: "التقارير", icon: BarChart3 },
-] as const;
+function initials(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return "؟";
+  return trimmed.slice(0, 2);
+}
 
-const DISTRIBUTOR_NAV_ITEMS = [
-  { href: "/partner/products", label: "مخزون المنتجات", icon: PackageSearch },
-  { href: "/partner/routed-orders", label: "الطلبات", icon: Truck },
-  { href: "/partner/restock-requests", label: "طلب إعادة توريد", icon: ClipboardList },
-] as const;
+function partnerTypeLabel(type: PartnerType): string {
+  return type === "DISTRIBUTOR" ? "موزع" : "وكيل";
+}
 
-function isActive(pathname: string, href: string, exact?: boolean): boolean {
-  if (exact) return pathname === href;
+function isActivePath(pathname: string, href: string): boolean {
+  if (href === "/partner") return pathname === "/partner";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function PartnerNavLinks({
+function NavSkeleton() {
+  return (
+    <div className="space-y-6 px-3 py-2">
+      {[0, 1, 2].map((section) => (
+        <div key={section} className="space-y-2">
+          <Skeleton className="h-3 w-16 rounded" />
+          <Skeleton className="h-9 w-full rounded-lg" />
+          <Skeleton className="h-9 w-full rounded-lg" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NavError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div role="alert" className="mx-3 mt-2 rounded-lg border border-carnelian-500/30 bg-danger-bg p-3 text-danger-text">
+      <p className="flex items-center gap-2 text-sm font-bold">
+        <AlertTriangle className="h-4 w-4 shrink-0" />
+        تعذر تحميل بيانات الحساب
+      </p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-2 text-xs font-bold underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+      >
+        إعادة المحاولة
+      </button>
+    </div>
+  );
+}
+
+async function logout() {
+  await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+  window.location.href = "/login";
+}
+
+function NavSections({
+  sections,
   pathname,
-  partnerType,
   onNavigate,
 }: {
+  sections: PartnerNavSection[];
   pathname: string;
-  partnerType: "AGENT" | "DISTRIBUTOR" | null;
   onNavigate?: () => void;
 }) {
-  const navItems = partnerType === "DISTRIBUTOR" ? DISTRIBUTOR_NAV_ITEMS : AGENT_NAV_ITEMS;
   return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <p className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          الرئيسية
-        </p>
-        {navItems.map((item) => {
-          const active = isActive(pathname, item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onNavigate}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-burgundy/10 text-burgundy shadow-sm ring-1 ring-inset ring-burgundy/15"
-                  : "text-muted-foreground hover:bg-accent hover:text-background"
-              )}
-            >
-              <Icon className={cn("h-4 w-4 shrink-0", active && "text-burgundy")} />
-              {item.label}
-            </Link>
-          );
-        })}
-      </div>
-      <div className="space-y-1">
-        <p className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="space-y-1">
+      {sections.map((section) => (
+        <div key={section.id} className="mb-1">
+          <p className="mb-2 mt-4 px-2.5 text-[11px] font-bold uppercase tracking-wide text-[hsl(220_20%_55%)]">
+            {section.label}
+          </p>
+          {section.items.map((item) => {
+            const active = isActivePath(pathname, item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-[10px] px-3 py-[11px] text-sm font-semibold transition-colors",
+                  active
+                    ? "bg-lapis-700 text-gold-500"
+                    : "text-[hsl(220_25%_72%)] hover:bg-lapis-700/60 hover:text-gold-50",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-lapis-900"
+                )}
+              >
+                <Icon className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
+      <div className="mt-4 border-t border-white/10 pt-3">
+        <p className="mb-2 px-2.5 text-[11px] font-bold uppercase tracking-wide text-[hsl(220_20%_55%)]">
           الحساب
         </p>
         <Link
-          href="/"
+          href={PARTNER_ACCOUNT_NAV.storeHref}
           onClick={onNavigate}
-          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="flex items-center gap-2.5 rounded-[10px] px-3 py-[11px] text-sm font-semibold text-[hsl(220_25%_72%)] transition-colors hover:bg-lapis-700/60 hover:text-gold-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-lapis-900"
         >
-          <LayoutDashboard className="h-4 w-4 shrink-0" />
-          المتجر
+          <Store className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
+          {PARTNER_ACCOUNT_NAV.storeLabel}
         </Link>
         <button
           type="button"
-          onClick={async () => {
-            await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-            window.location.href = "/login";
-          }}
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          onClick={logout}
+          className="flex w-full items-center gap-2.5 rounded-[10px] px-3 py-[11px] text-sm font-semibold text-[hsl(220_25%_72%)] transition-colors hover:bg-lapis-700/60 hover:text-gold-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-lapis-900"
         >
-          <LogOut className="h-4 w-4 shrink-0" />
-          تسجيل الخروج
+          <LogOut className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
+          {PARTNER_ACCOUNT_NAV.logoutLabel}
         </button>
       </div>
     </div>
   );
 }
 
-function PartnerNavDrawer({
-  isOpen,
-  onClose,
-  pathname,
-  partnerType,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  pathname: string;
-  partnerType: "AGENT" | "DISTRIBUTOR" | null;
-}) {
-  React.useEffect(() => {
-    if (!isOpen) return;
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleEscape);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-      document.body.style.overflow = "";
-    };
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  return (
-    <>
-      <div className="fixed inset-0 z-[100] bg-black/40 lg:hidden" aria-hidden onClick={onClose} />
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-label="قائمة لوحة الشريك"
-        className={cn(
-          "fixed top-0 bottom-0 z-[100] flex w-[min(18rem,88vw)] flex-col",
-          "right-0 left-auto border-l border-border bg-card shadow-lg",
-          "animate-in slide-in-from-right duration-300 ease-out lg:hidden"
-        )}
-      >
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-4">
-          <div className="min-w-0">
-            <p className="truncate text-base font-bold text-foreground">Nile Kings</p>
-            <p className="text-xs text-muted-foreground">Partner</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            aria-label="إغلاق القائمة"
-            className="h-9 w-9 shrink-0 rounded-md"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-        <nav className="flex-1 overflow-y-auto p-3">
-          <PartnerNavLinks pathname={pathname} partnerType={partnerType} onNavigate={onClose} />
-        </nav>
-      </aside>
-    </>
-  );
-}
-
 export function PartnerShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [navOpen, setNavOpen] = React.useState(false);
-  const [partnerType, setPartnerType] = React.useState<"AGENT" | "DISTRIBUTOR" | null>(null);
-  const [identity, setIdentity] = React.useState<PartnerIdentity | null>(null);
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const { data: partner, isLoading, isError, refetch } = usePartnerMe();
 
   React.useEffect(() => {
-    setNavOpen(false);
+    setDrawerOpen(false);
   }, [pathname]);
 
-  React.useEffect(() => {
-    let alive = true;
-    fetch("/api/partner/me", { credentials: "include" })
-      .then((res) => res.json())
-      .then((json) => {
-        const partner = json?.data?.partner;
-        const type = partner?.partnerType;
-        if (alive && (type === "AGENT" || type === "DISTRIBUTOR")) {
-          setPartnerType(type);
-          setIdentity({
-            name: partner.name ?? "Partner",
-            phone: partner.phone ?? "",
-            partnerType: type,
-          });
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const sections = partner ? getPartnerNavForRole(partner.partnerType) : null;
+  const displayName = partner?.name?.trim() || "شريك";
 
-  const partnerTypeLabel =
-    identity?.partnerType === "DISTRIBUTOR" ? "Distributor" : "Agent";
-  const displayName = identity?.name?.trim() || identity?.phone || "Partner";
+  const navBody = isLoading ? (
+    <NavSkeleton />
+  ) : isError || !sections ? (
+    <NavError onRetry={() => refetch()} />
+  ) : (
+    <NavSections sections={sections} pathname={pathname} onNavigate={() => setDrawerOpen(false)} />
+  );
 
   return (
-    <div className="flex min-h-screen flex-col bg-background lg:flex-row" dir="rtl">
-      <header className="sticky top-0 z-50 flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-3 lg:hidden">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 shrink-0 rounded-md"
-          onClick={() => setNavOpen(true)}
-          aria-label="فتح قائمة لوحة الشريك"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-          <Boxes className="h-5 w-5" />
-        </div>
+    <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+    <div className="flex min-h-screen flex-col bg-stone-50 lg:flex-row" dir="rtl">
+      {/* Mobile/tablet top bar (<lg) */}
+      <header className="sticky top-0 z-40 flex shrink-0 items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 lg:hidden">
+        <SheetTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0 rounded-md"
+            aria-label="فتح قائمة لوحة الشريك"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <Image src="/brand/logo-gold-mark.png" alt="نايل كينجز" width={24} height={24} className="h-6 w-6" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-foreground">{displayName}</p>
-          <p className="truncate text-xs text-muted-foreground">Nile Kings {partnerTypeLabel}</p>
+          {isLoading ? (
+            <Skeleton className="h-4 w-24 rounded" />
+          ) : (
+            <p className="truncate text-sm font-bold text-ink">{displayName}</p>
+          )}
         </div>
+        <button
+          type="button"
+          aria-label="الإشعارات"
+          title="قريبًا"
+          disabled
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stone-100 text-ink-soft disabled:opacity-60"
+        >
+          <Bell className="h-4 w-4" strokeWidth={1.6} />
+        </button>
       </header>
 
-      <PartnerNavDrawer
-        isOpen={navOpen}
-        onClose={() => setNavOpen(false)}
-        pathname={pathname}
-        partnerType={partnerType}
-      />
+      <SheetContent side="right" className="w-[min(18rem,88vw)] bg-lapis-900 p-0 lg:hidden">
+        <SheetHeader className="border-b border-white/10 bg-lapis-900 px-4">
+          <SheetTitle className="font-cairo text-base text-white">قائمة الشريك</SheetTitle>
+          <SheetCloseButton className="text-white/70 hover:text-white" />
+        </SheetHeader>
+        <nav className="flex-1 overflow-y-auto p-3" aria-label="التنقل في لوحة الشريك">
+          {navBody}
+        </nav>
+      </SheetContent>
 
-      <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-l border-border bg-card lg:flex">
-        <div className="border-b border-border px-5 py-4">
-          <p className="text-base font-bold text-foreground">Nile Kings</p>
-          <p className="text-xs text-muted-foreground">Partner</p>
-          <div className="mt-4 rounded-md border border-border bg-muted/40 px-3 py-2">
-            <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {identity?.phone || partnerTypeLabel}
-            </p>
-          </div>
+      {/* Desktop sidebar (lg+) */}
+      <aside className="sticky top-0 hidden h-screen w-[236px] shrink-0 flex-col overflow-y-auto bg-lapis-900 px-4 py-6 lg:flex">
+        <div className="mb-2 flex items-center px-2 pb-6">
+          <Image src="/brand/logo-gold-mark.png" alt="نايل كينجز" width={24} height={24} className="h-6 w-auto" />
         </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          <PartnerNavLinks pathname={pathname} partnerType={partnerType} />
+        <div className="mb-2 rounded-lg bg-white/5 px-3 py-2.5">
+          {isLoading ? (
+            <>
+              <Skeleton className="h-4 w-28 rounded" />
+              <Skeleton className="mt-2 h-3 w-20 rounded" />
+            </>
+          ) : (
+            <>
+              <p className="truncate text-sm font-bold text-white">{displayName}</p>
+              <p dir="ltr" className="truncate text-right text-xs text-[hsl(220_20%_60%)]">
+                {partner?.phone ?? ""}
+              </p>
+              {partner && (
+                <p className="mt-0.5 text-[11px] font-semibold text-gold-500">
+                  {partnerTypeLabel(partner.partnerType)}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+        <nav className="flex-1 overflow-y-auto" aria-label="التنقل في لوحة الشريك">
+          {navBody}
         </nav>
       </aside>
 
-      <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6 lg:overflow-auto lg:p-6">
-        {children}
-      </main>
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        {/* Desktop topbar */}
+        <div className="hidden items-center justify-between border-b border-stone-200 bg-white px-8 py-4 lg:flex">
+          <div />
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              aria-label="الإشعارات"
+              title="قريبًا"
+              disabled
+              className="relative flex h-9 w-9 items-center justify-center rounded-[10px] bg-stone-100 text-ink-soft disabled:opacity-60"
+            >
+              <Bell className="h-4 w-4" strokeWidth={1.6} />
+            </button>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-lapis-800 text-[13px] font-extrabold text-gold-500">
+              {isLoading ? "" : initials(displayName)}
+            </div>
+          </div>
+        </div>
+
+        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6 lg:overflow-auto lg:p-8">
+          {children}
+        </main>
+      </div>
     </div>
+    </Sheet>
   );
 }
