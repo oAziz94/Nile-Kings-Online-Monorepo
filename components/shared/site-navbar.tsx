@@ -1,18 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { MenuDrawer } from "@/components/shared/menu-drawer";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 /**
- * The site navbar in its v2 form — the one identity bar that every surface shares. Today it is
- * mounted by the (auth) route group (login / register / forgot-password); the storefront still
- * runs the pre-redesign `components/shared/header.tsx` until its own backlog task swaps it for
- * this component (docs/redesign/04-decisions.md 2026-09-11 "Two site-wide design/architecture
- * notes"). It lives in components/shared/ precisely so that swap is a one-line change, not a
- * rebuild: nothing in here is auth-specific except the `current` prop.
+ * The site navbar in its v2 form — the one identity bar every surface shares. Mounted by both the
+ * (auth) route group (login / register / forgot-password) and, since backlog 4.6, the (public)
+ * route group (via `components/shared/public-site-navbar.tsx`), which replaced the pre-redesign
+ * `components/shared/header.tsx` (deleted). Nothing in here is auth-specific except the `current`
+ * prop, and the storefront-only additions below are all opt-in.
  *
  * Composition (from the reviewed design canvas, refined 2026-09-11 per the user's art-direction
  * brief): a 1fr/auto/1fr grid on the ivory ground — menu control at the inline start, the crown
@@ -24,6 +32,17 @@ import { cn } from "@/lib/utils";
  * The wishlist control is part of the bar's identity per the brief, but the product has no
  * wishlist feature yet — it is rendered inert (`aria-disabled`, no navigation) rather than pointed
  * at a route that doesn't exist. Point it at the real route when that feature ships.
+ *
+ * Backlog 4.6 (Public storefront shell) extends this component with what the storefront needs
+ * and (auth) doesn't, both strictly additive/opt-in so (auth)'s existing rendering never changes:
+ * - `cartCount` — a live badge (Archivo numeral, ink pill, hidden at 0). Supplied by the caller,
+ *   never read from `useCart()` in here, because this component also mounts inside `(auth)`,
+ *   where `CartProvider` is not in the tree — reading the context here would throw there.
+ * - `accountMenu` — when true, the account control becomes real: logged-out renders the same
+ *   `/login` link, logged-in fetches `/api/auth/me` and swaps it for a `DropdownMenu` matching
+ *   the pre-redesign `Header`'s items/hrefs (حسابي → /profile/account, طلباتي → /profile/orders,
+ *   عناويني → /profile/addresses, تسجيل الخروج → POST /api/auth/logout + router.refresh()).
+ *   Defaults to false so `(auth)` keeps rendering the plain `/login` link unchanged.
  */
 
 export type SiteNavbarSection = "account" | "cart" | "wishlist";
@@ -58,14 +77,76 @@ function CurrentMark() {
   return <span aria-hidden="true" className="absolute inset-x-2.5 bottom-0.5 h-px bg-gold-500" />;
 }
 
-export function SiteNavbar({ current }: { current?: SiteNavbarSection }) {
+/** Ink pill cart-count badge — Archivo numeral, hidden entirely at 0/undefined. */
+function CartBadge({ count }: { count?: number }) {
+  if (!count || count <= 0) return null;
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute -top-0.5 inset-inline-end-0 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[hsl(228_40%_14%)] px-1 font-archivo text-[10px] font-semibold leading-none text-papyrus"
+      style={{ direction: "ltr" }}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+type NavbarUser = { name: string | null; phone: string } | null;
+
+export function SiteNavbar({
+  current,
+  cartCount,
+  accountMenu = false,
+  sticky = false,
+}: {
+  current?: SiteNavbarSection;
+  /** Live cart item count; supplied by the caller (see file header — never read via `useCart()` here). */
+  cartCount?: number;
+  /** Opt-in: turns the account control into a real logged-in/out control with a dropdown. */
+  accountMenu?: boolean;
+  /**
+   * `(auth)` composes its own single-screen layout around an `absolute`-positioned bar (default,
+   * unchanged). The storefront scrolls real content underneath it, so `(public)` opts into a
+   * `fixed` bar that stays put — same 60/84px heights either way.
+   */
+  sticky?: boolean;
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [user, setUser] = useState<NavbarUser>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const router = useRouter();
+  const fetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (!accountMenu || fetchedRef.current) return;
+    fetchedRef.current = true;
+    fetch("/api/auth/me", { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) {
+          setUser(null);
+          return;
+        }
+        const data = await res.json();
+        setUser({ name: data.data?.name ?? null, phone: data.data?.phone ?? "" });
+      })
+      .catch(() => setUser(null));
+  }, [accountMenu]);
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    setUser(null);
+    setAccountOpen(false);
+    router.refresh();
+  }
 
   return (
     <>
       <header
         role="banner"
-        className="absolute inset-x-0 top-0 z-40 grid h-[60px] grid-cols-[1fr_auto_1fr] items-center border-b border-[hsl(40_14%_84%)] bg-papyrus px-2 lg:h-[84px] lg:px-8"
+        className={cn(
+          sticky ? "fixed" : "absolute",
+          "inset-x-0 top-0 z-40 grid h-[60px] grid-cols-[1fr_auto_1fr] items-center border-b border-[hsl(40_14%_84%)] bg-papyrus px-2 lg:h-[84px] lg:px-8"
+        )}
       >
         <button
           type="button"
@@ -112,26 +193,71 @@ export function SiteNavbar({ current }: { current?: SiteNavbarSection }) {
             href="/cart"
             aria-label="سلة التسوق"
             aria-current={current === "cart" ? "page" : undefined}
-            className={controlClass(current === "cart")}
+            className={cn(controlClass(current === "cart"), "relative")}
           >
             <svg {...iconProps} className={iconClass}>
               <path d="M4.8 6.6h11.4l-.9 10.8H5.7z" />
               <path d="M8 6.6V5.2a2.5 2.5 0 0 1 5 0v1.4" />
             </svg>
+            <CartBadge count={cartCount} />
             {current === "cart" && <CurrentMark />}
           </Link>
-          <Link
-            href="/login"
-            aria-label="حسابي"
-            aria-current={current === "account" ? "page" : undefined}
-            className={controlClass(current === "account")}
-          >
-            <svg {...iconProps} className={iconClass}>
-              <circle cx="10.5" cy="7.6" r="3.1" />
-              <path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8" />
-            </svg>
-            {current === "account" && <CurrentMark />}
-          </Link>
+
+          {accountMenu && user ? (
+            <DropdownMenu open={accountOpen} onOpenChange={setAccountOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="حسابي"
+                  aria-current={current === "account" ? "page" : undefined}
+                  aria-expanded={accountOpen}
+                  className={controlClass(current === "account")}
+                >
+                  <svg {...iconProps} className={iconClass}>
+                    <circle cx="10.5" cy="7.6" r="3.1" />
+                    <path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8" />
+                  </svg>
+                  {current === "account" && <CurrentMark />}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 rounded-none border-[hsl(228_20%_86%)]">
+                <DropdownMenuLabel className="font-plex-arabic text-sm font-medium text-[hsl(228_26%_24%)]">
+                  {user.name?.trim() || user.phone || "حسابي"}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile/account" onClick={() => setAccountOpen(false)}>
+                    حسابي
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/profile/orders" onClick={() => setAccountOpen(false)}>
+                    طلباتي
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/profile/addresses" onClick={() => setAccountOpen(false)}>
+                    عناويني
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>تسجيل الخروج</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link
+              href="/login"
+              aria-label="حسابي"
+              aria-current={current === "account" ? "page" : undefined}
+              className={controlClass(current === "account")}
+            >
+              <svg {...iconProps} className={iconClass}>
+                <circle cx="10.5" cy="7.6" r="3.1" />
+                <path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8" />
+              </svg>
+              {current === "account" && <CurrentMark />}
+            </Link>
+          )}
         </div>
       </header>
       <MenuDrawer isOpen={menuOpen} onClose={() => setMenuOpen(false)} />

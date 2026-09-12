@@ -186,26 +186,26 @@ export function GovernorateSelector() {
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="fixed bottom-4 left-4 z-[95] flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-lg transition-colors hover:bg-muted"
+          className="fixed bottom-4 start-4 z-[95] flex items-center gap-2 rounded-none border border-[hsl(228_40%_14%)] bg-papyrus px-4 py-2 text-sm font-medium text-[hsl(228_26%_24%)] shadow-[0_10px_30px_-8px_rgba(21,26,46,0.25)] transition-colors hover:bg-[hsl(38_22%_93%)]"
         >
-          <MapPin className="h-4 w-4 text-burgundy" />
+          <MapPin className="h-4 w-4 text-gold-600" />
           {savedAddress.governorate}
         </button>
       ) : null}
 
       {editing ? (
-        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/45 p-4 sm:items-center">
+        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-[hsl(228_40%_9%)]/45 p-4 sm:items-center">
           <div
-            className="w-full max-w-md rounded-2xl border border-border bg-card p-5 text-right shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto border border-[hsl(228_16%_82%)] bg-papyrus p-5 text-right shadow-[0_24px_60px_-12px_rgba(21,26,46,0.28)]"
             dir="rtl"
           >
             <div className="flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-burgundy/10 text-burgundy">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-[hsl(228_40%_14%)] text-[hsl(228_40%_14%)]">
                 <MapPin className="h-5 w-5" />
               </span>
               <div>
-                <h2 className="text-lg font-bold text-foreground">عنوان التوصيل</h2>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                <h2 className="font-amiri text-lg font-bold text-[hsl(228_40%_14%)]">عنوان التوصيل</h2>
+                <p className="mt-1 text-sm leading-6 text-[hsl(228_18%_45%)]">
                   سنعرض توفر المقاسات حسب مخزون الوكيل المسؤول عن منطقتك.
                 </p>
               </div>
@@ -213,11 +213,11 @@ export function GovernorateSelector() {
 
             <div className="mt-5 space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">المحافظة *</label>
+                <label className="mb-2 block text-sm font-medium text-[hsl(228_26%_24%)]">المحافظة *</label>
                 <Select
                   value={draft.governorate}
                   onChange={(e) => setGovernorate(e.target.value)}
-                  className="h-11 rounded-xl"
+                  className="h-11 rounded-none"
                 >
                   <option value="">اختر المحافظة</option>
                   {options.map((option) => (
@@ -229,81 +229,81 @@ export function GovernorateSelector() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">المنطقة *</label>
+                <label className="mb-2 block text-sm font-medium text-[hsl(228_26%_24%)]">المنطقة *</label>
                 <Input
                   value={draft.area}
                   onChange={(e) => setArea(e.target.value)}
                   onBlur={applyAreaCorrection}
                   placeholder="مثال: الدقي"
-                  className="h-11 rounded-xl"
+                  className="h-11 rounded-none"
                 />
               </div>
 
               <button
                 type="button"
                 onClick={() => setShowMore((v) => !v)}
-                className="flex w-full items-center justify-between text-sm font-medium text-primary"
+                className="flex w-full items-center justify-between text-sm font-medium text-[hsl(228_40%_14%)]"
               >
                 أضف باقي بيانات العنوان (اختياري الآن)
                 <ChevronDown className={cn("h-4 w-4 transition-transform", showMore && "rotate-180")} />
               </button>
 
               {showMore ? (
-                <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+                <div className="space-y-4 border border-[hsl(228_16%_84%)] bg-[hsl(38_22%_95%)] p-4">
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-foreground">تسمية (اختياري)</label>
+                    <label className="mb-1 block text-sm font-medium text-[hsl(228_26%_24%)]">تسمية (اختياري)</label>
                     <Input
                       value={draft.label}
                       onChange={(e) => setDraft((d) => ({ ...d, label: e.target.value }))}
                       placeholder="مثال: المنزل"
-                      className="rounded-xl"
+                      className="rounded-none"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-foreground">المدينة</label>
+                    <label className="mb-1 block text-sm font-medium text-[hsl(228_26%_24%)]">المدينة</label>
                     <Input
                       value={draft.city}
                       onChange={(e) => setDraft((d) => ({ ...d, city: e.target.value }))}
-                      className="rounded-xl"
+                      className="rounded-none"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-foreground">العنوان بالتفصيل</label>
+                    <label className="mb-1 block text-sm font-medium text-[hsl(228_26%_24%)]">العنوان بالتفصيل</label>
                     <Input
                       value={draft.street}
                       onChange={(e) => setDraft((d) => ({ ...d, street: e.target.value }))}
-                      className="rounded-xl"
+                      className="rounded-none"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-foreground">الدور</label>
+                      <label className="mb-1 block text-sm font-medium text-[hsl(228_26%_24%)]">الدور</label>
                       <Input
                         value={draft.floor}
                         onChange={(e) => setDraft((d) => ({ ...d, floor: e.target.value }))}
-                        className="rounded-xl"
+                        className="rounded-none"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-foreground">الشقة</label>
+                      <label className="mb-1 block text-sm font-medium text-[hsl(228_26%_24%)]">الشقة</label>
                       <Input
                         value={draft.apartment}
                         onChange={(e) => setDraft((d) => ({ ...d, apartment: e.target.value }))}
-                        className="rounded-xl"
+                        className="rounded-none"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-foreground">هاتف التوصيل</label>
+                    <label className="mb-1 block text-sm font-medium text-[hsl(228_26%_24%)]">هاتف التوصيل</label>
                     <Input
                       type="tel"
                       value={draft.phone}
                       onChange={(e) => setDraft((d) => ({ ...d, phone: e.target.value }))}
                       dir="ltr"
-                      className="rounded-xl"
+                      className="rounded-none"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-[hsl(228_18%_45%)]">
                     استكمال هذه البيانات يحفظ العنوان كعنوان توصيل جاهز لطلباتك القادمة.
                   </p>
                 </div>
@@ -315,7 +315,7 @@ export function GovernorateSelector() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="flex-1 rounded-xl"
+                  className="flex-1 rounded-none"
                   onClick={() => {
                     setDraft({
                       governorate: savedAddress.governorate,
@@ -337,7 +337,7 @@ export function GovernorateSelector() {
               ) : null}
               <Button
                 type="button"
-                className="flex-1 rounded-xl"
+                className="flex-1 rounded-none"
                 onClick={saveLocation}
                 disabled={!draft.governorate || !draft.area.trim() || saving}
               >

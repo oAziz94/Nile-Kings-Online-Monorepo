@@ -31,7 +31,7 @@ export function LegalPage({
               <Icon className="h-7 w-7" />
             </div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-              Nile Kings Legal
+قطن ملوك النيل — قانوني
             </p>
             <h1 className="mt-3 text-3xl font-bold text-foreground md:text-4xl">
               {title}
