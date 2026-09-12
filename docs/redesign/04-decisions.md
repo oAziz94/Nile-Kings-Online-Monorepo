@@ -1,3 +1,19 @@
+## 2026-09-12 — Storefront edits after the user's first review of the merged build (v2.0.15)
+
+Eleven corrections from the user's own walk of home/PDP, applied directly by the PM (all presentation or small merchandising logic; no route, API, cart or checkout change):
+
+1. **Transparent navbar on home** — reverses decision 11 of the implementation plan: the canvas's transparent bar is required. `SiteNavbar` gained a `transparent` prop (home only): transparent with the cream logo and ivory controls while the page is at the top, the normal ivory bar after 24px of scroll. The hero now sits under the bar with the canvas's dark top gradient so the ivory controls read on any photograph — **set as an inline gradient**, because the Tailwind `bg-gradient-to-b` + `from-[hsl(…)]/60` classes were absent from the served dev CSS (computed `background-image: none`) while identical patterns elsewhere rendered; not root-caused, worth remembering if a gradient "silently" disappears again.
+2. **Hero type** larger (104/44/20px at desktop, the canvas's sizes) and raised to ~19% from the bottom, with a soft ivory wash behind the block.
+3. **Category tiles use the user's new photographs** (`man-category`, `woman-categ`, `kids-categ` → `public/brand/storefront/category-*.jpg`, 2:1 sources), with a per-tile crop focus on the person and a much stronger bottom gradient (item 7).
+4. **Card chip = "الفئة · أول وسم"** — `ProductListItem` now carries `tags` and `productCardLabel()` in `lib/catalog.ts` builds the chip everywhere (home, rails, listing, cart recommendations, PDP recommendations).
+5. **Collection rails and PDP recommendations share one demand rule**: units sold in the last 30 days (cancelled orders excluded), then newest — the same `getProductIdsRankedByRecentSales` the listing's "أفضل مبيعات" sort uses. Rails were newest-first before; the PDP's rail was "same category by sortOrder". The PDP rail is renamed **"قد يعجبك"** and tops up from other categories when the product's own has fewer than four others. The user asked "what is the logic?" — this is the answer; override with one line if a different rule is wanted (e.g. newest, or manual sortOrder).
+6. **Collage is one row of four**: مفروشات · تيشيرتات · جوارب · ملابس داخلية (pyjamas dropped), every tile under a full dark gradient. The user kept the bed-linen tile, which settles the earlier merchandising question in favour of keeping it.
+7. **No remaining-stock count on the PDP** ("متبقي N قطع" removed; متوفر/غير متوفر only; the stepper is still capped by sellable stock).
+8. **PDP fabric-story section removed** entirely (it made the page too long).
+9. **Toasts are translucent** (`bg-papyrus/80` + `backdrop-blur-md`) so they no longer block what is behind them.
+
+Verified live on the user's port-3000 server at 1514×681 and 390×844 (top, scrolled, categories, collage, best sellers, PDP, toast); `tsc`/eslint clean; storefront specs 16/16 after updating the collage-count assertion to four.
+
 ## 2026-09-12 — 4.8 (listing) merged, v2.0.14: the storefront canvas is fully implemented; three merge-order test repairs
 
 All five Public storefront tasks (4.6–4.10) are on `redesign`. Two decisions from the listing round and three test repairs caused by merging four parallel branches:

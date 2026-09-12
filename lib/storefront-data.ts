@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import type { ProductListItem } from "@/lib/catalog";
 import { buildProductListItem } from "@/lib/catalog";
+import { getProductIdsRankedByRecentSales } from "@/lib/products/ranked-listing";
 import {
   applyPartnerStockOverrides,
   getCurrentStorefrontStockContext,
@@ -52,6 +53,23 @@ const include = {
 const BEST_SELLERS_LIMIT = 4;
 /** Max products per collection carousel on homepage (women, kids, men). */
 const COLLECTION_CAROUSEL_LIMIT = 16;
+/**
+ * One collection rail's products — user direction 2026-09-12 ("what is the logic?"): the same
+ * rule the listing's "أفضل مبيعات" sort uses — units sold in the last 30 days (cancelled orders
+ * excluded), products with no recent sales sorted newest-first after them — instead of plain
+ * newest-first. Row order follows the ranking.
+ */
+async function rankedCollection(slug: string) {
+  const ids = (await getProductIdsRankedByRecentSales({ active: true, category: { slug } })).slice(
+    0,
+    COLLECTION_CAROUSEL_LIMIT
+  );
+  if (ids.length === 0) return [];
+  const rows = await prisma.product.findMany({ where: { id: { in: ids } }, include });
+  const byId = new Map(rows.map((r) => [r.id, r] as const));
+  return ids.map((id) => byId.get(id)).filter((r): r is NonNullable<typeof r> => r != null);
+}
+
 /** How long the cookie-independent part of the homepage catalog may be stale for. */
 const HOME_CATALOG_REVALIDATE_SECONDS = 300;
 
@@ -97,24 +115,9 @@ const getHomeCatalogData = unstable_cache(
         take: HOME_LIMIT,
         include,
       }),
-      prisma.product.findMany({
-        where: { active: true, category: { slug: "women" } },
-        orderBy: { createdAt: "desc" },
-        take: COLLECTION_CAROUSEL_LIMIT,
-        include,
-      }),
-      prisma.product.findMany({
-        where: { active: true, category: { slug: "kids" } },
-        orderBy: { createdAt: "desc" },
-        take: COLLECTION_CAROUSEL_LIMIT,
-        include,
-      }),
-      prisma.product.findMany({
-        where: { active: true, category: { slug: "men" } },
-        orderBy: { createdAt: "desc" },
-        take: COLLECTION_CAROUSEL_LIMIT,
-        include,
-      }),
+      rankedCollection("women"),
+      rankedCollection("kids"),
+      rankedCollection("men"),
     ]);
 
     const trendingIds = trendingRows

@@ -63,7 +63,8 @@ const iconClass = "block h-[22px] w-[22px]";
 const controlBase =
   "relative grid h-11 w-11 place-items-center transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-papyrus";
 
-function controlClass(isCurrent: boolean): string {
+function controlClass(isCurrent: boolean, onDark = false): string {
+  if (onDark) return cn(controlBase, "text-papyrus/90 hover:text-papyrus");
   return cn(
     controlBase,
     isCurrent
@@ -98,6 +99,7 @@ export function SiteNavbar({
   cartCount,
   accountMenu = false,
   sticky = false,
+  transparent = false,
 }: {
   current?: SiteNavbarSection;
   /** Live cart item count; supplied by the caller (see file header — never read via `useCart()` here). */
@@ -110,7 +112,22 @@ export function SiteNavbar({
    * `fixed` bar that stays put — same 60/84px heights either way.
    */
   sticky?: boolean;
+  /**
+   * Home only (canvas artboard 1a): the bar starts transparent over the hero photograph — ivory
+   * controls and the cream logo on the hero's dark top gradient — and becomes the normal ivory bar
+   * once the page scrolls. Every other page keeps the opaque bar.
+   */
+  transparent?: boolean;
 }) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    if (!transparent) return;
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [transparent]);
+  const onDark = transparent && !scrolled;
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<NavbarUser>(null);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -145,7 +162,8 @@ export function SiteNavbar({
         role="banner"
         className={cn(
           sticky ? "fixed" : "absolute",
-          "inset-x-0 top-0 z-40 grid h-[60px] grid-cols-[1fr_auto_1fr] items-center border-b border-[hsl(40_14%_84%)] bg-papyrus px-2 lg:h-[84px] lg:px-8"
+          "inset-x-0 top-0 z-40 grid h-[60px] grid-cols-[1fr_auto_1fr] items-center border-b px-2 transition-colors duration-300 motion-reduce:transition-none lg:h-[84px] lg:px-8",
+          onDark ? "border-transparent bg-transparent" : "border-[hsl(40_14%_84%)] bg-papyrus"
         )}
       >
         <button
@@ -153,7 +171,7 @@ export function SiteNavbar({
           onClick={() => setMenuOpen(true)}
           aria-label="القائمة"
           aria-expanded={menuOpen}
-          className={cn(controlClass(false), "justify-self-start")}
+          className={cn(controlClass(false, onDark), "justify-self-start")}
         >
           <svg {...iconProps} className={iconClass}>
             <path d="M3.6 6.4h13.8" />
@@ -168,7 +186,7 @@ export function SiteNavbar({
           className="justify-self-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-papyrus"
         >
           <Image
-            src="/brand/logo-lapis.png"
+            src={onDark ? "/brand/logo-cream.png" : "/brand/logo-lapis.png"}
             alt="قطن ملوك النيل"
             width={700}
             height={437}
@@ -182,7 +200,7 @@ export function SiteNavbar({
             type="button"
             aria-label="المفضلة"
             aria-disabled="true"
-            className={cn(controlClass(current === "wishlist"), "cursor-default")}
+            className={cn(controlClass(current === "wishlist", onDark), "cursor-default")}
           >
             <svg {...iconProps} className={iconClass}>
               <path d="M10.5 17.6C6.2 14.5 3.2 12 3.2 8.8 3.2 6.6 4.9 5 7 5c1.4 0 2.7.8 3.5 2 .8-1.2 2.1-2 3.5-2 2.1 0 3.8 1.6 3.8 3.8 0 3.2-3 5.7-7.3 8.8z" />
@@ -193,7 +211,7 @@ export function SiteNavbar({
             href="/cart"
             aria-label="سلة التسوق"
             aria-current={current === "cart" ? "page" : undefined}
-            className={cn(controlClass(current === "cart"), "relative")}
+            className={cn(controlClass(current === "cart", onDark), "relative")}
           >
             <svg {...iconProps} className={iconClass}>
               <path d="M4.8 6.6h11.4l-.9 10.8H5.7z" />
@@ -211,7 +229,7 @@ export function SiteNavbar({
                   aria-label="حسابي"
                   aria-current={current === "account" ? "page" : undefined}
                   aria-expanded={accountOpen}
-                  className={controlClass(current === "account")}
+                  className={controlClass(current === "account", onDark)}
                 >
                   <svg {...iconProps} className={iconClass}>
                     <circle cx="10.5" cy="7.6" r="3.1" />
@@ -249,7 +267,7 @@ export function SiteNavbar({
               href="/login"
               aria-label="حسابي"
               aria-current={current === "account" ? "page" : undefined}
-              className={controlClass(current === "account")}
+              className={controlClass(current === "account", onDark)}
             >
               <svg {...iconProps} className={iconClass}>
                 <circle cx="10.5" cy="7.6" r="3.1" />

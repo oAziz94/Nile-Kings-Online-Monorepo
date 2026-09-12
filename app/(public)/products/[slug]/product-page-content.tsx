@@ -20,14 +20,10 @@ import {
   Truck,
   RefreshCw,
   CreditCard,
-  Wind,
-  Shirt,
-  Ruler,
-  Sparkles,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { discountPercentFromPrices } from "@/lib/catalog";
+import { discountPercentFromPrices, productCardLabel } from "@/lib/catalog";
 import type { VariantPublic } from "@/lib/catalog";
 import {
   useVariantSelection,
@@ -68,30 +64,9 @@ type RelatedItem = {
   originalPriceEgp?: number;
   discountPercent?: number;
   inStock: boolean;
+  categoryName: string;
+  tags?: string[];
 };
-
-const FABRIC_POINTS = [
-  {
-    icon: Shirt,
-    title: "قطن مصري مختار",
-    body: "خيوط قطنية مصرية مختارة بعناية، تمنحك ملمسًا أملسًا ومظهرًا أنيقًا يدوم مع الاستخدام.",
-  },
-  {
-    icon: Wind,
-    title: "يتنفس",
-    body: "ألياف طبيعية تسمح بمرور الهواء، فتشعر بالراحة طوال اليوم مهما طال ارتداؤه.",
-  },
-  {
-    icon: Ruler,
-    title: "ثبات المقاس",
-    body: "نسيج مُعالج للحفاظ على شكله ومقاسه بعد الغسلات المتكررة، دون أن يفقد هيئته الأصلية.",
-  },
-  {
-    icon: Sparkles,
-    title: "ملمس ناعم",
-    body: "يحتفظ بنعومته من أول ارتداء، ويزداد طراوة كلما اعتدت عليه.",
-  },
-];
 
 export function ProductPageContent({
   product,
@@ -231,14 +206,9 @@ export function ProductPageContent({
     }
   };
 
-  const stockLine =
-    selectedVariant != null
-      ? `متبقي ${selectedVariant.stockAvailable} قطع بمقاس ${
-          sizeOptions.find((s) => s.id === selectedSize)?.label ?? selectedSize
-        }`
-      : product.inStock
-        ? "متوفر"
-        : "غير متوفر";
+  // The shopper never sees a remaining-stock count (user direction, 2026-09-12); the stepper
+  // is still capped by the variant's sellable stock.
+  const stockLine = product.inStock ? "متوفر" : "غير متوفر";
 
   return (
     <>
@@ -461,32 +431,10 @@ export function ProductPageContent({
         </div>
       </div>
 
-      {/* Fabric story */}
-      <section aria-labelledby="fabric-h" className="mt-20 grid gap-8 md:grid-cols-[5fr_7fr] md:items-center md:gap-12">
-        <div className="relative aspect-[4/5] overflow-hidden md:aspect-[4/5]">
-          <Image src="/brand/cotton-weave.jpg" alt="نسيج القطن المصري" fill className="object-cover" sizes="(max-width: 768px) 100vw, 40vw" />
-        </div>
-        <div>
-          <p className="mb-3 text-xs tracking-[0.1em] text-gold-600">الخامة</p>
-          <h2 id="fabric-h" className="mb-8 font-amiri text-2xl font-bold leading-tight text-[hsl(228_40%_14%)] md:text-[34px]">
-            ما يجعل هذا المنتج مختلفًا يبدأ من اختيار الخامة نفسها.
-          </h2>
-          <div className="grid grid-cols-1 gap-7 sm:grid-cols-2">
-            {FABRIC_POINTS.map((f) => (
-              <div key={f.title} className="flex flex-col gap-2.5">
-                <f.icon className="h-6 w-6 text-[hsl(228_40%_14%)]" aria-hidden="true" />
-                <h3 className="font-amiri text-lg font-bold text-[hsl(228_40%_14%)]">{f.title}</h3>
-                <p className="text-sm leading-relaxed text-[hsl(228_18%_36%)]">{f.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {related.length > 0 && (
         <section aria-labelledby="rel-h" className="mt-20 border-t border-[hsl(228_16%_84%)] pt-10">
           <h2 id="rel-h" className="mb-7 font-amiri text-2xl font-bold text-[hsl(228_40%_14%)] md:text-[34px]">
-            من نفس الفئة
+            قد يعجبك
           </h2>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {related.map((p) => (
@@ -502,6 +450,7 @@ export function ProductPageContent({
                 colorVariants={p.colorVariants}
                 variantSlug={p.variantSlug}
                 inStock={p.inStock}
+                categoryLabel={productCardLabel(p)}
                 compact
               />
             ))}

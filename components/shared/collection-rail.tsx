@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ProductCard } from "@/components/shared/product-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Package } from "lucide-react";
-import type { ProductListItem } from "@/lib/catalog";
+import { productCardLabel, type ProductListItem } from "@/lib/catalog";
 
 const DESKTOP_QUERY = "(min-width: 1024px)";
 
@@ -21,6 +21,7 @@ function toCardProps(p: ProductListItem, compact: boolean) {
     colorVariants: p.colorVariants,
     variantSlug: p.variantSlug,
     inStock: p.inStock ?? true,
+    categoryLabel: productCardLabel(p),
     compact,
   };
 }

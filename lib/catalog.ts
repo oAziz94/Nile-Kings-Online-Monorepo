@@ -53,6 +53,14 @@ export interface ProductListItem {
   colorVariants?: ColorVariantListItem[];
   /** Slug of the default (most in-stock) color variant; card links straight to that color. */
   variantSlug?: string | null;
+  /** Product tags (e.g. "بيجامات") — the first one joins the category in the card chip. */
+  tags?: string[];
+}
+
+/** The card chip: "الفئة · أول وسم" when the product carries a tag, else the category alone. */
+export function productCardLabel(p: { categoryName: string; tags?: string[] }): string {
+  const tag = p.tags?.find((t) => t.trim().length > 0);
+  return tag ? `${p.categoryName} · ${tag.trim()}` : p.categoryName;
 }
 
 /** When original > price, returns rounded discount percentage; otherwise undefined. */
@@ -99,6 +107,7 @@ export interface ProductListItemInput {
   discountPricePiastres: number | null;
   category: { slug: string; name: string };
   variants: ProductListItemVariantInput[];
+  tags?: string[];
 }
 
 function colorGroupKey(v: { colorHex?: string | null; colorName?: string | null }): string {
@@ -189,6 +198,7 @@ export function buildProductListItem(p: ProductListItemInput): ProductListItem {
     inStock,
     ...(colorVariants.length > 0 && { colorVariants }),
     ...(defaultColor?.rep.slug && { variantSlug: defaultColor.rep.slug }),
+    ...(p.tags && p.tags.length > 0 && { tags: p.tags }),
   };
 }
 

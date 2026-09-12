@@ -24,6 +24,7 @@ export function PublicSiteNavbar() {
       cartCount={cart?.itemCount}
       accountMenu
       sticky
+      transparent={pathname === "/"}
     />
   );
 }

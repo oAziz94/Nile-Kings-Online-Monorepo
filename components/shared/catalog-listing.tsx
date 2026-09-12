@@ -1,5 +1,6 @@
 "use client";
 
+import { productCardLabel } from "@/lib/catalog";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -28,6 +29,8 @@ type ProductItem = {
   inStock: boolean;
   colorVariants?: { id: string; colorHex: string | null; colorName: string | null; imageUrl: string | null }[];
   variantSlug?: string | null;
+  categoryName: string;
+  tags?: string[];
 };
 
 interface CatalogListingProps {
@@ -580,6 +583,7 @@ export function CatalogListing({ lockedCategory }: CatalogListingProps) {
                   colorVariants={p.colorVariants}
                   variantSlug={p.variantSlug}
                   inStock={p.inStock}
+                  categoryLabel={productCardLabel(p)}
                 />
               </div>
             ))}

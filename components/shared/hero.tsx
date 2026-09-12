@@ -11,8 +11,8 @@ import { Ankh } from "@/components/brand/ankh";
  */
 export function Hero() {
   return (
-    <section aria-label="الحملة الحالية" className="relative overflow-hidden">
-      <div className="relative h-[460px] w-full sm:h-[560px] lg:h-[760px]">
+    <section aria-label="الحملة الحالية" className="relative -mt-[60px] overflow-hidden lg:-mt-[84px]">
+      <div className="relative h-[520px] w-full sm:h-[600px] lg:h-[760px]">
         <Image
           src="/brand/storefront/hero.jpg"
           alt="قطن ملوك النيل — قطن مصري أصيل"
@@ -21,23 +21,28 @@ export function Hero() {
           sizes="100vw"
           className="object-cover"
         />
+        {/* Canvas 1a: a dark top gradient so the transparent navbar's ivory controls read over any
+            photograph. Inline, not a Tailwind gradient class — the class was dropped from the
+            served CSS in dev (see 04-decisions.md 2026-09-12 "storefront edits"). */}
         <div
           aria-hidden
-          className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[hsl(228_40%_14%)]/55 to-transparent lg:h-56"
+          className="absolute inset-x-0 top-0 h-40 lg:h-60"
+          style={{ background: "linear-gradient(to bottom, hsl(228 40% 14% / 0.62), hsl(228 40% 14% / 0))" }}
         />
       </div>
 
-      <div className="relative px-4 pb-2 pt-6 sm:px-6 lg:absolute lg:inset-x-0 lg:bottom-16 lg:px-12 lg:pb-0 lg:pt-0">
-        <div className="max-w-[640px]">
-          <h1 className="mb-3 font-amiri text-[42px] font-bold leading-[1.05] text-[hsl(228_40%_14%)] sm:text-6xl lg:text-[88px]">
+      <div className="relative px-4 pb-2 pt-6 sm:px-6 lg:absolute lg:inset-x-0 lg:bottom-[19%] lg:px-12 lg:pb-0 lg:pt-0">
+        {/* A soft ivory wash behind the type so it reads over the photograph (user note, 2026-09-12). */}
+        <div className="max-w-[680px] lg:-m-8 lg:bg-gradient-to-l lg:from-papyrus/70 lg:via-papyrus/40 lg:to-transparent lg:p-8">
+          <h1 className="mb-3 font-amiri text-[42px] font-bold leading-[1.05] text-[hsl(228_40%_14%)] sm:text-6xl lg:text-[104px]">
             قطن ملوك النيل
           </h1>
-          <p className="mb-4 flex items-center gap-3 border-b border-[hsl(228_40%_14%)]/28 pb-4 font-amiri text-2xl text-[hsl(228_40%_14%)] sm:gap-4 sm:text-3xl lg:text-[40px]">
+          <p className="mb-4 flex items-center gap-3 border-b border-[hsl(228_40%_14%)]/28 pb-4 font-amiri text-2xl text-[hsl(228_40%_14%)] sm:gap-4 sm:text-3xl lg:text-[44px]">
             <span>المصري</span>
             <Ankh size={36} strokeWidth={2} className="text-gold-500" />
             <span>للمصري</span>
           </p>
-          <p className="mb-6 max-w-[480px] text-sm leading-relaxed text-[hsl(228_26%_24%)] sm:text-base lg:text-[19px] lg:leading-[1.7]">
+          <p className="mb-6 max-w-[480px] text-sm leading-relaxed text-[hsl(228_26%_24%)] sm:text-base lg:text-[20px] lg:leading-[1.7]">
             قطن مصري أصيل، وراحة تحسها من أول لمسة.
           </p>
           <Link

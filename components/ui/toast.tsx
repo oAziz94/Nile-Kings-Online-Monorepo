@@ -32,7 +32,7 @@ ToastViewport.displayName = ToastPrimitive.Viewport.displayName;
  * lifts off the page. Slides in from the top at every size. Shared site-wide.
  */
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-start gap-4 overflow-hidden rounded-none border border-[hsl(228_40%_14%)] bg-papyrus py-5 pl-12 pr-6 text-right text-[hsl(228_40%_14%)] shadow-[0_24px_60px_-12px_rgba(21,26,46,0.28)] transition-all before:absolute before:inset-y-0 before:right-0 before:w-1 before:content-[''] data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full",
+  "group pointer-events-auto relative flex w-full items-start gap-4 overflow-hidden rounded-none border border-[hsl(228_40%_14%)]/70 bg-papyrus/80 py-5 pl-12 pr-6 backdrop-blur-md text-right text-[hsl(228_40%_14%)] shadow-[0_24px_60px_-12px_rgba(21,26,46,0.28)] transition-all before:absolute before:inset-y-0 before:right-0 before:w-1 before:content-[''] data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full",
   {
     variants: {
       variant: {

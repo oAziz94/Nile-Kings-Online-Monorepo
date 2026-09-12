@@ -10,6 +10,7 @@ import { CollectionRail } from "@/components/shared/collection-rail";
 import { Ankh } from "@/components/brand/ankh";
 import { Package, Shield, Leaf, Hand } from "lucide-react";
 import type { getHomeData } from "@/lib/storefront-data";
+import { productCardLabel } from "@/lib/catalog";
 
 /** Home category tiles — backlog 4.7, canvas copy/heights (artboard 1a `cats`). Hrefs unchanged. */
 const CATEGORY_TILES = [
@@ -20,6 +21,7 @@ const CATEGORY_TILES = [
     aria: "تسوق رجالي",
     href: "/categories/men",
     image: "/brand/storefront/category-men.jpg",
+    focus: "48% 42%",
     heightClass: "h-[220px] lg:h-[600px]",
   },
   {
@@ -29,6 +31,7 @@ const CATEGORY_TILES = [
     aria: "تسوق حريمي",
     href: "/categories/women",
     image: "/brand/storefront/category-women.jpg",
+    focus: "40% 45%",
     heightClass: "h-[200px] lg:h-[520px]",
   },
   {
@@ -38,12 +41,13 @@ const CATEGORY_TILES = [
     aria: "تسوق أطفال",
     href: "/categories/kids",
     image: "/brand/storefront/category-kids.jpg",
+    focus: "50% 45%",
     heightClass: "h-[200px] lg:h-[460px]",
   },
 ] as const;
 
 /**
- * Five-tile collage — backlog 4.7. Every tile links to a real destination confirmed against the
+ * Four-tile collage (one row; the user dropped the pyjamas tile 2026-09-12) — backlog 4.7. Every tile links to a real destination confirmed against the
  * redesign DB (queried directly, `04-decisions.md`/backlog 4.7): the catalog has no bed-linen
  * category or products at all today, so that one tile — image kept per spec — points at the full
  * catalog rather than a fabricated filter; the other four use `?q=` search terms confirmed to
@@ -57,10 +61,7 @@ const COLLAGE_TILES = [
     aria: "مفروشات فاخرة — تصفح المتجر",
     href: "/products",
     image: "/brand/storefront/bed-linen.jpg",
-    ink: "text-papyrus",
     tone: "bg-[hsl(35_38%_60%)]",
-    sizeClass: "text-[26px] lg:text-[40px]",
-    gridClass: "col-span-2 lg:col-[1/3] lg:row-[1/3]",
   },
   {
     key: "tees",
@@ -69,22 +70,7 @@ const COLLAGE_TILES = [
     aria: "تيشيرتات قطنية — تسوق التيشيرتات",
     href: `/products?q=${encodeURIComponent("تي شيرت")}`,
     image: "/brand/storefront/tees.jpg",
-    ink: "text-[hsl(228_40%_14%)]",
     tone: "bg-[hsl(40_30%_88%)]",
-    sizeClass: "text-lg lg:text-2xl",
-    gridClass: "col-span-1 lg:col-[3/4] lg:row-[1/2]",
-  },
-  {
-    key: "pyjamas",
-    text: "بيجامات مريحة",
-    link: "اكتشف البيجامات",
-    aria: "بيجامات مريحة — اكتشف البيجامات",
-    href: `/products?q=${encodeURIComponent("بيجام")}`,
-    image: "/brand/storefront/pyjamas.jpg",
-    ink: "text-[hsl(228_40%_14%)]",
-    tone: "bg-[hsl(200_18%_82%)]",
-    sizeClass: "text-lg lg:text-2xl",
-    gridClass: "col-span-1 lg:col-[4/5] lg:row-[1/2]",
   },
   {
     key: "socks",
@@ -93,10 +79,7 @@ const COLLAGE_TILES = [
     aria: "جوارب عالية الجودة — تسوق الجوارب",
     href: `/products?q=${encodeURIComponent("شراب")}`,
     image: "/brand/storefront/socks.jpg",
-    ink: "text-papyrus",
     tone: "bg-[hsl(228_40%_14%)]",
-    sizeClass: "text-2xl lg:text-[32px]",
-    gridClass: "col-span-2 lg:col-[3/5] lg:row-[2/3]",
   },
   {
     key: "underwear",
@@ -105,10 +88,7 @@ const COLLAGE_TILES = [
     aria: "ملابس داخلية فاخرة — تسوق الآن",
     href: `/products?q=${encodeURIComponent("داخلي")}`,
     image: "/brand/storefront/underwear.jpg",
-    ink: "text-[hsl(228_40%_14%)]",
     tone: "bg-[hsl(35_32%_78%)]",
-    sizeClass: "text-lg lg:text-2xl",
-    gridClass: "col-span-1 lg:col-[1/2] lg:row-[3/4]",
   },
 ] as const;
 
@@ -174,7 +154,7 @@ function toCardProps(p: HomeData extends null ? never : NonNullable<HomeData>["b
     colorVariants: p.colorVariants,
     variantSlug: p.variantSlug,
     inStock: p.inStock ?? true,
-    categoryLabel: p.categoryName,
+    categoryLabel: productCardLabel(p),
   };
 }
 
@@ -237,8 +217,9 @@ export function HomeSections({ data }: { data: HomeData }) {
                 fill
                 sizes="(max-width: 1023px) 100vw, 33vw"
                 className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
+                style={{ objectPosition: c.focus }}
               />
-              <span aria-hidden className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-[hsl(228_40%_14%)]/82 to-transparent lg:h-[55%]" />
+              <span aria-hidden className="absolute inset-x-0 bottom-0 h-[78%] bg-gradient-to-t from-[hsl(228_40%_14%)]/92 via-[hsl(228_40%_14%)]/55 to-transparent" />
               <span className="absolute inset-x-5 bottom-5 flex flex-col items-start gap-2 lg:inset-x-7 lg:bottom-7">
                 <span className="font-amiri text-[28px] font-bold leading-none lg:text-[34px]">{c.name}</span>
                 <span className="text-[13px] text-papyrus/85 lg:text-sm">{c.line}</span>
@@ -309,13 +290,13 @@ export function HomeSections({ data }: { data: HomeData }) {
 
       {/* Collage */}
       <section aria-label="مختارات من الكولكشن" className="px-4 pt-14 sm:px-6 lg:px-12 lg:pt-[104px]">
-        <div className="grid grid-cols-2 grid-flow-row-dense auto-rows-[170px] gap-2.5 lg:grid-cols-4 lg:auto-rows-[270px] lg:gap-4">
+        <div className="grid grid-cols-2 auto-rows-[220px] gap-2.5 lg:grid-cols-4 lg:auto-rows-[400px] lg:gap-4">
           {COLLAGE_TILES.map((c) => (
             <Link
               key={c.key}
               href={c.href}
               aria-label={c.aria}
-              className={`group relative block overflow-hidden no-underline ${c.tone} ${c.gridClass}`}
+              className={`group relative block overflow-hidden text-papyrus no-underline ${c.tone}`}
             >
               <Image
                 src={c.image}
@@ -324,10 +305,12 @@ export function HomeSections({ data }: { data: HomeData }) {
                 sizes="(max-width: 1023px) 50vw, 25vw"
                 className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
               />
-              <span className={`pointer-events-none absolute inset-x-3.5 top-3.5 max-w-[85%] font-amiri font-bold leading-[1.15] lg:inset-x-6 lg:top-6 ${c.sizeClass} ${c.ink}`} style={{ textShadow: "0 1px 14px rgba(21,26,53,.25)" }}>
+              {/* Dark overlay so the type reads on any photograph (user note, 2026-09-12). */}
+              <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-[hsl(228_40%_14%)]/85 via-[hsl(228_40%_14%)]/30 to-[hsl(228_40%_14%)]/10" />
+              <span className="pointer-events-none absolute inset-x-3.5 bottom-10 max-w-[90%] font-amiri text-2xl font-bold leading-[1.15] lg:inset-x-6 lg:bottom-14 lg:text-[30px]">
                 {c.text}
               </span>
-              <span className={`pointer-events-none absolute inset-x-3.5 bottom-3 border-b border-current pb-0.5 text-xs lg:inset-x-6 lg:bottom-[22px] lg:text-[13px] ${c.ink}`}>
+              <span className="pointer-events-none absolute inset-x-3.5 bottom-3 self-start border-b border-current pb-0.5 text-xs lg:inset-x-6 lg:bottom-[22px] lg:text-[13px]">
                 {c.link}
               </span>
             </Link>

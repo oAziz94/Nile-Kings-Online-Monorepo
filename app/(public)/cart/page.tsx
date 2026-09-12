@@ -13,6 +13,7 @@ import { ViewAllButton } from "@/components/shared/view-all-button";
 import { friendlyVariantLabel } from "@/lib/cart/variant-label";
 import { ShoppingBag, Minus, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { productCardLabel } from "@/lib/catalog";
 import type { ProductListItem } from "@/lib/catalog";
 
 const PLACEHOLDER_IMAGE =
@@ -248,6 +249,7 @@ function RecommendationsRail({ products }: { products: ProductListItem[] }) {
             discountPercent={p.discountPercent}
             colorVariants={p.colorVariants}
             inStock={p.inStock}
+            categoryLabel={productCardLabel(p)}
             compact
           />
         ))}

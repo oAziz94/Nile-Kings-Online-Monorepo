@@ -1,4 +1,5 @@
 import { cache as reactCache } from "react";
+import { getProductIdsRankedByRecentSales } from "@/lib/products/ranked-listing";
 import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -184,28 +185,41 @@ async function getProduct(slug: string, partnerId: string | null) {
   };
 }
 
+const RELATED_LIMIT = 4;
+
+/**
+ * "قد يعجبك" — user direction 2026-09-12: not "the same category by sortOrder" but the same demand
+ * rule the home rails and the listing's best-sales sort use (units sold in the last 30 days, then
+ * newest), taken from the product's own category first and topped up from the rest of the
+ * catalog when the category has fewer than four other products. The current product is excluded.
+ */
 const getRelatedCatalog = unstable_cache(
   async (slug: string, categoryId: string) => {
-    return prisma.product.findMany({
-      where: { active: true, categoryId, slug: { not: slug } },
-      orderBy: { sortOrder: "desc" },
-      take: 4,
-      include: {
-        category: { select: { slug: true, name: true } },
-        variants: {
-          select: {
-            id: true,
-            slug: true,
-            pricePiastres: true,
-            stockAvailable: true,
-            colorHex: true,
-            colorName: true,
-            imageUrl: true,
-            createdAt: true,
-          },
+    const include = {
+      category: { select: { slug: true, name: true } },
+      variants: {
+        select: {
+          id: true,
+          slug: true,
+          pricePiastres: true,
+          stockAvailable: true,
+          colorHex: true,
+          colorName: true,
+          imageUrl: true,
+          createdAt: true,
         },
       },
-    });
+    } as const;
+    const sameCategory = await getProductIdsRankedByRecentSales({ active: true, categoryId, slug: { not: slug } });
+    let ids = sameCategory.slice(0, RELATED_LIMIT);
+    if (ids.length < RELATED_LIMIT) {
+      const rest = await getProductIdsRankedByRecentSales({ active: true, categoryId: { not: categoryId } });
+      ids = [...ids, ...rest.slice(0, RELATED_LIMIT - ids.length)];
+    }
+    if (ids.length === 0) return [];
+    const rows = await prisma.product.findMany({ where: { id: { in: ids } }, include });
+    const byId = new Map(rows.map((r) => [r.id, r] as const));
+    return ids.map((id) => byId.get(id)).filter((r): r is NonNullable<typeof r> => r != null);
   },
   ["product-detail-related"],
   { revalidate: 300 }
