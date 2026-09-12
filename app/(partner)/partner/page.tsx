@@ -136,7 +136,7 @@ export default function PartnerHomePage() {
                   ).map(([status, label, count]) => (
                     <li key={status}>
                       <Link
-                        href={`/partner/routed-orders?status=${status}`}
+                        href={`/partner/orders?status=${status}`}
                         className="flex items-center justify-between rounded-lg px-2 py-2 text-sm text-ink transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
                       >
                         <span className="font-semibold">{label}</span>
@@ -191,7 +191,7 @@ export default function PartnerHomePage() {
                     ))}
                   </ul>
                   <Link
-                    href="/partner/products?lowStock=1"
+                    href="/partner/stock?lowStock=1"
                     className="mt-3 flex items-center gap-1 text-xs font-bold text-lapis-800 underline underline-offset-2"
                   >
                     عرض كل المخزون المنخفض
@@ -237,7 +237,7 @@ export default function PartnerHomePage() {
                     ))}
                   </ul>
                   <Link
-                    href={isAgent ? "/partner/distributor-requests" : "/partner/restock-requests"}
+                    href="/partner/stock"
                     className="mt-3 flex items-center gap-1 text-xs font-bold text-lapis-800 underline underline-offset-2"
                   >
                     عرض كل الطلبات

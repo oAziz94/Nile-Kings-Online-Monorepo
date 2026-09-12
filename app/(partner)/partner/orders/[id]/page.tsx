@@ -388,7 +388,7 @@ export default function PartnerOrderDetailPage() {
 
   const BackLink = (
     <Button asChild type="button" variant="outline" className="rounded-full">
-      <Link href="/partner/routed-orders">
+      <Link href="/partner/orders">
         <ArrowRight className="h-4 w-4" />
         رجوع للطلبات
       </Link>
