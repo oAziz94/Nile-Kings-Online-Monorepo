@@ -158,36 +158,52 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const variant = await tx.variant.findUnique({
-        where: { id: variantId },
-        select: { id: true, sku: true },
-      });
-      if (!variant) return { kind: "missing" as const };
-
-      const existing = await tx.partnerInventory.findUnique({
-        where: { partnerId_variantId: { partnerId: user.partnerId, variantId } },
-      });
-      const stockReserved = existing?.stockReserved ?? 0;
-      const previousStockAvailable = existing?.stockAvailable ?? 0;
-      const stockAvailable = hasStockAvailable
-        ? (stockAvailableInput as number)
-        : previousStockAvailable + (deltaInput as number);
-
-      if (stockAvailable < stockReserved) {
-        return { kind: "reserved" as const, stockReserved };
+    // Verifier finding (4.18, 2026-09-12): a plain read → compute → upsert lost one of two
+    // concurrent `delta` adjustments while still writing a ledger row for both. The row is now
+    // locked (`SELECT … FOR UPDATE`, the same pattern `lib/inventory/restock-requests.ts` uses)
+    // for the whole read-compute-write, so concurrent edits serialise and the ledger always
+    // matches the stock. A never-stocked variant is first materialised as 0/0 so it can be
+    // locked; a rejected edit throws so that row (and nothing else) rolls back.
+    class ReservedFloorError extends Error {
+      constructor(public readonly stockReserved: number) {
+        super("reserved");
       }
+    }
 
-      const row = await tx.partnerInventory.upsert({
-        where: { partnerId_variantId: { partnerId: user.partnerId, variantId } },
-        update: { stockAvailable },
-        create: {
-          partnerId: user.partnerId,
-          variantId,
-          stockAvailable,
-          stockReserved: 0,
-        },
-      });
+    let updated: { kind: "missing" } | { kind: "reserved"; stockReserved: number } | { kind: "ok"; row: unknown };
+    try {
+      updated = await prisma.$transaction(async (tx) => {
+        const variant = await tx.variant.findUnique({
+          where: { id: variantId },
+          select: { id: true, sku: true },
+        });
+        if (!variant) return { kind: "missing" as const };
+
+        await tx.partnerInventory.upsert({
+          where: { partnerId_variantId: { partnerId: user.partnerId, variantId } },
+          update: {},
+          create: { partnerId: user.partnerId, variantId, stockAvailable: 0, stockReserved: 0 },
+        });
+        const [locked] = await tx.$queryRaw<{ stockAvailable: number; stockReserved: number }[]>`
+          SELECT "stockAvailable", "stockReserved"
+          FROM "PartnerInventory"
+          WHERE "partnerId" = ${user.partnerId} AND "variantId" = ${variantId}
+          FOR UPDATE
+        `;
+        const stockReserved = locked.stockReserved;
+        const previousStockAvailable = locked.stockAvailable;
+        const stockAvailable = hasStockAvailable
+          ? (stockAvailableInput as number)
+          : previousStockAvailable + (deltaInput as number);
+
+        if (stockAvailable < stockReserved) {
+          throw new ReservedFloorError(stockReserved);
+        }
+
+        const row = await tx.partnerInventory.update({
+          where: { partnerId_variantId: { partnerId: user.partnerId, variantId } },
+          data: { stockAvailable },
+        });
 
       await tx.inventoryLedger.create({
         data: {
@@ -200,8 +216,15 @@ export async function PATCH(req: NextRequest) {
         },
       });
 
-      return { kind: "ok" as const, row };
-    });
+        return { kind: "ok" as const, row };
+      });
+    } catch (error) {
+      if (error instanceof ReservedFloorError) {
+        updated = { kind: "reserved", stockReserved: error.stockReserved };
+      } else {
+        throw error;
+      }
+    }
 
     if (updated.kind === "missing") return apiBadRequest("المتغير غير موجود");
     if (updated.kind === "reserved") {

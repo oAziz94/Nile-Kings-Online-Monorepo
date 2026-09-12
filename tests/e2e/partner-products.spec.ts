@@ -123,17 +123,38 @@ test("list renders, searches, and the lowStock chip filters to at/below-threshol
 
   await expect(page.getByRole("heading", { name: "المنتجات", exact: true })).toBeVisible();
 
-  // Search narrows to the matching seeded product only.
-  await page.getByPlaceholder("بحث بالاسم أو SKU…").fill(`منتج المخزون السليم ${RUN_TAG}`);
-  await page.waitForTimeout(500); // debounce
+  // Search narrows to the matching seeded product only. The 400ms debounce + a real
+  // network round trip to the (remote, cross-region) redesign DB means a fixed
+  // `waitForTimeout` here was observed to be flaky (passed most runs, failed once with the
+  // full unfiltered 290-product list still showing) — wait for the actual filtered response
+  // instead, the same robust pattern already used below for the lowStock chip.
+  const searchQuery = `منتج المخزون السليم ${RUN_TAG}`;
+  const [searchResponse] = await Promise.all([
+    page.waitForResponse(
+      (res) => {
+        if (!res.url().includes("/api/partner/inventory")) return false;
+        return new URL(res.url()).searchParams.get("q") === searchQuery;
+      }
+    ),
+    page.getByPlaceholder("بحث بالاسم أو SKU…").fill(searchQuery),
+  ]);
+  expect(searchResponse.ok()).toBeTruthy();
   await expect(page.getByText(`منتج المخزون السليم ${RUN_TAG}`)).toBeVisible();
   await expect(page.getByText(`منتج المخزون المنخفض ${RUN_TAG}`)).toHaveCount(0);
 
   // Clear search, then toggle the low-stock chip: only the low-stock seeded product remains
   // visible among the three seeded ones (healthy=50 sellable, low=3 sellable <= default
   // threshold 5, reserved=5-3=2 sellable <= 5 too — both low/reserved products qualify).
-  await page.getByPlaceholder("بحث بالاسم أو SKU…").fill(RUN_TAG);
-  await page.waitForTimeout(500);
+  const [clearResponse] = await Promise.all([
+    page.waitForResponse(
+      (res) => {
+        if (!res.url().includes("/api/partner/inventory")) return false;
+        return new URL(res.url()).searchParams.get("q") === RUN_TAG;
+      }
+    ),
+    page.getByPlaceholder("بحث بالاسم أو SKU…").fill(RUN_TAG),
+  ]);
+  expect(clearResponse.ok()).toBeTruthy();
   const [lowStockResponse] = await Promise.all([
     page.waitForResponse((res) => res.url().includes("/api/partner/inventory") && res.url().includes("lowStock=1")),
     page.getByRole("button", { name: "مخزون منخفض فقط" }).click(),
@@ -196,3 +217,43 @@ test("a delta quick-adjust persists, writes a MANUAL_ADJUSTMENT ledger row, and 
   });
   expect(restored?.stockAvailable).toBe(50);
 });
+
+test("concurrent delta adjustments on one line serialise: no lost update, ledger sums to the stock change", async ({ page }) => {
+  // Verifier finding 2026-09-12: the PATCH used to read → compute → upsert without a lock, so two
+  // parallel `delta:+1` calls both wrote the same total while logging two ledger rows.
+  await loginAs(page, pair, "AGENT");
+  const before = await prisma.partnerInventory.findUnique({
+    where: { partnerId_variantId: { partnerId: pair.agent.partnerId, variantId: healthyVariantId } },
+  });
+  const start = before?.stockAvailable ?? 0;
+  const ledgerBefore = await prisma.inventoryLedger.count({
+    where: { partnerId: pair.agent.partnerId, variantId: healthyVariantId, reason: "MANUAL_ADJUSTMENT" },
+  });
+
+  const responses = await Promise.all(
+    Array.from({ length: 4 }, () =>
+      page.request.patch("/api/partner/inventory", { data: { variantId: healthyVariantId, delta: 1 } })
+    )
+  );
+  for (const res of responses) expect(res.ok()).toBeTruthy();
+
+  const after = await prisma.partnerInventory.findUnique({
+    where: { partnerId_variantId: { partnerId: pair.agent.partnerId, variantId: healthyVariantId } },
+  });
+  expect(after?.stockAvailable).toBe(start + 4);
+  const ledgerAfter = await prisma.inventoryLedger.findMany({
+    where: { partnerId: pair.agent.partnerId, variantId: healthyVariantId, reason: "MANUAL_ADJUSTMENT" },
+    orderBy: { createdAt: "desc" },
+    take: 4,
+  });
+  const ledgerCount = await prisma.inventoryLedger.count({
+    where: { partnerId: pair.agent.partnerId, variantId: healthyVariantId, reason: "MANUAL_ADJUSTMENT" },
+  });
+  expect(ledgerCount).toBe(ledgerBefore + 4);
+  expect(ledgerAfter.reduce((sum, row) => sum + row.quantityAvailableDelta, 0)).toBe(4);
+
+  // Restore.
+  const restore = await page.request.patch("/api/partner/inventory", { data: { variantId: healthyVariantId, delta: -4 } });
+  expect(restore.ok()).toBeTruthy();
+});
+
