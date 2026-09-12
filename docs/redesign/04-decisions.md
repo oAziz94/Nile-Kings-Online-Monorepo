@@ -1,3 +1,7 @@
+## 2026-09-12 — Dialog focus return fixed at the primitive (v2.0.32)
+
+Three verifiers in a row (listing 4.8, orders 4.19, restock 4.20) found the same gap: dialogs opened from a plain button via state never returned focus on close, because Radix only restores to a `DialogTrigger`. Per-caller `onCloseAutoFocus` patches were piling up. `components/ui/dialog.tsx` now captures `document.activeElement` in `onOpenAutoFocus` (the last moment before Radix moves focus — a mount effect is too late, child effects run first) and restores it in `onCloseAutoFocus` unless the caller prevented the default. Existing per-caller handlers keep working. Rule: new dialogs need no focus code; a verifier still tabs through every new dialog.
+
 ## 2026-09-12 — Incident: an ad-hoc verification script ran against production (no data changed); rules hardened
 
 During 4.22's verification the verifier ran a one-off Node cleanup script without `--env-file=.env.redesign`. Prisma auto-loads the root `.env`, which holds the **production** `DATABASE_URL`, so the `deleteMany` calls executed against production. They matched zero rows (the ids only existed on the redesign branch); the verifier checked immediately afterwards and reported production counts intact (3 partners / 2100 users / 1149 orders). Nothing was altered — by luck, not by design. This is the second time the default-`.env`-is-production layout has bitten (first: 2026-09-10, e2e fixtures written to production, fixed with `test-env.ts`'s host guard).
