@@ -5,10 +5,10 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import { seedPartnerPair, loginAs, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
 
-// Backlog 4.16 (Partner shell foundation) regression coverage. Covers the shell's own
-// contract — nav-set-per-role, the mobile drawer's open/close + focus return, and logout —
-// per docs/redesign/00-feature-inventory/partner/dashboard.md's `PartnerShell` section and
-// backlog 4.16's brief. Serial mode: both tests share one seeded fixture pair, cleaned up once.
+// Backlog 4.16 (Partner shell foundation), nav assertions updated to the v2 nav per
+// backlog 5.1 (`05-partner-portal-v2.md` §2 information architecture) — the shell's own
+// contract (nav-set-per-role, the mobile drawer's open/close + focus return, logout) is
+// otherwise unchanged. Serial mode: both tests share one seeded fixture pair, cleaned up once.
 test.describe.configure({ mode: "serial" });
 
 const prisma = new PrismaClient();
@@ -25,19 +25,23 @@ test.afterAll(async () => {
 
 test("agent sees the agent nav set, distributor sees the distributor nav set", async ({ page }) => {
   await loginAs(page, pair, "AGENT");
-  await page.goto("/partner/products");
+  await page.goto("/partner/stock");
   const agentNav = page.getByRole("navigation", { name: "التنقل في لوحة الشريك" });
+  await expect(agentNav.getByRole("link", { name: "اليوم" })).toBeVisible();
+  await expect(agentNav.getByRole("link", { name: "الطلبات" })).toBeVisible();
+  await expect(agentNav.getByRole("link", { name: "المخزون" })).toBeVisible();
   await expect(agentNav.getByRole("link", { name: "الموزعون" })).toBeVisible();
-  await expect(agentNav.getByRole("link", { name: "طلبات الموزعين" })).toBeVisible();
-  await expect(agentNav.getByRole("link", { name: "طلب إعادة توريد" })).toHaveCount(0);
+  await expect(agentNav.getByRole("link", { name: "التقارير" })).toBeVisible();
 
   await page.context().clearCookies();
   await loginAs(page, pair, "DISTRIBUTOR");
-  await page.goto("/partner/products");
+  await page.goto("/partner/stock");
   const distributorNav = page.getByRole("navigation", { name: "التنقل في لوحة الشريك" });
-  await expect(distributorNav.getByRole("link", { name: "طلب إعادة توريد" })).toBeVisible();
+  await expect(distributorNav.getByRole("link", { name: "اليوم" })).toBeVisible();
+  await expect(distributorNav.getByRole("link", { name: "الطلبات" })).toBeVisible();
+  await expect(distributorNav.getByRole("link", { name: "المخزون" })).toBeVisible();
   await expect(distributorNav.getByRole("link", { name: "الموزعون" })).toHaveCount(0);
-  await expect(distributorNav.getByRole("link", { name: "طلبات الموزعين" })).toHaveCount(0);
+  await expect(distributorNav.getByRole("link", { name: "التقارير" })).toBeVisible();
 });
 
 test("mobile drawer opens/closes at 390px with focus returning to the trigger, and logout lands on /login", async ({
@@ -45,14 +49,14 @@ test("mobile drawer opens/closes at 390px with focus returning to the trigger, a
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await loginAs(page, pair, "AGENT");
-  await page.goto("/partner/products");
+  await page.goto("/partner/stock");
 
   const trigger = page.getByRole("button", { name: "فتح قائمة لوحة الشريك" });
   await expect(trigger).toBeVisible();
   await trigger.click();
 
   const drawerNav = page.getByRole("navigation", { name: "التنقل في لوحة الشريك" });
-  await expect(drawerNav.getByRole("link", { name: "مخزون المنتجات" })).toBeVisible();
+  await expect(drawerNav.getByRole("link", { name: "المخزون" })).toBeVisible();
 
   await page.keyboard.press("Escape");
   await expect(drawerNav).toBeHidden();

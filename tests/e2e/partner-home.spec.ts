@@ -106,12 +106,15 @@ test("the threshold saves and changes the home count", async ({ page }) => {
   await page.goto("/partner");
   await expect(page.getByTestId("low-stock-count")).toHaveText("1");
 
+  // Settings page rebuilt to the v2 sectioned layout (backlog 5.1) — the threshold field
+  // is now "الحد الافتراضي" inside the "حدود المخزون" panel, saved with its own
+  // (uniquely-labelled) button rather than the old single-field form.
   await page.goto("/partner/settings");
-  const input = page.getByLabel("حد التنبيه (عدد القطع)");
+  const input = page.getByLabel("الحد الافتراضي", { exact: true });
   await expect(input).toHaveValue("5");
   await input.fill("1");
-  await page.getByRole("button", { name: "حفظ" }).click();
-  await expect(page.getByText("تم حفظ الإعدادات", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "حفظ الحد الافتراضي" }).click();
+  await expect(page.getByText("تم حفظ الحد الافتراضي", { exact: true })).toBeVisible();
 
   await page.goto("/partner");
   await expect(page.getByTestId("low-stock-count")).toHaveText("0");
@@ -119,6 +122,6 @@ test("the threshold saves and changes the home count", async ({ page }) => {
   // Restore for a clean afterAll (not strictly required, but keeps the fixture partner's
   // settings at the default for anyone re-running against the same seeded partner).
   await page.goto("/partner/settings");
-  await page.getByLabel("حد التنبيه (عدد القطع)").fill("5");
-  await page.getByRole("button", { name: "حفظ" }).click();
+  await page.getByLabel("الحد الافتراضي", { exact: true }).fill("5");
+  await page.getByRole("button", { name: "حفظ الحد الافتراضي" }).click();
 });

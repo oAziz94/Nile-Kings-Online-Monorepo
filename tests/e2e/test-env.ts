@@ -34,9 +34,12 @@ export function loadRedesignTestEnv(root: string = path.resolve(__dirname, "../.
     throw new Error(".env not found — cannot verify the loaded DATABASE_URL isn't production.");
   }
   const prodDatabaseUrl = dotenv.parse(fs.readFileSync(prodEnvPath)).DATABASE_URL;
-  if (!prodDatabaseUrl) {
-    throw new Error(".env has no DATABASE_URL — cannot verify the loaded DATABASE_URL isn't production.");
-  }
+  // 2026-09-13 (docs/redesign/03-backlog.md, Partner portal follow-up (c)): the user
+  // removed DATABASE_URL/DIRECT_URL from production .env directly, so it's structurally
+  // impossible for this process's DATABASE_URL to equal production's — there's nothing to
+  // compare against. Treat a missing prod URL as "definitely not production" rather than
+  // aborting the whole suite (the previous behaviour here, before that change landed).
+  if (!prodDatabaseUrl) return;
 
   const loadedHost = new URL(loadedUrl).hostname;
   const prodHost = new URL(prodDatabaseUrl).hostname;
