@@ -1,3 +1,14 @@
+## 2026-09-12 — 4.6 (storefront shell) verified and merged, v2.0.10; two small decisions
+
+Implementer (`430b982`) and verifier both clean; full report in `03-backlog.md` 4.6. Two things settled at merge time:
+
+1. **Navbar cart icon navigates to `/cart`; it does not open the mini-cart.** v1's header icon opened `CartDrawer` in place; the canvas and the shipped auth navbar both draw the icon as a link, so the link wins. The drawer is not dead: it still opens after every add-to-cart (quick-shop and PDP) and 4.10 restyles it. If real usage shows shoppers want the peek, a hover/second-click affordance is a Phase 5 nicety, not parity.
+2. **Colour dots sit below the name/price** (canvas order); fixed directly by the PM before merge (`95c97a0`), same precedent as earlier direct fixes.
+
+Also confirmed by the verifier, for the record: v1's card swatches never navigated on click (no per-colour slug on `ColorVariantListItem`) — the inventory's "click navigates to that colour's variant slug" line in `home.md`/`products-listing.md` overstated it. Hover/focus image swap is the real behaviour and is preserved; the dots gained keyboard focus + `aria-label`s.
+
+**Fan-out**: 4.7 home, 4.8 listing, 4.9 PDP, 4.10 cart dispatched in parallel worktrees off `a561772`.
+
 ## 2026-09-12 — Public storefront: implementation plan (tasks 4.6–4.10) and the decisions the canvas left open
 
 User: "as we have our design now ready let's start implementing and wiring in our logic". The "Storefront v3" Claude Design canvas (`design-canvas/design-storefront/store-front/`, committed with this entry together with the user's generated photography and the rendered screenshots) covers four screens — Home, Listing (+ mobile filter drawer, empty search), PDP, Cart (+ empty) — at 1440 and 390. Checkout, profile, become-a-partner and the legal pages are **not** designed yet; they get their own Claude Design round after these ship, so design of the next batch can run while this batch is implemented.
