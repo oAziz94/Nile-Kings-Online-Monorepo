@@ -82,9 +82,10 @@ export const PARTNER_NAV_SECTIONS: readonly PartnerNavSection[] = [
   },
 ] as const;
 
-/** Static "الحساب" section — not role-filtered, always the same two rows + logout. */
+/** Static "الحساب" section — not role-filtered: settings, store link, logout. */
 export const PARTNER_ACCOUNT_NAV = {
-  // TODO(4.17): { href: "/partner/settings", label: "الإعدادات" },
+  settingsHref: "/partner/settings",
+  settingsLabel: "الإعدادات",
   storeHref: "/",
   storeLabel: "المتجر",
   logoutLabel: "تسجيل الخروج",
