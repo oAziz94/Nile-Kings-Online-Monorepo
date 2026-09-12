@@ -106,7 +106,7 @@ export default function ProfileSeniorPage() {
       </p>
 
       {promoEnabled === false && (
-        <p className="mt-2 max-w-xl text-sm text-[hsl(228_18%_50%)]">العرض غير متاح حالياً</p>
+        <p className="mt-2 max-w-xl text-sm text-[hsl(228_18%_50%)]">العرض غير متاح حاليًا</p>
       )}
 
       {status?.seniorVerified ? (

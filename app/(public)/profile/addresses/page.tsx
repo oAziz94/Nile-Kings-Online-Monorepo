@@ -186,6 +186,10 @@ export default function ProfileAddressesPage() {
         credentials: "include",
         body: JSON.stringify(body),
       });
+      if (res.status === 401) {
+        router.replace("/login?redirect=/profile/addresses");
+        return;
+      }
       const json = await parseJsonResponse<{ success?: boolean; error?: { message?: string } }>(res);
       if (json?.success) {
         toast({ title: editingId ? "تم تحديث العنوان" : "تمت إضافة العنوان" });
@@ -206,6 +210,10 @@ export default function ProfileAddressesPage() {
       credentials: "include",
       body: JSON.stringify({ isDefault: true }),
     });
+    if (res.status === 401) {
+      router.replace("/login?redirect=/profile/addresses");
+      return;
+    }
     const json = await parseJsonResponse<{ success?: boolean }>(res);
     if (json?.success) {
       toast({ title: "تم تعيين العنوان الافتراضي" });
@@ -220,6 +228,10 @@ export default function ProfileAddressesPage() {
       method: "DELETE",
       credentials: "include",
     });
+    if (res.status === 401) {
+      router.replace("/login?redirect=/profile/addresses");
+      return;
+    }
     const json = await parseJsonResponse<{ success?: boolean; error?: { message?: string } }>(res);
     if (json?.success) {
       toast({ title: "تم حذف العنوان" });

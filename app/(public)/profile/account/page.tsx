@@ -102,6 +102,10 @@ export default function ProfileAccountPage() {
         }),
       });
 
+      if (res.status === 401) {
+        router.replace("/login?redirect=/profile/account");
+        return;
+      }
       const json = await parseJsonResponse<{ success?: boolean; error?: { message?: string } }>(res);
       if (res.ok && json?.success) {
         toast({ title: "تم تحديث بيانات الحساب" });
@@ -147,6 +151,10 @@ export default function ProfileAccountPage() {
         }),
       });
 
+      if (res.status === 401) {
+        router.replace("/login?redirect=/profile/account");
+        return;
+      }
       const json = await parseJsonResponse<{ success?: boolean; error?: { message?: string } }>(res);
       if (res.ok && json?.success) {
         toast({ title: "تم تغيير كلمة المرور بنجاح" });
@@ -166,20 +174,18 @@ export default function ProfileAccountPage() {
   if (loading) {
     return (
       <div>
-        <h2 className="font-amiri text-2xl font-bold text-[hsl(228_40%_14%)]">حسابي</h2>
-        <div className="mt-6">
-          <AccountSkeleton />
-        </div>
+        <AccountSkeleton />
       </div>
     );
   }
 
   return (
     <div>
-      <h2 className="font-amiri text-2xl font-bold text-[hsl(228_40%_14%)]">حسابي</h2>
-
+      {/* No page-level h2 here: the shell's h1 is already "حسابي" and this route IS the account page
+          (verifier a11y finding 2026-09-12 — a duplicate heading is noise in the outline). The two
+          section headings are the page's h2s instead. */}
       {seniorVerified && (
-        <p className="mt-3 border-y border-gold-500/60 bg-[hsl(42_60%_97%)] px-4 py-3 text-sm text-[hsl(228_26%_24%)]">
+        <p className="border-y border-gold-500/60 bg-[hsl(42_60%_97%)] px-4 py-3 text-sm text-[hsl(228_26%_24%)]">
           أنت مسجّل في العرض الخاص —{" "}
           <Link href="/profile/senior" className="border-b border-gold-500 pb-0.5 text-[hsl(228_40%_14%)] hover:text-gold-600">
             عرض التفاصيل
@@ -187,11 +193,11 @@ export default function ProfileAccountPage() {
         </p>
       )}
 
-      <div className="mt-8 flex flex-col gap-14">
+      <div className="mt-6 flex flex-col gap-14">
         <section aria-labelledby="account-info-heading">
-          <h3 id="account-info-heading" className="font-plex-arabic text-lg font-semibold text-[hsl(228_40%_14%)]">
+          <h2 id="account-info-heading" className="font-amiri text-2xl font-bold text-[hsl(228_40%_14%)]">
             بيانات الحساب
-          </h3>
+          </h2>
 
           <form onSubmit={saveProfile} className="mt-6 flex flex-col gap-6">
             <div className="space-y-2.5">
@@ -250,9 +256,9 @@ export default function ProfileAccountPage() {
         </section>
 
         <section aria-labelledby="account-password-heading" className="border-t border-[hsl(228_16%_84%)] pt-10">
-          <h3 id="account-password-heading" className="font-plex-arabic text-lg font-semibold text-[hsl(228_40%_14%)]">
+          <h2 id="account-password-heading" className="font-amiri text-2xl font-bold text-[hsl(228_40%_14%)]">
             تغيير كلمة المرور
-          </h3>
+          </h2>
 
           <form onSubmit={changePassword} className="mt-6 flex flex-col gap-6">
             <div className="space-y-2.5">
