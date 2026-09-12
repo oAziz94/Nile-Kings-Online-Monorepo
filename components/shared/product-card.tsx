@@ -106,6 +106,24 @@ export function ProductCard({
         </Link>
 
         <div className={cn("flex flex-1 flex-col", compact ? "gap-2 p-3" : "gap-2.5 p-4")}>
+          <Link href={href} className="block">
+            <h3
+              className={cn(
+                "line-clamp-2 font-amiri font-bold text-[hsl(228_40%_14%)] underline-offset-2 group-hover:underline",
+                compact ? "text-sm" : "text-base"
+              )}
+            >
+              {name}
+            </h3>
+            <Price
+              amount={price}
+              originalAmount={originalPrice}
+              discountPercent={discountPercent}
+              size={compact ? "sm" : "md"}
+              className="mt-1.5"
+            />
+          </Link>
+
           {colorVariants != null && colorVariants.length > 0 && (
             <div className="flex flex-wrap gap-1.5" role="list" aria-label="ألوان متاحة">
               {colorVariants.map((c) => {
@@ -133,24 +151,6 @@ export function ProductCard({
               })}
             </div>
           )}
-
-          <Link href={href} className="block">
-            <h3
-              className={cn(
-                "line-clamp-2 font-amiri font-bold text-[hsl(228_40%_14%)] underline-offset-2 group-hover:underline",
-                compact ? "text-sm" : "text-base"
-              )}
-            >
-              {name}
-            </h3>
-            <Price
-              amount={price}
-              originalAmount={originalPrice}
-              discountPercent={discountPercent}
-              size={compact ? "sm" : "md"}
-              className="mt-1.5"
-            />
-          </Link>
 
           <div className={cn("mt-auto flex gap-2 pt-1", compact && "flex-col")}>
             <Button
