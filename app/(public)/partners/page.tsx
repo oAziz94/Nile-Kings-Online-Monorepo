@@ -173,6 +173,8 @@ function PartnersPageContent() {
     setServerError(null);
   }
 
+  const typeRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
+
   function requestTypeChange(next: PartnerRegistrationType) {
     if (next === type) return;
     if (hasTypedData(form)) {
@@ -267,18 +269,34 @@ function PartnersPageContent() {
         aria-label="نوع التسجيل"
         className="grid gap-3 sm:grid-cols-2"
       >
-        {TYPE_OPTIONS.map((opt) => {
+        {TYPE_OPTIONS.map((opt, index) => {
           const selected = type === opt.id;
           return (
             <button
               key={opt.id}
+              ref={(el) => {
+                typeRefs.current[opt.id] = el;
+              }}
               type="button"
               role="radio"
               aria-checked={selected}
+              // ARIA radiogroup pattern, same as `components/shared/size-chips.tsx`: one roving tab
+              // stop (the checked option) and Arrow keys move to — and choose — the other option.
+              // Choosing goes through `requestTypeChange`, so the discard confirmation still applies.
+              tabIndex={selected ? 0 : -1}
               onClick={() => requestTypeChange(opt.id)}
+              onKeyDown={(e) => {
+                if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+                e.preventDefault();
+                const dir = e.key === "ArrowLeft" || e.key === "ArrowUp" ? 1 : -1;
+                const next = TYPE_OPTIONS[(index + dir + TYPE_OPTIONS.length) % TYPE_OPTIONS.length];
+                typeRefs.current[next.id]?.focus();
+                requestTypeChange(next.id);
+              }}
               disabled={loading}
               className={cn(
                 "flex flex-col gap-1.5 border px-5 py-4 text-start transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-papyrus",
                 "border-[hsl(228_40%_14%)]/30 bg-transparent",
                 selected && "border-[hsl(228_40%_14%)] bg-[hsl(228_40%_14%)]/[0.04]"
               )}
