@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap');
+  body { margin:0; font-family: Cairo, 'Segoe UI', Tahoma, sans-serif; color:hsl(228 22% 14%); background:hsl(40 30% 98%); -webkit-font-smoothing:antialiased; }
+  a { color:hsl(228 40% 14%); text-decoration:none; } a:hover { color:hsl(38 74% 46%); }
+  * { box-sizing:border-box; }
+  .num { direction:ltr; unicode-bidi:isolate; font-variant-numeric: tabular-nums; }
+  .card { background:#fff; border-radius:16px; box-shadow: 0 1px 2px rgba(20,24,40,.04), 0 10px 28px -14px rgba(20,24,40,.12); }
+  .card-h { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 20px 0 20px; }
+  .card-t { font-size:15px; font-weight:800; margin:0; }
+  .card-s { font-size:12px; color:hsl(225 10% 42%); margin:2px 0 0 0; }
+  .link { font-size:12px; font-weight:700; color:hsl(228 40% 14%); display:inline-flex; align-items:center; gap:4px; }
+  .nav a, .nav div.item { display:flex; align-items:center; gap:10px; border-radius:10px; padding:11px 12px; font-size:14px; font-weight:600; color:hsl(225 10% 42%); }
+  .nav .active { background:hsl(228 40% 96%); color:hsl(228 40% 14%); }
+  .nav .sec { font-size:11px; font-weight:700; letter-spacing:.04em; color:hsl(34 12% 76%); padding:0 10px; margin:18px 0 6px 0; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:999px; font-size:13px; font-weight:700; border:1px solid transparent; white-space:nowrap; }
+  .btn-p { background:hsl(228 40% 14%); color:#fff; }
+  .btn-s { background:#fff; color:hsl(228 22% 14%); border-color:hsl(36 16% 87%); }
+  .btn-g { background:hsl(42 78% 55%); color:hsl(228 44% 9%); }
+  .btn-sm { height:32px; padding:0 12px; font-size:12px; }
+  .icon-btn { width:40px; height:40px; border-radius:999px; background:#fff; border:1px solid hsl(36 16% 87%); display:inline-flex; align-items:center; justify-content:center; color:hsl(228 22% 14%); }
+  .pill { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:3px 10px; font-size:12px; font-weight:700; line-height:18px; }
+  .pill i { width:6px; height:6px; border-radius:999px; display:inline-block; }
+  .pill-n { background:hsl(38 22% 93%); color:hsl(225 10% 42%); } .pill-n i { background:hsl(34 12% 76%); }
+  .pill-i { background:hsl(178 42% 93%); color:hsl(178 52% 32%); } .pill-i i { background:hsl(178 52% 32%); }
+  .pill-w { background:hsl(42 70% 94%); color:hsl(38 74% 46%); } .pill-w i { background:hsl(42 78% 55%); }
+  .pill-s { background:hsl(152 42% 92%); color:hsl(152 50% 24%); } .pill-s i { background:hsl(152 50% 24%); }
+  .pill-d { background:hsl(9 60% 95%); color:hsl(8 64% 38%); } .pill-d i { background:hsl(9 68% 45%); }
+  .delta { display:inline-flex; align-items:center; gap:4px; border-radius:999px; padding:2px 8px; font-size:11px; font-weight:800; }
+  .delta-up { background:hsl(152 42% 92%); color:hsl(152 50% 24%); } .delta-down { background:hsl(9 60% 95%); color:hsl(8 64% 38%); } .delta-flat { background:hsl(38 22% 93%); color:hsl(225 10% 42%); }
+  .well { width:40px; height:40px; border-radius:12px; background:hsl(42 70% 94%); color:hsl(38 74% 46%); display:inline-flex; align-items:center; justify-content:center; }
+  .chip { display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 12px; border-radius:999px; border:1px solid hsl(36 16% 87%); background:#fff; font-size:12px; font-weight:600; color:hsl(228 22% 14%); }
+  .chip.on { background:hsl(228 40% 14%); color:#fff; border-color:hsl(228 40% 14%); }
+  .tabs { display:flex; gap:4px; border-bottom:1px solid hsl(36 16% 87%); }
+  .tab { padding:10px 14px; font-size:13px; font-weight:700; color:hsl(225 10% 42%); border-bottom:2px solid transparent; display:flex; align-items:center; gap:8px; }
+  .tab.on { color:hsl(228 40% 14%); border-bottom-color:hsl(42 78% 55%); }
+  .cnt { background:hsl(38 22% 93%); color:hsl(225 10% 42%); border-radius:999px; padding:0 7px; font-size:11px; font-weight:800; line-height:18px; }
+  .tab.on .cnt { background:hsl(228 40% 96%); color:hsl(228 40% 14%); }
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:right; font-size:12px; font-weight:800; color:hsl(225 10% 42%); background:hsl(40 30% 98%); padding:10px 14px; }
+  td { font-size:13px; padding:12px 14px; border-top:1px solid hsl(38 22% 93%); vertical-align:middle; }
+  .field { display:flex; flex-direction:column; gap:6px; }
+  .field label { font-size:12px; font-weight:700; color:hsl(225 10% 42%); }
+  .input { height:40px; border-radius:10px; border:1px solid hsl(36 16% 87%); background:#fff; padding:0 12px; font-size:13px; display:flex; align-items:center; color:hsl(228 22% 14%); }
+  .search { display:flex; align-items:center; gap:8px; height:40px; border-radius:999px; border:1px solid hsl(36 16% 87%); background:#fff; padding:0 14px; font-size:13px; color:hsl(225 10% 42%); }
+  .meter { height:10px; border-radius:999px; background:hsl(38 22% 93%); overflow:hidden; }
+  .meter i { display:block; height:100%; border-radius:999px; background:hsl(228 40% 14%); }
+  .toggle { width:38px; height:22px; border-radius:999px; background:hsl(228 40% 14%); position:relative; } .toggle b { position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:999px; background:#fff; }
+  .toggle.off { background:hsl(34 12% 76%); } .toggle.off b { left:19px; }
+  .row { display:flex; align-items:center; gap:12px; }
+</style></helmet>
+<div dir="rtl" style="width:1440px; min-height:1000px; display:flex; background:hsl(40 30% 98%);">
+  <aside style="width:248px; flex:none; background:#fff; border-left:1px solid hsl(36 16% 87%); padding:20px 14px; display:flex; flex-direction:column; gap:6px; min-height:100%;">
+  <div class="row" style="gap:10px; padding:0 6px 14px 6px;">
+    <img src="logo-lapis-mark.png" alt="" style="width:34px; height:34px; object-fit:contain;">
+    <div><div style="font-size:14px; font-weight:800; line-height:1.1;">قطن ملوك النيل</div><div style="font-size:11px; color:hsl(225 10% 42%);">لوحة الإدارة</div></div>
+  </div>
+  <div class="card" style="box-shadow:none; background:hsl(40 30% 98%); border-radius:12px; padding:10px 12px; display:flex; align-items:center; gap:10px;">
+    <div style="width:36px; height:36px; border-radius:999px; background:hsl(228 40% 14%); color:hsl(42 78% 55%); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">ع</div>
+    <div style="min-width:0;"><div style="font-size:13px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">عمر عبد العزيز</div><div style="font-size:11px; color:hsl(225 10% 42%);">مسؤول · المصنع</div></div>
+    <span style="margin-right:auto; color:hsl(225 10% 42%);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+  </div>
+  <nav class="nav" style="display:flex; flex-direction:column; gap:2px;">
+    <div class="sec">التشغيل</div><div class="item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span style="flex:1;">اليوم</span><span class="num" style="background:hsl(42 78% 55%); color:hsl(228 44% 9%); border-radius:999px; padding:0 7px; font-size:11px; font-weight:800; line-height:18px;">6</span></div><div class="item active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg><span style="flex:1;">الطلبات</span></div><div class="item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-8 8H7l-4 3V12a8 8 0 018-8h2a8 8 0 018 8z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span style="flex:1;">أسئلة العملاء</span><span class="num" style="background:hsl(42 78% 55%); color:hsl(228 44% 9%); border-radius:999px; padding:0 7px; font-size:11px; font-weight:800; line-height:18px;">3</span></div><div class="sec">الشبكة</div><div class="item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15 20a5 5 0 016-4"/></svg><span style="flex:1;">الشركاء</span></div><div class="sec">الكتالوج</div><div class="item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0L2 12V2h10l8.6 8.6a2 2 0 010 2.8z"/><circle cx="7" cy="7" r="1.5"/></svg><span style="flex:1;">المنتجات</span></div><div class="item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><span style="flex:1;">الصور</span></div><div class="item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg><span style="flex:1;">الفئات</span></div><div class="item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 010 6v4h20v-4a3 3 0 010-6V5H2z"/><path d="M13 5v14"/></svg><span style="flex:1;">الكوبونات</span></div><div class="sec">الأشخاص</div><div class="item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15 20a5 5 0 016-4"/></svg><span style="flex:1;">العملاء</span></div><div class="sec">المتابعة</div><div class="item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg><span style="flex:1;">التقارير</span></div><div class="item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/></svg><span style="flex:1;">السجل</span></div><div class="item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg><span style="flex:1;">الإعدادات</span></div>
+  </nav>
+  <div style="margin-top:auto; border-top:1px solid hsl(36 16% 87%); padding-top:10px;"><div class="item" style="display:flex; align-items:center; gap:10px; padding:8px 12px; font-size:13px; font-weight:600; color:hsl(225 10% 42%);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg> طيّ القائمة</div></div>
+</aside>
+  <main style="flex:1; min-width:0; display:flex; flex-direction:column; gap:20px; padding-bottom:28px;">
+    <header style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 28px 0 28px;">
+  <div><h1 style="margin:0; font-size:20px; font-weight:800;">تفاصيل الطلب</h1><div style="font-size:12px; color:hsl(225 10% 42%); margin-top:2px;">الطلبات · #NK-10476 · وكيل القاهرة</div></div>
+  <div class="row" style="gap:10px;">
+    
+    <span class="icon-btn" style="position:relative;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 004 0"/></svg><b style="position:absolute; top:8px; right:9px; width:8px; height:8px; border-radius:999px; background:hsl(9 68% 45%); border:2px solid #fff;"></b></span>
+    <span class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5"/><path d="M3 9a3 3 0 006 0 3 3 0 006 0 3 3 0 006 0"/><path d="M5 12v8h14v-8"/></svg></span>
+  </div>
+</header>
+    <div style="padding:0 28px; display:flex; flex-direction:column; gap:20px;">
+      
+<div class="row" style="justify-content:space-between;">
+  <div class="row" style="gap:12px;"><a class="link" href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg> الطلبات</a><span style="color:hsl(34 12% 76%);">/</span><span class="num" style="font-size:16px; font-weight:800;">#NK-10476</span><span class="pill pill-w"><i></i>مؤكد</span><span style="font-size:12px; color:hsl(225 10% 42%);">الدفع عند الاستلام · أُنشئ 13 سبتمبر 09:12</span></div>
+  <div class="row" style="gap:8px;"><span class="btn btn-s"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><path d="M6 14h12v7H6z"/></svg> طباعة</span><span class="btn btn-s" style="color:hsl(8 64% 38%);">إلغاء الطلب…</span><span class="btn btn-p">تغيير الحالة <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
+</div>
+<div style="display:grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap:16px; align-items:start;">
+  <div style="display:flex; flex-direction:column; gap:16px;">
+    <div class="card" style="overflow:hidden;">
+      <div class="card-h" style="padding-bottom:10px;"><h2 class="card-t">القطع (3)</h2><span class="chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><path d="M6 14h12v7H6z"/></svg> قائمة تجهيز</span></div>
+      <table><thead><tr><th>المنتج</th><th>المقاس · اللون</th><th>SKU</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead>
+      <tbody><tr><td style="font-weight:700;">تي شيرت رجالي نصف كم سادة</td><td style="color:hsl(225 10% 42%);">L · أسود</td><td class="num" style="font-size:12px; color:hsl(225 10% 42%);">3030-01-L-BLK</td><td class="num"><span class="input" style="width:64px; height:32px; display:inline-flex; justify-content:center;">2</span></td><td class="num">320</td><td class="num" style="font-weight:800;">640</td></tr><tr><td style="font-weight:700;">طقم أطفال فانلة كت وشورت</td><td style="color:hsl(225 10% 42%);">6 · أبيض</td><td class="num" style="font-size:12px; color:hsl(225 10% 42%);">8902-5-6-WHT</td><td class="num"><span class="input" style="width:64px; height:32px; display:inline-flex; justify-content:center;">1</span></td><td class="num">180</td><td class="num" style="font-weight:800;">180</td></tr>
+      <tr><td colspan="6" style="padding:10px 14px;"><span class="row" style="gap:8px;"><span class="search" style="width:340px; height:34px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg> أضف صنفًا من مخزون الشريك…</span><span class="btn btn-s btn-sm">إضافة</span><a class="link" href="#" style="margin-right:auto;">حفظ البنود وإعادة الحساب</a></span></td></tr></tbody></table>
+      <div style="display:flex; justify-content:flex-start; padding:14px 20px; border-top:1px solid hsl(38 22% 93%);">
+        <div style="width:300px; display:flex; flex-direction:column; gap:6px; font-size:13px;">
+          <div class="row" style="justify-content:space-between;"><span style="color:hsl(225 10% 42%);">القطع</span><span class="num">820</span></div>
+          <div class="row" style="justify-content:space-between;"><span style="color:hsl(225 10% 42%);">الشحن · مصر للبريد</span><span class="num">60</span></div>
+          <div class="row" style="justify-content:space-between;"><span style="color:hsl(225 10% 42%);">رسوم الدفع عند الاستلام</span><span class="num">18</span></div>
+          <div class="row" style="justify-content:space-between; font-weight:800; font-size:15px; border-top:1px solid hsl(36 16% 87%); padding-top:6px;"><span>الإجمالي</span><span class="num">898 ج.م</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:18px 20px; display:flex; flex-direction:column; gap:12px;">
+      <div class="row" style="justify-content:space-between;"><h2 class="card-t">سؤال العميل</h2><span class="pill pill-w"><i></i>بانتظار الرد</span></div>
+      <div style="font-size:12px; color:hsl(225 10% 42%);">تأخير في التوصيل · 13 سبتمبر 11:02 · هاتف التواصل <span class="num">+20 100 123 4567</span></div>
+      <div class="card" style="box-shadow:none; background:hsl(40 30% 98%); padding:12px 14px; font-size:13px; line-height:1.7;">الطلب مؤكد من الصباح ولم يتصل بي أحد، متى يصل؟</div>
+      <div class="input" style="height:auto; min-height:64px; align-items:flex-start; padding:10px 12px; color:hsl(225 10% 42%);">اكتب ردًا يراه العميل تحت طلبه…</div>
+      <div class="row" style="gap:8px;"><span class="btn btn-p btn-sm">إرسال الرد</span><span class="btn btn-s btn-sm">إغلاق السؤال</span></div>
+    </div>
+  </div>
+  <div style="display:flex; flex-direction:column; gap:16px;">
+    <div class="card" style="padding:18px 20px; display:flex; flex-direction:column; gap:10px; border:1px solid hsl(42 62% 87%);">
+      <div class="row" style="justify-content:space-between;"><h2 class="card-t">الشريك المنفّذ</h2><a class="link" href="#">إعادة الإسناد…</a></div>
+      <span class="row" style="gap:8px;"><span style="width:28px; height:28px; border-radius:999px; background:hsl(228 40% 14%); color:hsl(42 78% 55%); display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; flex:none;">و</span><span><div style="font-size:13px; font-weight:700;">وكيل القاهرة</div><div style="font-size:11px; color:hsl(225 10% 42%);">جمال السيد · مؤكد منذ 3 ساعات · في الموعد</div></span></span>
+      <div style="font-size:12px; color:hsl(225 10% 42%); line-height:1.7;">المخزون محجوز عند هذا الشريك. إعادة الإسناد تنقل الحجز إلى الشريك الجديد وتكتب قيدًا في دفتر المخزون لكليهما.</div>
+      <div class="row" style="gap:8px;"><span class="btn btn-s btn-sm"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg> إثبات التسليم</span><span class="btn btn-s btn-sm">اتصال بالشريك</span></div>
+    </div>
+    <div class="card" style="padding:18px 20px; display:flex; flex-direction:column; gap:10px;">
+      <h2 class="card-t">العميل والتوصيل</h2>
+      <div style="font-size:14px; font-weight:800;">كريم ناجي</div>
+      <div class="num" style="font-size:13px; color:hsl(225 10% 42%);">+20 100 123 4567</div>
+      <div style="font-size:13px; line-height:1.7;">التجمع الخامس · القاهرة<br>شارع التسعين الجنوبي، عمارة 14، الدور 3، شقة 7</div>
+      <div class="row" style="gap:8px;"><span class="btn btn-s btn-sm">تعديل العنوان</span><span class="btn btn-s btn-sm">ملف العميل</span></div>
+    </div>
+    <div class="card" style="padding:18px 20px;">
+      <h2 class="card-t" style="margin-bottom:12px;">سجل الطلب</h2>
+      <div style="display:flex; gap:12px; padding-bottom:14px;"><div style="display:flex; flex-direction:column; align-items:center;"><span style="width:10px; height:10px; border-radius:999px; background:hsl(228 40% 14%); margin-top:4px;"></span><span style="width:2px; flex:1; background:hsl(36 16% 87%); margin-top:4px;"></span></div><div><div style="font-size:13px; font-weight:700; color:hsl(228 22% 14%);">أُنشئ الطلب</div><div style="font-size:11px; color:hsl(225 10% 42%);">13 سبتمبر · 09:12 · العميل</div></div></div><div style="display:flex; gap:12px; padding-bottom:14px;"><div style="display:flex; flex-direction:column; align-items:center;"><span style="width:10px; height:10px; border-radius:999px; background:hsl(228 40% 14%); margin-top:4px;"></span><span style="width:2px; flex:1; background:hsl(36 16% 87%); margin-top:4px;"></span></div><div><div style="font-size:13px; font-weight:700; color:hsl(228 22% 14%);">أُسند إلى وكيل القاهرة</div><div style="font-size:11px; color:hsl(225 10% 42%);">13 سبتمبر · 09:13 · تلقائي</div></div></div><div style="display:flex; gap:12px; padding-bottom:14px;"><div style="display:flex; flex-direction:column; align-items:center;"><span style="width:10px; height:10px; border-radius:999px; background:hsl(228 40% 14%); margin-top:4px;"></span><span style="width:2px; flex:1; background:hsl(36 16% 87%); margin-top:4px;"></span></div><div><div style="font-size:13px; font-weight:700; color:hsl(228 22% 14%);">أكّده جمال (وكيل القاهرة)</div><div style="font-size:11px; color:hsl(225 10% 42%);">13 سبتمبر · 09:40</div></div></div><div style="display:flex; gap:12px; padding-bottom:14px;"><div style="display:flex; flex-direction:column; align-items:center;"><span style="width:10px; height:10px; border-radius:999px; background:hsl(34 12% 76%); margin-top:4px;"></span><span style="width:2px; flex:1; background:hsl(36 16% 87%); margin-top:4px;"></span></div><div><div style="font-size:13px; font-weight:700; color:hsl(225 10% 42%);">بدء التجهيز</div><div style="font-size:11px; color:hsl(225 10% 42%);">بانتظار الشريك · المهلة تنتهي 14 سبتمبر 09:40</div></div></div><div style="display:flex; gap:12px; padding-bottom:14px;"><div style="display:flex; flex-direction:column; align-items:center;"><span style="width:10px; height:10px; border-radius:999px; background:hsl(34 12% 76%); margin-top:4px;"></span><span style="width:2px; flex:1; background:hsl(36 16% 87%); margin-top:4px;"></span></div><div><div style="font-size:13px; font-weight:700; color:hsl(225 10% 42%);">جاهز للتسليم</div><div style="font-size:11px; color:hsl(225 10% 42%);"></div></div></div><div style="display:flex; gap:12px; padding-bottom:0px;"><div style="display:flex; flex-direction:column; align-items:center;"><span style="width:10px; height:10px; border-radius:999px; background:hsl(34 12% 76%); margin-top:4px;"></span></div><div><div style="font-size:13px; font-weight:700; color:hsl(225 10% 42%);">تم التسليم</div><div style="font-size:11px; color:hsl(225 10% 42%);"></div></div></div>
+    </div>
+  </div>
+</div>
+    </div>
+  </main>
+</div>
+</x-dc>
+</body>
+</html>
