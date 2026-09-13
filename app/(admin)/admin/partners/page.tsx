@@ -42,6 +42,7 @@ import { formatDateEn } from "@/lib/format-en-numbers";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { PartnerAccountPanel } from "@/components/admin/partner-account-panel";
+import { PartnerEditForm, type PartnerPatchResponse } from "@/components/admin/partner-edit-form";
 
 type TabId = "requests" | "agents" | "distributors" | "new";
 
@@ -554,15 +555,25 @@ function AgentsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
     window.addEventListener("partners-list-updated", handler as EventListener);
     return () => window.removeEventListener("partners-list-updated", handler as EventListener);
   }, [load]);
+  const loadDetail = React.useCallback((id: string) => {
+    fetch(`/api/admin/partners/${id}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((json: { success?: boolean; data?: PartnerRow & { distributors?: PartnerRow[] } }) => {
+        if (json?.success && json.data) setDetail(json.data);
+      });
+  }, []);
+
   React.useEffect(() => {
-    if (detailId) {
-      fetch(`/api/admin/partners/${detailId}`, { credentials: "include" })
-        .then((r) => r.json())
-        .then((json: { success?: boolean; data?: PartnerRow & { distributors?: PartnerRow[] } }) => {
-          if (json?.success && json.data) setDetail(json.data);
-        });
-    } else setDetail(null);
-  }, [detailId]);
+    if (detailId) loadDetail(detailId);
+    else setDetail(null);
+  }, [detailId, loadDetail]);
+
+  const handleUpdated = (updated: PartnerPatchResponse) => {
+    setDetail((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
+    setPartners((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+    if (detailId) loadDetail(detailId);
+    load();
+  };
 
   if (loading && partners.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
 
@@ -647,10 +658,8 @@ function AgentsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
           <DialogHeader><DialogTitle>تفاصيل الوكيل</DialogTitle></DialogHeader>
           {detail && (
             <div className="space-y-2 text-sm">
-              <p><strong>الاسم:</strong> {detail.name}</p>
-              <p><strong>المحافظة:</strong> {detail.governorate}</p>
-              <p><strong>رقم التليفون:</strong> {detail.phone}</p>
               <p><strong>الحالة:</strong> {detail.isActive ? "نشط" : "غير نشط"}</p>
+              <PartnerEditForm partner={detail} agents={[]} onUpdated={handleUpdated} />
               {detail && "distributors" in detail && Array.isArray((detail as { distributors?: PartnerRow[] }).distributors) && (
                 <div>
                   <strong>الموزعون المرتبطين:</strong>
@@ -681,6 +690,15 @@ function DistributorsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"
   const [pageSize, setPageSize] = React.useState(20);
   const [detailId, setDetailId] = React.useState<string | null>(null);
   const [detail, setDetail] = React.useState<PartnerRow | null>(null);
+  const [agents, setAgents] = React.useState<{ id: string; name: string }[]>([]);
+
+  React.useEffect(() => {
+    fetch("/api/admin/partners?partnerType=AGENT&limit=200", { credentials: "include" })
+      .then((r) => r.json())
+      .then((json: { success?: boolean; data?: { partners: { id: string; name: string }[] } }) => {
+        if (json?.success && json.data) setAgents(json.data.partners);
+      });
+  }, []);
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(search.trim()), 400);
@@ -731,15 +749,40 @@ function DistributorsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"
     window.addEventListener("partners-list-updated", handler as EventListener);
     return () => window.removeEventListener("partners-list-updated", handler as EventListener);
   }, [load]);
+  const loadDetail = React.useCallback((id: string) => {
+    fetch(`/api/admin/partners/${id}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((json: { success?: boolean; data?: PartnerRow }) => {
+        if (json?.success && json.data) setDetail(json.data);
+      });
+  }, []);
+
   React.useEffect(() => {
-    if (detailId) {
-      fetch(`/api/admin/partners/${detailId}`, { credentials: "include" })
-        .then((r) => r.json())
-        .then((json: { success?: boolean; data?: PartnerRow }) => {
-          if (json?.success && json.data) setDetail(json.data);
-        });
-    } else setDetail(null);
-  }, [detailId]);
+    if (detailId) loadDetail(detailId);
+    else setDetail(null);
+  }, [detailId, loadDetail]);
+
+  const handleUpdated = (updated: PartnerPatchResponse) => {
+    const linkedAgent = updated.linkedAgentId
+      ? agents.find((a) => a.id === updated.linkedAgentId)
+      : null;
+    setDetail((prev) =>
+      prev && prev.id === updated.id
+        ? { ...prev, ...updated, linkedAgent: linkedAgent ? { ...linkedAgent, phone: "" } : null }
+        : prev
+    );
+    setPartners((prev) =>
+      prev.map((p) =>
+        p.id === updated.id
+          ? { ...p, ...updated, linkedAgent: linkedAgent ? { ...linkedAgent, phone: "" } : null }
+          : p
+      )
+    );
+    // The merged linkedAgent above has no phone (PATCH doesn't return the related row); the
+    // full detail dialog and the row both need the real one, so refetch once in the background.
+    if (detailId) loadDetail(detailId);
+    load();
+  };
 
   if (loading && partners.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
 
@@ -824,11 +867,12 @@ function DistributorsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"
           <DialogHeader><DialogTitle>تفاصيل الموزع</DialogTitle></DialogHeader>
           {detail && (
             <div className="space-y-2 text-sm">
-              <p><strong>الاسم:</strong> {detail.name}</p>
-              <p><strong>المحافظة:</strong> {detail.governorate}</p>
-              <p><strong>رقم التليفون:</strong> {detail.phone}</p>
-              <p><strong>الوكيل المرتبط:</strong> {detail.linkedAgent ? detail.linkedAgent.name : "—"}</p>
               <p><strong>الحالة:</strong> {detail.isActive ? "نشط" : "غير نشط"}</p>
+              <PartnerEditForm
+                partner={{ ...detail, linkedAgentId: detail.linkedAgent?.id ?? null }}
+                agents={agents}
+                onUpdated={handleUpdated}
+              />
               <PartnerAccountPanel partnerId={detail.id} costRateBps={detail.costRateBps ?? 7500} />
             </div>
           )}
