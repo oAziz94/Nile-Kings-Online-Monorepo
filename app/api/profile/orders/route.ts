@@ -22,7 +22,15 @@ const itemInclude = {
   },
 } satisfies Prisma.OrderItemFindManyArgs;
 
-type OrderWithItems = Prisma.OrderGetPayload<{ include: { items: typeof itemInclude } }>;
+// Additive (backlog 6.5a): the order's ticket status, for the footer's "سؤالك · <status>"
+// button — null when the customer has never opened a ticket for this order.
+const ticketInclude = {
+  select: { status: true },
+} satisfies Prisma.OrderTicketDefaultArgs;
+
+type OrderWithItems = Prisma.OrderGetPayload<{
+  include: { items: typeof itemInclude; ticket: typeof ticketInclude };
+}>;
 
 function mapOrder(o: OrderWithItems) {
   return {
@@ -42,6 +50,7 @@ function mapOrder(o: OrderWithItems) {
     // from fields this list already fetches.
     shippingAddress: o.shippingAddress,
     cancellationReason: o.cancellationReason,
+    ticketStatus: o.ticket?.status ?? null,
     items: o.items.map((item) => ({
       id: item.id,
       variantId: item.variantId,
@@ -80,7 +89,7 @@ export async function GET(req: NextRequest) {
   const orders = await prisma.order.findMany({
     where: { userId: user.userId },
     orderBy: { createdAt: "desc" },
-    include: { items: itemInclude },
+    include: { items: itemInclude, ticket: ticketInclude },
     ...(paginated
       ? {
           take: take + 1,

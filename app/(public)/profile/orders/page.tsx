@@ -10,7 +10,11 @@ import { parseJsonResponse } from "@/lib/api/parse-json";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { useCart } from "@/contexts/cart-context";
 import { useToast } from "@/hooks/use-toast";
-import { Package, ChevronDown, ChevronUp, RotateCcw, AlertTriangle } from "lucide-react";
+import { Package, ChevronDown, ChevronUp, RotateCcw, AlertTriangle, MessageCircle } from "lucide-react";
+import { OrderTicketDialog } from "@/components/profile/order-ticket-dialog";
+import { OrderTicketThread } from "@/components/profile/order-ticket-thread";
+import { getOrderTicketStatusLabel } from "@/lib/constants/order-ticket";
+import type { OrderTicket } from "@/components/profile/order-ticket-types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -53,6 +57,7 @@ type Order = {
   reservationExpiresAt: string | null;
   shippingAddress: ShippingAddress | null;
   cancellationReason: string | null;
+  ticketStatus: OrderTicket["status"] | null;
   items: OrderItem[];
 };
 
@@ -203,12 +208,20 @@ function OrderCard({
   onToggleExpand,
   onReorder,
   reordering,
+  onTicketButtonClick,
+  ticket,
+  onTicketUpdated,
+  threadRef,
 }: {
   order: Order;
   expanded: boolean;
   onToggleExpand: () => void;
   onReorder: () => void;
   reordering: boolean;
+  onTicketButtonClick: () => void;
+  ticket: OrderTicket | undefined;
+  onTicketUpdated: (ticket: OrderTicket) => void;
+  threadRef: (el: HTMLDivElement | null) => void;
 }) {
   const detailId = `order-detail-${order.id}`;
   const shown = order.items.slice(0, 3);
@@ -300,8 +313,26 @@ function OrderCard({
               {reordering ? "جارٍ الإعادة…" : "إعادة الطلب"}
             </Button>
           )}
-          {/* Slot for backlog 6.5a's order-ticket button ("سؤال عن الطلب") — renders nothing
-              until that task ships the customer ticket flow. */}
+          {order.ticketStatus ? (
+            <button
+              type="button"
+              onClick={onTicketButtonClick}
+              className="inline-flex h-10 items-center gap-1.5 border px-4 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
+              style={{ borderColor: "hsl(var(--gold-500))" }}
+            >
+              <MessageCircle className="h-4 w-4" strokeWidth={1.3} />
+              سؤالك · {getOrderTicketStatusLabel(order.ticketStatus)}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onTicketButtonClick}
+              className="inline-flex h-10 items-center gap-1.5 border border-[rgba(21,26,53,.16)] px-4 text-[13px] text-[#151A35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
+            >
+              <MessageCircle className="h-4 w-4" strokeWidth={1.3} />
+              سؤال عن الطلب
+            </button>
+          )}
         </div>
       </footer>
 
@@ -367,6 +398,16 @@ function OrderCard({
           </div>
         </div>
       )}
+
+      {expanded && order.ticketStatus && (
+        <div ref={threadRef}>
+          {ticket ? (
+            <OrderTicketThread orderId={order.id} ticket={ticket} onUpdated={onTicketUpdated} />
+          ) : (
+            <div role="status" aria-label="جارٍ تحميل سؤالك" className="nk-shimmer h-32 w-full" />
+          )}
+        </div>
+      )}
     </article>
   );
 }
@@ -402,6 +443,19 @@ export default function ProfileOrdersPage() {
   const [filter, setFilter] = React.useState<FilterKey>("all");
   const [search, setSearch] = React.useState("");
   const [reorderingId, setReorderingId] = React.useState<string | null>(null);
+  const [ticketsByOrderId, setTicketsByOrderId] = React.useState<Record<string, OrderTicket>>({});
+  const [ticketDialogOrderId, setTicketDialogOrderId] = React.useState<string | null>(null);
+  const [defaultTicketPhone, setDefaultTicketPhone] = React.useState("");
+  const threadRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+
+  React.useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((res) => parseJsonResponse<{ success?: boolean; data?: { phone?: string } }>(res))
+      .then((json) => {
+        if (json?.success && json.data?.phone) setDefaultTicketPhone(json.data.phone);
+      })
+      .catch(() => {});
+  }, []);
 
   const loadFirstPage = React.useCallback(() => {
     setLoading(true);
@@ -466,6 +520,37 @@ export default function ProfileOrdersPage() {
       else next.add(id);
       return next;
     });
+  };
+
+  const loadTicket = React.useCallback(async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/profile/orders/${orderId}/ticket`, { credentials: "include" });
+      const json = await parseJsonResponse<{ success?: boolean; data?: OrderTicket }>(res);
+      if (json?.success && json.data) {
+        setTicketsByOrderId((prev) => ({ ...prev, [orderId]: json.data! }));
+      }
+    } catch {
+      // The shimmer stays; the thread panel simply doesn't render this pass.
+    }
+  }, []);
+
+  const applyTicketUpdate = (orderId: string, ticket: OrderTicket) => {
+    setTicketsByOrderId((prev) => ({ ...prev, [orderId]: ticket }));
+    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ticketStatus: ticket.status } : o)));
+  };
+
+  const handleTicketButtonClick = (order: Order) => {
+    const wasExpanded = expandedIds.has(order.id);
+    toggleExpand(order.id);
+    if (wasExpanded) return;
+    if (order.ticketStatus) {
+      void loadTicket(order.id);
+      requestAnimationFrame(() => {
+        threadRefs.current[order.id]?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    } else {
+      setTicketDialogOrderId(order.id);
+    }
   };
 
   const reorder = async (order: Order) => {
@@ -636,6 +721,12 @@ export default function ProfileOrdersPage() {
                   onToggleExpand={() => toggleExpand(order.id)}
                   onReorder={() => reorder(order)}
                   reordering={reorderingId === order.id}
+                  onTicketButtonClick={() => handleTicketButtonClick(order)}
+                  ticket={ticketsByOrderId[order.id]}
+                  onTicketUpdated={(ticket) => applyTicketUpdate(order.id, ticket)}
+                  threadRef={(el) => {
+                    threadRefs.current[order.id] = el;
+                  }}
                 />
               ))}
             </div>
@@ -658,6 +749,24 @@ export default function ProfileOrdersPage() {
         </>
       )}
 
+      {ticketDialogOrderId && (
+        <OrderTicketDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setTicketDialogOrderId(null);
+          }}
+          orderId={ticketDialogOrderId}
+          orderIdLabel={ticketDialogOrderId.slice(-8).toUpperCase()}
+          defaultPhone={defaultTicketPhone}
+          onCreated={(ticket) => {
+            applyTicketUpdate(ticketDialogOrderId, ticket);
+            setTicketDialogOrderId(null);
+            requestAnimationFrame(() => {
+              threadRefs.current[ticket.orderId]?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
