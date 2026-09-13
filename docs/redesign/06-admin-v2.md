@@ -1,6 +1,6 @@
 # Admin dashboard v2 — the operations console
 
-Status: **draft for user approval, 2026-09-13.** User direction: "you should propose and redesign the dashboard logically, not just as a style. Make the admin's life easier, control the things we already need in the partner dashboard, and remove anything that has no necessity."
+Status: **draft for user approval, 2026-09-13 (revised the same day: catalog ownership, media library, control matrix).** User direction: "you should propose and redesign the dashboard logically, not just as a style. Make the admin's life easier, control the things we already need in the partner dashboard, and remove anything that has no necessity."
 
 ## 1. What the admin is for
 
@@ -61,8 +61,24 @@ Result: **8 nav items** instead of 14, and every remaining item answers one of t
 - **التوجيه** (tab or sub-page): the governorate matrix described in §2.
 - **مخزون الشبكة**: the cross-partner low-stock view.
 
-### 3.5 الكتالوج
-- المنتجات (list, detail with variants, images per colour → gallery), الفئات, الكوبونات (with 8.1's validity window). Bulk edit on products (Phase 5 approved). Restyle only, no IA change.
+### 3.5 الكتالوج — the admin owns the catalog, the partner owns only stock
+
+**Ownership model (the rule everything else follows).** The admin creates and edits products, categories, variants (size × colour), prices, descriptions, tags, weights and every image. The partner never creates or edits any of that; a partner only enters **how many of each admin-defined variant they hold** (`PartnerInventory`), through intake receipts, counts, adjustments and transfers. The storefront sells from partner stock by governorate and never from the variant's legacy `stockAvailable` column (`lib/storefront-location.ts` already refuses that fallback). Consequences:
+- `Variant.stockAvailable` / `stockReserved` are legacy: no admin screen edits them any more, the admin variant form drops those two fields, and a later cleanup task removes the columns once `lib/catalog.ts`, `lib/cart/cart.ts`, `lib/analytics/queries.ts`, `lib/catalog-export.ts` and `lib/inventory/receipts.ts` are migrated to partner stock. Until then they are read-only and hidden.
+- A variant that no partner stocks is still a real product on the storefront (shows as unavailable in that governorate); a partner cannot invent a variant the admin did not define.
+- `PartnerStockThreshold` (per category/product alert level) stays partner-owned: it only changes that partner's alerts.
+
+**Product structure the admin edits.** Product → colours → sizes. Today a colour is several `Variant` rows (one per size) sharing `colorName`/`colorHex`; the admin form is rebuilt around that reality: a product page with a **colour** panel (name, hex, gallery, representative image, active) and a **sizes** grid per colour (SKU, size, price, base price, active), with bulk add of the standard size run per colour. Everything the API accepts today is preserved; the form stops asking for stock.
+
+**Images: a media library, not loose URLs.** Today an upload goes to Cloudinary (`nile-kings/products`), the response's `public_id` is thrown away, only the URL is stored on `Product.imageUrl` / `Variant.imageUrl`, and `VariantImage` (the per-colour gallery added for the PDP) has **no writer at all** — the admin cannot build a gallery. Admin v2 fixes this with one table and one screen:
+- `MediaAsset { id, publicId @unique, url, width, height, bytes, format, folder, alt?, uploadedByUserId, createdAt }` — every Cloudinary upload made through the site is registered here at upload time. `VariantImage` gains `assetId` (nullable for the rows that predate it), `Product.imageUrl` / `Variant.imageUrl` keep working but the admin UI sets them by picking an asset.
+- **الصور** (media library, under الكتالوج): a grid of every asset with its usage — which product, which colour, hero or gallery, or **غير مستخدمة**. Filters: product, colour, unused, uploaded-by, date. Actions: upload (multi-file, drag-drop, registered on the spot), assign to a product colour's gallery (reorder by drag, pick the representative), set as product hero, replace, delete. Delete is refused while the asset is in use; deleting an unused asset calls Cloudinary `destroy` and removes the row (audit-logged). An **"مزامنة مع Cloudinary"** action lists the folder through the Cloudinary Admin API and reconciles: assets in Cloudinary but not registered are imported as unused; registered rows whose asset is gone are flagged broken. This is how the existing uploads become manageable without touching them by hand.
+- On the product page the colour panel shows its gallery inline (add from library or upload, reorder, remove) so the everyday flow never leaves the product; the library is the cross-cutting view.
+- Storefront: the PDP gallery (`VariantImage` by `colorKey`) and the card/cart representative image keep reading the same fields — no storefront change in this task beyond images finally existing.
+
+**Bulk edit** (Phase 5, approved): select products → change category, active, tags, price by amount or percent, with a preview of affected variants and a confirm; audit-logged.
+
+**Categories** stay as today (name, slug, sort, image from the library).
 
 ### 3.6 التقارير
 - The partner v2 report platform (period + comparison + headline + series + breakdowns + CSV) run for the whole network, with **partner** as a first-class breakdown: المبيعات (by partner, governorate, category, product), التجهيز (on-time, overdue, cancellation reasons by partner), المخزون (network cover, dead stock, out-of-stock by partner, the daily snapshot comparison from 7.5), المال (what each partner owes, payments received, receipts issued).
@@ -79,7 +95,7 @@ Result: **8 nav items** instead of 14, and every remaining item answers one of t
 
 ## 4. Shell
 - Same shell component as partner v2 (light SaaS rail, collapsible from 7.1, topbar slot, mobile top bar + sheet drawer). Admin gets its own nav config and a queue badge on اليوم.
-- Nav, in order: اليوم · الطلبات · أسئلة العملاء · الشركاء · الكتالوج (المنتجات، الفئات، الكوبونات) · العملاء · التقارير · الإعدادات.
+- Nav, in order: اليوم · الطلبات · أسئلة العملاء · الشركاء · الكتالوج (المنتجات، الصور، الفئات، الكوبونات) · العملاء · التقارير · الإعدادات.
 
 ## 5. What is removed
 - `/admin/analytics` page, its two API routes, `lib/cache/analytics.ts`.
@@ -91,6 +107,36 @@ Result: **8 nav items** instead of 14, and every remaining item answers one of t
 The partner v2 rules (1)–(10) and A7–A8 apply, plus: (B1) every admin write that changes money, stock, status or a setting appends an audit row with actor, before and after; (B2) the shell, `DataTable`, report platform and status pills are shared with partner v2 — no admin-only variants; (B3) an admin screen never re-implements a partner computation — it calls the same `lib/**` function with a wider scope; (B4) removing a screen requires a redirect from its old URL to its new home.
 
 ## 7. Process and order
-1. **Canvas round** (this week): artboards for اليوم, الطلبات + detail with reassign/proof, the partner hub list + profile (الحساب المالي and الإعدادات tabs), the routing matrix, network stock, one report page, settings. Published for approval like the partner v2 and account canvases; no task starts before approval.
-2. Tasks after approval, numbered 9.x: 9.1 shell + nav + redirects + audit-log foundation; 9.2 اليوم; 9.3 orders pipeline + detail (absorbs routed-orders); 9.4 partner hub list + profile tabs (absorbs partner-inventory, admins-into-clients); 9.5 routing matrix + network stock; 9.6 reports network-wide (deletes v1 analytics); 9.7 settings; 9.8 catalog restyle + bulk actions + gallery; 9.9 full suite + version.
+1. **Canvas round** (this week): artboards for اليوم, الطلبات + detail with reassign/proof, the partner hub list + profile (الحساب المالي and الإعدادات tabs), the routing matrix, network stock, one report page, settings, the product page (colour panel + sizes grid + inline gallery) and the media library. Published for approval like the partner v2 and account canvases; no task starts before approval.
+2. Tasks after approval, numbered 9.x: 9.1 shell + nav + redirects + audit-log foundation; 9.2 اليوم; 9.3 orders pipeline + detail (absorbs routed-orders); 9.4 partner hub list + profile tabs (absorbs partner-inventory, admins-into-clients); 9.5 routing matrix + network stock; 9.6 reports network-wide (deletes v1 analytics); 9.7 settings; 9.8 catalog: product page rebuilt around colours and sizes, `MediaAsset` + the media library + Cloudinary reconcile, galleries, bulk edit; 9.9 legacy variant stock columns retired; 9.10 full suite + version.
 3. Each task through implementer → verifier → PM fixes → merge, as before.
+
+## 8. Control matrix — everything in the partner dashboard, and who controls it
+
+Rule: if the partner does not control it, the admin does, in the hub or the catalog. Nothing is shared-write.
+
+| Thing | Partner (their own only) | Admin | Where in admin v2 |
+|---|---|---|---|
+| Product, category, variant (size/colour), SKU, price, description, tags, weight, active | read | **write** | الكتالوج |
+| Images (hero, colour gallery, representative) | read | **write** | الكتالوج → الصور + product page |
+| Partner stock per variant (available/reserved) | **write** (intake, counts, adjustments, transfers, import) | write to correct (ledger `MANUAL_ADJUSTMENT`) | الشركاء → profile → المخزون; مخزون الشبكة |
+| Intake receipts from the factory (`StockReceipt`, cost snapshot per line) | **write** (records what they took) | read; **issue** a receipt on the partner's behalf; dispute/void with reason | الشركاء → profile → الحساب المالي |
+| Cost rate (`costRateBps`) and network default | read | **write** | الشركاء → profile → الإعدادات; الإعدادات → الشركاء |
+| Payments to the factory (`PartnerPayment`), balance, `dueAt` | read | **write** | الشركاء → profile → الحساب المالي |
+| Partner identity: name, governorate, phone, socials, linked agent, notes, active | read (name/phone/socials editable by the partner in their settings) | **write**, activate/deactivate | الشركاء → profile → الملف |
+| Partner applications (طلبات الشراكة) | submit | **approve / reject / convert** | الشركاء → طلبات الشراكة tab |
+| Routing: which partner serves which governorate, round-robin | read (own areas) | **write** | الشركاء → التوجيه matrix |
+| Confirm SLA / ship SLA hours | today write | **admin-only** from v2 (a promise to the customer, not a preference); partner sees them | الشركاء → profile → الإعدادات + network default |
+| Working days, daily capacity, handover method, service areas | **write** | read; override with a note | partner settings; admin profile → الإعدادات (read + override) |
+| Low-stock threshold, per-category/product thresholds, dead-stock days, target cover days | **write** (only affects their alerts) | set network defaults; read per partner | الإعدادات → الشركاء; profile → الإعدادات |
+| Alert preferences, alerts seen | **write** | none | — |
+| Orders assigned to the partner: status transitions, item edits, print | **write** (own orders) | **write** on any order + assign/reassign + proof + cancel with reason | الطلبات |
+| Orders with no partner (unrouted) | none | **write** (assign) | اليوم queue → الطلبات (بلا شريك) |
+| Customer questions (tickets) | none | **write** (reply, close) | أسئلة العملاء |
+| Restock requests distributor ↔ agent | **write** (their side) | read; cancel a stuck one with reason | الشركاء → profile → الطلبات (requests tab) |
+| Partner reports (sales, fulfilment, inventory, network, money) | read own | read any partner + network-wide | profile → الأداء; التقارير |
+| Coupons, COD fee, senior promo, shipping rates, OTP rules | none | **write** | الكتالوج → الكوبونات; الإعدادات |
+| Customers, addresses, admin roles | none | **write** | العملاء |
+| Audit log | none | read | اليوم → recent; profile/order timelines |
+
+Two changes to today's partner behaviour follow from the matrix and need the user's yes: **(a)** SLA hours move from partner-editable to admin-set; **(b)** the admin can issue an intake receipt on a partner's behalf (the factory hands over stock and records it, instead of waiting for the partner to). Everything else keeps its current owner.
