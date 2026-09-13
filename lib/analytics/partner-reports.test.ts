@@ -3,6 +3,7 @@ import {
   computeDelta,
   daysOfCoverForVelocity,
   daySpanInclusive,
+  median,
   resolvePeriod,
   suggestedReorderQty,
 } from "./partner-reports";
@@ -55,6 +56,26 @@ describe("resolvePeriod", () => {
 
   it("custom: throws without from/to", () => {
     expect(() => resolvePeriod({ preset: "custom" })).toThrow();
+  });
+
+  it("allTime: current spans the anchor date through today (backlog 5.6b's Money report)", () => {
+    const p = resolvePeriod({ preset: "allTime" });
+    expect(p.current).toEqual({ from: "2020-01-01", to: "2026-09-13" });
+  });
+});
+
+describe("median (backlog 5.6b: fulfilment timing medians)", () => {
+  it("odd count: the middle value", () => {
+    expect(median([5, 1, 3])).toBe(3);
+  });
+  it("even count: the average of the two middle values", () => {
+    expect(median([1, 2, 3, 4])).toBe(2.5);
+  });
+  it("empty input: null, not zero", () => {
+    expect(median([])).toBeNull();
+  });
+  it("single value: itself", () => {
+    expect(median([42])).toBe(42);
   });
 });
 

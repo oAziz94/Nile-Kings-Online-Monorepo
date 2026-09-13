@@ -23,7 +23,15 @@ import { prisma } from "@/lib/db";
 
 export type SalesReportPreset = "today" | "7d" | "30d" | "month" | "lastMonth" | "custom";
 export type InventoryReportPreset = "7d" | "30d" | "90d" | "custom";
-export type ReportPreset = SalesReportPreset | InventoryReportPreset;
+/** Money report (backlog 5.6b) — "منذ البداية" needs an unbounded lower edge; anchored at
+ * a fixed early date rather than a real "no lower bound" since `resolvePeriod` always needs
+ * a previous-period-of-equal-length too (previous is intentionally tiny/empty for this one —
+ * the money headline that uses it is marked `noComparison` anyway). */
+export type MoneyReportPreset = "month" | "lastMonth" | "90d" | "allTime" | "custom";
+export type ReportPreset = SalesReportPreset | InventoryReportPreset | MoneyReportPreset;
+
+/** Anchor for the "allTime" preset's `from` — well before this codebase's first order. */
+export const ALL_TIME_FROM = "2020-01-01";
 
 export type ReportPeriodRange = { from: string; to: string };
 
@@ -100,6 +108,9 @@ export function resolvePeriod(input: { preset: ReportPreset; from?: string; to?:
       current = { from: toIsoDate(lastMonthStart), to: toIsoDate(lastMonthEnd) };
       break;
     }
+    case "allTime":
+      current = { from: ALL_TIME_FROM, to: today };
+      break;
     case "custom": {
       if (!input.from || !input.to) {
         throw new Error("resolvePeriod: preset 'custom' requires from/to");
@@ -165,7 +176,7 @@ export type ReportHeadline = {
   value: number;
   previous: number;
   delta: Delta;
-  unit: "piastres" | "count" | "percent" | "days";
+  unit: "piastres" | "count" | "percent" | "days" | "hours";
   /** Secondary line under the value — which universe the number counts. */
   hint?: string;
   /** Point-in-time figures (stock levels) have no honest previous-period value; render no delta. */
@@ -261,4 +272,16 @@ export function suggestedReorderQty(targetCoverDays: number, velocityPerDay: num
 export function daysOfCoverForVelocity(sellable: number, velocityPerDay: number): number | null {
   if (velocityPerDay <= 0) return null;
   return sellable / velocityPerDay;
+}
+
+// ---------------------------------------------------------------------------
+// Shared pure math (5.6b: fulfilment timing medians, money arithmetic)
+// ---------------------------------------------------------------------------
+
+/** The standard median (average of the two middle values on an even count); `null` on empty input. */
+export function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
