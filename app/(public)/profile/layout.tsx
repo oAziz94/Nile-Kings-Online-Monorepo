@@ -41,7 +41,7 @@ export default async function ProfileLayout({
       where: { id: sessionUser.userId },
       select: { name: true, phone: true, createdAt: true },
     }),
-    prisma.order.count({ where: { userId: sessionUser.userId } }),
+    prisma.order.count({ where: { userId: sessionUser.userId, status: { not: "CANCELLED" } } }),
   ]);
 
   const name = dbUser?.name?.trim() || "";

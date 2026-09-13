@@ -482,3 +482,14 @@ test("reorder on a DELIVERED order puts the right variant/quantity in the cart",
   await prisma.cartItem.deleteMany({ where: { cart: { userId: fixtureUserId } } });
 });
 
+// Backlog 7.3 — a cancelled order is not one of the customer's orders: the identity strip, the
+// account API and the drawer summary all count 11 of the 12 fixture orders (one is CANCELLED).
+test("the order count everywhere excludes cancelled orders", async ({ page }) => {
+  await loginViaUi(page);
+  await page.goto("/profile/account");
+  await expect(page.getByText(/^11 طلبات$/)).toBeVisible();
+  const account = await page.request.get("/api/profile/account");
+  expect((await account.json()).data.orderCount).toBe(11);
+  const summary = await page.request.get("/api/profile/orders/summary");
+  expect((await summary.json()).data.orderCount).toBe(11);
+});

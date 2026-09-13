@@ -42,7 +42,7 @@ export async function GET() {
 
   const [senior, orderCount] = await Promise.all([
     getSeniorStatus(user.userId),
-    prisma.order.count({ where: { userId: user.userId } }),
+    prisma.order.count({ where: { userId: user.userId, status: { not: "CANCELLED" } } }),
   ]);
 
   const response: AccountResponse = {
@@ -140,7 +140,7 @@ export async function PATCH(req: NextRequest) {
 
   const [senior, orderCount] = await Promise.all([
     getSeniorStatus(user.userId),
-    prisma.order.count({ where: { userId: user.userId } }),
+    prisma.order.count({ where: { userId: user.userId, status: { not: "CANCELLED" } } }),
   ]);
 
   const response: AccountResponse = {
