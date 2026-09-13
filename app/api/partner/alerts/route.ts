@@ -1,16 +1,23 @@
 import { requirePartner } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiForbidden, apiSuccess, apiUnauthorized } from "@/lib/api/response";
+import { resolveThreshold } from "@/lib/partner/resolve-threshold";
+import { isOrderOverdue, type OverdueStatus } from "@/lib/partner/today";
 
 /**
- * GET /api/partner/alerts (backlog 4.17) — a computed alert feed, no notification table.
- * Kinds: new orders assigned since `alertsSeenAt`, stock lines at/below the partner's
- * threshold, restock events since `alertsSeenAt` (role-specific), and orders in
- * CONFIRMED/PROCESSING older than 24h ("متأخر"). Each alert carries an `occurredAt` used
- * both for sorting and for the unseen count (`occurredAt > alertsSeenAt`, or always unseen
- * when `alertsSeenAt` is null) — a low-stock line stops counting as "unseen" once the user
- * opens the bell (`POST /api/partner/alerts/seen`), even though the underlying condition
- * persists, until it changes again and bumps its own `updatedAt`.
+ * GET /api/partner/alerts (backlog 4.17, overdue rule updated 5.2) — a computed alert feed,
+ * no notification table. Kinds: new orders assigned since `alertsSeenAt`, stock lines
+ * at/below the partner's *resolved* threshold (`resolveThreshold()` — rule 13, product then
+ * category then the partner default, not `Partner.lowStockThreshold` directly), restock
+ * events since `alertsSeenAt` (role-specific), and orders in CONFIRMED/PROCESSING overdue
+ * against the partner's own `confirmSlaHours`/`shipSlaHours` ("متأخر") — replaces the
+ * previously hard-coded 24h, matching اليوم's queue rule exactly (`lib/partner/today.ts`'s
+ * `isOrderOverdue`, computed from the latest `OrderAuditLog` status row). Each alert carries
+ * an `occurredAt` used both for sorting and for the unseen count (`occurredAt >
+ * alertsSeenAt`, or always unseen when `alertsSeenAt` is null) — a low-stock line stops
+ * counting as "unseen" once the user opens the bell (`POST /api/partner/alerts/seen`), even
+ * though the underlying condition persists, until it changes again and bumps its own
+ * `updatedAt`.
  */
 
 export type PartnerAlertKind = "new_order" | "low_stock" | "restock" | "overdue";
@@ -23,14 +30,19 @@ export type PartnerAlert = {
   occurredAt: string;
 };
 
-const OVERDUE_MS = 24 * 60 * 60 * 1000;
-
 export async function GET() {
   try {
     const user = await requirePartner();
     const partner = await prisma.partner.findUnique({
       where: { id: user.partnerId },
-      select: { id: true, partnerType: true, lowStockThreshold: true, alertsSeenAt: true, alertPrefs: true },
+      select: {
+        id: true,
+        partnerType: true,
+        alertsSeenAt: true,
+        alertPrefs: true,
+        confirmSlaHours: true,
+        shipSlaHours: true,
+      },
     });
     if (!partner) return apiForbidden("غير مصرح");
     // Settings' alert toggles (keys = PartnerAlertKind); a missing key means "on".
@@ -39,9 +51,9 @@ export async function GET() {
 
     const seenAt = partner.alertsSeenAt ?? new Date(0);
     const now = new Date();
-    const overdueBefore = new Date(now.getTime() - OVERDUE_MS);
+    const sla = { confirmSlaHours: partner.confirmSlaHours, shipSlaHours: partner.shipSlaHours };
 
-    const [newOrders, overdueOrders, lowStockRows, restockRows] = await Promise.all([
+    const [newOrders, confirmedProcessingOrders, threshold, lowStockRows, restockRows] = await Promise.all([
       prisma.order.findMany({
         where: { assignedPartnerId: partner.id, createdAt: { gt: seenAt } },
         orderBy: { createdAt: "desc" },
@@ -49,15 +61,10 @@ export async function GET() {
         select: { id: true, status: true, createdAt: true },
       }),
       prisma.order.findMany({
-        where: {
-          assignedPartnerId: partner.id,
-          status: { in: ["CONFIRMED", "PROCESSING"] },
-          updatedAt: { lt: overdueBefore },
-        },
-        orderBy: { updatedAt: "asc" },
-        take: 20,
+        where: { assignedPartnerId: partner.id, status: { in: ["CONFIRMED", "PROCESSING"] } },
         select: { id: true, status: true, updatedAt: true },
       }),
+      resolveThreshold(partner.id),
       prisma.partnerInventory.findMany({
         where: { partnerId: partner.id },
         orderBy: { updatedAt: "desc" },
@@ -67,7 +74,13 @@ export async function GET() {
           stockAvailable: true,
           stockReserved: true,
           updatedAt: true,
-          variant: { select: { name: true, sku: true, product: { select: { name: true } } } },
+          variant: {
+            select: {
+              name: true,
+              sku: true,
+              product: { select: { id: true, name: true, categoryId: true } },
+            },
+          },
         },
       }),
       partner.partnerType === "AGENT"
@@ -97,19 +110,45 @@ export async function GET() {
       });
     }
 
-    for (const order of overdueOrders) {
+    const confirmedProcessingIds = confirmedProcessingOrders.map((o) => o.id);
+    const auditByOrderId =
+      confirmedProcessingIds.length === 0
+        ? new Map<string, Date>()
+        : new Map(
+            (
+              await prisma.orderAuditLog.findMany({
+                where: { orderId: { in: confirmedProcessingIds }, event: { in: ["status_change", "confirmed"] } },
+                orderBy: { createdAt: "desc" },
+                distinct: ["orderId"],
+                select: { orderId: true, createdAt: true },
+              })
+            ).map((r) => [r.orderId, r.createdAt])
+          );
+
+    for (const order of confirmedProcessingOrders) {
+      const latestStatusLogAt = auditByOrderId.get(order.id) ?? null;
+      const overdue = isOrderOverdue(
+        { status: order.status as OverdueStatus, updatedAt: order.updatedAt, latestStatusLogAt },
+        sla,
+        now
+      );
+      if (!overdue) continue;
       alerts.push({
         id: `overdue:${order.id}`,
         kind: "overdue",
         message: `طلب متأخر #${order.id.slice(-8)}`,
         href: `/partner/routed-orders?q=${order.id}`,
-        occurredAt: order.updatedAt.toISOString(),
+        occurredAt: (latestStatusLogAt ?? order.updatedAt).toISOString(),
       });
     }
 
     for (const row of lowStockRows) {
       const sellable = row.stockAvailable - row.stockReserved;
-      if (sellable > partner.lowStockThreshold) continue;
+      const rowThreshold = threshold.forVariant({
+        productId: row.variant.product.id,
+        categoryId: row.variant.product.categoryId,
+      });
+      if (sellable > rowThreshold) continue;
       const label = `${row.variant.product.name} — ${row.variant.name}`;
       alerts.push({
         id: `low_stock:${row.id}`,
