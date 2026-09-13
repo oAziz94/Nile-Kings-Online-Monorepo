@@ -140,7 +140,7 @@ export function AddressFormFields({
         className="flex cursor-pointer items-center gap-2.5 font-plex-arabic text-[14px] text-[hsl(228_40%_14%)] sm:col-span-2"
       >
         <input type="checkbox" id={ids.isDefault} className="peer sr-only" {...register("isDefault")} />
-        <span className="grid h-[18px] w-[18px] shrink-0 place-items-center border border-[hsl(228_40%_14%)] text-transparent peer-checked:bg-[hsl(228_40%_14%)] peer-checked:text-papyrus">
+        <span className="grid h-[18px] w-[18px] shrink-0 place-items-center border border-[hsl(228_40%_14%)] text-transparent peer-checked:bg-[hsl(228_40%_14%)] peer-checked:text-papyrus peer-focus-visible:ring-2 peer-focus-visible:ring-gold-500 peer-focus-visible:ring-offset-2">
           <Check className="h-3 w-3" strokeWidth={2.2} />
         </span>
         اجعله العنوان الافتراضي
