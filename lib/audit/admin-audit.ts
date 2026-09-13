@@ -26,6 +26,7 @@ export function sanitizeForAudit<T extends Record<string, unknown>>(
   omit: readonly string[] = []
 ): Record<string, unknown> {
   const plain = JSON.parse(JSON.stringify(record)) as Record<string, unknown>;
+  delete plain.updatedAt;
   for (const key of omit) delete plain[key];
   return plain;
 }

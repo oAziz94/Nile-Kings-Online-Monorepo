@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { auditDiff } from "./admin-audit";
+import { auditDiff, sanitizeForAudit } from "./admin-audit";
 
 describe("auditDiff", () => {
   it("returns null when nothing changed", () => {
@@ -40,5 +40,14 @@ describe("auditDiff", () => {
   it("multiple changed keys are all kept", () => {
     const diff = auditDiff({ a: 1, b: 2, c: 3 }, { a: 9, b: 2, c: 8 });
     expect(diff).toEqual({ before: { a: 1, c: 3 }, after: { a: 9, c: 8 } });
+  });
+});
+
+describe("sanitizeForAudit", () => {
+  it("always drops updatedAt so a no-op write produces no diff", () => {
+    const before = sanitizeForAudit({ id: "p1", name: "x", updatedAt: new Date("2026-01-01T00:00:00Z") });
+    const after = sanitizeForAudit({ id: "p1", name: "x", updatedAt: new Date("2026-01-02T00:00:00Z") });
+    expect(before).not.toHaveProperty("updatedAt");
+    expect(auditDiff(before, after)).toBeNull();
   });
 });
