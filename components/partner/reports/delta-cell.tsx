@@ -1,20 +1,26 @@
 import { Badge } from "@/components/ui/badge";
+import { computeDelta } from "@/lib/analytics/partner-reports";
 
 /**
  * "مقارنة بالفترة السابقة" cell (backlog 7.4) — shared by every report breakdown table that
  * carries a per-row previous-period comparison. Extracted from the sales report's product
- * table (5.6a), which originated this exact rendering: up/down/flat tone via `Badge`,
- * Western numerals, LTR sign. A `previous` of 0 with a positive `current` renders "+100%"
- * (the product table's existing convention) rather than "—"; "—" is reserved for a genuinely
- * undefined comparison, which this cell never receives (every caller defaults previous to 0).
+ * table (5.6a) and aligned with the headline tiles' delta text (PM ruling at 7.4 verification):
+ * the maths is `computeDelta`, so a previous of 0 with a positive current is an *undefined*
+ * percentage and reads "جديد" (never "+100%"), no change reads "—", everything else is a
+ * signed rounded percentage with Western numerals and an LTR sign.
  */
 export function DeltaCell({ current, previous }: { current: number; previous: number }) {
-  const diff = current - previous;
-  const pct = previous !== 0 ? (diff / Math.abs(previous)) * 100 : current > 0 ? 100 : 0;
-  const tone = diff > 0 ? "success" : diff < 0 ? "destructive" : "secondary";
+  const delta = computeDelta(current, previous);
+  const tone = delta.direction === "up" ? "success" : delta.direction === "down" ? "destructive" : "secondary";
+  const text =
+    delta.direction === "flat"
+      ? "—"
+      : delta.changePct === null
+        ? "جديد"
+        : `${delta.direction === "up" ? "+" : ""}${Math.round(delta.changePct)}%`;
   return (
     <Badge variant={tone} className="gap-1">
-      <span dir="ltr">{diff === 0 ? "0%" : `${diff > 0 ? "+" : ""}${Math.round(pct)}%`}</span>
+      <span dir="ltr">{text}</span>
     </Badge>
   );
 }
