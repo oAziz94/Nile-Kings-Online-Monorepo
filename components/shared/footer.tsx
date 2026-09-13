@@ -76,8 +76,11 @@ export function Footer() {
     : null;
   const social = socialLinks();
 
+  // Below lg the fixed GovernorateSelector pill sits at bottom-start; the extra bottom padding
+  // keeps it off the footer's last line — and, since the footer is always the last element, off
+  // every page's content (backlog 7.2).
   return (
-    <footer className="relative overflow-hidden bg-[hsl(228_40%_14%)] text-papyrus/85">
+    <footer className="relative overflow-hidden bg-[hsl(228_40%_14%)] pb-[calc(4rem+env(safe-area-inset-bottom))] text-papyrus/85 lg:pb-0">
       <Ankh
         size={280}
         strokeWidth={0.9}

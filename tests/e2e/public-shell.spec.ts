@@ -71,3 +71,19 @@ test("a product card's \"أضف إلى السلة\" opens the quick-shop dialog"
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
 });
+
+test("at phone width the governorate pill never covers the footer's last line (backlog 7.2)", async ({ page, baseURL }) => {
+  await setStorefrontLocation(page, baseURL);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const pill = page.getByRole("button", { name: "القاهرة" });
+  await expect(pill).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const lastLine = page.locator("footer").getByText("صُنع في مصر");
+  await expect(lastLine).toBeVisible();
+  const [pillBox, lineBox] = await Promise.all([pill.boundingBox(), lastLine.boundingBox()]);
+  if (!pillBox || !lineBox) throw new Error("boxes");
+  // The footer row stacks at this width, so its last line spans the same x range as the pill;
+  // the reserved band must put the pill entirely below the line.
+  expect(pillBox.y).toBeGreaterThanOrEqual(lineBox.y + lineBox.height);
+});
