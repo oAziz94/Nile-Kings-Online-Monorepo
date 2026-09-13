@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { Prisma, type OrderStatus } from "@prisma/client";
 import { requirePartner } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { apiBadRequest, apiForbidden, apiNotFound, apiSuccess, apiUnauthorized } from "@/lib/api/response";
+import { apiBadRequest, apiConflict, apiForbidden, apiNotFound, apiSuccess, apiUnauthorized } from "@/lib/api/response";
 import { getPhase1ShippingFee, PHASE1_SHIPPING_PROVIDER_DISPLAY } from "@/lib/services/shipping";
 import { getCodFeePercent, isSeniorPromoEnabled } from "@/lib/settings";
 import { computeCodFeePiastres } from "@/lib/checkout/cod-fee";
@@ -152,7 +152,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         return apiSuccess(await withOrderExtras(mapPartnerOrder(order), user.partnerId));
       } catch (error) {
         if (error instanceof PartnerOrderTransitionError) {
-          return error.status === 404 ? apiNotFound(error.message) : apiBadRequest(error.message);
+          if (error.status === 404) return apiNotFound(error.message);
+          if (error.status === 409) return apiConflict(error.message);
+          return apiBadRequest(error.message);
         }
         throw error;
       }

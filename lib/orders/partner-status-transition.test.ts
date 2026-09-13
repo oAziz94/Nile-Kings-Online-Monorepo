@@ -196,6 +196,13 @@ class FakeDb {
     return 1;
   };
 
+  /** The module's `SELECT "status" … FOR UPDATE` row lock: returns the order's current status. */
+  $queryRaw = async (_strings: TemplateStringsArray, ...values: unknown[]) => {
+    const orderId = values[0] as string;
+    const row = this.orders.find((o) => o.id === orderId);
+    return row ? [{ status: row.status }] : [];
+  };
+
   $transaction = async (fn: (tx: this) => Promise<unknown>) => fn(this);
 }
 

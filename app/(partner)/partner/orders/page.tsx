@@ -471,9 +471,27 @@ function PartnerOrdersPageInner() {
               <button
                 key={tab.value || "all"}
                 type="button"
+                role="tab"
+                aria-selected={active}
+                tabIndex={active ? 0 : -1}
                 onClick={() => setStatusFilter(tab.value)}
+                onKeyDown={(e) => {
+                  const tabs = Array.from(
+                    e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? []
+                  );
+                  const i = tabs.indexOf(e.currentTarget);
+                  if (i < 0) return;
+                  // RTL row: ArrowLeft moves to the next tab, ArrowRight to the previous.
+                  const next =
+                    e.key === "ArrowLeft" ? i + 1 : e.key === "ArrowRight" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : null;
+                  if (next === null) return;
+                  e.preventDefault();
+                  const target = tabs[(next + tabs.length) % tabs.length];
+                  target.focus();
+                  target.click();
+                }}
                 className={cn(
-                  "flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3.5 py-2.5 text-[13px] font-bold transition-colors",
+                  "flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3.5 py-2.5 text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2",
                   active ? "border-gold-500 text-lapis-800" : "border-transparent text-ink-soft hover:text-ink"
                 )}
               >
@@ -518,9 +536,10 @@ function PartnerOrdersPageInner() {
           </Select>
           <button
             type="button"
+            aria-pressed={overdueOnly}
             onClick={() => setFilter("overdue", overdueOnly ? "" : "1")}
             className={cn(
-              "flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors",
+              "flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2",
               overdueOnly ? "border-lapis-800 bg-lapis-800 text-white" : "border-stone-200 bg-white text-ink"
             )}
           >

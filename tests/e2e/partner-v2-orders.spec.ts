@@ -142,7 +142,7 @@ test("stage tabs filter and round-trip through the URL", async ({ page }) => {
   await expect(page.locator(`tr[data-row-id="${orderConfirmedId}"]`)).toBeVisible({ timeout: 15_000 });
   await expect(page.locator(`tr[data-row-id="${orderFreshId}"]`)).toBeVisible();
 
-  await page.getByRole("tablist", { name: "مراحل الطلبات" }).getByRole("button", { name: /^مؤكد/ }).click();
+  await page.getByRole("tablist", { name: "مراحل الطلبات" }).getByRole("tab", { name: /^مؤكد/ }).click();
   await expect(page).toHaveURL(/status=CONFIRMED/);
   await expect(page.locator(`tr[data-row-id="${orderConfirmedId}"]`)).toBeVisible({ timeout: 15_000 });
   await expect(page.locator(`tr[data-row-id="${orderFreshId}"]`)).toHaveCount(0);
@@ -191,6 +191,52 @@ test("bulk status change of three orders moves them all and writes audit rows", 
     where: { orderId: { in: [orderBulkAId, orderBulkBId, orderBulkCId] }, event: "confirmed" },
   });
   expect(auditRows).toHaveLength(3);
+});
+
+test("two parallel next-status requests on one order: exactly one applies, one audit row", async ({ page }) => {
+  await loginAs(page, pair, "AGENT");
+  const variant = await prisma.variant.findUniqueOrThrow({ where: { id: variantId }, include: { product: true } });
+  const order = await prisma.order.create({
+    data: {
+      userId: customerUserId,
+      subtotalPiastres: 10000,
+      totalPiastres: 10000,
+      shippingAddress: { governorate: "القاهرة", city: "مدينة نصر", area: "الحي السابع", street: "شارع الاختبار", phone: "+201000000000" },
+      shippingProvider: "Egypt Post",
+      paymentMethod: "COD",
+      assignedPartnerId: pair.agent.partnerId,
+      status: "CREATED",
+      items: {
+        create: [
+          {
+            variantId,
+            productName: variant.product.name,
+            variantName: `parallel-${uniqueSuffix}`,
+            sku: variant.sku,
+            quantity: 1,
+            unitPricePiastres: 10000,
+            totalPiastres: 10000,
+          },
+        ],
+      },
+    },
+  });
+  try {
+    const responses = await Promise.all([
+      page.request.patch(`/api/partner/orders/${order.id}`, { data: { status: "CONFIRMED" } }),
+      page.request.patch(`/api/partner/orders/${order.id}`, { data: { status: "CONFIRMED" } }),
+    ]);
+    const okCount = responses.filter((r) => r.ok()).length;
+    expect(okCount).toBe(1);
+    const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    expect(after.status).toBe("CONFIRMED");
+    const auditRows = await prisma.orderAuditLog.findMany({ where: { orderId: order.id, event: "confirmed" } });
+    expect(auditRows).toHaveLength(1);
+  } finally {
+    await prisma.orderAuditLog.deleteMany({ where: { orderId: order.id } });
+    await prisma.orderItem.deleteMany({ where: { orderId: order.id } });
+    await prisma.order.delete({ where: { id: order.id } });
+  }
 });
 
 test("order detail timeline shows the seeded transitions and the routing status pill is gone", async ({ page }) => {

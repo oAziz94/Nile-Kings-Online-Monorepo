@@ -123,13 +123,15 @@ export async function GET(req: NextRequest) {
       ...(searchWhere ?? {}),
     };
 
-    let where: Prisma.OrderWhereInput = { ...baseWhere, ...(status ? { status } : {}) };
-
+    // With the overdue toggle on, both the rows and the tab counts are restricted to the
+    // overdue set (computed across every SLA-eligible stage, then narrowed by `status`), so a
+    // tab never advertises more orders than the list will show.
+    let countsWhere: Prisma.OrderWhereInput = baseWhere;
     if (overdueOnly) {
-      const scopeStatuses = statuses.length > 0 ? statuses : [...SLA_ELIGIBLE_STATUSES];
-      const overdueIds = await overdueOrderIds(user.partnerId, partner, scopeStatuses);
-      where = { ...where, id: { in: Array.from(overdueIds) } };
+      const overdueIds = await overdueOrderIds(user.partnerId, partner, [...SLA_ELIGIBLE_STATUSES]);
+      countsWhere = { ...baseWhere, id: { in: Array.from(overdueIds) } };
     }
+    const where: Prisma.OrderWhereInput = { ...countsWhere, ...(status ? { status } : {}) };
 
     const [orders, total, groups] = await Promise.all([
       prisma.order.findMany({
@@ -143,7 +145,7 @@ export async function GET(req: NextRequest) {
         },
       }),
       prisma.order.count({ where }),
-      prisma.order.groupBy({ by: ["status"], where: baseWhere, _count: { _all: true } }),
+      prisma.order.groupBy({ by: ["status"], where: countsWhere, _count: { _all: true } }),
     ]);
 
     // Latest audit row per order on this page — drives the "منذ" column and the overdue pill.
