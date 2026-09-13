@@ -436,14 +436,16 @@ export function SiteNavbar({
               aria-current={current === "account" ? "page" : undefined}
               className={cn(
                 controlClass(current === "account", onDark),
-                "lg:inline-flex lg:w-auto lg:items-center lg:gap-1.5 lg:px-2"
+                // The text label is a storefront addition (6.1); (auth) keeps the icon-only
+                // identity bar — user direction 2026-09-13 "keep the site identity".
+                accountMenu && "lg:inline-flex lg:w-auto lg:items-center lg:gap-1.5 lg:px-2"
               )}
             >
               <svg {...iconProps} className={iconClass}>
                 <circle cx="10.5" cy="7.6" r="3.1" />
                 <path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8" />
               </svg>
-              <span className="hidden text-[13.5px] lg:inline">تسجيل الدخول</span>
+              {accountMenu && <span className="hidden text-[13.5px] lg:inline">تسجيل الدخول</span>}
               {current === "account" && <CurrentMark />}
             </Link>
           )}

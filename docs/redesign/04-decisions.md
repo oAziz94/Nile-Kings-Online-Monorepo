@@ -1,6 +1,6 @@
 ## 2026-09-13 — Search stays off the auth bar (v2.3.1)
 
-The 6.1 search control rendered on every mount of `SiteNavbar`, including login/register/forgot-password, because it sat next to the burger rather than behind a prop. The user's call on seeing it: hide it on auth, keep the site identity. It is now an opt-in `search` prop like `accountMenu` and `cartCount` — the (auth) bar is byte-for-byte what shipped before this round. Rule reinforced: every storefront-only addition to the shared bar is opt-in from `public-site-navbar.tsx`; the default rendering is the identity bar and nothing else.
+The 6.1 search control rendered on every mount of `SiteNavbar`, including login/register/forgot-password, because it sat next to the burger rather than behind a prop. The user's call on seeing it: hide it on auth, keep the site identity. It is now an opt-in `search` prop like `accountMenu` and `cartCount`, and the logged-out "تسجيل الدخول" text label is gated on `accountMenu` as well (v2.3.2) — the (auth) bar is byte-for-byte what shipped before this round: icons only. Rule reinforced: every storefront-only addition to the shared bar is opt-in from `public-site-navbar.tsx`; the default rendering is the identity bar and nothing else.
 
 ## 2026-09-13 — Account area v2 complete (6.1–6.6, v2.3.0)
 
