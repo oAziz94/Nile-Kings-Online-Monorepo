@@ -136,7 +136,7 @@ export async function GET(req: NextRequest) {
           coverDays: coverByVariant.get(variant.id) ?? null,
         })),
       }))
-      .filter((product) => !lowOnly || product.variants.some((variant) => variant.sellable <= 3))
+      .filter((product) => !lowOnly || product.variants.some((variant) => variant.sellable <= variant.threshold))
       .filter(
         (product) => !lowStock || product.variants.some((variant) => variant.sellable <= variant.threshold)
       )

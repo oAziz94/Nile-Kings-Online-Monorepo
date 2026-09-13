@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
+import { formatCoverDays } from "@/lib/partner/stock-cover";
 import { getDisplaySizeLabel, isKidsCategory } from "@/lib/size-display";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,8 @@ type VariantRow = {
   stockReserved: number;
   sellable: number;
   updatedAt: string | null;
+  threshold: number;
+  coverDays: number | null;
 };
 
 type ProductRow = {
@@ -122,12 +125,12 @@ export default function PartnerProductVariantsPage() {
         (acc, variant) => {
           acc.available += variant.stockAvailable;
           acc.reserved += variant.stockReserved;
-          if (variant.sellable <= lowStockThreshold) acc.low += 1;
+          if (variant.sellable <= variant.threshold) acc.low += 1;
           return acc;
         },
         { available: 0, reserved: 0, low: 0 }
       ),
-    [product, lowStockThreshold]
+    [product]
   );
 
   const applyServerRow = React.useCallback(
@@ -363,10 +366,30 @@ export default function PartnerProductVariantsPage() {
         header: "قابل للبيع",
         enableSorting: false,
         cell: ({ row }) => (
-          <Badge variant={row.original.sellable > 0 ? "success" : "destructive"}>
+          <Badge
+            variant={
+              row.original.sellable <= 0
+                ? "destructive"
+                : row.original.sellable <= row.original.threshold
+                  ? "warning"
+                  : "success"
+            }
+          >
             {formatNumberEn(row.original.sellable)}
           </Badge>
         ),
+      },
+      {
+        id: "threshold",
+        header: "الحد",
+        enableSorting: false,
+        cell: ({ row }) => <span className="text-ink-soft">{formatNumberEn(row.original.threshold)}</span>,
+      },
+      {
+        id: "coverDays",
+        header: "تغطية (يوم)",
+        enableSorting: false,
+        cell: ({ row }) => <span dir="ltr">{formatCoverDays(row.original.coverDays)}</span>,
       },
       {
         id: "updatedAt",
@@ -497,7 +520,7 @@ export default function PartnerProductVariantsPage() {
         <KpiCard
           title="مخزون منخفض"
           value={formatNumberEn(totals.low)}
-          hint={`متغيرات ${formatNumberEn(lowStockThreshold)} أو أقل`}
+          hint={`بحسب حد كل صنف (الافتراضي ${formatNumberEn(lowStockThreshold)})`}
           icon={<Package className="h-5 w-5" />}
           accent={totals.low > 0 ? "gold" : "emerald"}
         />
