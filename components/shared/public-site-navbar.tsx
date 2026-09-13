@@ -23,6 +23,7 @@ export function PublicSiteNavbar() {
       current={currentSectionFromPath(pathname ?? "")}
       cartCount={cart?.itemCount}
       accountMenu
+      search
       sticky
       transparent={pathname === "/"}
     />

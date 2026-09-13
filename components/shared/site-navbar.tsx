@@ -113,6 +113,7 @@ export function SiteNavbar({
   current,
   cartCount,
   accountMenu = false,
+  search = false,
   sticky = false,
   transparent = false,
   transparentTone = "cream",
@@ -122,6 +123,12 @@ export function SiteNavbar({
   cartCount?: number;
   /** Opt-in: turns the account control into a real logged-in/out control with a dropdown. */
   accountMenu?: boolean;
+  /**
+   * Opt-in: the product search (inline field on lg+, icon that opens the drawer below). The
+   * storefront turns it on; (auth) keeps the identity bar exactly as shipped — user direction
+   * 2026-09-13 "hide it on auth, keep the site identity".
+   */
+  search?: boolean;
   /**
    * `(auth)` composes its own single-screen layout around an `absolute`-positioned bar (default,
    * unchanged). The storefront scrolls real content underneath it, so `(public)` opts into a
@@ -238,6 +245,8 @@ export function SiteNavbar({
             </svg>
           </button>
 
+          {search && (
+            <>
           {/* Phone: a search icon next to the burger that opens the drawer with its search box
               focused (backlog 6.1a). Desktop gets the real inline field below instead. */}
           <button
@@ -287,6 +296,8 @@ export function SiteNavbar({
               />
             </div>
           </form>
+            </>
+          )}
         </div>
 
         <Link
