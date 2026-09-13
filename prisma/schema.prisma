@@ -623,6 +623,7 @@ model Partner {
   stockReceipts StockReceipt[]
   stockThresholds PartnerStockThreshold[]
   payments      PartnerPayment[]
+  stockSnapshots PartnerStockSnapshot[]
 
   @@index([userId])
   @@index([phone])
@@ -686,6 +687,31 @@ model PartnerPayment {
   @@index([partnerId])
   @@index([stockReceiptId])
   @@index([paidAt])
+}
+
+// Daily stock snapshot (backlog 7.5, `05-partner-portal-v2.md`) — one row per partner per
+// day, written by the `/api/cron/stock-snapshot` job so the inventory report's point-in-time
+// headline tiles ("قابل للبيع", "القيمة بالتكلفة", ...) get a real previous-period
+// comparison instead of none. Aggregated per partner, never per SKU (cost ruling,
+// backlog 7.5: Neon free tier is 0.5 GB; per-SKU rows would burn it in a year). Pruned by
+// the same job past 400 days.
+model PartnerStockSnapshot {
+  id                String   @id @default(cuid())
+  partnerId         String
+  day               DateTime @db.Date
+  sellableUnits     Int
+  reservedUnits     Int
+  valuationPiastres BigInt
+  coverDays         Float?
+  deadStockSkus     Int
+  outOfStockSkus    Int
+  createdAt         DateTime @default(now())
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerId, day])
+  @@index([partnerId])
+  @@index([day])
 }
 
 // ---------------------------------------------------------------------------

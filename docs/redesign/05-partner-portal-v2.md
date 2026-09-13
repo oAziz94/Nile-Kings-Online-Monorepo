@@ -116,3 +116,10 @@ Added: (11) the user approves the canvas before implementation tasks are written
 3. 5.4 Stock hub and 5.6a Reports API + Sales + Inventory — parallel.
 4. 5.5 Network, 5.6b Fulfilment + Network + Money reports — parallel (Money only after the §1 open assumption is confirmed).
 5. Retire old specs, full suite, `npm version minor` → v2.2.0.
+
+## Environment
+
+- `CRON_SECRET` — bearer token guarding `GET /api/cron/stock-snapshot` (backlog 7.5). Set in
+  each worktree's own `.env.redesign` (never committed); the e2e suite reads it via
+  `process.env.CRON_SECRET` after `loadRedesignTestEnv()`. Vercel's own cron invocations
+  supply the same value from the project's environment variables in production.

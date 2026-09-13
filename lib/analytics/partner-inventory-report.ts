@@ -11,6 +11,7 @@ import {
   daysOfCoverForVelocity,
   formatComparisonLabel,
   getSkuVelocityForPeriod,
+  periodToDateRange,
   resolvePeriod,
   suggestedReorderQty,
   type InventoryReportPreset,
@@ -18,7 +19,10 @@ import {
   type ReportAction,
   type ReportBreakdownPage,
   type ReportHeadline,
+  type ResolvedPeriod,
 } from "./partner-reports";
+import { computePartnerStockTotals, findNearestStockSnapshot, type NearestSnapshotRow, type PartnerStockTotals } from "./partner-stock-totals";
+import { sumStockOutDays, type VariantStockOutInput } from "./stock-out-days";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { INVENTORY_EXPORT_HEADERS } from "@/lib/inventory/receipts";
 
@@ -57,15 +61,14 @@ type PartnerReportSettings = { deadStockDays: number; targetCoverDays: number };
 async function computeInventoryRows(
   partnerId: string,
   period: ReturnType<typeof resolvePeriod>
-): Promise<{ rows: InventorySkuRow[]; partner: PartnerReportSettings; costRateBps: number; previousVelocity: Map<string, { unitsSold: number; velocityPerDay: number }> }> {
-  const [partner, costRateBps, currentVelocity, previousVelocity, lastSaleByVariant] = await Promise.all([
+): Promise<{ rows: InventorySkuRow[]; partner: PartnerReportSettings; costRateBps: number }> {
+  const [partner, costRateBps, currentVelocity, lastSaleByVariant] = await Promise.all([
     prisma.partner.findUniqueOrThrow({
       where: { id: partnerId },
       select: { deadStockDays: true, targetCoverDays: true },
     }),
     getPartnerCostRate(partnerId),
     getSkuVelocityForPeriod(partnerId, period.current),
-    getSkuVelocityForPeriod(partnerId, period.previous),
     getLastSaleDateByVariant(partnerId),
   ]);
 
@@ -119,7 +122,7 @@ async function computeInventoryRows(
     return aCover - bCover;
   });
 
-  return { rows, partner, costRateBps, previousVelocity };
+  return { rows, partner, costRateBps };
 }
 
 /** Every SKU that needs a reorder, unpaginated — the CSV export's source of truth. */
@@ -140,7 +143,7 @@ export async function getPartnerInventoryReport(
   const page = Math.max(1, input.page ?? 1);
   const filter = input.filter ?? "all";
 
-  const { rows, partner, costRateBps, previousVelocity } = await computeInventoryRows(partnerId, period);
+  const { rows, partner, costRateBps } = await computeInventoryRows(partnerId, period);
 
   const filtered =
     filter === "needsReorder"
@@ -149,7 +152,16 @@ export async function getPartnerInventoryReport(
         ? rows.filter((r) => r.isDead)
         : rows;
 
-  const headline = buildHeadline(rows, costRateBps, period.days, previousVelocity, partner.deadStockDays);
+  // Backlog 7.5 — the six point-in-time totals (shared with the daily snapshot cron via
+  // `computePartnerStockTotals`), the ledger-accurate stock-out-days headline, and the
+  // nearest-snapshot lookup for a real previous-period comparison, all in parallel.
+  const [totals, stockOut, snapshot] = await Promise.all([
+    computePartnerStockTotals(partnerId),
+    computeStockOutHeadline(partnerId, rows, period),
+    findNearestStockSnapshot(partnerId, period.previous.to),
+  ]);
+
+  const headline = buildHeadline(rows, totals, costRateBps, period.days, partner.deadStockDays, stockOut, snapshot);
   const start = (page - 1) * PAGE_SIZE;
   const skuPage: ReportBreakdownPage<InventorySkuRow> = {
     rows: filtered.slice(start, start + PAGE_SIZE),
@@ -208,29 +220,72 @@ async function getLastSaleDateByVariant(partnerId: string): Promise<Map<string, 
   return map;
 }
 
+/**
+ * Ledger-accurate stock-out days for both the current and previous period (backlog 7.5),
+ * over the same SKU set the report already loaded (`rows`, which carries each variant's
+ * *current* sellable balance — exactly what `stock-out-days.ts`'s backwards walk needs).
+ * Loads every ledger entry from the previous period's start through now, once, and reuses
+ * it for both windows.
+ */
+async function computeStockOutHeadline(
+  partnerId: string,
+  rows: InventorySkuRow[],
+  period: ResolvedPeriod
+): Promise<{ current: number; previous: number }> {
+  if (rows.length === 0) return { current: 0, previous: 0 };
+  const variantIds = rows.map((r) => r.variantId);
+  const since = periodToDateRange(period.previous).from;
+
+  const ledgerRows = await prisma.inventoryLedger.findMany({
+    where: { partnerId, variantId: { in: variantIds }, createdAt: { gte: since } },
+    select: { variantId: true, createdAt: true, quantityAvailableDelta: true, quantityReservedDelta: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const entriesByVariant = new Map<string, typeof ledgerRows>();
+  for (const row of ledgerRows) {
+    const arr = entriesByVariant.get(row.variantId) ?? [];
+    arr.push(row);
+    entriesByVariant.set(row.variantId, arr);
+  }
+
+  const inputs: VariantStockOutInput[] = rows.map((r) => ({
+    variantId: r.variantId,
+    currentSellable: r.sellable,
+    entries: entriesByVariant.get(r.variantId) ?? [],
+  }));
+
+  return {
+    current: sumStockOutDays(inputs, period.current.from, period.current.to),
+    previous: sumStockOutDays(inputs, period.previous.from, period.previous.to),
+  };
+}
+
 function buildHeadline(
   rows: InventorySkuRow[],
+  totals: PartnerStockTotals,
   costRateBps: number,
   days: number,
-  previousVelocity: Map<string, { unitsSold: number }>,
-  deadStockDays: number
+  deadStockDays: number,
+  stockOut: { current: number; previous: number },
+  snapshot: NearestSnapshotRow | null
 ): ReportHeadline[] {
-  const sellable = rows.reduce((s, r) => s + r.sellable, 0);
-  const valuationCost = rows.reduce((s, r) => s + r.sellable * Math.round((r.pricePiastres * costRateBps) / 10_000), 0);
-  const valuationPrice = rows.reduce((s, r) => s + r.sellable * r.pricePiastres, 0);
   const coverValues = rows.map((r) => r.daysOfCover).filter((v): v is number => v !== null);
   const medianCover = median(coverValues);
-  const deadCount = rows.filter((r) => r.isDead).length;
-  const outCount = rows.filter((r) => r.isOut).length;
 
-  // Stock levels are point-in-time: there is no stored snapshot at the previous period's
-  // end, so these tiles carry no comparison at all (rule 12's honest exception, recorded in
-  // 04-decisions.md 2026-09-13) rather than a fabricated flat delta. The period still
-  // governs velocity, cover and dead stock, which is what the hint says.
-  void previousVelocity;
+  // Stock levels are point-in-time: with no snapshot row within 7 days of the previous
+  // period's end, these tiles carry no comparison at all (rule 12's honest exception,
+  // recorded in 04-decisions.md 2026-09-13) rather than a fabricated flat delta. Backlog
+  // 7.5 adds a real comparison when a `PartnerStockSnapshot` row does exist — see
+  // `withSnapshot` below. "القيمة بسعر البيع" (valuationPrice) has no snapshot field of its
+  // own (the schema stores one aggregate `valuationPiastres`, deliberately the *cost*
+  // valuation — the money-relevant figure for the Money report and reorder decisions) and
+  // so stays without a comparison even when a snapshot row exists for the other five.
   const snapshotHint = "رصيد لحظي — بلا مقارنة";
   const periodHint = `على آخر ${days} يومًا`;
   const costRatePct = Math.round(costRateBps / 100);
+  const snapshotDateLabel = snapshot ? `مقارنةً بلقطة ${formatDateEn(snapshot.day)}` : null;
+
   const point = (h: Omit<ReportHeadline, "previous" | "delta" | "noComparison">): ReportHeadline => ({
     ...h,
     previous: h.value,
@@ -238,13 +293,69 @@ function buildHeadline(
     noComparison: true,
   });
 
+  /** Real comparison against the snapshot row when one exists and carries this field;
+   * otherwise byte-for-byte the same `point()` fallback as today (spec: "when none exists
+   * the current behaviour stays byte-for-byte"). */
+  const withSnapshot = (
+    h: Omit<ReportHeadline, "previous" | "delta" | "noComparison">,
+    previousFromSnapshot: number | null | undefined,
+    hintWithComparison: string | undefined
+  ): ReportHeadline => {
+    if (!snapshot || previousFromSnapshot === null || previousFromSnapshot === undefined) {
+      return point(h);
+    }
+    return {
+      ...h,
+      hint: hintWithComparison ?? snapshotDateLabel!,
+      previous: previousFromSnapshot,
+      delta: computeDelta(h.value, previousFromSnapshot),
+      noComparison: false,
+    };
+  };
+
   return [
-    point({ key: "sellable", label: "قابل للبيع", value: sellable, unit: "count", hint: snapshotHint }),
-    point({ key: "valuationCost", label: "القيمة بالتكلفة", value: valuationCost, unit: "piastres", hint: `بنسبتك ${costRatePct}% · ${snapshotHint}` }),
-    point({ key: "valuationPrice", label: "القيمة بسعر البيع", value: valuationPrice, unit: "piastres", hint: snapshotHint }),
-    point({ key: "medianCover", label: "متوسط التغطية", value: medianCover ?? 0, unit: "days", hint: `سرعة البيع ${periodHint}` }),
-    point({ key: "deadStockCount", label: "أصناف راكدة", value: deadCount, unit: "count", hint: `بلا بيع منذ ${deadStockDays} يومًا` }),
-    point({ key: "stockOutSkus", label: "أصناف نافدة", value: outCount, unit: "count", hint: "قابل للبيع صفر أو أقل" }),
+    withSnapshot(
+      { key: "sellable", label: "قابل للبيع", value: totals.sellableUnits, unit: "count", hint: snapshotHint },
+      snapshot?.sellableUnits,
+      snapshotDateLabel ?? undefined
+    ),
+    withSnapshot(
+      {
+        key: "valuationCost",
+        label: "القيمة بالتكلفة",
+        value: totals.valuationCostPiastres,
+        unit: "piastres",
+        hint: `بنسبتك ${costRatePct}% · ${snapshotHint}`,
+      },
+      snapshot ? Number(snapshot.valuationPiastres) : undefined,
+      snapshot ? `بنسبتك ${costRatePct}% · ${snapshotDateLabel}` : undefined
+    ),
+    point({ key: "valuationPrice", label: "القيمة بسعر البيع", value: totals.valuationPricePiastres, unit: "piastres", hint: snapshotHint }),
+    withSnapshot(
+      { key: "medianCover", label: "متوسط التغطية", value: medianCover ?? 0, unit: "days", hint: `سرعة البيع ${periodHint}` },
+      snapshot?.coverDays,
+      snapshot ? `سرعة البيع ${periodHint} · ${snapshotDateLabel}` : undefined
+    ),
+    withSnapshot(
+      { key: "deadStockCount", label: "أصناف راكدة", value: totals.deadStockSkus, unit: "count", hint: `بلا بيع منذ ${deadStockDays} يومًا` },
+      snapshot?.deadStockSkus,
+      snapshot ? `بلا بيع منذ ${deadStockDays} يومًا · ${snapshotDateLabel}` : undefined
+    ),
+    withSnapshot(
+      { key: "stockOutSkus", label: "أصناف نافدة", value: totals.outOfStockSkus, unit: "count", hint: "قابل للبيع صفر أو أقل" },
+      snapshot?.outOfStockSkus,
+      snapshot ? `قابل للبيع صفر أو أقل · ${snapshotDateLabel}` : undefined
+    ),
+    {
+      key: "stockOutDays",
+      label: "أيام نفاد",
+      value: stockOut.current,
+      previous: stockOut.previous,
+      delta: computeDelta(stockOut.current, stockOut.previous),
+      unit: "count",
+      hint: "مجموع أيام النفاد لكل الأصناف",
+      noComparison: false,
+    },
   ];
 }
 
