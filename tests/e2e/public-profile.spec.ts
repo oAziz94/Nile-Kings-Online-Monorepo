@@ -37,7 +37,10 @@ test.beforeAll(async () => {
   await prisma.user.upsert({
     where: { phone: FIXTURE_PHONE },
     create: { phone: FIXTURE_PHONE, role: "CUSTOMER", passwordHash, name: "عميل الاختبار" },
-    update: { passwordHash, role: "CUSTOMER" },
+    // `name` is reset too (not just passwordHash/role) — the account-save test in this file
+    // renames the fixture user, and re-running the suite must not depend on a name a previous
+    // run happened to leave behind (backlog 6.2 fixture-hygiene fix).
+    update: { passwordHash, role: "CUSTOMER", name: "عميل الاختبار" },
   });
 });
 
@@ -78,6 +81,16 @@ test("unauthenticated visit redirects to login", async ({ page }) => {
   await expect(page).toHaveURL(/\/login\?redirect=(%2Fprofile|\/profile)$/);
 });
 
+test("identity strip shows the fixture name, phone and member-since year", async ({ page }) => {
+  await loginViaUi(page);
+  await page.goto("/profile/account");
+
+  const currentYear = String(new Date().getFullYear());
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("عميل الاختبار");
+  await expect(page.getByText(FIXTURE_PHONE)).toBeVisible();
+  await expect(page.getByText(`عميل منذ ${currentYear}`)).toBeVisible();
+});
+
 test("nav shows the three sections (العرض الخاص is hidden until it launches), and account save works", async ({ page }) => {
   await loginViaUi(page);
   await page.goto("/profile/account");
@@ -89,7 +102,9 @@ test("nav shows the three sections (العرض الخاص is hidden until it lau
 
   const phoneInput = page.getByLabel("رقم الجوال");
   await expect(phoneInput).toBeDisabled();
-  await expect(page.getByText("رقم الهاتف هو معرّف حسابك ولا يمكن تغييره من هنا.")).toBeVisible();
+  // Backlog 6.2 rewrites this hint verbatim from the account-area artboard (a UI-copy change,
+  // not a parity regression — the old "رقم الهاتف هو معرّف حسابك..." string is gone by design).
+  await expect(page.getByText("موثّق عبر واتساب. للتغيير تواصل مع خدمة العملاء.")).toBeVisible();
 
   const emailInput = page.getByLabel("البريد الإلكتروني (اختياري)");
   await expect(emailInput).toHaveAttribute("type", "email");
@@ -98,6 +113,31 @@ test("nav shows the three sections (العرض الخاص is hidden until it lau
   await nameInput.fill("عميل معدّل");
   await page.getByRole("button", { name: "حفظ التعديلات" }).click();
   await expect(page.getByText("تم تحديث بيانات الحساب").first()).toBeVisible();
+  // The "آخر تحديث" line refreshes from the PATCH response's additive `updatedAt`.
+  await expect(page.getByText(/آخر تحديث/)).toBeVisible();
+});
+
+test("password mismatch shows the inline error and fires no PATCH; a real mismatch is fixable without a request", async ({
+  page,
+}) => {
+  await loginViaUi(page);
+  await page.goto("/profile/account");
+
+  const patchRequests: string[] = [];
+  page.on("request", (req) => {
+    if (req.method() === "PATCH" && req.url().includes("/api/profile/account")) {
+      patchRequests.push(req.url());
+    }
+  });
+
+  await page.getByLabel("كلمة المرور الحالية").fill("whatever-current-1");
+  await page.getByLabel("كلمة المرور الجديدة", { exact: true }).fill("newpassword1");
+  await page.getByLabel("تأكيد كلمة المرور الجديدة").fill("doesnotmatch1");
+  await page.getByRole("button", { name: "تغيير كلمة المرور" }).click();
+
+  await expect(page.getByText("تأكيد كلمة المرور الجديدة غير مطابق").first()).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "تأكيد كلمة المرور الجديدة غير مطابق" })).toBeVisible();
+  expect(patchRequests.length).toBe(0);
 });
 
 test("addresses: add, set default, delete via the styled dialog", async ({ page }) => {

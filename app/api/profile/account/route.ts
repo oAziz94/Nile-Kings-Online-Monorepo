@@ -13,6 +13,11 @@ type AccountResponse = {
   email: string | null;
   seniorVerified: boolean;
   nationalIdLast4: string | null;
+  // Backlog 6.2 — additive: feeds the account-shell identity strip ("عميل منذ <year>",
+  // "<N> طلبات") and the account page's "آخر تحديث <date>" line. Nothing existing changes.
+  createdAt: string;
+  updatedAt: string;
+  orderCount: number;
 };
 
 function trimOrNull(v: unknown): string | null {
@@ -32,10 +37,13 @@ export async function GET() {
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.userId },
-    select: { phone: true, name: true, email: true },
+    select: { phone: true, name: true, email: true, createdAt: true, updatedAt: true },
   });
 
-  const senior = await getSeniorStatus(user.userId);
+  const [senior, orderCount] = await Promise.all([
+    getSeniorStatus(user.userId),
+    prisma.order.count({ where: { userId: user.userId } }),
+  ]);
 
   const response: AccountResponse = {
     phone: dbUser?.phone ?? user.phone,
@@ -43,6 +51,9 @@ export async function GET() {
     email: dbUser?.email ?? null,
     seniorVerified: senior.seniorVerified,
     nationalIdLast4: senior.nationalIdLast4,
+    createdAt: (dbUser?.createdAt ?? new Date()).toISOString(),
+    updatedAt: (dbUser?.updatedAt ?? new Date()).toISOString(),
+    orderCount,
   };
 
   return apiSuccess(response);
@@ -124,10 +135,13 @@ export async function PATCH(req: NextRequest) {
       ...(emailProvided ? { email } : {}),
       ...(nextPasswordHash ? { passwordHash: nextPasswordHash } : {}),
     },
-    select: { phone: true, name: true, email: true },
+    select: { phone: true, name: true, email: true, createdAt: true, updatedAt: true },
   });
 
-  const senior = await getSeniorStatus(user.userId);
+  const [senior, orderCount] = await Promise.all([
+    getSeniorStatus(user.userId),
+    prisma.order.count({ where: { userId: user.userId } }),
+  ]);
 
   const response: AccountResponse = {
     phone: updated.phone,
@@ -135,6 +149,9 @@ export async function PATCH(req: NextRequest) {
     email: updated.email ?? null,
     seniorVerified: senior.seniorVerified,
     nationalIdLast4: senior.nationalIdLast4,
+    createdAt: updated.createdAt.toISOString(),
+    updatedAt: updated.updatedAt.toISOString(),
+    orderCount,
   };
 
   return apiSuccess(response, "تم تحديث الحساب بنجاح");
