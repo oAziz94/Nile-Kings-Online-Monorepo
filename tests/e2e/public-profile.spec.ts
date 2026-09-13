@@ -114,22 +114,71 @@ test("addresses: add, set default, delete via the styled dialog", async ({ page 
   await page.getByLabel("المنطقة", { exact: false }).fill("الحي السابع");
   await page.getByLabel("العنوان بالتفصيل", { exact: false }).fill("شارع الاختبار 1");
 
-  await page.getByRole("button", { name: "إضافة" }).click();
+  await page.getByRole("button", { name: "حفظ العنوان" }).click();
   await expect(page.getByText("تمت إضافة العنوان").first()).toBeVisible();
 
-  const row = page.locator("li", { hasText: "مدينة نصر" }).first();
-  await expect(row).toBeVisible();
+  const card = page.locator("article", { hasText: "مدينة نصر" }).first();
+  await expect(card).toBeVisible();
 
-  await row.getByRole("button", { name: "تعيين افتراضي" }).click();
+  await card.getByRole("button", { name: "تعيين كعنوان افتراضي" }).click();
   await expect(page.getByText("تم تعيين العنوان الافتراضي").first()).toBeVisible();
-  await expect(row.getByText("افتراضي", { exact: true })).toBeVisible();
+  await expect(card.getByText("الافتراضي", { exact: true })).toBeVisible();
 
-  await row.getByRole("button", { name: "حذف" }).click();
-  const dialog = page.getByRole("dialog", { name: "حذف هذا العنوان؟" });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "حذف" }).click();
+  await card.getByRole("button", { name: "حذف" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText(/حذف عنوان|حذف هذا العنوان؟/)).toBeVisible();
+  await expect(dialog.getByText("لا يمكن التراجع عن الحذف. الطلبات السابقة تحتفظ بعنوانها.")).toBeVisible();
+  await dialog.getByRole("button", { name: "حذف العنوان" }).click();
   await expect(page.getByText("تم حذف العنوان").first()).toBeVisible();
-  await expect(page.locator("li", { hasText: "مدينة نصر" })).toHaveCount(0);
+  await expect(page.locator("article", { hasText: "مدينة نصر" })).toHaveCount(0);
+});
+
+test("addresses: an address missing its city shows the amber CTA and opens the sheet with المدينة focused", async ({ page }) => {
+  await loginViaUi(page);
+  const user = await prisma.user.findUniqueOrThrow({ where: { phone: FIXTURE_PHONE } });
+  await prisma.savedAddress.create({
+    data: {
+      userId: user.id,
+      governorate: "الجيزة",
+      city: "",
+      area: "الشيخ زايد",
+      street: "فيلا اختبار 1",
+      phone: "+201099911223",
+      isDefault: false,
+    },
+  });
+
+  await page.goto("/profile/addresses");
+  const card = page.locator("article", { hasText: "يحتاج المدينة" }).first();
+  await expect(card).toBeVisible();
+  await expect(card.getByText("أضف المدينة حتى يمكن استخدام هذا العنوان عند الدفع.")).toBeVisible();
+
+  await card.getByRole("button", { name: "أكمل العنوان" }).click();
+  const cityInput = page.getByLabel("المدينة", { exact: false });
+  await expect(cityInput).toBeVisible();
+  await expect(cityInput).toBeFocused();
+});
+
+test("addresses: a double-click on save sends exactly one POST", async ({ page }) => {
+  await loginViaUi(page);
+  await page.goto("/profile/addresses");
+
+  await page.getByRole("button", { name: "عنوان جديد" }).click();
+  await page.getByLabel("المحافظة", { exact: false }).selectOption({ label: "القاهرة" });
+  await page.getByLabel("المدينة", { exact: false }).fill("مدينة الشروق");
+  await page.getByLabel("هاتف التوصيل", { exact: false }).fill("01011122234");
+  await page.getByLabel("المنطقة", { exact: false }).fill("الحي الأول");
+  await page.getByLabel("العنوان بالتفصيل", { exact: false }).fill("شارع الاختبار 2");
+
+  let postCount = 0;
+  page.on("request", (req) => {
+    if (req.method() === "POST" && req.url().includes("/api/profile/addresses")) postCount += 1;
+  });
+
+  const saveButton = page.getByRole("button", { name: "حفظ العنوان" });
+  await saveButton.dblclick();
+  await expect(page.getByText("تمت إضافة العنوان").first()).toBeVisible();
+  expect(postCount).toBe(1);
 });
 
 test("orders: renders the empty state for a fixture user with no orders", async ({ page }) => {
