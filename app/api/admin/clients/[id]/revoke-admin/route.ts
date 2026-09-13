@@ -33,20 +33,31 @@ export async function POST(_req: NextRequest, { params }: { params: Params }) {
     return apiSuccess({ userId: user.id, alreadyCustomer: true as const });
   }
 
-  const adminCount = await prisma.user.count({ where: { role: "ADMIN" } });
-  const decision = canRevokeAdmin({ targetId: user.id, callerId: caller.userId, adminCount });
+  // Count, decide and update inside one transaction with every ADMIN row locked, so two
+  // concurrent revokes of the last two admins cannot both pass the last-admin check and leave
+  // the site with no admin (verifier, 8.3) — same FOR UPDATE rule as lockOrderAtStatus.
+  const result = await prisma.$transaction(async (tx) => {
+    const admins = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "User" WHERE "role" = 'ADMIN'::"UserRole" FOR UPDATE`;
+    if (!admins.some((a) => a.id === user.id)) {
+      return { kind: "already" as const };
+    }
+    const decision = canRevokeAdmin({ targetId: user.id, callerId: caller.userId, adminCount: admins.length });
+    if (!decision.allowed) {
+      return { kind: "refused" as const, reason: decision.reason };
+    }
+    await tx.user.update({ where: { id: user.id }, data: { role: "CUSTOMER" } });
+    return { kind: "revoked" as const };
+  });
 
-  if (!decision.allowed) {
-    if (decision.reason === "SELF") {
+  if (result.kind === "already") {
+    return apiSuccess({ userId: user.id, alreadyCustomer: true as const });
+  }
+  if (result.kind === "refused") {
+    if (result.reason === "SELF") {
       return apiBadRequest("لا يمكنك إزالة صلاحياتك");
     }
     return apiBadRequest("لا يمكن إزالة آخر مسؤول");
   }
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { role: "CUSTOMER" },
-  });
 
   return apiSuccess({ userId: user.id, alreadyCustomer: false as const });
 }

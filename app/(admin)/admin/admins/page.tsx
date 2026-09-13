@@ -29,7 +29,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type AdminUser = {
   id: string;
@@ -187,6 +186,7 @@ export default function AdminAccountsPage() {
                       size="sm"
                       className="text-destructive hover:text-destructive"
                       disabled={isSelf}
+                      aria-describedby={isSelf ? `revoke-self-${admin.id}` : undefined}
                       onClick={() => setRevokeTarget(admin)}
                     >
                       <ShieldX className="ml-1 h-4 w-4" />
@@ -210,12 +210,15 @@ export default function AdminAccountsPage() {
                       </TableCell>
                       <TableCell className="text-left">
                         {isSelf ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span tabIndex={0}>{revokeButton}</span>
-                            </TooltipTrigger>
-                            <TooltipContent>لا يمكنك إزالة صلاحيتك الخاصة</TooltipContent>
-                          </Tooltip>
+                          // An always-visible caption instead of a hover/focus tooltip: a disabled
+                          // button is not focusable, and the tooltip closed on a spurious scroll
+                          // event at 1024/390 before anyone could read it (verifier, 8.3).
+                          <div className="flex flex-col items-start gap-0.5">
+                            {revokeButton}
+                            <span id={`revoke-self-${admin.id}`} className="text-[11px] text-muted-foreground">
+                              لا يمكنك إزالة صلاحيتك الخاصة
+                            </span>
+                          </div>
                         ) : (
                           revokeButton
                         )}
