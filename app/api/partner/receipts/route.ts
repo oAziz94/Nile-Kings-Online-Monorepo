@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requirePartner } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiBadRequest, apiForbidden, apiSuccess, apiUnauthorized } from "@/lib/api/response";
+import { computeUnitCostPiastres } from "@/lib/inventory/receipts";
 
 /**
  * `StockReceipt` create/list — backlog 4.23. AGENT only (the factory ships to agents;
@@ -108,12 +109,26 @@ export async function POST(req: NextRequest) {
       const receipt = await prisma.$transaction(async (tx) => {
         const variants = await tx.variant.findMany({
           where: { id: { in: lines.map((l) => l.variantId) } },
-          select: { id: true },
+          select: { id: true, pricePiastres: true },
         });
-        const knownIds = new Set(variants.map((v) => v.id));
+        const priceByVariantId = new Map(variants.map((v) => [v.id, v.pricePiastres]));
         for (const line of lines) {
-          if (!knownIds.has(line.variantId)) throw new ReceiptError("المتغير غير موجود");
+          if (!priceByVariantId.has(line.variantId)) throw new ReceiptError("المتغير غير موجود");
         }
+
+        // Settlement cost snapshot (backlog 5.1) — FACTORY lines only; a COUNT receipt
+        // never creates a cost (05-partner-portal-v2.md §4.1: "a count is a correction,
+        // not a purchase"). Snapshotted from the partner's rate *at apply time* so a later
+        // rate change never rewrites this receipt's history.
+        let costRateBps: number | null = null;
+        if (kind === "FACTORY") {
+          const partnerRow = await tx.partner.findUniqueOrThrow({
+            where: { id: user.partnerId },
+            select: { costRateBps: true },
+          });
+          costRateBps = partnerRow.costRateBps;
+        }
+        let totalCostPiastres = 0;
 
         const created = await tx.stockReceipt.create({
           data: { partnerId: user.partnerId, kind, reference, notes },
@@ -152,6 +167,13 @@ export async function POST(req: NextRequest) {
             data: { stockAvailable: newAvailable },
           });
 
+          let unitCostPiastres: number | null = null;
+          if (kind === "FACTORY" && costRateBps !== null) {
+            const pricePiastres = priceByVariantId.get(line.variantId) ?? 0;
+            unitCostPiastres = computeUnitCostPiastres(pricePiastres, costRateBps);
+            totalCostPiastres += unitCostPiastres * line.quantity;
+          }
+
           await tx.stockReceiptLine.create({
             data: {
               receiptId: created.id,
@@ -159,6 +181,7 @@ export async function POST(req: NextRequest) {
               quantity: line.quantity,
               previousAvailable,
               newAvailable,
+              unitCostPiastres,
             },
           });
 
@@ -172,6 +195,13 @@ export async function POST(req: NextRequest) {
               stockReceiptId: created.id,
               notes: kind === "FACTORY" ? "Factory receipt" : "Stock count",
             },
+          });
+        }
+
+        if (kind === "FACTORY") {
+          await tx.stockReceipt.update({
+            where: { id: created.id },
+            data: { totalCostPiastres },
           });
         }
 

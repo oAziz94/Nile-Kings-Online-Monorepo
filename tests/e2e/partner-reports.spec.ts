@@ -171,7 +171,9 @@ async function checkReportsForRole(page: Page, role: "AGENT" | "DISTRIBUTOR") {
   expect(summaryUrl.searchParams.get("from")).toBe(rangeAll.from);
   expect(summaryUrl.searchParams.get("to")).toBe(rangeAll.to);
 
-  const stockPanel = page.locator("text=تقرير المخزون").locator("xpath=ancestor::div[contains(@class,'rounded-[14px]')][1]");
+  // `PanelCard`'s radius class updated to `rounded-2xl` (16px) by backlog 5.1's v2 card
+  // restyle — same panel, just a different Tailwind class name for the container.
+  const stockPanel = page.locator("text=تقرير المخزون").locator("xpath=ancestor::div[contains(@class,'rounded-2xl')][1]");
   const [stockRequest] = await Promise.all([
     page.context().waitForEvent("request", (r) => r.url().includes("/api/partner/analytics/export")),
     stockPanel.getByRole("button", { name: "تصدير CSV" }).click(),

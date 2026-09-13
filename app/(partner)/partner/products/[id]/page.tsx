@@ -385,7 +385,7 @@ export default function PartnerProductVariantsPage() {
         cell: ({ row }) => (
           <Button asChild type="button" size="sm" variant="outline" className="rounded-md">
             <Link
-              href={`/partner/routed-orders?variantId=${row.original.id}&status=${STOCK_VERIFY_STATUSES}`}
+              href={`/partner/orders?variantId=${row.original.id}&status=${STOCK_VERIFY_STATUSES}`}
               target="_blank"
               rel="noopener noreferrer"
             >

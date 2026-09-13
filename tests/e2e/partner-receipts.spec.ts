@@ -10,6 +10,9 @@ import { seedPartnerPair, loginAs, cleanupPartnerPair, type PartnerFixturePair }
 // docs/redesign/03-backlog.md's 4.23 entry. Serial mode: one seeded fixture pair + one
 // seeded product/variant set shared across tests, cleaned up once at the end.
 test.describe.configure({ mode: "serial" });
+// Quarantined by backlog 5.1: the receipts screens redirect into the /partner/stock stub
+// until 5.4 moves them into the stock hub's intake/counts tabs. 5.4 removes this line.
+test.skip(true, "receipts UI is behind the /partner/stock stub until backlog 5.4");
 
 const prisma = new PrismaClient();
 let pair: PartnerFixturePair;

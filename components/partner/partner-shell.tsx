@@ -16,22 +16,26 @@ import {
   SheetCloseButton,
 } from "@/components/ui/sheet";
 import { usePartnerMe, type PartnerType } from "@/hooks/use-partner-me";
-import { PARTNER_ACCOUNT_NAV, getPartnerNavForRole, type PartnerNavSection } from "@/components/partner/partner-nav-config";
+import {
+  PARTNER_ACCOUNT_NAV,
+  PARTNER_MOBILE_TABS,
+  getPartnerNavForRole,
+  type PartnerNavSection,
+} from "@/components/partner/partner-nav-config";
 import { PartnerAlertsBell } from "@/components/partner/partner-alerts-bell";
 import { cn } from "@/lib/utils";
 
 /**
- * Partner shell (backlog 4.16) rebuilt to the design-canvas dashboard chrome —
- * `docs/redesign/design-canvas/PartnerOrders-Desktop.dc.html`: lapis-900 sidebar (236px,
- * `lg+`) with the crown-only mark, sectioned nav (`partner-nav-config.ts`), gold-on-
- * lapis-700 active item; white topbar; stone-50 content ground. Below `lg` the sidebar
- * collapses to a white top bar + a `Sheet` (`side="right"`) drawer carrying the same nav.
+ * Partner shell v2 (backlog 5.1) rebuilt to `design-canvas/partner-v2/Main.dc.html`'s
+ * light SaaS shell — a **different visual language** from the v1 dark-lapis rail: white
+ * 248px sidebar on a stone-50 ground, 1px stone-200 right border, soft `lapis-50` active
+ * pill with lapis-800 text, white topbar, mobile top bar + bottom tab bar
+ * (اليوم · الطلبات · المخزون · التقارير) below `lg` with the sidebar becoming the
+ * existing `Sheet` drawer for anything not on the tab bar.
  *
- * Fixes the flagged bug from `00-feature-inventory/partner/dashboard.md` (Edge cases):
- * the old shell defaulted `partnerType === null` to the AGENT nav set, so a distributor
- * could briefly (or permanently, on fetch failure) see agent-only nav items. Now: while
- * `usePartnerMe()` is loading, the nav renders a skeleton (no role assumed either way);
- * on a resolved error, an in-page alert with a retry button replaces the nav entirely.
+ * Carries over from v1 (4.16): the loading/error nav states (never assume a role while
+ * `usePartnerMe()` is loading — skeleton first, alert+retry on failure), the alerts bell,
+ * `data-partner-chrome` + `print:hidden` on every chrome region.
  */
 
 function initials(name: string): string {
@@ -51,12 +55,12 @@ function isActivePath(pathname: string, href: string): boolean {
 
 function NavSkeleton() {
   return (
-    <div className="space-y-6 px-3 py-2">
+    <div className="space-y-6 px-1 py-2">
       {[0, 1, 2].map((section) => (
         <div key={section} className="space-y-2">
           <Skeleton className="h-3 w-16 rounded" />
-          <Skeleton className="h-9 w-full rounded-lg" />
-          <Skeleton className="h-9 w-full rounded-lg" />
+          <Skeleton className="h-9 w-full rounded-[10px]" />
+          <Skeleton className="h-9 w-full rounded-[10px]" />
         </div>
       ))}
     </div>
@@ -65,7 +69,7 @@ function NavSkeleton() {
 
 function NavError({ onRetry }: { onRetry: () => void }) {
   return (
-    <div role="alert" className="mx-3 mt-2 rounded-lg border border-carnelian-500/30 bg-danger-bg p-3 text-danger-text">
+    <div role="alert" className="mx-1 mt-2 rounded-lg border border-carnelian-500/30 bg-danger-bg p-3 text-danger-text">
       <p className="flex items-center gap-2 text-sm font-bold">
         <AlertTriangle className="h-4 w-4 shrink-0" />
         تعذر تحميل بيانات الحساب
@@ -86,6 +90,11 @@ async function logout() {
   window.location.href = "/login";
 }
 
+const NAV_ITEM_BASE =
+  "flex items-center gap-2.5 rounded-[10px] px-3 py-[11px] text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500";
+const NAV_ITEM_ACTIVE = "bg-lapis-50 text-lapis-800";
+const NAV_ITEM_INACTIVE = "text-ink-soft hover:bg-stone-100 hover:text-ink";
+
 function NavSections({
   sections,
   pathname,
@@ -99,7 +108,7 @@ function NavSections({
     <div className="space-y-1">
       {sections.map((section) => (
         <div key={section.id} className="mb-1">
-          <p className="mb-2 mt-4 px-2.5 text-[11px] font-bold uppercase tracking-wide text-[hsl(220_20%_55%)]">
+          <p className="mb-1.5 mt-4 px-2.5 text-[11px] font-bold uppercase tracking-wide text-stone-300">
             {section.label}
           </p>
           {section.items.map((item) => {
@@ -111,13 +120,7 @@ function NavSections({
                 href={item.href}
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-[10px] px-3 py-[11px] text-sm font-semibold transition-colors",
-                  active
-                    ? "bg-lapis-700 text-gold-500"
-                    : "text-[hsl(220_25%_72%)] hover:bg-lapis-700/60 hover:text-gold-50",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-lapis-900"
-                )}
+                className={cn(NAV_ITEM_BASE, active ? NAV_ITEM_ACTIVE : NAV_ITEM_INACTIVE)}
               >
                 <Icon className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
                 {item.label}
@@ -126,8 +129,8 @@ function NavSections({
           })}
         </div>
       ))}
-      <div className="mt-4 border-t border-white/10 pt-3">
-        <p className="mb-2 px-2.5 text-[11px] font-bold uppercase tracking-wide text-[hsl(220_20%_55%)]">
+      <div className="mt-4 border-t border-stone-200 pt-3">
+        <p className="mb-1.5 px-2.5 text-[11px] font-bold uppercase tracking-wide text-stone-300">
           الحساب
         </p>
         <Link
@@ -135,34 +138,52 @@ function NavSections({
           onClick={onNavigate}
           aria-current={isActivePath(pathname, PARTNER_ACCOUNT_NAV.settingsHref) ? "page" : undefined}
           className={cn(
-            "flex items-center gap-2.5 rounded-[10px] px-3 py-[11px] text-sm font-semibold transition-colors",
-            isActivePath(pathname, PARTNER_ACCOUNT_NAV.settingsHref)
-              ? "bg-lapis-700 text-gold-500"
-              : "text-[hsl(220_25%_72%)] hover:bg-lapis-700/60 hover:text-gold-50",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-lapis-900"
+            NAV_ITEM_BASE,
+            isActivePath(pathname, PARTNER_ACCOUNT_NAV.settingsHref) ? NAV_ITEM_ACTIVE : NAV_ITEM_INACTIVE
           )}
         >
           <Settings className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
           {PARTNER_ACCOUNT_NAV.settingsLabel}
         </Link>
-        <Link
-          href={PARTNER_ACCOUNT_NAV.storeHref}
-          onClick={onNavigate}
-          className="flex items-center gap-2.5 rounded-[10px] px-3 py-[11px] text-sm font-semibold text-[hsl(220_25%_72%)] transition-colors hover:bg-lapis-700/60 hover:text-gold-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-lapis-900"
-        >
+        <Link href={PARTNER_ACCOUNT_NAV.storeHref} onClick={onNavigate} className={cn(NAV_ITEM_BASE, NAV_ITEM_INACTIVE)}>
           <Store className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
           {PARTNER_ACCOUNT_NAV.storeLabel}
         </Link>
-        <button
-          type="button"
-          onClick={logout}
-          className="flex w-full items-center gap-2.5 rounded-[10px] px-3 py-[11px] text-sm font-semibold text-[hsl(220_25%_72%)] transition-colors hover:bg-lapis-700/60 hover:text-gold-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-lapis-900"
-        >
+        <button type="button" onClick={logout} className={cn(NAV_ITEM_BASE, NAV_ITEM_INACTIVE, "w-full")}>
           <LogOut className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
           {PARTNER_ACCOUNT_NAV.logoutLabel}
         </button>
       </div>
     </div>
+  );
+}
+
+function MobileBottomTabBar({ pathname }: { pathname: string }) {
+  return (
+    <nav
+      data-partner-chrome
+      aria-label="التنقل السريع"
+      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-stone-200 bg-white px-2 pb-[max(theme(spacing.2),env(safe-area-inset-bottom))] pt-2 print:hidden lg:hidden"
+    >
+      {PARTNER_MOBILE_TABS.map((tab) => {
+        const active = isActivePath(pathname, tab.href);
+        const Icon = tab.icon;
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] py-1.5 text-[11px] font-bold",
+              active ? "bg-lapis-50 text-lapis-800" : "text-ink-soft"
+            )}
+          >
+            <Icon className="h-5 w-5" strokeWidth={2} />
+            {tab.label}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -196,7 +217,7 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
             type="button"
             variant="ghost"
             size="icon"
-            className="h-9 w-9 shrink-0 rounded-md"
+            className="h-9 w-9 shrink-0 rounded-full border border-stone-200"
             aria-label="فتح قائمة لوحة الشريك"
           >
             <Menu className="h-5 w-5" />
@@ -210,43 +231,47 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
             <p className="truncate text-sm font-bold text-ink">{displayName}</p>
           )}
         </div>
-        <PartnerAlertsBell className="shrink-0 rounded-lg" />
+        <PartnerAlertsBell className="shrink-0 rounded-full border border-stone-200" />
       </header>
 
-      <SheetContent side="right" className="w-[min(18rem,88vw)] bg-lapis-900 p-0 lg:hidden">
-        <SheetHeader className="border-b border-white/10 bg-lapis-900 px-4">
-          <SheetTitle className="font-cairo text-base text-white">قائمة الشريك</SheetTitle>
-          <SheetCloseButton className="text-white/70 hover:text-white" />
+      <SheetContent side="right" className="w-[min(18rem,88vw)] bg-white p-0 lg:hidden">
+        <SheetHeader className="border-b border-stone-200 bg-white px-4">
+          <SheetTitle className="font-cairo text-base text-ink">قائمة الشريك</SheetTitle>
+          <SheetCloseButton />
         </SheetHeader>
         <nav className="flex-1 overflow-y-auto p-3" aria-label="التنقل في لوحة الشريك">
           {navBody}
         </nav>
       </SheetContent>
 
-      {/* Desktop sidebar (lg+) */}
-      <aside data-partner-chrome className="sticky top-0 hidden h-screen w-[236px] shrink-0 flex-col overflow-y-auto bg-lapis-900 px-4 py-6 print:hidden lg:flex">
-        <div className="mb-2 flex items-center px-2 pb-6">
-          <Image src="/brand/logo-gold-mark.png" alt="نايل كينجز" width={24} height={24} className="h-6 w-auto" />
+      {/* Desktop sidebar (lg+) — 248px, white, stone-200 border, per Main.dc.html */}
+      <aside data-partner-chrome className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col overflow-y-auto border-l border-stone-200 bg-white px-3.5 py-5 print:hidden lg:flex">
+        <div className="mb-3.5 flex items-center gap-2.5 px-1.5">
+          <Image src="/brand/logo-gold-mark.png" alt="" width={34} height={34} className="h-[34px] w-[34px] object-contain" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-extrabold leading-tight text-ink">قطن ملوك النيل</p>
+            <p className="text-[11px] text-ink-soft">بوابة الشركاء</p>
+          </div>
         </div>
-        <div className="mb-2 rounded-lg bg-white/5 px-3 py-2.5">
-          {isLoading ? (
-            <>
-              <Skeleton className="h-4 w-28 rounded" />
-              <Skeleton className="mt-2 h-3 w-20 rounded" />
-            </>
-          ) : (
-            <>
-              <p className="truncate text-sm font-bold text-white">{displayName}</p>
-              <p dir="ltr" className="truncate text-right text-xs text-[hsl(220_20%_60%)]">
-                {partner?.phone ?? ""}
-              </p>
-              {partner && (
-                <p className="mt-0.5 text-[11px] font-semibold text-gold-500">
-                  {partnerTypeLabel(partner.partnerType)}
+        <div className="mb-2 flex items-center gap-2.5 rounded-xl bg-stone-50 px-3 py-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lapis-800 text-[13px] font-extrabold text-gold-500">
+            {isLoading ? "" : initials(displayName)}
+          </div>
+          <div className="min-w-0 flex-1">
+            {isLoading ? (
+              <>
+                <Skeleton className="h-4 w-28 rounded" />
+                <Skeleton className="mt-2 h-3 w-20 rounded" />
+              </>
+            ) : (
+              <>
+                <p className="truncate text-[13px] font-extrabold text-ink">{displayName}</p>
+                <p className="truncate text-[11px] text-ink-soft">
+                  {partner ? `${partnerTypeLabel(partner.partnerType)} · ${partner.governorate}` : ""}
                 </p>
-              )}
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
         <nav className="flex-1 overflow-y-auto" aria-label="التنقل في لوحة الشريك">
           {navBody}
@@ -254,21 +279,23 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        {/* Desktop topbar — `data-partner-chrome` + `print:hidden`: app chrome never prints (4.23 verifier finding). */}
-        <div data-partner-chrome className="hidden items-center justify-between border-b border-stone-200 bg-white px-8 py-4 print:hidden lg:flex">
+        {/* Desktop topbar */}
+        <div data-partner-chrome className="hidden items-center justify-between border-b border-stone-200 bg-white px-7 py-4 print:hidden lg:flex">
           <div />
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <PartnerAlertsBell />
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-lapis-800 text-[13px] font-extrabold text-gold-500">
-              {isLoading ? "" : initials(displayName)}
-            </div>
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-ink">
+              <Store className="h-[18px] w-[18px]" strokeWidth={2} />
+            </span>
           </div>
         </div>
 
-        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6 lg:overflow-auto lg:p-8">
+        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden p-4 pb-24 sm:p-6 lg:overflow-auto lg:p-8 lg:pb-8">
           {children}
         </main>
       </div>
+
+      <MobileBottomTabBar pathname={pathname} />
     </div>
     </Sheet>
   );

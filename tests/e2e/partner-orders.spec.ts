@@ -289,9 +289,12 @@ test("order detail notes round-trip", async ({ page }) => {
 });
 
 test("'رجوع للطلبات' is a real link back to the orders list", async ({ page }) => {
+  // Target updated to `/partner/orders` (backlog 5.1's `/partner/routed-orders` ->
+  // `/partner/orders` IA consolidation) — the link itself, and the fact it's a real
+  // link rather than router.back(), is otherwise unchanged.
   await loginAs(page, pair, "AGENT");
   await page.goto(`/partner/orders/${orderAId}`);
   await page.getByRole("link", { name: "رجوع للطلبات" }).click();
-  await page.waitForURL("**/partner/routed-orders*");
-  expect(new URL(page.url()).pathname).toBe("/partner/routed-orders");
+  await page.waitForURL("**/partner/orders");
+  expect(new URL(page.url()).pathname).toBe("/partner/orders");
 });

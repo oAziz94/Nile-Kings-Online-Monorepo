@@ -43,6 +43,9 @@ const config: Config = {
           800: "hsl(var(--lapis-800))",
           700: "hsl(var(--lapis-700))",
           600: "hsl(var(--lapis-600))",
+          // Partner portal v2 (backlog 5.1) — active-nav-pill / soft accent background,
+          // `design-canvas/partner-v2/build.mjs`'s `T.lapis50`.
+          50: "hsl(var(--lapis-50))",
         },
         gold: {
           DEFAULT: "hsl(var(--gold))",
@@ -90,6 +93,9 @@ const config: Config = {
       boxShadow: {
         subtle: "0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)",
         card: "0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)",
+        // Partner portal v2 (backlog 5.1) card shadow — exact value from
+        // `design-canvas/partner-v2/build.mjs`'s `.card` rule.
+        soft: "0 1px 2px rgba(20,24,40,.04), 0 10px 28px -14px rgba(20,24,40,.12)",
       },
       keyframes: {
         "loading-dots": {

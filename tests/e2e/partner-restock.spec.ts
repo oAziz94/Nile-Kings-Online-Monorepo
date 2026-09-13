@@ -19,6 +19,9 @@ import { seedPartnerPair, loginAs, cleanupPartnerPair, type PartnerFixturePair }
  * makes "most recently created variant" queries flaky), cleaned up once at the end.
  */
 test.describe.configure({ mode: "serial" });
+// Quarantined by backlog 5.1: the restock screens redirect into the /partner/stock stub
+// until 5.4 moves them into the stock hub's tabs. 5.4 removes this line.
+test.skip(true, "restock UI is behind the /partner/stock stub until backlog 5.4");
 // Cold Turbopack compiles plus Neon round-trips push this multi-screen flow past the default 30s.
 test.setTimeout(90_000);
 

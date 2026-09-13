@@ -56,6 +56,21 @@ export type PartnerFixturePair = {
   password: string;
 };
 
+/** Backlog 5.1 — optional per-side working-profile overrides for `seedPartnerPair()`. */
+export type PartnerFixtureProfile = {
+  dailyOrderCapacity?: number | null;
+  confirmSlaHours?: number;
+  shipSlaHours?: number;
+  workingDays?: string[];
+  costRateBps?: number;
+  lowStockThreshold?: number;
+};
+
+export type PartnerFixtureOptions = {
+  agent?: PartnerFixtureProfile;
+  distributor?: PartnerFixtureProfile;
+};
+
 /** Unique-per-run Egyptian mobile number, distinct across a single test process. */
 let seq = 0;
 function uniqueLocalPhone(): string {
@@ -64,7 +79,10 @@ function uniqueLocalPhone(): string {
   return `10${suffix}`.slice(0, 10);
 }
 
-export async function seedPartnerPair(prisma: PrismaClient): Promise<PartnerFixturePair> {
+export async function seedPartnerPair(
+  prisma: PrismaClient,
+  options: PartnerFixtureOptions = {}
+): Promise<PartnerFixturePair> {
   const passwordHash = await hashPassword(PASSWORD);
 
   const agentLocalPhone = uniqueLocalPhone();
@@ -72,6 +90,7 @@ export async function seedPartnerPair(prisma: PrismaClient): Promise<PartnerFixt
   const agentUser = await prisma.user.create({
     data: { phone: agentPhone, role: "CUSTOMER", passwordHash },
   });
+  const agentProfile = options.agent ?? {};
   const agentPartner = await prisma.partner.create({
     data: {
       userId: agentUser.id,
@@ -80,6 +99,12 @@ export async function seedPartnerPair(prisma: PrismaClient): Promise<PartnerFixt
       governorate: "القاهرة",
       phone: agentPhone,
       isActive: true,
+      ...(agentProfile.dailyOrderCapacity !== undefined && { dailyOrderCapacity: agentProfile.dailyOrderCapacity }),
+      ...(agentProfile.confirmSlaHours !== undefined && { confirmSlaHours: agentProfile.confirmSlaHours }),
+      ...(agentProfile.shipSlaHours !== undefined && { shipSlaHours: agentProfile.shipSlaHours }),
+      ...(agentProfile.workingDays !== undefined && { workingDays: agentProfile.workingDays }),
+      ...(agentProfile.costRateBps !== undefined && { costRateBps: agentProfile.costRateBps }),
+      ...(agentProfile.lowStockThreshold !== undefined && { lowStockThreshold: agentProfile.lowStockThreshold }),
     },
   });
 
@@ -88,6 +113,7 @@ export async function seedPartnerPair(prisma: PrismaClient): Promise<PartnerFixt
   const distributorUser = await prisma.user.create({
     data: { phone: distributorPhone, role: "CUSTOMER", passwordHash },
   });
+  const distributorProfile = options.distributor ?? {};
   const distributorPartner = await prisma.partner.create({
     data: {
       userId: distributorUser.id,
@@ -97,6 +123,16 @@ export async function seedPartnerPair(prisma: PrismaClient): Promise<PartnerFixt
       phone: distributorPhone,
       linkedAgentId: agentPartner.id,
       isActive: true,
+      ...(distributorProfile.dailyOrderCapacity !== undefined && {
+        dailyOrderCapacity: distributorProfile.dailyOrderCapacity,
+      }),
+      ...(distributorProfile.confirmSlaHours !== undefined && { confirmSlaHours: distributorProfile.confirmSlaHours }),
+      ...(distributorProfile.shipSlaHours !== undefined && { shipSlaHours: distributorProfile.shipSlaHours }),
+      ...(distributorProfile.workingDays !== undefined && { workingDays: distributorProfile.workingDays }),
+      ...(distributorProfile.costRateBps !== undefined && { costRateBps: distributorProfile.costRateBps }),
+      ...(distributorProfile.lowStockThreshold !== undefined && {
+        lowStockThreshold: distributorProfile.lowStockThreshold,
+      }),
     },
   });
 
@@ -137,6 +173,9 @@ export async function loginAs(
 export async function cleanupPartnerPair(prisma: PrismaClient, pair: PartnerFixturePair): Promise<void> {
   const partnerIds = [pair.agent.partnerId, pair.distributor.partnerId];
 
+  // Backlog 5.1 — new tables, deleted before their `StockReceipt`/`Partner` parents.
+  await prisma.partnerPayment.deleteMany({ where: { partnerId: { in: partnerIds } } });
+  await prisma.partnerStockThreshold.deleteMany({ where: { partnerId: { in: partnerIds } } });
   await prisma.stockReceiptLine.deleteMany({ where: { receipt: { partnerId: { in: partnerIds } } } });
   await prisma.stockReceipt.deleteMany({ where: { partnerId: { in: partnerIds } } });
   await prisma.restockRequestItem.deleteMany({
