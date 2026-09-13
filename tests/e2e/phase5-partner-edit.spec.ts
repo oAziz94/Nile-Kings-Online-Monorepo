@@ -190,3 +190,27 @@ test("an invalid phone shows its error inline in the form, not just a toast", as
 
   await expect(dialog.getByText(/رقم الجوال يجب أن يكون رقم مصري صحيح/)).toBeVisible();
 });
+
+// 8.2 verifier fixes: focus goes into the form on تعديل and back to the trigger on إلغاء; the two
+// selects use the shared Select (gold ring). Also captures the dialog at the two widths the
+// verifier could not screenshot (1024×768, 390×844).
+for (const vp of [{ width: 1024, height: 768 }, { width: 390, height: 844 }]) {
+  test(`focus moves into the form on edit and back on cancel at ${vp.width}x${vp.height}`, async ({ page }) => {
+    // openDistributorDetail logs in itself; resize after it so the login helper runs at the default viewport.
+    const dialog = await openDistributorDetail(page);
+    await page.setViewportSize(vp);
+    await page.screenshot({ path: `screenshots/8.2-read-${vp.width}x${vp.height}.png` });
+    await dialog.getByRole("button", { name: "تعديل" }).click();
+    await expect(dialog.getByLabel("الاسم *")).toBeFocused();
+    await page.screenshot({ path: `screenshots/8.2-edit-${vp.width}x${vp.height}.png` });
+    await dialog.getByLabel("المحافظة *").focus();
+    await expect(dialog.getByLabel("المحافظة *")).toHaveCSS("box-shadow", /rgb/);
+    await dialog.getByRole("button", { name: "إلغاء" }).click();
+    await expect(dialog.getByRole("button", { name: "تعديل" })).toBeFocused();
+    await dialog.getByRole("button", { name: "تعطيل الحساب" }).click();
+    await expect(page.getByRole("dialog").filter({ hasText: "تأكيد" }).last()).toBeVisible();
+    await page.screenshot({ path: `screenshots/8.2-confirm-${vp.width}x${vp.height}.png` });
+    await page.keyboard.press("Escape");
+  });
+}
+

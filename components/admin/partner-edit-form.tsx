@@ -7,6 +7,7 @@ import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -84,6 +85,9 @@ export function PartnerEditForm({
   onUpdated: (updated: PartnerPatchResponse) => void;
 }) {
   const [mode, setMode] = React.useState<"read" | "edit">("read");
+  // Focus management (8.2 verifier): into the first field on edit, back to the trigger on cancel/save.
+  const editButtonRef = React.useRef<HTMLButtonElement>(null);
+  const wasEditing = React.useRef(false);
   const [saving, setSaving] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
   const [confirmToggleOpen, setConfirmToggleOpen] = React.useState(false);
@@ -99,6 +103,16 @@ export function PartnerEditForm({
       linkedAgentId: partner.linkedAgentId ?? "",
     },
   });
+
+  React.useEffect(() => {
+    if (mode === "edit") {
+      wasEditing.current = true;
+      form.setFocus("name");
+    } else if (wasEditing.current) {
+      wasEditing.current = false;
+      editButtonRef.current?.focus();
+    }
+  }, [mode, form]);
 
   const startEdit = () => {
     form.reset({
@@ -172,7 +186,7 @@ export function PartnerEditForm({
           </p>
         )}
         <div className="flex flex-wrap gap-2 pt-1">
-          <Button type="button" size="sm" variant="outline" onClick={startEdit}>
+          <Button ref={editButtonRef} type="button" size="sm" variant="outline" onClick={startEdit}>
             تعديل
           </Button>
           <Button
@@ -234,10 +248,10 @@ export function PartnerEditForm({
         <label htmlFor="partner-edit-governorate" className="mb-1 block text-sm font-medium">
           المحافظة *
         </label>
-        <select
+        <Select
           id="partner-edit-governorate"
           {...form.register("governorate")}
-          className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+          className="rounded-xl px-3"
         >
           <option value="">اختر المحافظة</option>
           {GOVERNORATE_OPTIONS.map((o) => (
@@ -245,7 +259,7 @@ export function PartnerEditForm({
               {o.label}
             </option>
           ))}
-        </select>
+        </Select>
         {form.formState.errors.governorate && (
           <p className="mt-1 text-xs font-semibold text-destructive">{form.formState.errors.governorate.message}</p>
         )}
@@ -264,10 +278,10 @@ export function PartnerEditForm({
           <label htmlFor="partner-edit-linked-agent" className="mb-1 block text-sm font-medium">
             الوكيل المرتبط (اختياري)
           </label>
-          <select
+          <Select
             id="partner-edit-linked-agent"
             {...form.register("linkedAgentId")}
-            className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+            className="rounded-xl px-3"
           >
             <option value="">— لا وكيل —</option>
             {agents.map((a) => (
@@ -275,7 +289,7 @@ export function PartnerEditForm({
                 {a.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       )}
       {serverError && <p className="text-sm font-semibold text-destructive">{serverError}</p>}
