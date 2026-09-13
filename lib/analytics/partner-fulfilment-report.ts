@@ -98,12 +98,19 @@ export type FulfilmentStats = {
 };
 
 /** Every headline number for one period, pure (no Prisma) — the other half of the unit tests. */
+export type SlaHours = { confirmSlaHours: number; shipSlaHours: number };
+
+/**
+ * `sla` is either one partner's hours (the partner report) or a resolver from order to that
+ * order's partner's hours (the network-wide on-time rate, 9.2) — one loop for both scopes (B3).
+ */
 export function computeFulfilmentStats(
   orders: FulfilmentOrderInput[],
   timings: OrderTiming[],
-  sla: { confirmSlaHours: number; shipSlaHours: number },
+  sla: SlaHours | ((order: FulfilmentOrderInput) => SlaHours),
   now: Date
 ): FulfilmentStats {
+  const slaFor = typeof sla === "function" ? sla : () => sla;
   const timingByOrder = new Map(timings.map((t) => [t.orderId, t]));
   const confirmHours = timings.map((t) => t.hoursToConfirm).filter((v): v is number => v !== null);
   const shipHours = timings.map((t) => t.hoursToShip).filter((v): v is number => v !== null);
@@ -114,7 +121,7 @@ export function computeFulfilmentStats(
     const timing = timingByOrder.get(o.id);
     return isOrderOverdue(
       { status: o.status as OverdueStatus, updatedAt: o.updatedAt, latestStatusLogAt: timing?.latestStatusLogAt ?? null },
-      sla,
+      slaFor(o),
       now
     );
   }).length;
@@ -194,22 +201,11 @@ export async function getNetworkOnTimeRate(range: { from: Date; to: Date }, now:
 
   const auditRows = await loadAuditRows(orders.map((o) => o.id));
   const timings = computeOrderTimings(orders, auditRows);
-  const timingByOrder = new Map(timings.map((t) => [t.orderId, t]));
-
-  const openStatuses: OverdueStatus[] = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP"];
-  const openOrders = orders.filter((o) => openStatuses.includes(o.status as OverdueStatus) && o.assignedPartner);
-  if (openOrders.length === 0) return 100;
-
-  const overdueCount = openOrders.filter((o) => {
-    const timing = timingByOrder.get(o.id);
-    return isOrderOverdue(
-      { status: o.status as OverdueStatus, updatedAt: o.updatedAt, latestStatusLogAt: timing?.latestStatusLogAt ?? null },
-      { confirmSlaHours: o.assignedPartner!.confirmSlaHours, shipSlaHours: o.assignedPartner!.shipSlaHours },
-      now
-    );
-  }).length;
-
-  const overdueRate = (overdueCount / openOrders.length) * 100;
+  const slaByOrder = new Map(
+    orders.map((o) => [o.id, { confirmSlaHours: o.assignedPartner!.confirmSlaHours, shipSlaHours: o.assignedPartner!.shipSlaHours }] as const)
+  );
+  // The partner report's own stats function, with each order judged by its own partner's SLA.
+  const { overdueRate } = computeFulfilmentStats(orders, timings, (o) => slaByOrder.get(o.id)!, now);
   return Math.round((100 - overdueRate) * 10) / 10;
 }
 

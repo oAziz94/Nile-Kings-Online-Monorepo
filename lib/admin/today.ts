@@ -191,12 +191,19 @@ async function buildLowStockQueue(): Promise<AdminTodayGroup<LowStockQueueRow>> 
     select: { id: true, name: true },
   });
 
+  // One round trip per partner, all partners at once — the dashboard must not scale linearly
+  // with the network (9.2 verifier: 3.6 s for 13 partners when run one after another).
+  const perPartner = await Promise.all(
+    partners.map(async (partner) => {
+      const [reorderRows, threshold] = await Promise.all([
+        getPartnerReorderRows(partner.id, { preset: "30d" }),
+        resolveThreshold(partner.id),
+      ]);
+      return { partner, reorderRows, threshold };
+    })
+  );
   const rows: LowStockQueueRow[] = [];
-  for (const partner of partners) {
-    const [reorderRows, threshold] = await Promise.all([
-      getPartnerReorderRows(partner.id, { preset: "30d" }),
-      resolveThreshold(partner.id),
-    ]);
+  for (const { partner, reorderRows, threshold } of perPartner) {
     for (const r of reorderRows) {
       rows.push({
         variantId: r.variantId,
@@ -225,9 +232,11 @@ async function buildDuePaymentsQueue(now: Date): Promise<AdminTodayGroup<DueBala
   });
 
   const horizon = new Date(now.getTime() + 7 * 86_400_000);
+  const statements = await Promise.all(
+    partners.map(async (partner) => ({ partner, ...(await getPartnerStatementRows(partner.id)) }))
+  );
   const rows: DueBalanceRow[] = [];
-  for (const partner of partners) {
-    const { receipts, payments } = await getPartnerStatementRows(partner.id);
+  for (const { partner, receipts, payments } of statements) {
     if (payments.length === 0) continue;
     const receivedAllTime = receipts.reduce((s, r) => s + r.totalCostPiastres, 0);
     const paidAllTime = payments.reduce((s, p) => s + p.amountPiastres, 0);

@@ -142,3 +142,25 @@ describe("7.4 — cancellationReason rows gain previousCount + countDelta", () =
     expect(outOfStock.countDelta.changePct).toBeNull();
   });
 });
+
+describe("computeFulfilmentStats — per-order SLA resolver (network scope)", () => {
+  const now = new Date("2026-09-14T12:00:00Z");
+  const orders = [
+    { id: "a", createdAt: new Date("2026-09-13T00:00:00Z"), updatedAt: new Date("2026-09-14T00:00:00Z"), status: "CONFIRMED", cancellationReason: null },
+    { id: "b", createdAt: new Date("2026-09-13T00:00:00Z"), updatedAt: new Date("2026-09-14T00:00:00Z"), status: "CONFIRMED", cancellationReason: null },
+  ] as never[];
+  const timings = computeOrderTimings(orders, []);
+  const lax = { confirmSlaHours: 24, shipSlaHours: 48 };
+  const strict = { confirmSlaHours: 24, shipSlaHours: 6 };
+
+  it("matches the fixed-SLA answer when every order resolves to the same hours", () => {
+    expect(computeFulfilmentStats(orders, timings, () => lax, now).overdueRate).toBe(
+      computeFulfilmentStats(orders, timings, lax, now).overdueRate
+    );
+  });
+
+  it("judges each order by its own partner's hours", () => {
+    const stats = computeFulfilmentStats(orders, timings, (o) => ((o as { id: string }).id === "b" ? strict : lax), now);
+    expect(stats.overdueRate).toBe(50);
+  });
+});
