@@ -103,21 +103,27 @@ test("both roles see the v2 nav", async ({ page }) => {
 });
 
 test("every old partner route redirects to its v2 home", async ({ page }) => {
+  // Backlog 5.4 added several newly-compiled destination routes (the stock hub's tabs) —
+  // cold Turbopack compiles across eight sequential `goto`s can outlast the default 30s.
+  test.setTimeout(90_000);
   await loginAs(page, pair, "AGENT");
 
+  // Backlog 5.4 landed the stock hub's tabs — the placeholder-era "everything redirects to
+  // the bare /partner/stock stub" targets from 5.1 are superseded by the real per-tab
+  // targets below (task text: "update the 5.1 redirects to land on the right tab").
   const cases: [string, string][] = [
     ["/partner/routed-orders", "/partner/orders"],
     ["/partner/products", "/partner/stock"],
-    ["/partner/receipts", "/partner/stock"],
-    ["/partner/receipts/new", "/partner/stock"],
-    ["/partner/restock-requests", "/partner/stock"],
-    ["/partner/distributor-requests", "/partner/stock"],
+    ["/partner/receipts", "/partner/stock/intake"],
+    ["/partner/receipts/new", "/partner/stock/intake/new"],
+    ["/partner/restock-requests", "/partner/stock/requests"],
+    ["/partner/distributor-requests", "/partner/stock/requests"],
     ["/partner/distributors", "/partner/network"],
     ["/partner/reports", "/partner/reports/sales"],
   ];
   for (const [from, to] of cases) {
-    await page.goto(from);
-    await expect(page).toHaveURL(new RegExp(`${to.replace(/\//g, "\\/")}$`));
+    await page.goto(from, { timeout: 20_000 });
+    await expect(page).toHaveURL(new RegExp(`${to.replace(/\//g, "\\/")}$`), { timeout: 15_000 });
   }
 });
 
