@@ -75,17 +75,26 @@ function WeeklyBarChart({ points }: { points: { weekStart: string; amountPiastre
 }
 
 export default function PartnerMoneyReportPage() {
-  const [preset, setPreset] = React.useState<MoneyReportPreset>("month");
-  const [customRange, setCustomRange] = React.useState({ from: "", to: "" });
+  const [preset, setPresetState] = React.useState<MoneyReportPreset>("month");
+  const [customRange, setCustomRangeState] = React.useState({ from: "", to: "" });
+  const [page, setPage] = React.useState(1);
+  const setPreset = React.useCallback((next: MoneyReportPreset) => {
+    setPresetState(next);
+    setPage(1);
+  }, []);
+  const setCustomRange = React.useCallback((next: { from: string; to: string }) => {
+    setCustomRangeState(next);
+    setPage(1);
+  }, []);
 
-  const params = new URLSearchParams({ preset });
+  const params = new URLSearchParams({ preset, page: String(page) });
   if (preset === "custom" && customRange.from && customRange.to) {
     params.set("from", customRange.from);
     params.set("to", customRange.to);
   }
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["partner-reports-money", preset, customRange.from, customRange.to],
+    queryKey: ["partner-reports-money", preset, customRange.from, customRange.to, page],
     queryFn: () => fetchMoneyReport(params),
     enabled: preset !== "custom" || Boolean(customRange.from && customRange.to),
   });
@@ -198,7 +207,7 @@ export default function PartnerMoneyReportPage() {
                       page={data.breakdowns.receipts}
                       columns={["المرجع", "التاريخ", "القطع", "القيمة بنسبتك"]}
                       rowKey={(r) => r.id}
-                      onPageChange={() => {}}
+                      onPageChange={setPage}
                       renderRow={(r) => (
                         <>
                           <TableCell className="font-semibold text-ink">{r.reference ?? "—"}</TableCell>
@@ -216,7 +225,7 @@ export default function PartnerMoneyReportPage() {
                         page={data.breakdowns.payments}
                         columns={["التاريخ", "المبلغ", "المرجع"]}
                         rowKey={(r) => r.id}
-                        onPageChange={() => {}}
+                        onPageChange={setPage}
                         renderRow={(r) => (
                           <>
                             <TableCell dir="ltr" className="text-ink-soft">{formatDateEn(r.paidAt.slice(0, 10))}</TableCell>
@@ -241,7 +250,7 @@ export default function PartnerMoneyReportPage() {
                     page={data.breakdowns.collectedByMethod}
                     columns={["الطريقة", "المبلغ", "الطلبات"]}
                     rowKey={(r) => r.key}
-                    onPageChange={() => {}}
+                    onPageChange={setPage}
                     renderRow={(r) => (
                       <>
                         <TableCell className="font-semibold text-ink">{r.label}</TableCell>
