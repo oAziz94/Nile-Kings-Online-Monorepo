@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiConflict } from "@/lib/api/response";
+import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -35,8 +36,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -124,6 +126,15 @@ export async function POST(req: NextRequest) {
       validUntil,
       active: body.active !== false,
     },
+  });
+  await logAdminAction(prisma, {
+    actor,
+    action: "create",
+    entityType: "coupon",
+    entityId: coupon.id,
+    entityLabel: coupon.code,
+    after: sanitizeForAudit(coupon),
+    ip: requestIp(req),
   });
   return apiSuccess(coupon);
 }

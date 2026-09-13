@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound, apiConflict } from "@/lib/api/response";
+import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 
 type Params = Promise<{ id: string }>;
 
@@ -21,8 +22,9 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -124,12 +126,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       ...(body.active !== undefined && { active: body.active }),
     },
   });
+  await logAdminAction(prisma, {
+    actor,
+    action: "update",
+    entityType: "coupon",
+    entityId: coupon.id,
+    entityLabel: coupon.code,
+    before: sanitizeForAudit(existing, ["updatedAt"]),
+    after: sanitizeForAudit(coupon, ["updatedAt"]),
+    ip: requestIp(req),
+  });
   return apiSuccess(coupon);
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Params }) {
+export async function DELETE(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -140,5 +153,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
   const coupon = await prisma.coupon.findUnique({ where: { id } });
   if (!coupon) return apiNotFound("الكوبون غير موجود");
   await prisma.coupon.delete({ where: { id } });
+  await logAdminAction(prisma, {
+    actor,
+    action: "delete",
+    entityType: "coupon",
+    entityId: coupon.id,
+    entityLabel: coupon.code,
+    before: sanitizeForAudit(coupon),
+    ip: requestIp(req),
+  });
   return apiSuccess({ deleted: true });
 }

@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { canRevokeAdmin } from "@/lib/admin/revoke-admin";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 type Params = Promise<{ id: string }>;
 
@@ -10,7 +11,7 @@ type Params = Promise<{ id: string }>;
  * POST — set User.role to CUSTOMER. Mirror of grant-admin, but refuses to demote the
  * caller themselves and refuses to demote the last remaining ADMIN.
  */
-export async function POST(_req: NextRequest, { params }: { params: Params }) {
+export async function POST(req: NextRequest, { params }: { params: Params }) {
   let caller;
   try {
     caller = await requireAdmin();
@@ -46,6 +47,14 @@ export async function POST(_req: NextRequest, { params }: { params: Params }) {
       return { kind: "refused" as const, reason: decision.reason };
     }
     await tx.user.update({ where: { id: user.id }, data: { role: "CUSTOMER" } });
+    await logAdminAction(tx, {
+      actor: caller,
+      action: "revoke_admin",
+      entityType: "user",
+      entityId: user.id,
+      entityLabel: user.phone,
+      ip: requestIp(req),
+    });
     return { kind: "revoked" as const };
   });
 

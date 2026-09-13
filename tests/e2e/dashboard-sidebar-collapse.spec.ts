@@ -237,13 +237,13 @@ test.describe("admin sidebar collapse", () => {
     await prisma.$disconnect();
   });
 
-  test("collapse narrows 224 -> 72 with the ticket badge still present, reload persists, expand restores 224", async ({ page }) => {
+  test("collapse narrows 248 -> 72 with the ticket badge still present, reload persists, expand restores 248", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/admin/orders");
 
     const rail = page.getByTestId("dashboard-rail");
     let box = await rail.boundingBox();
-    expect(box?.width).toBeCloseTo(224, 0);
+    expect(box?.width).toBeCloseTo(248, 0);
 
     await expect(page.getByLabel(/سؤال بانتظار الرد/)).toBeVisible();
 
@@ -263,7 +263,7 @@ test.describe("admin sidebar collapse", () => {
 
     await page.getByRole("button", { name: EXPAND_LABEL }).click();
     box = await page.getByTestId("dashboard-rail").boundingBox();
-    expect(box?.width).toBeCloseTo(224, 0);
+    expect(box?.width).toBeCloseTo(248, 0);
   });
 
   test("at 390x844 the collapse control does not exist", async ({ page }) => {

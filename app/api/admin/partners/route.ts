@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/api/response";
 import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
+import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -57,8 +58,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -121,6 +123,15 @@ export async function POST(req: NextRequest) {
       isActive: body.isActive !== false,
       notes: body.notes?.trim() || null,
     },
+  });
+  await logAdminAction(prisma, {
+    actor,
+    action: "create",
+    entityType: "partner",
+    entityId: partner.id,
+    entityLabel: partner.name,
+    after: sanitizeForAudit(partner),
+    ip: requestIp(req),
   });
   return apiSuccess(partner);
 }
