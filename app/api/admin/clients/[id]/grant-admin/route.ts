@@ -2,15 +2,17 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 type Params = Promise<{ id: string }>;
 
 /**
  * POST — set User.role to ADMIN.
  */
-export async function POST(_req: NextRequest, { params }: { params: Params }) {
+export async function POST(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -33,6 +35,15 @@ export async function POST(_req: NextRequest, { params }: { params: Params }) {
   await prisma.user.update({
     where: { id: user.id },
     data: { role: "ADMIN" },
+  });
+
+  await logAdminAction(prisma, {
+    actor,
+    action: "grant_admin",
+    entityType: "user",
+    entityId: user.id,
+    entityLabel: user.phone,
+    ip: requestIp(req),
   });
 
   return apiSuccess({ userId: user.id, alreadyAdmin: false as const });

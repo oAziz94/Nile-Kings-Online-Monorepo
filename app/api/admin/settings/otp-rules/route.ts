@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { getOtpRules, setOtpRules, type OtpRules } from "@/lib/settings";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/api/response";
+import { prisma } from "@/lib/db";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 export async function GET() {
   try {
@@ -24,14 +26,16 @@ const otpRulesSchema = {
 };
 
 export async function PATCH(req: NextRequest) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
     if (err.status === 403) return apiForbidden("غير مصرح");
     throw e;
   }
+  const before = await getOtpRules();
   let body: Partial<OtpRules>;
   try {
     body = await req.json();
@@ -60,5 +64,15 @@ export async function PATCH(req: NextRequest) {
     updates.lockMinutes = body.lockMinutes;
   }
   const rules = await setOtpRules(updates);
+  await logAdminAction(prisma, {
+    actor,
+    action: "update",
+    entityType: "settings",
+    entityId: "otp-rules",
+    entityLabel: "قواعد رمز التحقق",
+    before: { ...before },
+    after: { ...rules },
+    ip: requestIp(req),
+  });
   return apiSuccess(rules);
 }

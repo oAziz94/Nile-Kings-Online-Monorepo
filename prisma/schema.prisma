@@ -454,6 +454,29 @@ model OrderAuditLog {
   @@index([createdAt])
 }
 
+// Admin audit log (backlog 9.1c, docs/redesign/06-admin-v2.md §3.9 + §6 rule B1):
+// every admin write that changes money, stock, status, catalog, routing, roles or a
+// setting appends one row here. `before`/`after` store only the keys that changed
+// (see lib/audit/admin-audit.ts's auditDiff), never the whole record.
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String
+  actorRole    String
+  action       String
+  entityType   String
+  entityId     String
+  entityLabel  String?
+  before       Json?
+  after        Json?
+  reason       String?
+  ip           String?
+  createdAt    DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@index([createdAt])
+}
+
 model OrderItem {
   id              String   @id @default(cuid())
   orderId         String

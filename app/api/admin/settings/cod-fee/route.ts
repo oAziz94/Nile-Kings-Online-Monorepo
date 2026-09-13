@@ -7,6 +7,8 @@ import {
   setCodFeePercent,
 } from "@/lib/settings";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/api/response";
+import { prisma } from "@/lib/db";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 export async function GET() {
   try {
@@ -25,8 +27,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -39,6 +42,7 @@ export async function PATCH(req: NextRequest) {
   } catch {
     return apiBadRequest("جسم الطلب غير صالح");
   }
+  const [beforePiastres, beforePercent] = await Promise.all([getCodFeePiastres(), getCodFeePercent()]);
   if (body.codFeePiastres !== undefined) {
     if (typeof body.codFeePiastres !== "number" || body.codFeePiastres < 0) {
       return apiBadRequest("codFeePiastres يجب أن يكون عدداً غير سالب");
@@ -55,5 +59,15 @@ export async function PATCH(req: NextRequest) {
     getCodFeePiastres(),
     getCodFeePercent(),
   ]);
+  await logAdminAction(prisma, {
+    actor,
+    action: "update",
+    entityType: "settings",
+    entityId: "cod-fee",
+    entityLabel: "رسوم الدفع عند الاستلام",
+    before: { codFeePiastres: beforePiastres, codFeePercent: beforePercent },
+    after: { codFeePiastres, codFeePercent },
+    ip: requestIp(req),
+  });
   return apiSuccess({ codFeePiastres, codFeePercent });
 }
