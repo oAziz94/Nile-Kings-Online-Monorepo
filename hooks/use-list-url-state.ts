@@ -8,7 +8,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
  * to a detail page and pressing back restores the exact same list state
  * (search text, active filters, page, page size) instead of resetting it.
  */
-export function useListUrlState<F extends Record<string, string>>(defaultFilters: F) {
+export function useListUrlState<F extends Record<string, string>>(
+  defaultFilters: F,
+  defaultPageSize = 20
+) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -21,7 +24,7 @@ export function useListUrlState<F extends Record<string, string>>(defaultFilters
   });
   const [pageSize, setPageSize] = React.useState(() => {
     const raw = Number(searchParams.get("pageSize"));
-    return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 20;
+    return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : defaultPageSize;
   });
   const [filters, setFilters] = React.useState<F>(() => {
     const initial = { ...defaultFilters };
@@ -61,7 +64,7 @@ export function useListUrlState<F extends Record<string, string>>(defaultFilters
       if (value) params.set(key, value);
     }
     if (page > 0) params.set("page", String(page));
-    if (pageSize !== 20) params.set("pageSize", String(pageSize));
+    if (pageSize !== defaultPageSize) params.set("pageSize", String(pageSize));
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps

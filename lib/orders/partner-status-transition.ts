@@ -56,7 +56,6 @@ export const orderInclude = {
       },
     },
   },
-  routedOrder: true,
 } as const;
 
 export type PartnerOrderRow = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
@@ -82,6 +81,19 @@ export function mapPartnerOrder(order: PartnerOrderRow) {
       variant: undefined,
     })),
   };
+}
+
+/**
+ * Locks the order row for the rest of the transaction and rejects the transition if another
+ * request already moved it (two parallel "confirm" clicks must commit reserved stock once).
+ */
+async function lockOrderAtStatus(tx: Prisma.TransactionClient, orderId: string, expectedStatus: OrderStatus) {
+  const rows = await tx.$queryRaw<{ status: OrderStatus }[]>`SELECT "status" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`;
+  const locked = rows[0];
+  if (!locked) throw new PartnerOrderTransitionError("الطلب غير موجود", 404);
+  if (locked.status !== expectedStatus) {
+    throw new PartnerOrderTransitionError("تغيّرت حالة الطلب بالفعل — حدّث الصفحة", 409);
+  }
 }
 
 export async function transitionPartnerOrderStatus(params: {
@@ -128,6 +140,7 @@ export async function transitionPartnerOrderStatus(params: {
     data.cancellationReason = "partner_agent";
     const order = await prisma.$transaction(
       async (tx) => {
+        await lockOrderAtStatus(tx, orderId, existing.status);
         if (orderUsesPartnerReservationOnly(existing.status)) {
           await releasePartnerReservation(tx, partnerId, oldItemStockLines, existing.id, "Partner order cancellation");
         } else {
@@ -145,6 +158,7 @@ export async function transitionPartnerOrderStatus(params: {
     try {
       const order = await prisma.$transaction(
         async (tx) => {
+          await lockOrderAtStatus(tx, orderId, existing.status);
           await commitPartnerReservation(tx, partnerId, oldItemStockLines, existing.id, "Partner order edit");
           data.reservationExpiresAt = null;
           if (nextStatus === "CONFIRMED") {
@@ -173,6 +187,7 @@ export async function transitionPartnerOrderStatus(params: {
 
   const order = await prisma.$transaction(async (tx) => {
     if (nextStatus && nextStatus !== existing.status) {
+      await lockOrderAtStatus(tx, orderId, existing.status);
       await logOrderStatusChange(tx, existing.id, existing.status, nextStatus);
     }
     return tx.order.update({ where: { id: orderId }, data, include: orderInclude });
