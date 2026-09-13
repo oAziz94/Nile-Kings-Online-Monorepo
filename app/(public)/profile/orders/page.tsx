@@ -5,14 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { getOrderStatusLabel, ORDER_STATUS_COLORS } from "@/lib/constants/order-status";
 import { parseJsonResponse } from "@/lib/api/parse-json";
 import { formatDateEn } from "@/lib/format-en-numbers";
@@ -81,7 +73,7 @@ function paymentLabel(method: string) {
 }
 
 // Internal actor tags stored in `cancellationReason` that should never be shown to a customer
-// verbatim (see `lib/orders/partner-status-transition.ts` and the customer cancel route) — a
+// verbatim (see `lib/orders/partner-status-transition.ts`) — a
 // free-text reason (set by an admin) is shown as-is; these codes are not.
 const INTERNAL_CANCELLATION_TAGS = new Set(["customer", "partner_agent", "admin"]);
 
@@ -210,21 +202,18 @@ function OrderCard({
   expanded,
   onToggleExpand,
   onReorder,
-  onRequestCancel,
   reordering,
 }: {
   order: Order;
   expanded: boolean;
   onToggleExpand: () => void;
   onReorder: () => void;
-  onRequestCancel: () => void;
   reordering: boolean;
 }) {
   const detailId = `order-detail-${order.id}`;
   const shown = order.items.slice(0, 3);
   const total = piastresToEgp(order.totalPiastres);
   const canReorder = order.status === "DELIVERED" || order.status === "CANCELLED";
-  const canCancel = order.status === "CREATED";
   const addr = order.shippingAddress;
   const shippingLine =
     order.shippingPiastres + (order.paymentMethod === "COD" ? order.codFeePiastres : 0);
@@ -309,17 +298,6 @@ function OrderCard({
             >
               <RotateCcw className="h-4 w-4" />
               {reordering ? "جارٍ الإعادة…" : "إعادة الطلب"}
-            </Button>
-          )}
-          {canCancel && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-10 rounded-none border-[#A83A2A] text-[13px] text-[#A83A2A] hover:bg-[rgba(168,58,42,.08)]"
-              onClick={onRequestCancel}
-            >
-              إلغاء الطلب
             </Button>
           )}
           {/* Slot for backlog 6.5a's order-ticket button ("سؤال عن الطلب") — renders nothing
@@ -424,8 +402,6 @@ export default function ProfileOrdersPage() {
   const [filter, setFilter] = React.useState<FilterKey>("all");
   const [search, setSearch] = React.useState("");
   const [reorderingId, setReorderingId] = React.useState<string | null>(null);
-  const [cancelTarget, setCancelTarget] = React.useState<Order | null>(null);
-  const [cancelling, setCancelling] = React.useState(false);
 
   const loadFirstPage = React.useCallback(() => {
     setLoading(true);
@@ -516,35 +492,6 @@ export default function ProfileOrdersPage() {
       await refreshCart();
       openDrawer();
       setReorderingId(null);
-    }
-  };
-
-  const confirmCancel = async () => {
-    const target = cancelTarget;
-    if (!target) return;
-    setCancelling(true);
-    try {
-      const res = await fetch(`/api/profile/orders/${target.id}/cancel`, {
-        method: "PATCH",
-        credentials: "include",
-      });
-      if (res.status === 401) {
-        router.replace("/login?redirect=/profile/orders");
-        return;
-      }
-      const json = await parseJsonResponse<{ success?: boolean; error?: { message?: string } }>(res);
-      if (json?.success) {
-        setOrders((prev) => prev.map((o) => (o.id === target.id ? { ...o, status: "CANCELLED" } : o)));
-        toast({ title: "تم إلغاء الطلب" });
-      } else {
-        toast({ title: json?.error?.message ?? "تعذّر إلغاء الطلب", variant: "destructive" });
-        if (res.status === 409) loadFirstPage();
-      }
-    } catch {
-      toast({ title: "تعذّر إلغاء الطلب", variant: "destructive" });
-    } finally {
-      setCancelling(false);
-      setCancelTarget(null);
     }
   };
 
@@ -688,7 +635,6 @@ export default function ProfileOrdersPage() {
                   expanded={expandedIds.has(order.id)}
                   onToggleExpand={() => toggleExpand(order.id)}
                   onReorder={() => reorder(order)}
-                  onRequestCancel={() => setCancelTarget(order)}
                   reordering={reorderingId === order.id}
                 />
               ))}
@@ -712,35 +658,6 @@ export default function ProfileOrdersPage() {
         </>
       )}
 
-      <Dialog open={cancelTarget != null} onOpenChange={(open) => !open && setCancelTarget(null)}>
-        <DialogContent className="rounded-none border border-[rgba(21,26,53,.16)] bg-papyrus">
-          <DialogHeader>
-            <DialogTitle className="font-amiri text-xl font-bold text-[#151A35]">
-              إلغاء الطلب #{cancelTarget?.id.slice(-8).toUpperCase()}؟
-            </DialogTitle>
-            <DialogDescription className="text-[#8A8C9A]">
-              لا يمكن التراجع عن هذا الإجراء بعد التأكيد.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="h-11 rounded-none border-[#151A35] text-[#151A35]"
-              onClick={() => setCancelTarget(null)}
-              disabled={cancelling}
-            >
-              تراجع
-            </Button>
-            <Button
-              className="h-11 rounded-none bg-[#A83A2A] text-white hover:bg-[#8f3123]"
-              onClick={confirmCancel}
-              disabled={cancelling}
-            >
-              {cancelling ? "جارٍ الإلغاء…" : "إلغاء الطلب"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

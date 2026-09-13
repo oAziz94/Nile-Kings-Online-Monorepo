@@ -345,7 +345,6 @@ function orderCard(o, { expanded = false, compact = false } = {}) {
     <a href="#" class="btn btn-g" style="height:auto; font-size:13.5px; display:inline-flex; align-items:center; gap:6px;">${expanded ? "إخفاء التفاصيل" : "عرض التفاصيل"}${expanded ? I.chevU(14) : I.chevD(14)}</a>
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
       ${o.status === "DELIVERED" ? `<a href="#" class="btn btn-o btn-sm">${I.refresh(16)}إعادة الطلب</a>` : ""}
-      ${["CREATED", "CONFIRMED"].includes(o.status) ? `<a href="#" class="btn btn-o btn-sm" style="border-color:${T.carn}; color:${T.carn};">إلغاء الطلب</a>` : ""}
       ${o.ticket ? `<a href="#" class="btn btn-o btn-sm" style="border-color:${T.gold};">${I.chat(16)}سؤالك · ${TICKET_STATUS[o.ticket][0]}</a>` : `<a href="#" class="btn btn-o btn-sm">${I.chat(16)}سؤال عن الطلب</a>`}
     </div>
   </footer>
@@ -681,7 +680,7 @@ const canvas = {
   annotations: [
     { id: "brief", x: 0, y: -200, w: 520, text: "منطقة الحساب — نفس لغة المتجر (عاجي، لازورد، خط ذهبي، Amiri/Plex/Archivo). الجديد: الأقسام تبقى داخل قائمة البرجر على كل المقاسات، بحث في الشريط، قائمة حساب باسم المستخدم، شريط هوية أعلى الحساب، متتبّع حالة لكل طلب مع تفاصيل قابلة للفتح، بطاقات عناوين مع حوار حذف حقيقي." },
     { id: "ticket", x: 1120, y: -200, w: 520, text: "«سؤال عن الطلب» (قرار المستخدم 2026-09-13): تذكرة داخل الموقع لا واتساب — موضوع من اثنين فقط (تأخير في التوصيل / تعديل العنوان أو الهاتف — قرار المستخدم) + رسالة + رقم تواصل، تظهر كخيط تحت الطلب بحالة (بانتظار الرد / تم الرد / مغلقة)، والرد يأتي من لوحة الأدمن. يحتاج نموذج OrderTicket + صندوق وارد في الأدمن." },
-    { id: "scope", x: 560, y: -200, w: 520, text: "مقترحات تحتاج موافقة (ليست تكافؤًا): بحث المنتجات في الشريط، إعادة الطلب، إلغاء الطلب قبل التأكيد، «سؤال عن الطلب» = تذكرة داخل الموقع (لوحة OrderTicket)، «عرض طلبات أقدم» (ترقيم)، إكمال العنوان الناقص من البطاقة. صفحة كبار السن خارج النطاق." },
+    { id: "scope", x: 560, y: -200, w: 520, text: "مقترحات تحتاج موافقة (ليست تكافؤًا): بحث المنتجات في الشريط، إعادة الطلب، «سؤال عن الطلب» = تذكرة داخل الموقع (لوحة OrderTicket)، «عرض طلبات أقدم» (ترقيم)، إكمال العنوان الناقص من البطاقة. صفحة كبار السن خارج النطاق." },
   ],
   launch: { view: "canvas" },
 };
