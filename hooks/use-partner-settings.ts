@@ -22,6 +22,9 @@ export type PartnerSettings = {
   costRateBps: number;
   marginBps: number;
   paymentMethodLabel: string;
+  /** Reports platform (backlog 5.6a) — inventory report settings. */
+  deadStockDays: number;
+  targetCoverDays: number;
 };
 
 export type PartnerSettingsPatch = Partial<
