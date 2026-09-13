@@ -108,7 +108,14 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    // Backlog 7.1 — collapsible dashboard sidebar. Styling keys off the `<html>` data
+    // attribute (`components/dashboard/sidebar-collapse.tsx` sets it before first paint),
+    // not React state, so a reload while collapsed paints the narrow rail with no width jump.
+    ({ addVariant }: { addVariant: (name: string, definition: string) => void }) =>
+      addVariant("sidebar-collapsed", 'html[data-sidebar-collapsed="true"] &'),
+  ],
 };
 
 export default config;

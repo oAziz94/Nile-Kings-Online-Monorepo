@@ -25,6 +25,13 @@ import {
 } from "@/components/partner/partner-nav-config";
 import { PartnerAlertsBell } from "@/components/partner/partner-alerts-bell";
 import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  SidebarCollapseButton,
+  SidebarCollapseScript,
+  SidebarCollapseTooltip,
+  useSidebarCollapsed,
+} from "@/components/dashboard/sidebar-collapse";
 
 /**
  * Partner shell v2 (backlog 5.1) rebuilt to `design-canvas/partner-v2/Main.dc.html`'s
@@ -110,64 +117,87 @@ const NAV_ITEM_BASE =
 const NAV_ITEM_ACTIVE = "bg-lapis-50 text-lapis-800";
 const NAV_ITEM_INACTIVE = "text-ink-soft hover:bg-stone-100 hover:text-ink";
 
+/**
+ * Backlog 7.1 — `collapsed` (real state, desktop only) gates the Tooltip wrapper so the
+ * expanded rail never mounts tooltip machinery; `itemClassName`/`captionClassName`/
+ * `labelClassName` (CSS-only, `sidebar-collapsed:` variant) are only passed by the desktop
+ * aside — the mobile drawer calls this with none of them, so it never receives the narrow
+ * styling even if `<html data-sidebar-collapsed>` happens to be stale from a desktop visit.
+ */
 function NavSections({
   sections,
   pathname,
   onNavigate,
+  collapsed = false,
+  itemClassName,
+  captionClassName,
+  labelClassName,
 }: {
   sections: PartnerNavSection[];
   pathname: string;
   onNavigate?: () => void;
+  collapsed?: boolean;
+  itemClassName?: string;
+  captionClassName?: string;
+  labelClassName?: string;
 }) {
   return (
     <div className="space-y-1">
       {sections.map((section) => (
         <div key={section.id} className="mb-1">
-          <p className="mb-1.5 mt-4 px-2.5 text-[11px] font-bold uppercase tracking-wide text-stone-300">
+          <p className={cn("mb-1.5 mt-4 px-2.5 text-[11px] font-bold uppercase tracking-wide text-stone-300", captionClassName)}>
             {section.label}
           </p>
           {section.items.map((item) => {
             const active = isActivePath(pathname, item.href);
             const Icon = item.icon;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onNavigate}
-                aria-current={active ? "page" : undefined}
-                className={cn(NAV_ITEM_BASE, active ? NAV_ITEM_ACTIVE : NAV_ITEM_INACTIVE)}
-              >
-                <Icon className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
-                {item.label}
-              </Link>
+              <SidebarCollapseTooltip key={item.href} active={collapsed} label={item.label}>
+                <Link
+                  href={item.href}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(NAV_ITEM_BASE, active ? NAV_ITEM_ACTIVE : NAV_ITEM_INACTIVE, itemClassName)}
+                >
+                  <Icon className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
+                  <span className={labelClassName}>{item.label}</span>
+                </Link>
+              </SidebarCollapseTooltip>
             );
           })}
         </div>
       ))}
       <div className="mt-4 border-t border-stone-200 pt-3">
-        <p className="mb-1.5 px-2.5 text-[11px] font-bold uppercase tracking-wide text-stone-300">
+        <p className={cn("mb-1.5 px-2.5 text-[11px] font-bold uppercase tracking-wide text-stone-300", captionClassName)}>
           الحساب
         </p>
-        <Link
-          href={PARTNER_ACCOUNT_NAV.settingsHref}
-          onClick={onNavigate}
-          aria-current={isActivePath(pathname, PARTNER_ACCOUNT_NAV.settingsHref) ? "page" : undefined}
-          className={cn(
-            NAV_ITEM_BASE,
-            isActivePath(pathname, PARTNER_ACCOUNT_NAV.settingsHref) ? NAV_ITEM_ACTIVE : NAV_ITEM_INACTIVE
-          )}
-        >
-          <Settings className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
-          {PARTNER_ACCOUNT_NAV.settingsLabel}
-        </Link>
-        <Link href={PARTNER_ACCOUNT_NAV.storeHref} onClick={onNavigate} className={cn(NAV_ITEM_BASE, NAV_ITEM_INACTIVE)}>
-          <Store className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
-          {PARTNER_ACCOUNT_NAV.storeLabel}
-        </Link>
-        <button type="button" onClick={logout} className={cn(NAV_ITEM_BASE, NAV_ITEM_INACTIVE, "w-full")}>
-          <LogOut className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
-          {PARTNER_ACCOUNT_NAV.logoutLabel}
-        </button>
+        <SidebarCollapseTooltip active={collapsed} label={PARTNER_ACCOUNT_NAV.settingsLabel}>
+          <Link
+            href={PARTNER_ACCOUNT_NAV.settingsHref}
+            onClick={onNavigate}
+            aria-current={isActivePath(pathname, PARTNER_ACCOUNT_NAV.settingsHref) ? "page" : undefined}
+            className={cn(
+              NAV_ITEM_BASE,
+              isActivePath(pathname, PARTNER_ACCOUNT_NAV.settingsHref) ? NAV_ITEM_ACTIVE : NAV_ITEM_INACTIVE,
+              itemClassName
+            )}
+          >
+            <Settings className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
+            <span className={labelClassName}>{PARTNER_ACCOUNT_NAV.settingsLabel}</span>
+          </Link>
+        </SidebarCollapseTooltip>
+        <SidebarCollapseTooltip active={collapsed} label={PARTNER_ACCOUNT_NAV.storeLabel}>
+          <Link href={PARTNER_ACCOUNT_NAV.storeHref} onClick={onNavigate} className={cn(NAV_ITEM_BASE, NAV_ITEM_INACTIVE, itemClassName)}>
+            <Store className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
+            <span className={labelClassName}>{PARTNER_ACCOUNT_NAV.storeLabel}</span>
+          </Link>
+        </SidebarCollapseTooltip>
+        <SidebarCollapseTooltip active={collapsed} label={PARTNER_ACCOUNT_NAV.logoutLabel}>
+          <button type="button" onClick={logout} className={cn(NAV_ITEM_BASE, NAV_ITEM_INACTIVE, "w-full", itemClassName)}>
+            <LogOut className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
+            <span className={labelClassName}>{PARTNER_ACCOUNT_NAV.logoutLabel}</span>
+          </button>
+        </SidebarCollapseTooltip>
       </div>
     </div>
   );
@@ -214,8 +244,9 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
 
   const sections = partner ? getPartnerNavForRole(partner.partnerType) : null;
   const displayName = partner?.name?.trim() || "شريك";
+  const { collapsed, toggle } = useSidebarCollapsed();
 
-  const navBody = isLoading ? (
+  const drawerNavBody = isLoading ? (
     <NavSkeleton />
   ) : isError || !sections ? (
     <NavError onRetry={() => refetch()} />
@@ -223,10 +254,27 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
     <NavSections sections={sections} pathname={pathname} onNavigate={() => setDrawerOpen(false)} />
   );
 
+  const desktopNavBody = isLoading ? (
+    <NavSkeleton />
+  ) : isError || !sections ? (
+    <NavError onRetry={() => refetch()} />
+  ) : (
+    <NavSections
+      sections={sections}
+      pathname={pathname}
+      collapsed={collapsed}
+      itemClassName="sidebar-collapsed:justify-center sidebar-collapsed:px-0 sidebar-collapsed:h-10 sidebar-collapsed:w-10 sidebar-collapsed:mx-auto"
+      captionClassName="sidebar-collapsed:hidden"
+      labelClassName="sidebar-collapsed:hidden"
+    />
+  );
+
   return (
     <PartnerTopbarSlotContext.Provider value={topbarSlotEl}>
+    <TooltipProvider delayDuration={150}>
     <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
     <div className="flex min-h-screen flex-col bg-stone-50 lg:flex-row" dir="rtl">
+      <SidebarCollapseScript />
       {/* Mobile/tablet top bar (<lg) */}
       <header data-partner-chrome className="sticky top-0 z-40 flex shrink-0 items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 print:hidden lg:hidden">
         <SheetTrigger asChild>
@@ -257,24 +305,30 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
           <SheetCloseButton />
         </SheetHeader>
         <nav className="flex-1 overflow-y-auto p-3" aria-label="التنقل في لوحة الشريك">
-          {navBody}
+          {drawerNavBody}
         </nav>
       </SheetContent>
 
-      {/* Desktop sidebar (lg+) — 248px, white, stone-200 border, per Main.dc.html */}
-      <aside data-partner-chrome className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col overflow-y-auto border-l border-stone-200 bg-white px-3.5 py-5 print:hidden lg:flex">
-        <div className="mb-3.5 flex items-center gap-2.5 px-1.5">
-          <Image src="/brand/logo-gold-mark.png" alt="" width={34} height={34} className="h-[34px] w-[34px] object-contain" />
-          <div className="min-w-0">
+      {/* Desktop sidebar (lg+) — 248px, white, stone-200 border, per Main.dc.html.
+          Backlog 7.1: collapses to 72px via the sidebar-collapsed: variant (CSS only —
+          expanded is today's layout byte-for-byte). */}
+      <aside
+        data-partner-chrome
+        data-testid="dashboard-rail"
+        className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col overflow-y-auto border-l border-stone-200 bg-white px-3.5 py-5 print:hidden lg:flex sidebar-collapsed:w-[72px] sidebar-collapsed:px-2"
+      >
+        <div className="mb-3.5 flex items-center gap-2.5 px-1.5 sidebar-collapsed:justify-center sidebar-collapsed:px-0">
+          <Image src="/brand/logo-gold-mark.png" alt="" width={34} height={34} className="h-[34px] w-[34px] shrink-0 object-contain" />
+          <div className="min-w-0 sidebar-collapsed:hidden">
             <p className="truncate text-sm font-extrabold leading-tight text-ink">قطن ملوك النيل</p>
             <p className="text-[11px] text-ink-soft">بوابة الشركاء</p>
           </div>
         </div>
-        <div className="mb-2 flex items-center gap-2.5 rounded-xl bg-stone-50 px-3 py-2.5">
+        <div className="mb-2 flex items-center gap-2.5 rounded-xl bg-stone-50 px-3 py-2.5 sidebar-collapsed:justify-center sidebar-collapsed:bg-transparent sidebar-collapsed:px-0 sidebar-collapsed:py-0">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lapis-800 text-[13px] font-extrabold text-gold-500">
             {isLoading ? "" : initials(displayName)}
           </div>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 sidebar-collapsed:hidden">
             {isLoading ? (
               <>
                 <Skeleton className="h-4 w-28 rounded" />
@@ -290,9 +344,12 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </div>
-        <nav className="flex-1 overflow-y-auto" aria-label="التنقل في لوحة الشريك">
-          {navBody}
+        <nav id="partner-desktop-nav" className="flex-1 overflow-y-auto" aria-label="التنقل في لوحة الشريك">
+          {desktopNavBody}
         </nav>
+        <div className="mt-auto border-t border-stone-200 pt-3">
+          <SidebarCollapseButton collapsed={collapsed} onToggle={toggle} navId="partner-desktop-nav" />
+        </div>
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
@@ -316,6 +373,7 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
       <MobileBottomTabBar pathname={pathname} />
     </div>
     </Sheet>
+    </TooltipProvider>
     </PartnerTopbarSlotContext.Provider>
   );
 }
