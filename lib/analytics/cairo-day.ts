@@ -68,6 +68,18 @@ export function dayIsoToDate(iso: string): Date {
   return new Date(`${iso}T00:00:00.000Z`);
 }
 
+/**
+ * The correct UTC instant for 00:00:00.000 Cairo-local time on the given calendar day —
+ * backlog 9.2's "طلبات اليوم vs أمس" KPI needs a Cairo calendar-day window, not a UTC one.
+ * Same DST-safe offset lookup as `cairoEndOfDayUtc` below.
+ */
+export function cairoStartOfDayUtc(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  const middayGuessUtc = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const offsetMin = cairoOffsetMinutesAt(middayGuessUtc);
+  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0) - offsetMin * 60_000);
+}
+
 /** The correct UTC instant for 23:59:59.999 Cairo-local time on the given calendar day —
  * the reference instant the cron computes "yesterday"'s totals as of. Derives the real
  * offset (via `cairoOffsetMinutesAt`, sampled at that day's midday to avoid any ambiguity

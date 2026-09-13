@@ -98,12 +98,19 @@ export type FulfilmentStats = {
 };
 
 /** Every headline number for one period, pure (no Prisma) — the other half of the unit tests. */
+export type SlaHours = { confirmSlaHours: number; shipSlaHours: number };
+
+/**
+ * `sla` is either one partner's hours (the partner report) or a resolver from order to that
+ * order's partner's hours (the network-wide on-time rate, 9.2) — one loop for both scopes (B3).
+ */
 export function computeFulfilmentStats(
   orders: FulfilmentOrderInput[],
   timings: OrderTiming[],
-  sla: { confirmSlaHours: number; shipSlaHours: number },
+  sla: SlaHours | ((order: FulfilmentOrderInput) => SlaHours),
   now: Date
 ): FulfilmentStats {
+  const slaFor = typeof sla === "function" ? sla : () => sla;
   const timingByOrder = new Map(timings.map((t) => [t.orderId, t]));
   const confirmHours = timings.map((t) => t.hoursToConfirm).filter((v): v is number => v !== null);
   const shipHours = timings.map((t) => t.hoursToShip).filter((v): v is number => v !== null);
@@ -114,7 +121,7 @@ export function computeFulfilmentStats(
     const timing = timingByOrder.get(o.id);
     return isOrderOverdue(
       { status: o.status as OverdueStatus, updatedAt: o.updatedAt, latestStatusLogAt: timing?.latestStatusLogAt ?? null },
-      sla,
+      slaFor(o),
       now
     );
   }).length;
@@ -166,6 +173,40 @@ async function loadOrders(partnerId: string, range: { from: Date; to: Date }): P
     where: { assignedPartnerId: partnerId, createdAt: { gte: range.from, lte: range.to } },
     select: { id: true, createdAt: true, updatedAt: true, status: true, cancellationReason: true },
   });
+}
+
+/**
+ * Backlog 9.2 (B3) — the same "how many open orders are overdue" question as
+ * `computeFulfilmentStats.overdueRate`, widened to the whole network: every order in range
+ * regardless of partner, each judged against *its own assigned partner's*
+ * `confirmSlaHours`/`shipSlaHours` (never a single network SLA). The admin home's "في
+ * الموعد · 30 يومًا" KPI is `100 − overdueRate` from this — on-time is the complement of
+ * overdue, the same number the partner's own fulfilment report already renders, just with
+ * no partner filter and a per-order SLA lookup instead of one partner's fixed SLA.
+ */
+export async function getNetworkOnTimeRate(range: { from: Date; to: Date }, now: Date = new Date()): Promise<number> {
+  const orders = await prisma.order.findMany({
+    where: { assignedPartnerId: { not: null }, createdAt: { gte: range.from, lte: range.to } },
+    select: {
+      id: true,
+      createdAt: true,
+      updatedAt: true,
+      status: true,
+      cancellationReason: true,
+      assignedPartnerId: true,
+      assignedPartner: { select: { confirmSlaHours: true, shipSlaHours: true } },
+    },
+  });
+  if (orders.length === 0) return 100;
+
+  const auditRows = await loadAuditRows(orders.map((o) => o.id));
+  const timings = computeOrderTimings(orders, auditRows);
+  const slaByOrder = new Map(
+    orders.map((o) => [o.id, { confirmSlaHours: o.assignedPartner!.confirmSlaHours, shipSlaHours: o.assignedPartner!.shipSlaHours }] as const)
+  );
+  // The partner report's own stats function, with each order judged by its own partner's SLA.
+  const { overdueRate } = computeFulfilmentStats(orders, timings, (o) => slaByOrder.get(o.id)!, now);
+  return Math.round((100 - overdueRate) * 10) / 10;
 }
 
 async function loadAuditRows(orderIds: string[]): Promise<FulfilmentAuditRow[]> {

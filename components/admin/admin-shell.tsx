@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Store } from "lucide-react";
 import { useAdminMe } from "@/hooks/use-admin-me";
+import { AdminQueueBell } from "@/components/admin/today/queue-bell";
 import {
   ADMIN_ACCOUNT_NAV,
   ADMIN_MOBILE_TABS,
@@ -61,10 +62,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       navId="admin-desktop-nav"
       chromeAttr="data-admin-chrome"
       topbarEnd={
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-ink">
-          <Store className="h-[18px] w-[18px]" strokeWidth={2} />
-        </span>
+        <div className="flex items-center gap-2">
+          <AdminQueueBell />
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-ink">
+            <Store className="h-[18px] w-[18px]" strokeWidth={2} />
+          </span>
+        </div>
       }
+      mobileTopbarEnd={<AdminQueueBell className="h-9 w-9 shrink-0 rounded-[10px] border-transparent bg-stone-100" />}
     >
       {children}
     </DashboardShell>

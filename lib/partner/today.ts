@@ -3,8 +3,16 @@
  * it is directly unit-testable (`lib/partner/today.test.ts` per the task's "unit tests for
  * the overdue/capacity/period logic"). `app/api/partner/today/route.ts` is the thin Prisma
  * wrapper that feeds these functions real rows.
+ *
+ * One exception: `findOverdueAssignedOrders` below (backlog 9.2, B3) — the "which assigned
+ * orders are overdue" query, lifted verbatim out of the partner today route so the admin's
+ * network-wide "متأخرة عند الشريك" queue and the partner's own overdue group share one
+ * query instead of two implementations of the same rule. It takes an optional partner scope
+ * (`{}` = every partner in the network) and evaluates each order against *its own assigned
+ * partner's* `confirmSlaHours`/`shipSlaHours` — never a single SLA for every order.
  */
 
+import { prisma } from "@/lib/db";
 import { computeOrderSla, SLA_ELIGIBLE_STATUSES, type PartnerSlaHours } from "@/lib/orders/order-sla";
 
 export type DateRange = { start: Date; end: Date };
@@ -54,6 +62,96 @@ export function isOrderOverdue(
 ): boolean {
   const result = computeOrderSla({ status: row.status, since: resolveStatusEnteredAt(row), partner: sla, now });
   return result.applicable && result.overdue;
+}
+
+/** The address line every اليوم order row shows ("مدينة/منطقة · محافظة"). */
+export function addressLine(shippingAddress: unknown): string {
+  const a = (shippingAddress ?? {}) as { governorate?: string; city?: string | null; area?: string | null };
+  return [a.city || a.area, a.governorate].filter(Boolean).join(" · ");
+}
+
+/** Latest `status_change`/`confirmed` audit row per order id (empty map entries fall back to
+ * `updatedAt`, per `resolveStatusEnteredAt`'s own rule). Plain Prisma, no raw SQL. */
+async function latestStatusAuditAtByOrderId(orderIds: string[]): Promise<Map<string, Date>> {
+  if (orderIds.length === 0) return new Map();
+  const rows = await prisma.orderAuditLog.findMany({
+    where: { orderId: { in: orderIds }, event: { in: ["status_change", "confirmed"] } },
+    orderBy: { createdAt: "desc" },
+    distinct: ["orderId"],
+    select: { orderId: true, createdAt: true },
+  });
+  return new Map(rows.map((r) => [r.orderId, r.createdAt]));
+}
+
+export type OverdueAssignedOrderRow = {
+  id: string;
+  status: OverdueStatus;
+  totalPiastres: number;
+  enteredAt: Date;
+  partnerId: string;
+  partnerName: string;
+  customerName: string;
+  addressLine: string;
+  /** Whole hours past the SLA deadline, ≥ 1 — the admin queue's "تجاوز المهلة بـ N ساعة". */
+  overdueHours: number;
+};
+
+/**
+ * Every assigned order currently overdue against SLA_ELIGIBLE_STATUSES, oldest-overdue
+ * first — `scope.partnerId` narrows to one partner (the partner today route's own use);
+ * omitted, it is every partner in the network (backlog 9.2's "متأخرة عند الشريك" queue).
+ * Each order is judged against *its assigned partner's own* `confirmSlaHours`/
+ * `shipSlaHours`, never a single network-wide SLA.
+ */
+export async function findOverdueAssignedOrders(
+  scope: { partnerId?: string } = {}
+): Promise<OverdueAssignedOrderRow[]> {
+  const orders = await prisma.order.findMany({
+    where: {
+      assignedPartnerId: scope.partnerId ? scope.partnerId : { not: null },
+      status: { in: [...SLA_ELIGIBLE_STATUSES] },
+    },
+    orderBy: { updatedAt: "asc" },
+    select: {
+      id: true,
+      status: true,
+      totalPiastres: true,
+      updatedAt: true,
+      shippingAddress: true,
+      assignedPartnerId: true,
+      user: { select: { name: true, phone: true } },
+      assignedPartner: { select: { name: true, confirmSlaHours: true, shipSlaHours: true } },
+    },
+  });
+  if (orders.length === 0) return [];
+
+  const auditByOrderId = await latestStatusAuditAtByOrderId(orders.map((o) => o.id));
+  const now = new Date();
+  const result: OverdueAssignedOrderRow[] = [];
+  for (const o of orders) {
+    if (!o.assignedPartner || !o.assignedPartnerId) continue;
+    const latestStatusLogAt = auditByOrderId.get(o.id) ?? null;
+    const sla: PartnerSlaHours = {
+      confirmSlaHours: o.assignedPartner.confirmSlaHours,
+      shipSlaHours: o.assignedPartner.shipSlaHours,
+    };
+    const enteredAt = resolveStatusEnteredAt({ updatedAt: o.updatedAt, latestStatusLogAt });
+    const slaResult = computeOrderSla({ status: o.status, since: enteredAt, partner: sla, now });
+    if (!slaResult.applicable || !slaResult.overdue) continue;
+    result.push({
+      id: o.id,
+      status: o.status as OverdueStatus,
+      totalPiastres: o.totalPiastres,
+      enteredAt,
+      partnerId: o.assignedPartnerId,
+      partnerName: o.assignedPartner.name,
+      customerName: o.user.name?.trim() || o.user.phone,
+      addressLine: addressLine(o.shippingAddress),
+      overdueHours: Math.max(1, Math.round(-slaResult.remainingHours)),
+    });
+  }
+  result.sort((a, b) => a.enteredAt.getTime() - b.enteredAt.getTime());
+  return result;
 }
 
 export type CapacityMeter = { used: number; capacity: number | null; remaining: number | null };
