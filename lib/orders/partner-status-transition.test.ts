@@ -214,7 +214,9 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-const { transitionPartnerOrderStatus, PartnerOrderTransitionError } = await import("./partner-status-transition");
+const { prisma: mockedPrisma } = await import("@/lib/db");
+const { transitionPartnerOrderStatus, PartnerOrderTransitionError, lockOrderAtStatus, releaseReservationForCancellation } =
+  await import("./partner-status-transition");
 
 const PARTNER = "partner_1";
 const VARIANT_1 = "variant_1";
@@ -413,5 +415,90 @@ describe("transitionPartnerOrderStatus — validation", () => {
     expect(err).toBeInstanceOf(PartnerOrderTransitionError);
     expect(err.message).toBe("الطلب غير موجود");
     expect(err.status).toBe(404);
+  });
+});
+
+// Backlog 6.4: the customer-facing cancel endpoint
+// (`app/api/profile/orders/[id]/cancel/route.ts`) reuses `lockOrderAtStatus` and
+// `releaseReservationForCancellation` directly rather than duplicating the row-lock/release
+// logic — these tests exercise the two exports the same way that route does.
+describe("lockOrderAtStatus / releaseReservationForCancellation — shared by the customer cancel route", () => {
+  it("rejects with 409 once another transaction has already moved the order off the expected status (row-lock rule)", async () => {
+    fakeDb.seedOrder({ id: ORDER_1, assignedPartnerId: PARTNER, status: "CREATED" });
+    // Simulate a first, already-committed cancel racing ahead of this one.
+    fakeDb.orders[0].status = "CANCELLED";
+
+    const err = await mockedPrisma.$transaction((tx) => lockOrderAtStatus(tx, ORDER_1, "CREATED")).catch((e) => e);
+    expect(err).toBeInstanceOf(PartnerOrderTransitionError);
+    expect(err.status).toBe(409);
+  });
+
+  it("throws the 404 when the order doesn't exist", async () => {
+    const err = await mockedPrisma.$transaction((tx) => lockOrderAtStatus(tx, "missing_order", "CREATED")).catch((e) => e);
+    expect(err).toBeInstanceOf(PartnerOrderTransitionError);
+    expect(err.status).toBe(404);
+  });
+
+  it("releases reservation-only stock for a CREATED order and the caller can record a customer-cancelled audit row", async () => {
+    fakeDb.seedInventory(PARTNER, VARIANT_1, 10, 3);
+    fakeDb.seedOrder({
+      id: ORDER_1,
+      assignedPartnerId: PARTNER,
+      status: "CREATED",
+      items: [{ variantId: VARIANT_1, quantity: 3 }],
+    });
+
+    const order = await mockedPrisma.$transaction(async (tx) => {
+      await lockOrderAtStatus(tx, ORDER_1, "CREATED");
+      await releaseReservationForCancellation(
+        tx,
+        PARTNER,
+        [{ variantId: VARIANT_1, quantity: 3 }],
+        ORDER_1,
+        "CREATED",
+        "Customer order cancellation"
+      );
+      await tx.orderAuditLog.create({
+        data: {
+          orderId: ORDER_1,
+          event: "cancelled",
+          statusFrom: "CREATED",
+          statusTo: "CANCELLED",
+          details: { cancelledBy: "customer" },
+        },
+      });
+      return tx.order.update({ where: { id: ORDER_1 }, data: { status: "CANCELLED", cancellationReason: "customer" } });
+    });
+
+    expect(order.status).toBe("CANCELLED");
+    const inv = fakeDb.inventory.find((r) => r.variantId === VARIANT_1)!;
+    expect(inv).toMatchObject({ stockAvailable: 10, stockReserved: 0 });
+    expect(fakeDb.audit).toEqual([
+      { orderId: ORDER_1, event: "cancelled", statusFrom: "CREATED", statusTo: "CANCELLED", details: { cancelledBy: "customer" } },
+    ]);
+  });
+
+  it("restores committed stock (not a reservation release) when releasing a post-CREATED status", async () => {
+    fakeDb.seedInventory(PARTNER, VARIANT_1, 7, 0);
+    fakeDb.seedOrder({
+      id: ORDER_1,
+      assignedPartnerId: PARTNER,
+      status: "CONFIRMED",
+      items: [{ variantId: VARIANT_1, quantity: 3 }],
+    });
+
+    await mockedPrisma.$transaction(async (tx) => {
+      await releaseReservationForCancellation(
+        tx,
+        PARTNER,
+        [{ variantId: VARIANT_1, quantity: 3 }],
+        ORDER_1,
+        "CONFIRMED",
+        "test"
+      );
+    });
+
+    const inv = fakeDb.inventory.find((r) => r.variantId === VARIANT_1)!;
+    expect(inv).toMatchObject({ stockAvailable: 10, stockReserved: 0 });
   });
 });
