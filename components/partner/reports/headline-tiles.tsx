@@ -25,7 +25,7 @@ const HEADLINE_ICONS: Record<string, React.ComponentType<{ className?: string }>
   valuationPrice: Banknote,
   medianCover: Calendar,
   deadStockCount: AlertTriangle,
-  stockOutDays: AlertTriangle,
+  stockOutSkus: AlertTriangle,
 };
 
 /**
@@ -81,7 +81,8 @@ export function HeadlineTiles({
             value={formatHeadlineValue(h)}
             icon={<Icon className="h-5 w-5" />}
             accent="gold"
-            delta={{ tone, text: formatDeltaText(h) }}
+            hint={h.hint}
+            delta={h.noComparison ? undefined : { tone, text: formatDeltaText(h) }}
           />
         );
       })}

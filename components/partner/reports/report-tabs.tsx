@@ -30,7 +30,7 @@ export function ReportTabs() {
             href={f.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors",
+              "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2",
               active
                 ? "border-lapis-800 bg-lapis-800 text-white"
                 : "border-stone-200 bg-white text-ink hover:bg-stone-50"

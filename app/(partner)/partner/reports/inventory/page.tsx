@@ -126,7 +126,7 @@ export default function PartnerInventoryReportPage() {
           <>
             <HeadlineTiles
               headline={data.headline}
-              higherIsBetter={{ deadStockCount: false, stockOutDays: false }}
+              higherIsBetter={{ deadStockCount: false, stockOutSkus: false }}
             />
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -142,7 +142,7 @@ export default function PartnerInventoryReportPage() {
                       }}
                       aria-pressed={filter === f.id}
                       className={
-                        "inline-flex h-7 items-center rounded-full border px-3 text-xs font-semibold " +
+                        "inline-flex h-7 items-center rounded-full border px-3 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 " +
                         (filter === f.id
                           ? "border-lapis-800 bg-lapis-800 text-white"
                           : "border-stone-200 bg-white text-ink hover:bg-stone-50")

@@ -166,6 +166,10 @@ export type ReportHeadline = {
   previous: number;
   delta: Delta;
   unit: "piastres" | "count" | "percent" | "days";
+  /** Secondary line under the value — which universe the number counts. */
+  hint?: string;
+  /** Point-in-time figures (stock levels) have no honest previous-period value; render no delta. */
+  noComparison?: boolean;
 };
 
 export type ReportSeriesPoint = { x: string; y: number };

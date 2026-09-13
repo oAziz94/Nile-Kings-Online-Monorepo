@@ -32,7 +32,7 @@ export type InventorySkuRow = {
   velocityPerWeek: number;
   daysOfCover: number | null;
   isDead: boolean;
-  stockOutDays: number | null;
+  isOut: boolean;
   suggestedReorder: number;
   pricePiastres: number;
 };
@@ -107,7 +107,7 @@ async function computeInventoryRows(
       velocityPerWeek: velocityPerDay * 7,
       daysOfCover,
       isDead,
-      stockOutDays: daysOfCover !== null && daysOfCover <= 0 ? Math.abs(Math.round(daysOfCover)) : null,
+      isOut: sellable <= 0,
       suggestedReorder,
       pricePiastres: inv.variant.pricePiastres,
     };
@@ -221,24 +221,30 @@ function buildHeadline(
   const coverValues = rows.map((r) => r.daysOfCover).filter((v): v is number => v !== null);
   const medianCover = median(coverValues);
   const deadCount = rows.filter((r) => r.isDead).length;
-  const stockOutDaysTotal = rows.reduce((s, r) => s + (r.stockOutDays ?? 0), 0);
+  const outCount = rows.filter((r) => r.isOut).length;
 
-  // No period-over-period "previous" snapshot is stored for these headline point-in-time
-  // metrics (sellable/valuation/cover/dead-count are current-state, not period sums) — the
-  // comparison instead reflects the change in demand (previous-period velocity) as a proxy,
-  // consistent with rule (12) requiring every number to carry *a* comparison. `previous`
-  // equals `value` where no meaningful prior figure exists (renders as a flat delta).
+  // Stock levels are point-in-time: there is no stored snapshot at the previous period's
+  // end, so these tiles carry no comparison at all (rule 12's honest exception, recorded in
+  // 04-decisions.md 2026-09-13) rather than a fabricated flat delta. The period still
+  // governs velocity, cover and dead stock, which is what the hint says.
   void previousVelocity;
-  void days;
-  void deadStockDays;
+  const snapshotHint = "رصيد لحظي — بلا مقارنة";
+  const periodHint = `على آخر ${days} يومًا`;
+  const costRatePct = Math.round(costRateBps / 100);
+  const point = (h: Omit<ReportHeadline, "previous" | "delta" | "noComparison">): ReportHeadline => ({
+    ...h,
+    previous: h.value,
+    delta: computeDelta(h.value, h.value),
+    noComparison: true,
+  });
 
   return [
-    { key: "sellable", label: "قابل للبيع", value: sellable, previous: sellable, delta: computeDelta(sellable, sellable), unit: "count" },
-    { key: "valuationCost", label: "القيمة بالتكلفة", value: valuationCost, previous: valuationCost, delta: computeDelta(valuationCost, valuationCost), unit: "piastres" },
-    { key: "valuationPrice", label: "القيمة بسعر البيع", value: valuationPrice, previous: valuationPrice, delta: computeDelta(valuationPrice, valuationPrice), unit: "piastres" },
-    { key: "medianCover", label: "متوسط التغطية", value: medianCover ?? 0, previous: medianCover ?? 0, delta: computeDelta(medianCover ?? 0, medianCover ?? 0), unit: "days" },
-    { key: "deadStockCount", label: "أصناف راكدة", value: deadCount, previous: deadCount, delta: computeDelta(deadCount, deadCount), unit: "count" },
-    { key: "stockOutDays", label: "أيام نفاد", value: stockOutDaysTotal, previous: stockOutDaysTotal, delta: computeDelta(stockOutDaysTotal, stockOutDaysTotal), unit: "days" },
+    point({ key: "sellable", label: "قابل للبيع", value: sellable, unit: "count", hint: snapshotHint }),
+    point({ key: "valuationCost", label: "القيمة بالتكلفة", value: valuationCost, unit: "piastres", hint: `بنسبتك ${costRatePct}% · ${snapshotHint}` }),
+    point({ key: "valuationPrice", label: "القيمة بسعر البيع", value: valuationPrice, unit: "piastres", hint: snapshotHint }),
+    point({ key: "medianCover", label: "متوسط التغطية", value: medianCover ?? 0, unit: "days", hint: `سرعة البيع ${periodHint}` }),
+    point({ key: "deadStockCount", label: "أصناف راكدة", value: deadCount, unit: "count", hint: `بلا بيع منذ ${deadStockDays} يومًا` }),
+    point({ key: "stockOutSkus", label: "أصناف نافدة", value: outCount, unit: "count", hint: "قابل للبيع صفر أو أقل" }),
   ];
 }
 

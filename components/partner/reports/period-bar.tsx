@@ -47,7 +47,7 @@ export function PeriodBar<TPreset extends PeriodPreset>({
             onClick={() => onPresetChange(p.id)}
             aria-pressed={preset === p.id}
             className={cn(
-              "inline-flex h-[30px] items-center rounded-full border px-3 text-xs font-semibold transition-colors",
+              "inline-flex h-[30px] items-center rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2",
               preset === p.id
                 ? "border-lapis-800 bg-lapis-800 text-white"
                 : "border-stone-200 bg-white text-ink hover:bg-stone-50"

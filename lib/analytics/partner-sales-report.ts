@@ -198,11 +198,11 @@ function buildHeadline(
   const prevCancelRate = prevOrderCount > 0 ? (cancelled(previousOrders).length / prevOrderCount) * 100 : 0;
 
   return [
-    { key: "revenue", label: "الإيراد", value: curRevenue, previous: prevRevenue, delta: computeDelta(curRevenue, prevRevenue), unit: "piastres" },
-    { key: "orders", label: "الطلبات", value: curOrderCount, previous: prevOrderCount, delta: computeDelta(curOrderCount, prevOrderCount), unit: "count" },
-    { key: "units", label: "القطع", value: curUnits, previous: prevUnits, delta: computeDelta(curUnits, prevUnits), unit: "count" },
-    { key: "averageOrder", label: "متوسط الطلب", value: Math.round(curAvg), previous: Math.round(prevAvg), delta: computeDelta(curAvg, prevAvg), unit: "piastres" },
-    { key: "cancellationRate", label: "نسبة الإلغاء", value: curCancelRate, previous: prevCancelRate, delta: computeDelta(curCancelRate, prevCancelRate), unit: "percent" },
+    { key: "revenue", label: "الإيراد", value: curRevenue, previous: prevRevenue, delta: computeDelta(curRevenue, prevRevenue), unit: "piastres", hint: "طلبات تم تسليمها فقط" },
+    { key: "orders", label: "الطلبات", value: curOrderCount, previous: prevOrderCount, delta: computeDelta(curOrderCount, prevOrderCount), unit: "count", hint: "كل الحالات" },
+    { key: "units", label: "القطع", value: curUnits, previous: prevUnits, delta: computeDelta(curUnits, prevUnits), unit: "count", hint: "طلبات تم تسليمها فقط" },
+    { key: "averageOrder", label: "متوسط الطلب", value: Math.round(curAvg), previous: Math.round(prevAvg), delta: computeDelta(curAvg, prevAvg), unit: "piastres", hint: "طلبات تم تسليمها فقط" },
+    { key: "cancellationRate", label: "نسبة الإلغاء", value: curCancelRate, previous: prevCancelRate, delta: computeDelta(curCancelRate, prevCancelRate), unit: "percent", hint: "من كل الطلبات" },
   ];
 }
 
