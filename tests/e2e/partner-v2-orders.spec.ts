@@ -290,3 +290,24 @@ test("390×844: the pipeline renders card rows, not a table", async ({ page }) =
   await expect(page.locator(`div[data-row-id="${orderFreshId}"]`)).toBeVisible({ timeout: 15_000 });
   await expect(page.locator("table")).toBeHidden();
 });
+
+// User report 2026-09-13: an active order could not be opened from the list — "فتح" rendered
+// only on rows with no next status. Every agent row now has "فتح" next to the quick advance,
+// the order number is a link, and the row itself is clickable.
+test("every active row can open the order detail: فتح, the order number, and the row itself", async ({ page }) => {
+  await loginAs(page, pair, "AGENT");
+  await page.setViewportSize({ width: 1514, height: 681 });
+  await page.goto("/partner/orders");
+  const row = page.locator(`tr[data-row-id="${orderConfirmedId}"]`);
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await expect(row.getByRole("link", { name: "فتح" })).toBeVisible();
+  await expect(row.getByRole("button", { name: /قيد التجهيز/ })).toBeVisible();
+  await page.screenshot({ path: "screenshots/partner-orders-open-1514x681.png" });
+  await row.getByRole("link", { name: `#${orderConfirmedId.slice(0, 8)}` }).click();
+  await expect(page).toHaveURL(new RegExp(`/partner/orders/${orderConfirmedId}$`), { timeout: 20_000 });
+  await page.goBack();
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await row.getByRole("cell").nth(3).click();
+  await expect(page).toHaveURL(new RegExp(`/partner/orders/${orderConfirmedId}$`), { timeout: 20_000 });
+});
+
