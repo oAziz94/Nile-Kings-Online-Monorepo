@@ -4,6 +4,8 @@ import { requirePartner } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { sortVariants } from "@/lib/admin/variant-sort";
 import { apiBadRequest, apiForbidden, apiSuccess, apiUnauthorized } from "@/lib/api/response";
+import { buildThresholdLookup } from "@/lib/partner/resolve-threshold";
+import { resolveCoverDays } from "@/lib/partner/stock-cover";
 
 async function requireInventoryPartner() {
   const user = await requirePartner();
@@ -31,6 +33,9 @@ export async function GET(req: NextRequest) {
     // default 5) — distinct from the pre-existing, currently-unused `lowOnly` param above
     // (hardcoded `<= 3`), which is left byte-for-byte untouched per the standing rule.
     const lowStock = searchParams.get("lowStock") === "1";
+    // Backlog 5.4 (allowed additive API change): the stock hub's "نفد" chip — products with
+    // at least one variant at zero sellable.
+    const outOfStock = searchParams.get("outOfStock") === "1";
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 50) || 50));
     const offset = Math.max(0, Number(searchParams.get("offset") ?? 0) || 0);
 
@@ -80,34 +85,62 @@ export async function GET(req: NextRequest) {
       prisma.product.count({ where }),
     ]);
 
-    const rows = products
+    // Backlog 5.4 (allowed additive API change, rule 13): threshold and days-of-cover per
+    // variant, resolved through `buildThresholdLookup()` (the pure core `resolveThreshold()`
+    // wraps) — no screen compares against `Partner.lowStockThreshold` directly any more.
+    // Built from the `partner` row `requireInventoryPartner()` already fetched above (rather
+    // than calling `resolveThreshold()`, which would re-fetch the same partner row via
+    // `findUniqueOrThrow` — a second, redundant existence check with nothing to gain and one
+    // more way for a transient race to surface as a 500 on an otherwise-successful request).
+    const thresholdRows = await prisma.partnerStockThreshold.findMany({
+      where: { partnerId: user.partnerId },
+      select: { categoryId: true, productId: true, threshold: true },
+    });
+    const thresholdLookup = buildThresholdLookup(partner.lowStockThreshold, thresholdRows);
+    const preRows = products.map((product) => ({
+      ...product,
+      variants: sortVariants(product.variants).map((variant) => {
+        const inventory = variant.partnerInventories[0] ?? null;
+        const stockAvailable = inventory?.stockAvailable ?? 0;
+        const stockReserved = inventory?.stockReserved ?? 0;
+        const sellable = Math.max(0, stockAvailable - stockReserved);
+        return {
+          id: variant.id,
+          sku: variant.sku,
+          name: variant.name,
+          colorName: variant.colorName,
+          colorHex: variant.colorHex,
+          imageUrl: variant.imageUrl,
+          pricePiastres: variant.pricePiastres,
+          basePricePiastres: variant.basePricePiastres,
+          inventoryId: inventory?.id ?? null,
+          stockAvailable,
+          stockReserved,
+          sellable,
+          updatedAt: inventory?.updatedAt ?? null,
+          threshold: thresholdLookup.forVariant({ productId: product.id, categoryId: product.category.id }),
+        };
+      }),
+    }));
+
+    const allVariantRows = preRows.flatMap((product) =>
+      product.variants.map((variant) => ({ variantId: variant.id, sellable: variant.sellable }))
+    );
+    const coverByVariant = await resolveCoverDays(user.partnerId, allVariantRows);
+
+    const rows = preRows
       .map((product) => ({
         ...product,
-        variants: sortVariants(product.variants).map((variant) => {
-          const inventory = variant.partnerInventories[0] ?? null;
-          const stockAvailable = inventory?.stockAvailable ?? 0;
-          const stockReserved = inventory?.stockReserved ?? 0;
-          return {
-            id: variant.id,
-            sku: variant.sku,
-            name: variant.name,
-            colorName: variant.colorName,
-            colorHex: variant.colorHex,
-            imageUrl: variant.imageUrl,
-            pricePiastres: variant.pricePiastres,
-            basePricePiastres: variant.basePricePiastres,
-            inventoryId: inventory?.id ?? null,
-            stockAvailable,
-            stockReserved,
-            sellable: Math.max(0, stockAvailable - stockReserved),
-            updatedAt: inventory?.updatedAt ?? null,
-          };
-        }),
+        variants: product.variants.map((variant) => ({
+          ...variant,
+          coverDays: coverByVariant.get(variant.id) ?? null,
+        })),
       }))
       .filter((product) => !lowOnly || product.variants.some((variant) => variant.sellable <= 3))
       .filter(
-        (product) => !lowStock || product.variants.some((variant) => variant.sellable <= partner.lowStockThreshold)
-      );
+        (product) => !lowStock || product.variants.some((variant) => variant.sellable <= variant.threshold)
+      )
+      .filter((product) => !outOfStock || product.variants.some((variant) => variant.sellable === 0));
 
     return apiSuccess({ partner, products: rows, total, limit, offset });
   } catch (error: unknown) {

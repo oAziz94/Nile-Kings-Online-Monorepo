@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { Prisma, StockReceiptKind } from "@prisma/client";
 import { requirePartner } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiBadRequest, apiForbidden, apiSuccess, apiUnauthorized } from "@/lib/api/response";
@@ -209,7 +210,14 @@ export async function POST(req: NextRequest) {
           where: { id: created.id },
           include: { lines: { include: { variant: { select: { sku: true, name: true } } } } },
         });
-      });
+      }, { timeout: 15_000 });
+      // ^ Backlog 5.4 finding: Prisma's default interactive-transaction timeout is 5000ms.
+      // Several concurrent receipts touching the same variant serialise on that row's
+      // `SELECT … FOR UPDATE` (the intended, correct behaviour — see the file-header note),
+      // so under real contention a transaction can legitimately queue behind others long
+      // enough to exceed the default and abort with a false "transaction already closed"
+      // error even though every line is valid. 15s comfortably covers a handful of queued
+      // receipts against the remote Neon branch without changing any other behaviour.
 
       return apiSuccess(receipt, undefined, 201);
     } catch (error) {
@@ -232,16 +240,22 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 20) || 20));
     const offset = Math.max(0, Number(searchParams.get("offset") ?? 0) || 0);
+    // Backlog 5.4 (allowed additive API change): the stock hub splits "الاستلام من المصنع"
+    // (FACTORY) and "الجرد" (COUNT) into two tabs backed by the same list endpoint.
+    const kindParam = searchParams.get("kind");
+    const kind: StockReceiptKind | null =
+      kindParam === "FACTORY" || kindParam === "COUNT" ? (kindParam as StockReceiptKind) : null;
 
+    const where: Prisma.StockReceiptWhereInput = { partnerId: user.partnerId, ...(kind ? { kind } : {}) };
     const [receipts, total] = await Promise.all([
       prisma.stockReceipt.findMany({
-        where: { partnerId: user.partnerId },
+        where,
         orderBy: { createdAt: "desc" },
         take: limit,
         skip: offset,
         include: { lines: { select: { id: true, quantity: true } } },
       }),
-      prisma.stockReceipt.count({ where: { partnerId: user.partnerId } }),
+      prisma.stockReceipt.count({ where }),
     ]);
 
     const rows = receipts.map((r) => ({
@@ -252,6 +266,7 @@ export async function GET(req: NextRequest) {
       createdAt: r.createdAt,
       lineCount: r.lines.length,
       totalUnits: r.lines.reduce((sum, l) => sum + Math.abs(l.quantity), 0),
+      totalCostPiastres: r.totalCostPiastres,
     }));
 
     return apiSuccess({ receipts: rows, total, limit, offset });

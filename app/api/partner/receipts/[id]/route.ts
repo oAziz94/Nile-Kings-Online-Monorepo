@@ -50,6 +50,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         quantity: line.quantity,
         previousAvailable: line.previousAvailable,
         newAvailable: line.newAvailable,
+        unitCostPiastres: line.unitCostPiastres,
       };
     });
 
@@ -62,6 +63,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       partnerName: partner.name,
       lines,
       totalUnits: lines.reduce((sum, l) => sum + Math.abs(l.quantity), 0),
+      totalCostPiastres: receipt.totalCostPiastres,
     });
   } catch (error: unknown) {
     const err = error as { status?: number };
