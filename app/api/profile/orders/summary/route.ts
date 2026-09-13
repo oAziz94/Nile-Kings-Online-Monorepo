@@ -19,7 +19,7 @@ export async function GET() {
 
   const [openCount, orderCount, addressCount] = await Promise.all([
     prisma.order.count({ where: { userId: user.userId, status: { in: [...OPEN_STATUSES] } } }),
-    prisma.order.count({ where: { userId: user.userId } }),
+    prisma.order.count({ where: { userId: user.userId, status: { not: "CANCELLED" } } }),
     prisma.savedAddress.count({ where: { userId: user.userId } }),
   ]);
 
