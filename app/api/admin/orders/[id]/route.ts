@@ -26,6 +26,8 @@ import {
   restorePartnerCommittedStock,
 } from "@/lib/inventory/partner-inventory";
 import { logOrderCancelled, logOrderConfirmed, logOrderStatusChange } from "@/lib/audit/order-audit";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
+import type { SessionUser } from "@/lib/auth/session";
 
 const ORDER_STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
 
@@ -34,6 +36,21 @@ const orderDetailInclude = {
   // Additive (backlog 6.5b): the order's ticket id/status for the admin order page's
   // "سؤال العميل" link.
   ticket: { select: { id: true, status: true } },
+  // Additive (backlog 9.3 c): the "الشريك المنفّذ" card — the assigned partner's own SLA
+  // hours (never a network-wide constant) and the routed row's proof-of-delivery fields.
+  assignedPartner: { select: { id: true, name: true, phone: true, confirmSlaHours: true, shipSlaHours: true } },
+  routedOrder: {
+    select: {
+      id: true,
+      status: true,
+      assignmentMode: true,
+      assignedAt: true,
+      acceptedAt: true,
+      deliveredAt: true,
+      proofImageUrl: true,
+      proofImagePublicId: true,
+    },
+  },
   items: {
     include: {
       variant: {
@@ -65,6 +82,37 @@ const INT32_MAX = 2_147_483_647;
 
 type IncomingItem = { variantId: string; quantity: number };
 
+/** backlog 9.3 c — the order timeline the admin detail shares with the partner's
+ * `order-timeline.tsx` (rule B3): the same `OrderAuditLog` rows the partner page reads. */
+async function withOrderTimeline<T extends { id: string }>(order: T) {
+  const auditLog = await prisma.orderAuditLog.findMany({ where: { orderId: order.id }, orderBy: { createdAt: "asc" } });
+  return { ...order, auditLog };
+}
+
+/** The scalar fields worth diffing on an admin order write — never the nested relations
+ * (items/user/ticket/etc), which would make every diff noisy and unreadable. */
+function pickOrderAuditFields(o: {
+  status: string;
+  totalPiastres: number;
+  subtotalPiastres: number;
+  shippingPiastres: number;
+  codFeePiastres: number;
+  discountPiastres: number;
+  adminNotes: string | null;
+  cancellationReason: string | null;
+}) {
+  return {
+    status: o.status,
+    totalPiastres: o.totalPiastres,
+    subtotalPiastres: o.subtotalPiastres,
+    shippingPiastres: o.shippingPiastres,
+    codFeePiastres: o.codFeePiastres,
+    discountPiastres: o.discountPiastres,
+    adminNotes: o.adminNotes,
+    cancellationReason: o.cancellationReason,
+  };
+}
+
 export async function GET(_req: NextRequest, { params }: { params: Params }) {
   try {
     await requireAdmin();
@@ -80,18 +128,20 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
     include: orderDetailInclude,
   });
   if (!order) return apiNotFound("الطلب غير موجود");
-  return apiSuccess(mapOrderDetailApiRow(order));
+  return apiSuccess(await withOrderTimeline(mapOrderDetailApiRow(order)));
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
+  let admin: SessionUser;
   try {
-    await requireAdmin();
+    admin = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
     if (err.status === 403) return apiForbidden("غير مصرح");
     throw e;
   }
+  const ip = requestIp(req);
   const { id } = await params;
   const existing = await prisma.order.findUnique({
     where: { id },
@@ -109,6 +159,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   });
   if (!existing) return apiNotFound("الطلب غير موجود");
   const existingOrder = existing;
+  const auditBefore = pickOrderAuditFields(existing);
+  /** backlog 9.3 c/B1 — every admin write on the order (status, items, cancel, notes) also
+   * appends an `AdminAuditLog` row alongside the existing `OrderAuditLog`. Called with the
+   * plain `prisma` client (not the write's own transaction) — logging is best-effort and
+   * must never roll back a stock/status change that already committed. */
+  async function auditOrderWrite(action: string, updated: { id: string } & Record<string, unknown>) {
+    await logAdminAction(prisma, {
+      actor: admin,
+      action,
+      entityType: "order",
+      entityId: id,
+      entityLabel: `#${id.slice(-8)}`,
+      before: auditBefore,
+      after: pickOrderAuditFields(updated as unknown as Parameters<typeof pickOrderAuditFields>[0]),
+      ip,
+    });
+  }
 
   let body: {
     status?: string;
@@ -427,6 +494,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       },
       { maxWait: 15_000, timeout: 60_000 }
     );
+    await auditOrderWrite("cancel", order);
     return apiSuccess(mapOrderDetailApiRow(order));
   }
 
@@ -464,6 +532,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
         },
         { maxWait: 15_000, timeout: 60_000 }
       );
+      await auditOrderWrite("items_edit", order);
       return apiSuccess(mapOrderDetailApiRow(order));
     } catch (e) {
       if (e instanceof InsufficientStockError || e instanceof InsufficientPartnerStockError) {
@@ -486,6 +555,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
         },
         { maxWait: 15_000, timeout: 60_000 }
       );
+      await auditOrderWrite("status_change", order);
       return apiSuccess(mapOrderDetailApiRow(order));
     } catch (e) {
       if (e instanceof InsufficientStockError || e instanceof InsufficientPartnerStockError) {
@@ -500,5 +570,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     data,
     include: orderDetailInclude,
   });
+  await auditOrderWrite(nextStatus ? "status_change" : body.adminNotes !== undefined ? "notes" : "update", order);
   return apiSuccess(mapOrderDetailApiRow(order));
 }
