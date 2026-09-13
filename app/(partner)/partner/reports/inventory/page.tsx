@@ -110,8 +110,8 @@ export default function PartnerInventoryReportPage() {
         />
 
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {Array.from({ length: 6 }).map((_, i) => (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 7 }).map((_, i) => (
               <Skeleton key={i} className="h-28 rounded-2xl" />
             ))}
           </div>
@@ -126,7 +126,7 @@ export default function PartnerInventoryReportPage() {
           <>
             <HeadlineTiles
               headline={data.headline}
-              higherIsBetter={{ deadStockCount: false, stockOutSkus: false }}
+              higherIsBetter={{ deadStockCount: false, stockOutSkus: false, stockOutDays: false }}
             />
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">

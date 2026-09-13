@@ -6,5 +6,8 @@
       "redesign": false,
       "redesign/*": false
     }
-  }
+  },
+  "crons": [
+    { "path": "/api/cron/stock-snapshot", "schedule": "5 22 * * *" }
+  ]
 }

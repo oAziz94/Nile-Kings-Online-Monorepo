@@ -4,6 +4,12 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import { seedPartnerPair, loginAs, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+// Pure, no `@/*` alias and no Prisma import inside `cairo-day.ts` itself — safe to import
+// by relative path from a spec (unlike `lib/analytics/partner-reports.ts`, see the
+// `noonDaysAgo` comment below).
+import { addDaysIsoUtc, cairoYesterdayIso, dayIsoToDate } from "../../lib/analytics/cairo-day";
+
+const CRON_SECRET = process.env.CRON_SECRET;
 
 /**
  * Backlog 5.6a (Partner portal v2 — Reports platform + Sales + Inventory) e2e coverage.
@@ -43,6 +49,21 @@ function noonDaysAgo(daysAgo: number): Date {
   d.setDate(d.getDate() - daysAgo);
   d.setHours(12, 0, 0, 0);
   return d;
+}
+
+/** Same local-date convention as `resolvePeriod`'s `toIsoDate`, duplicated for the same
+ * alias-avoidance reason as `noonDaysAgo` above. */
+function isoDaysAgo(daysAgo: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** `resolvePeriod({ preset: "7d" }).previous.to` — current.from is 6 days ago, so
+ * `previous.to` (the day before current.from) is 7 days ago. */
+function sevenDayPresetPreviousToIso(): string {
+  return isoDaysAgo(7);
 }
 
 test.beforeAll(async () => {
@@ -145,6 +166,24 @@ test.beforeAll(async () => {
   // 7-day window -> velocityPerDay = 2, sellable = 5, targetCoverDays = 14
   // -> suggestedReorder = ceil(14*2 - 5) = 23.
   await makeOrder({ status: "DELIVERED", totalPiastres: 100000, quantity: 14, createdAt: currentDate, variantId: invVariantId, sku: `SKU-INV-${RUN_TAG}` });
+
+  // --- Backlog 7.5 — a snapshot row dated at the 7d preset's previous-period end, so the
+  // inventory report's point-in-time headline tiles get a real comparison. Live sellable is
+  // 5 (20 available - 15 reserved on invVariantId, this fixture's only PartnerInventory
+  // row) -> previous 10 gives sellable a hand-computable -5 / -50% delta.
+  await prisma.partnerStockSnapshot.create({
+    data: {
+      partnerId: pair.agent.partnerId,
+      day: dayIsoToDate(sevenDayPresetPreviousToIso()),
+      sellableUnits: 10,
+      reservedUnits: 5,
+      valuationPiastres: BigInt(75000),
+      valuationPricePiastres: BigInt(100000),
+      coverDays: 4,
+      deadStockSkus: 1,
+      outOfStockSkus: 2,
+    },
+  });
 });
 
 test.afterAll(async () => {
@@ -152,6 +191,7 @@ test.afterAll(async () => {
   await prisma.order.deleteMany({ where: { id: { in: orderIds } } });
   await prisma.partnerInventory.deleteMany({ where: { variantId: invVariantId } });
   await prisma.inventoryLedger.deleteMany({ where: { variantId: { in: [salesVariantId, invVariantId] } } });
+  await prisma.partnerStockSnapshot.deleteMany({ where: { partnerId: { in: [pair.agent.partnerId, pair.distributor.partnerId] } } });
   await prisma.variant.deleteMany({ where: { productId } });
   await prisma.product.deleteMany({ where: { id: productId } });
   await prisma.category.delete({ where: { id: categoryId } });
@@ -257,6 +297,128 @@ test("inventory report: velocity, days of cover and the reorder formula match th
   const tableRow = page.locator("tr", { hasText: `SKU-INV-${RUN_TAG}` }).or(page.locator("tr", { hasText: "منتج 5.6a" }));
   await expect(tableRow.first()).toBeVisible({ timeout: 15_000 });
   await expect(tableRow.first()).toContainText("23");
+});
+
+test("inventory report: point-in-time headline tiles compare against the seeded snapshot, and the stock-out-days tile is always present", async ({ page }) => {
+  await loginAs(page, pair, "AGENT");
+  const res = await page.request.get("/api/partner/reports/inventory?preset=7d&filter=all", {
+    headers: { accept: "application/json" },
+  });
+  expect(res.ok()).toBeTruthy();
+  const json = await res.json();
+  const headline: {
+    key: string;
+    value: number;
+    previous: number;
+    delta: { changeAbs: number; changePct: number | null; direction: string };
+    noComparison?: boolean;
+    hint?: string;
+  }[] = json.data.headline;
+  expect(headline.length).toBe(7); // backlog 7.5 adds "أيام نفاد" as the 7th tile
+  const byKey = Object.fromEntries(headline.map((h) => [h.key, h]));
+
+  // Live sellable = 5 (20 available - 15 reserved on invVariantId, this fixture partner's
+  // only PartnerInventory row); the seeded snapshot's sellableUnits is 10.
+  expect(byKey.sellable.value).toBe(5);
+  expect(byKey.sellable.previous).toBe(10);
+  expect(byKey.sellable.noComparison).toBeFalsy();
+  expect(byKey.sellable.delta.direction).toBe("down");
+  expect(byKey.sellable.delta.changeAbs).toBe(-5);
+  expect(byKey.sellable.delta.changePct).toBe(-50);
+  expect(byKey.sellable.hint).toContain("مقارنةً بلقطة");
+
+  // Cost valuation: live = 5 * round(10000 * 7500 / 10000) = 37500; snapshot = 75000.
+  expect(byKey.valuationCost.value).toBe(37500);
+  expect(byKey.valuationCost.previous).toBe(75000);
+  expect(byKey.valuationCost.noComparison).toBeFalsy();
+
+  // Price valuation: live = 5 * 10000 = 50000; snapshot = 100000 -> -50%.
+  expect(byKey.valuationPrice.value).toBe(50000);
+  expect(byKey.valuationPrice.previous).toBe(100000);
+  expect(byKey.valuationPrice.delta.changePct).toBe(-50);
+  expect(byKey.valuationPrice.noComparison).toBeFalsy();
+
+  // Dead-stock / stock-out counts: live = 0 both (recent sale, sellable > 0); snapshot 1 / 2.
+  expect(byKey.deadStockCount.value).toBe(0);
+  expect(byKey.deadStockCount.previous).toBe(1);
+  expect(byKey.stockOutSkus.value).toBe(0);
+  expect(byKey.stockOutSkus.previous).toBe(2);
+
+  // The seventh headline — ledger-accurate stock-out days — is always present, independent
+  // of the snapshot; this fixture never wrote InventoryLedger rows, so it's 0 both periods.
+  expect(byKey.stockOutDays).toBeTruthy();
+  expect(byKey.stockOutDays.value).toBe(0);
+  expect(byKey.stockOutDays.previous).toBe(0);
+  expect(byKey.stockOutDays.noComparison).toBeFalsy();
+  expect(byKey.stockOutDays.hint).toBe("مجموع أيام النفاد لكل الأصناف");
+});
+
+test("cron GET /api/cron/stock-snapshot: 401 without the bearer token", async ({ page }) => {
+  const res = await page.request.get("/api/cron/stock-snapshot");
+  expect(res.status()).toBe(401);
+});
+
+test("cron GET /api/cron/stock-snapshot: 200 with the bearer token, upserts yesterday's row, idempotent on rerun", async ({ page }) => {
+  expect(CRON_SECRET, "CRON_SECRET must be set in this worktree's .env.redesign").toBeTruthy();
+  const yesterdayIso = cairoYesterdayIso();
+
+  const res1 = await page.request.get("/api/cron/stock-snapshot", { headers: { authorization: `Bearer ${CRON_SECRET}` } });
+  expect(res1.ok()).toBeTruthy();
+  const json1 = await res1.json();
+  expect(json1.data.day).toBe(yesterdayIso);
+  expect(json1.data.written).toBeGreaterThan(0);
+
+  const rowsAfterFirst = await prisma.partnerStockSnapshot.findMany({
+    where: { partnerId: pair.agent.partnerId, day: dayIsoToDate(yesterdayIso) },
+  });
+  expect(rowsAfterFirst.length).toBe(1);
+  // Our fixture partner's own PartnerInventory (invVariantId, sellable 5) is what the cron
+  // wrote for yesterday.
+  expect(rowsAfterFirst[0].sellableUnits).toBe(5);
+
+  const res2 = await page.request.get("/api/cron/stock-snapshot", { headers: { authorization: `Bearer ${CRON_SECRET}` } });
+  expect(res2.ok()).toBeTruthy();
+  const json2 = await res2.json();
+  expect(json2.data.written).toBe(json1.data.written); // same active partners, same count
+
+  const rowsAfterSecond = await prisma.partnerStockSnapshot.findMany({
+    where: { partnerId: pair.agent.partnerId, day: dayIsoToDate(yesterdayIso) },
+  });
+  expect(rowsAfterSecond.length).toBe(1); // still exactly one row — upserted, not duplicated
+  expect(rowsAfterSecond[0].id).toBe(rowsAfterFirst[0].id);
+
+  // Cleanup: this cron run wrote real rows for every active partner in the database, not
+  // just this fixture — only delete the one row this test is responsible for.
+  await prisma.partnerStockSnapshot.deleteMany({ where: { partnerId: pair.agent.partnerId, day: dayIsoToDate(yesterdayIso) } });
+});
+
+test("cron GET /api/cron/stock-snapshot: prunes rows older than 400 days, keeps rows within it", async ({ page }) => {
+  expect(CRON_SECRET).toBeTruthy();
+  const yesterdayIso = cairoYesterdayIso();
+  const oldDayIso = addDaysIsoUtc(yesterdayIso, -401);
+  const keptDayIso = addDaysIsoUtc(yesterdayIso, -399);
+
+  await prisma.partnerStockSnapshot.createMany({
+    data: [
+      { partnerId: pair.agent.partnerId, day: dayIsoToDate(oldDayIso), sellableUnits: 1, reservedUnits: 0, valuationPiastres: BigInt(0), deadStockSkus: 0, outOfStockSkus: 0 },
+      { partnerId: pair.agent.partnerId, day: dayIsoToDate(keptDayIso), sellableUnits: 2, reservedUnits: 0, valuationPiastres: BigInt(0), deadStockSkus: 0, outOfStockSkus: 0 },
+    ],
+  });
+
+  const res = await page.request.get("/api/cron/stock-snapshot", { headers: { authorization: `Bearer ${CRON_SECRET}` } });
+  expect(res.ok()).toBeTruthy();
+  const json = await res.json();
+  expect(json.data.pruned).toBeGreaterThanOrEqual(1);
+
+  const oldRow = await prisma.partnerStockSnapshot.findFirst({ where: { partnerId: pair.agent.partnerId, day: dayIsoToDate(oldDayIso) } });
+  const keptRow = await prisma.partnerStockSnapshot.findFirst({ where: { partnerId: pair.agent.partnerId, day: dayIsoToDate(keptDayIso) } });
+  expect(oldRow).toBeNull(); // 401-day-old row disappears
+  expect(keptRow).toBeTruthy(); // 399-day-old row stays
+
+  // Cleanup: the kept row, plus yesterday's row this same call also upserted.
+  await prisma.partnerStockSnapshot.deleteMany({
+    where: { partnerId: pair.agent.partnerId, day: { in: [dayIsoToDate(keptDayIso), dayIsoToDate(yesterdayIso)] } },
+  });
 });
 
 test("the reorder CSV re-imports through the intake preview with zero row errors", async ({ page }) => {

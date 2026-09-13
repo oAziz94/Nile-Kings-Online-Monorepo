@@ -30,6 +30,7 @@ const HEADLINE_ICONS: Record<string, React.ComponentType<{ className?: string }>
   medianCover: Calendar,
   deadStockCount: AlertTriangle,
   stockOutSkus: AlertTriangle,
+  stockOutDays: AlertTriangle,
   medianHoursToConfirm: Clock,
   medianHoursToShip: Truck,
   overdueRate: AlertTriangle,
