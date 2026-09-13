@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { AlertTriangle, LogOut, Menu, Settings, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/shared/skeleton";
@@ -37,6 +38,20 @@ import { cn } from "@/lib/utils";
  * `usePartnerMe()` is loading — skeleton first, alert+retry on failure), the alerts bell,
  * `data-partner-chrome` + `print:hidden` on every chrome region.
  */
+
+/**
+ * Topbar slot (backlog 5.6a) — a page-level portal target next to the alerts bell, used by
+ * the reports pages for the report-switcher chips (المبيعات · التجهيز · المخزون · الشبكة ·
+ * المال). `PartnerTopbarSlot` renders into whichever `PartnerShell` instance is mounted;
+ * pages that don't need it simply never render it, leaving the topbar unchanged.
+ */
+const PartnerTopbarSlotContext = React.createContext<HTMLDivElement | null>(null);
+
+export function PartnerTopbarSlot({ children }: { children: React.ReactNode }) {
+  const target = React.useContext(PartnerTopbarSlotContext);
+  if (!target) return null;
+  return createPortal(children, target);
+}
 
 function initials(name: string): string {
   const trimmed = name.trim();
@@ -191,6 +206,7 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const { data: partner, isLoading, isError, refetch } = usePartnerMe();
+  const [topbarSlotEl, setTopbarSlotEl] = React.useState<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     setDrawerOpen(false);
@@ -208,6 +224,7 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
+    <PartnerTopbarSlotContext.Provider value={topbarSlotEl}>
     <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
     <div className="flex min-h-screen flex-col bg-stone-50 lg:flex-row" dir="rtl">
       {/* Mobile/tablet top bar (<lg) */}
@@ -279,10 +296,11 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        {/* Desktop topbar */}
-        <div data-partner-chrome className="hidden items-center justify-between border-b border-stone-200 bg-white px-7 py-4 print:hidden lg:flex">
-          <div />
-          <div className="flex items-center gap-3">
+        {/* Desktop topbar — the middle slot renders whatever the current page portals into it
+            (e.g. the reports switcher chips) via `PartnerTopbarSlot`. */}
+        <div data-partner-chrome className="hidden items-center justify-between gap-3 border-b border-stone-200 bg-white px-7 py-4 print:hidden lg:flex">
+          <div ref={setTopbarSlotEl} className="min-w-0 flex-1 empty:hidden" />
+          <div className="flex shrink-0 items-center gap-3">
             <PartnerAlertsBell />
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-ink">
               <Store className="h-[18px] w-[18px]" strokeWidth={2} />
@@ -298,5 +316,6 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
       <MobileBottomTabBar pathname={pathname} />
     </div>
     </Sheet>
+    </PartnerTopbarSlotContext.Provider>
   );
 }
