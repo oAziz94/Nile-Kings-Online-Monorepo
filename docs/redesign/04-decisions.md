@@ -1,3 +1,9 @@
+## 2026-09-13 — One delta grammar for every report number (7.4, v2.3.6)
+
+Every breakdown table now carries the same previous-period comparison the product table had, computed with exactly the filters its current column uses. The ruling that came out of verification: a percentage change from zero is undefined, and the site says so the same way everywhere — the headline tiles already printed "جديد", the table cell printed "+100%"; the cell now goes through `computeDelta` and reads "جديد" too, with "—" for no change. Any future number with a comparison uses `computeDelta` and those three renderings; nobody recomputes a percentage inline.
+
+Also this round: the daily stock snapshot (7.5) is approved and scheduled — one aggregate row per partner per day, pruned past 400 days, so the table never grows; the user's cost instinct was right and the retention window is sized by the reports' comparison reach, not by storage.
+
 ## 2026-09-13 — A cancelled order is not one of the customer's orders (7.3, v2.3.5)
 
 The "عميل منذ · N طلبات" strip, the account API and the drawer summary counted every row including cancelled ones, so a customer whose only order was cancelled read "1 طلبات". All three now exclude `CANCELLED`; the drawer's open count already did. One rule for every customer-facing order count from here: cancelled rows are history in the list, never a number in a summary.
