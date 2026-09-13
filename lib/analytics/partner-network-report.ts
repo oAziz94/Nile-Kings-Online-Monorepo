@@ -9,10 +9,12 @@
  */
 import { prisma } from "@/lib/db";
 import {
+  attachPreviousAndDelta,
   computeDelta,
   formatComparisonLabel,
   periodToDateRange,
   resolvePeriod,
+  type Delta,
   type PartnerReportResponse,
   type ReportAction,
   type ReportBreakdownPage,
@@ -30,6 +32,9 @@ export type DistributorNetworkRow = {
   pendingRequests: number;
   fillRatePct: number | null;
   unitsTransferred: number;
+  /** 7.4 — previous-period sales for this distributor, over `period.previous`. */
+  previousSalesPiastres: number;
+  salesDelta: Delta;
 };
 
 export type NetworkReportBreakdowns = {
@@ -82,10 +87,15 @@ export async function getPartnerNetworkReport(
     };
   }
 
-  const [sales, sellableRows, requestsAll, ledgerCurrent, ledgerPrevious] = await Promise.all([
+  const [sales, previousSales, sellableRows, requestsAll, ledgerCurrent, ledgerPrevious] = await Promise.all([
     prisma.order.groupBy({
       by: ["assignedPartnerId"],
       where: { assignedPartnerId: { in: distributorIds }, status: "DELIVERED", createdAt: { gte: currentRange.from, lte: currentRange.to } },
+      _sum: { totalPiastres: true },
+    }),
+    prisma.order.groupBy({
+      by: ["assignedPartnerId"],
+      where: { assignedPartnerId: { in: distributorIds }, status: "DELIVERED", createdAt: { gte: previousRange.from, lte: previousRange.to } },
       _sum: { totalPiastres: true },
     }),
     prisma.partnerInventory.findMany({
@@ -109,6 +119,9 @@ export async function getPartnerNetworkReport(
   ]);
 
   const salesMap = new Map(sales.map((s) => [s.assignedPartnerId, s._sum.totalPiastres ?? 0]));
+  const previousSalesMap = new Map<string, number>(
+    previousSales.filter((s) => s.assignedPartnerId !== null).map((s) => [s.assignedPartnerId as string, s._sum.totalPiastres ?? 0])
+  );
   const sellableMap = new Map<string, number>();
   for (const row of sellableRows) {
     sellableMap.set(row.partnerId, (sellableMap.get(row.partnerId) ?? 0) + Math.max(0, row.stockAvailable - row.stockReserved));
@@ -132,7 +145,7 @@ export async function getPartnerNetworkReport(
     }
   }
 
-  const rows: DistributorNetworkRow[] = distributors.map((d) => {
+  const rowsBase = distributors.map((d) => {
     const allRequests = requestsByDistributor.get(d.id) ?? [];
     const pendingRequests = allRequests.filter((r) => r.status === "PENDING").length;
     const periodRequests = currentPeriodRequestsByDistributor.get(d.id) ?? [];
@@ -147,6 +160,13 @@ export async function getPartnerNetworkReport(
       unitsTransferred: ledgerCurrentMap.get(d.id) ?? 0,
     };
   });
+  const rows: DistributorNetworkRow[] = attachPreviousAndDelta(
+    rowsBase,
+    (r) => r.partnerId,
+    (r) => r.salesPiastres,
+    previousSalesMap,
+    { previousKey: "previousSalesPiastres", deltaKey: "salesDelta" }
+  );
   rows.sort((a, b) => (a.fillRatePct ?? 100) - (b.fillRatePct ?? 100));
 
   const activeDistributors = distributors.filter((d) => d.isActive).length;

@@ -32,6 +32,13 @@ function hoursAgo(hours: number): Date {
   return new Date(Date.now() - hours * 60 * 60 * 1000);
 }
 
+function daysAgo(days: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  d.setHours(12, 0, 0, 0);
+  return d;
+}
+
 test.beforeAll(async () => {
   pair = await seedPartnerPair(prisma, { agent: { costRateBps: 7500, confirmSlaHours: 48, shipSlaHours: 24 } });
 
@@ -140,6 +147,40 @@ test.beforeAll(async () => {
     },
   });
   receiptId = receipt.id;
+
+  // --- Network report seed (backlog 7.4): DELIVERED orders assigned to the linked
+  // DISTRIBUTOR, one in the current 30d window and one in the previous 30d window, for the
+  // distributor breakdown's own previous-period sales delta.
+  const order4 = await prisma.order.create({
+    data: {
+      userId: customerUserId,
+      status: "DELIVERED",
+      subtotalPiastres: 40000,
+      totalPiastres: 40000,
+      shippingAddress: baseAddress,
+      shippingProvider: "Egypt Post",
+      paymentMethod: "COD",
+      assignedPartnerId: pair.distributor.partnerId,
+      createdAt: daysAgo(5),
+      items: { create: [{ variantId, productName: "p", variantName: "M", sku: `SKU-5-6B-${RUN_TAG}`, quantity: 4, unitPricePiastres: 10000, totalPiastres: 40000 }] },
+    },
+  });
+  orderIds.push(order4.id);
+  const order5 = await prisma.order.create({
+    data: {
+      userId: customerUserId,
+      status: "DELIVERED",
+      subtotalPiastres: 10000,
+      totalPiastres: 10000,
+      shippingAddress: baseAddress,
+      shippingProvider: "Egypt Post",
+      paymentMethod: "COD",
+      assignedPartnerId: pair.distributor.partnerId,
+      createdAt: daysAgo(40),
+      items: { create: [{ variantId, productName: "p", variantName: "M", sku: `SKU-5-6B-${RUN_TAG}`, quantity: 1, unitPricePiastres: 10000, totalPiastres: 10000 }] },
+    },
+  });
+  orderIds.push(order5.id);
 });
 
 test.afterAll(async () => {
@@ -236,6 +277,18 @@ test("network report: the AGENT sees the roster, the DISTRIBUTOR sees the explic
   await loginAs(page, pair, "AGENT");
   const agentRes = await page.request.get("/api/partner/reports/network?preset=30d", { headers: { accept: "application/json" } });
   expect(agentRes.ok()).toBeTruthy();
+  const agentJson = await agentRes.json();
+
+  // Distributor breakdown delta (backlog 7.4): 40,000 now vs. 10,000 previously -> +30,000, +300%.
+  const distRow = agentJson.data.breakdowns.distributor.rows.find(
+    (r: { partnerId: string }) => r.partnerId === pair.distributor.partnerId
+  );
+  expect(distRow).toBeTruthy();
+  expect(distRow.salesPiastres).toBe(40000);
+  expect(distRow.previousSalesPiastres).toBe(10000);
+  expect(distRow.salesDelta.direction).toBe("up");
+  expect(distRow.salesDelta.changeAbs).toBe(30000);
+  expect(distRow.salesDelta.changePct).toBe(300);
 
   await page.context().clearCookies();
   await loginAs(page, pair, "DISTRIBUTOR");
@@ -244,6 +297,14 @@ test("network report: the AGENT sees the roster, the DISTRIBUTOR sees the explic
 
   await page.goto("/partner/reports/network");
   await expect(page.getByText("هذه الصفحة متاحة للوكلاء فقط")).toBeVisible({ timeout: 15_000 });
+
+  // Same +300% delta rendered by the distributor table's own "مقارنة بالفترة السابقة" column.
+  await page.context().clearCookies();
+  await loginAs(page, pair, "AGENT");
+  await page.goto("/partner/reports/network");
+  const distRowLocator = page.locator("tr", { hasText: pair.distributor.name }).first();
+  await expect(distRowLocator).toBeVisible({ timeout: 15_000 });
+  await expect(distRowLocator.getByText("+300%", { exact: true })).toBeVisible();
 });
 
 // Design-review screenshots (standing rule 16). Not an assertion of pixel-parity.

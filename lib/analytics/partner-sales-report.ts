@@ -13,10 +13,12 @@
 import { prisma } from "@/lib/db";
 import { resolveThreshold } from "@/lib/partner/resolve-threshold";
 import {
+  attachPreviousAndDelta,
   computeDelta,
   formatComparisonLabel,
   periodToDateRange,
   resolvePeriod,
+  type Delta,
   type PartnerReportResponse,
   type ReportAction,
   type ReportBreakdownPage,
@@ -79,6 +81,9 @@ export type SimpleBreakdownRow = {
   units: number;
   revenuePiastres: number;
   orderCount: number;
+  /** 7.4 — previous-period revenue for the same key, computed over `period.previous`. */
+  previousRevenuePiastres: number;
+  revenueDelta: Delta;
 };
 
 export type SalesReportBreakdowns = {
@@ -103,12 +108,13 @@ export async function getPartnerSalesFullBreakdown(
   key: keyof SalesReportBreakdowns
 ): Promise<unknown[]> {
   const period = resolvePeriod(input);
-  const [currentOrders, currentItems, previousItems] = await Promise.all([
+  const [currentOrders, previousOrders, currentItems, previousItems] = await Promise.all([
     loadOrders(partnerId, periodToDateRange(period.current)),
+    loadOrders(partnerId, periodToDateRange(period.previous)),
     loadOrderItems(partnerId, periodToDateRange(period.current)),
     loadOrderItems(partnerId, periodToDateRange(period.previous)),
   ]);
-  const full = await buildFullBreakdowns(currentOrders, currentItems, previousItems);
+  const full = await buildFullBreakdowns(currentOrders, previousOrders, currentItems, previousItems);
   return full[key];
 }
 
@@ -133,7 +139,7 @@ export async function getPartnerSalesReport(
 
   const headline = buildHeadline(currentOrders, previousOrders, currentItems, previousItems);
   const series = buildSeries(currentOrders, previousOrders, period);
-  const full = await buildFullBreakdowns(currentOrders, currentItems, previousItems);
+  const full = await buildFullBreakdowns(currentOrders, previousOrders, currentItems, previousItems);
   const breakdowns: SalesReportBreakdowns = {
     product: paginate(full.product, page),
     category: paginate(full.category, page),
@@ -247,8 +253,25 @@ type FullBreakdowns = {
   day: { date: string; revenuePiastres: number; orderCount: number }[];
 };
 
+/** Base row shape before the 7.4 previous-period delta is attached. */
+type BaseSimpleRow = { key: string; label: string; units: number; revenuePiastres: number; orderCount: number };
+
+/**
+ * Pure (7.4): revenue-per-key rows keyed on `key`, plus the previous-period revenue for the
+ * same key (0 when the key has no previous-period row — never invented). Shared by the
+ * category, governorate and payment breakdowns, which only differ in how their base rows and
+ * previous-period revenue maps are aggregated.
+ */
+export function attachRevenueDelta(rows: BaseSimpleRow[], previousRevenueByKey: Map<string, number>): SimpleBreakdownRow[] {
+  return attachPreviousAndDelta(rows, (r) => r.key, (r) => r.revenuePiastres, previousRevenueByKey, {
+    previousKey: "previousRevenuePiastres",
+    deltaKey: "revenueDelta",
+  });
+}
+
 async function buildFullBreakdowns(
   currentOrders: OrderForSales[],
+  previousOrders: OrderForSales[],
   currentItems: OrderItemForSales[],
   previousItems: OrderItemForSales[]
 ): Promise<FullBreakdowns> {
@@ -277,16 +300,20 @@ async function buildFullBreakdowns(
     }))
     .sort((a, b) => b.revenuePiastres - a.revenuePiastres);
 
-  // --- category (via variant -> product -> category) ---
+  // --- category (via variant -> product -> category); the variant lookup covers both
+  // periods' variant ids, since a variant that only sold in the previous period still needs
+  // its category resolved to land in that category's previous-revenue map. ---
   const variantIds = Array.from(curByVariant.keys());
-  const variants = variantIds.length
+  const prevVariantIds = Array.from(new Set(previousItems.map((it) => it.variantId)));
+  const allVariantIdsForCategory = Array.from(new Set([...variantIds, ...prevVariantIds]));
+  const variants = allVariantIdsForCategory.length
     ? await prisma.variant.findMany({
-        where: { id: { in: variantIds } },
+        where: { id: { in: allVariantIdsForCategory } },
         select: { id: true, product: { select: { category: { select: { id: true, name: true } } } } },
       })
     : [];
   const categoryByVariant = new Map(variants.map((v) => [v.id, v.product.category]));
-  const categoryMap = new Map<string, SimpleBreakdownRow>();
+  const categoryMap = new Map<string, BaseSimpleRow>();
   for (const [variantId, row] of curByVariant) {
     const cat = categoryByVariant.get(variantId);
     const key = cat?.id ?? "uncategorised";
@@ -296,10 +323,20 @@ async function buildFullBreakdowns(
     existing.revenuePiastres += row.revenue;
     categoryMap.set(key, existing);
   }
-  const categoryRows = Array.from(categoryMap.values()).sort((a, b) => b.revenuePiastres - a.revenuePiastres);
+  const prevCategoryRevenue = new Map<string, number>();
+  for (const it of previousItems) {
+    const cat = categoryByVariant.get(it.variantId);
+    const key = cat?.id ?? "uncategorised";
+    prevCategoryRevenue.set(key, (prevCategoryRevenue.get(key) ?? 0) + it.totalPiastres);
+  }
+  const categoryRows = attachRevenueDelta(
+    Array.from(categoryMap.values()).sort((a, b) => b.revenuePiastres - a.revenuePiastres),
+    prevCategoryRevenue
+  );
 
   // --- governorate ---
   const deliveredOrders = currentOrders.filter((o) => o.status === "DELIVERED");
+  const prevDeliveredOrders = previousOrders.filter((o) => o.status === "DELIVERED");
   const govMap = new Map<string, { revenue: number; orders: number; cancelled: number; total: number }>();
   for (const o of currentOrders) {
     const gov = governorateOf(o);
@@ -314,19 +351,32 @@ async function buildFullBreakdowns(
     row.revenue += o.totalPiastres;
     row.orders += 1;
   }
-  const governorateRows = Array.from(govMap.entries())
-    .map(([gov, row]) => ({
-      key: gov,
-      label: gov,
-      units: 0,
-      revenuePiastres: row.revenue,
-      orderCount: row.orders,
-      cancellationRatePct: row.total > 0 ? (row.cancelled / row.total) * 100 : 0,
-    }))
+  const prevGovRevenue = new Map<string, number>();
+  for (const o of prevDeliveredOrders) {
+    const gov = governorateOf(o);
+    prevGovRevenue.set(gov, (prevGovRevenue.get(gov) ?? 0) + o.totalPiastres);
+  }
+  const governorateBaseRows = Array.from(govMap.entries())
+    .map((entry) => {
+      const [gov, row] = entry;
+      return {
+        key: gov,
+        label: gov,
+        units: 0,
+        revenuePiastres: row.revenue,
+        orderCount: row.orders,
+        cancellationRatePct: row.total > 0 ? (row.cancelled / row.total) * 100 : 0,
+      };
+    })
     .sort((a, b) => b.revenuePiastres - a.revenuePiastres);
+  // `attachRevenueDelta` spreads each input row before adding the delta fields, so
+  // `cancellationRatePct` survives at runtime even though `BaseSimpleRow` doesn't declare it.
+  const governorateRows = attachRevenueDelta(governorateBaseRows, prevGovRevenue) as (SimpleBreakdownRow & {
+    cancellationRatePct: number;
+  })[];
 
   // --- payment method ---
-  const paymentMap = new Map<string, SimpleBreakdownRow>();
+  const paymentMap = new Map<string, BaseSimpleRow>();
   for (const o of deliveredOrders) {
     const key = o.paymentMethod;
     const row = paymentMap.get(key) ?? { key, label: key, units: 0, revenuePiastres: 0, orderCount: 0 };
@@ -334,7 +384,14 @@ async function buildFullBreakdowns(
     row.orderCount += 1;
     paymentMap.set(key, row);
   }
-  const paymentRows = Array.from(paymentMap.values()).sort((a, b) => b.revenuePiastres - a.revenuePiastres);
+  const prevPaymentRevenue = new Map<string, number>();
+  for (const o of prevDeliveredOrders) {
+    prevPaymentRevenue.set(o.paymentMethod, (prevPaymentRevenue.get(o.paymentMethod) ?? 0) + o.totalPiastres);
+  }
+  const paymentRows = attachRevenueDelta(
+    Array.from(paymentMap.values()).sort((a, b) => b.revenuePiastres - a.revenuePiastres),
+    prevPaymentRevenue
+  );
 
   // --- day ---
   const dayMap = new Map<string, { revenue: number; orders: number }>();

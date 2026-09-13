@@ -12,6 +12,7 @@ import { PartnerTopbarSlot } from "@/components/partner/partner-shell";
 import { ReportTabs } from "@/components/partner/reports/report-tabs";
 import { PeriodBar } from "@/components/partner/reports/period-bar";
 import { BreakdownTable } from "@/components/partner/reports/breakdown-table";
+import { DeltaCell } from "@/components/partner/reports/delta-cell";
 import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
 import { piastresToEgp } from "@/lib/catalog";
 import type { MoneyReportPreset } from "@/lib/analytics/partner-reports";
@@ -248,13 +249,14 @@ export default function PartnerMoneyReportPage() {
                 <PanelCard title="التحصيل حسب طريقة الدفع" noPadding>
                   <BreakdownTable
                     page={data.breakdowns.collectedByMethod}
-                    columns={["الطريقة", "المبلغ", "الطلبات"]}
+                    columns={["الطريقة", "المبلغ", "مقارنة بالفترة السابقة", "الطلبات"]}
                     rowKey={(r) => r.key}
                     onPageChange={setPage}
                     renderRow={(r) => (
                       <>
                         <TableCell className="font-semibold text-ink">{r.label}</TableCell>
                         <TableCell dir="ltr" className="font-bold text-ink">{formatNumberEn(piastresToEgp(r.amountPiastres))}</TableCell>
+                        <TableCell><DeltaCell current={r.amountPiastres} previous={r.previousPiastres} /></TableCell>
                         <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.orderCount)}</TableCell>
                       </>
                     )}

@@ -200,6 +200,17 @@ test("sales report: every headline and delta equals a hand computation", async (
   expect(productRow.units).toBe(5);
   expect(productRow.revenuePiastres).toBe(30000);
   expect(productRow.revenueSharePct).toBeCloseTo((30000 / 130000) * 100, 5);
+
+  // Governorate breakdown (backlog 7.4): every seeded order shares "القاهرة", so this row's
+  // revenue equals the whole-partner headline above — 130000 now vs. 10000 previously ->
+  // +120000, +1200%.
+  const govRow = json.data.breakdowns.governorate.rows.find((r: { key: string }) => r.key === "القاهرة");
+  expect(govRow).toBeTruthy();
+  expect(govRow.revenuePiastres).toBe(130000);
+  expect(govRow.previousRevenuePiastres).toBe(10000);
+  expect(govRow.revenueDelta.direction).toBe("up");
+  expect(govRow.revenueDelta.changeAbs).toBe(120000);
+  expect(govRow.revenueDelta.changePct).toBe(1200);
 });
 
 test("sales report UI: the revenue tile renders the hand-computed value, and changing the preset changes the comparison", async ({ page }) => {
@@ -217,6 +228,13 @@ test("sales report UI: the revenue tile renders the hand-computed value, and cha
   await expect(page.getByText("1,300", { exact: false }).first()).toBeVisible({ timeout: 15_000 }); // 130,000 piastres -> 1,300 ج.م
   const label7d = await comparisonLocator.textContent();
   expect(label7d).not.toBe(label30d);
+
+  // Governorate breakdown (backlog 7.4): the "مقارنة بالفترة السابقة" column renders the
+  // same hand-computed +1200% this spec asserts against the API above.
+  await page.getByRole("button", { name: "حسب المحافظة" }).click();
+  const govRow = page.locator("tr", { hasText: "القاهرة" }).first();
+  await expect(govRow).toBeVisible({ timeout: 15_000 });
+  await expect(govRow.getByText("+1200%", { exact: true })).toBeVisible();
 });
 
 test("inventory report: velocity, days of cover and the reorder formula match the hand computation", async ({ page }) => {

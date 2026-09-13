@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildStatementCsv, computeBalance, computeMarginEstimate } from "./partner-money-report";
+import { attachPreviousAndDelta } from "./partner-reports";
 
 describe("computeBalance", () => {
   it("received minus paid; positive means the partner still owes the factory", () => {
@@ -42,6 +43,30 @@ describe("computeMarginEstimate", () => {
 
   it("zero merchandise -> zero margin", () => {
     expect(computeMarginEstimate(7500, 0)).toBe(0);
+  });
+});
+
+describe("7.4 — collectedByMethod rows gain previousPiastres + delta", () => {
+  it("a method sold in both periods gets a hand-computed delta; a current-only method compares against 0", () => {
+    const currentRows = [
+      { key: "COD", label: "الدفع عند الاستلام", amountPiastres: 30_000, orderCount: 3 },
+      { key: "INSTAPAY_PREPAID", label: "إنستاباي", amountPiastres: 5_000, orderCount: 1 },
+    ];
+    // COD: 30,000 (previously 20,000) -> up, +50%. INSTAPAY_PREPAID: no previous-period row.
+    const previousByKey = new Map([["COD", 20_000]]);
+    const rows = attachPreviousAndDelta(currentRows, (r) => r.key, (r) => r.amountPiastres, previousByKey, {
+      previousKey: "previousPiastres",
+      deltaKey: "delta",
+    });
+
+    const cod = rows.find((r) => r.key === "COD")!;
+    expect(cod.previousPiastres).toBe(20_000);
+    expect(cod.delta).toEqual({ direction: "up", changeAbs: 10_000, changePct: 50 });
+
+    const instapay = rows.find((r) => r.key === "INSTAPAY_PREPAID")!;
+    expect(instapay.previousPiastres).toBe(0);
+    expect(instapay.delta.direction).toBe("up");
+    expect(instapay.delta.changePct).toBeNull(); // previous is 0, current isn't -> undefined %
   });
 });
 

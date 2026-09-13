@@ -13,6 +13,7 @@ import { PeriodBar } from "@/components/partner/reports/period-bar";
 import { HeadlineTiles } from "@/components/partner/reports/headline-tiles";
 import { BreakdownTable } from "@/components/partner/reports/breakdown-table";
 import { ActionPanel } from "@/components/partner/reports/action-panel";
+import { DeltaCell } from "@/components/partner/reports/delta-cell";
 import { formatNumberEn, formatDateEn } from "@/lib/format-en-numbers";
 import type { SalesReportPreset } from "@/lib/analytics/partner-reports";
 import type { FulfilmentReportResponse } from "@/lib/analytics/partner-fulfilment-report";
@@ -198,13 +199,14 @@ export default function PartnerFulfilmentReportPage() {
                 {activeTab === "cancellationReason" && (
                   <BreakdownTable
                     page={data.breakdowns.cancellationReason}
-                    columns={["السبب", "العدد"]}
+                    columns={["السبب", "العدد", "مقارنة بالفترة السابقة"]}
                     rowKey={(r) => r.key}
                     onPageChange={setPage}
                     renderRow={(r) => (
                       <>
                         <TableCell className="font-semibold text-ink">{r.label}</TableCell>
                         <TableCell dir="ltr" className="text-ink">{formatNumberEn(r.count)}</TableCell>
+                        <TableCell><DeltaCell current={r.count} previous={r.previousCount} /></TableCell>
                       </>
                     )}
                   />

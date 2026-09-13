@@ -28,16 +28,18 @@ function rowsToCsv(key: string, rows: unknown[]): string {
     return lines.join("\n");
   }
   if (key === "governorate") {
-    const lines = ["Governorate,Revenue (piastres),Orders,Cancellation Rate %"];
-    for (const r of rows as { label: string; revenuePiastres: number; orderCount: number; cancellationRatePct: number }[]) {
-      lines.push([r.label, r.revenuePiastres, r.orderCount, r.cancellationRatePct.toFixed(1)].map(escapeCsv).join(","));
+    const lines = ["Governorate,Revenue (piastres),Previous Revenue (piastres),Orders,Cancellation Rate %"];
+    for (const r of rows as { label: string; revenuePiastres: number; previousRevenuePiastres: number; orderCount: number; cancellationRatePct: number }[]) {
+      lines.push(
+        [r.label, r.revenuePiastres, r.previousRevenuePiastres, r.orderCount, r.cancellationRatePct.toFixed(1)].map(escapeCsv).join(",")
+      );
     }
     return lines.join("\n");
   }
   // category / payment share the same simple shape.
-  const lines = ["Label,Revenue (piastres),Orders"];
-  for (const r of rows as { label: string; revenuePiastres: number; orderCount: number }[]) {
-    lines.push([r.label, r.revenuePiastres, r.orderCount].map(escapeCsv).join(","));
+  const lines = ["Label,Revenue (piastres),Previous Revenue (piastres),Orders"];
+  for (const r of rows as { label: string; revenuePiastres: number; previousRevenuePiastres: number; orderCount: number }[]) {
+    lines.push([r.label, r.revenuePiastres, r.previousRevenuePiastres, r.orderCount].map(escapeCsv).join(","));
   }
   return lines.join("\n");
 }

@@ -285,3 +285,31 @@ export function median(values: number[]): number | null {
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
+
+// ---------------------------------------------------------------------------
+// Shared pure math (7.4: per-row previous-period deltas on breakdown tables)
+// ---------------------------------------------------------------------------
+
+/**
+ * Attaches a previous-period value + `computeDelta` result to every row of a breakdown
+ * table, keyed by `getKey`. A current row with no previous-period match compares against 0
+ * (never invented) — matching the sales report's product-table convention this generalises.
+ * `fields.previousKey`/`fields.deltaKey` name the two new fields per breakdown family (e.g.
+ * `previousRevenuePiastres`/`revenueDelta`, `previousSalesPiastres`/`salesDelta`).
+ */
+export function attachPreviousAndDelta<T, PK extends string, DK extends string>(
+  rows: T[],
+  getKey: (row: T) => string,
+  getCurrentValue: (row: T) => number,
+  previousValueByKey: Map<string, number>,
+  fields: { previousKey: PK; deltaKey: DK }
+): (T & Record<PK, number> & Record<DK, Delta>)[] {
+  return rows.map((row) => {
+    const previous = previousValueByKey.get(getKey(row)) ?? 0;
+    const extra = {
+      [fields.previousKey]: previous,
+      [fields.deltaKey]: computeDelta(getCurrentValue(row), previous),
+    } as Record<PK, number> & Record<DK, Delta>;
+    return { ...row, ...extra };
+  });
+}
