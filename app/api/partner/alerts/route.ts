@@ -30,9 +30,12 @@ export async function GET() {
     const user = await requirePartner();
     const partner = await prisma.partner.findUnique({
       where: { id: user.partnerId },
-      select: { id: true, partnerType: true, lowStockThreshold: true, alertsSeenAt: true },
+      select: { id: true, partnerType: true, lowStockThreshold: true, alertsSeenAt: true, alertPrefs: true },
     });
     if (!partner) return apiForbidden("غير مصرح");
+    // Settings' alert toggles (keys = PartnerAlertKind); a missing key means "on".
+    const prefs = (partner.alertPrefs ?? {}) as Partial<Record<PartnerAlertKind, boolean>>;
+    const kindOn = (kind: PartnerAlertKind) => prefs[kind] !== false;
 
     const seenAt = partner.alertsSeenAt ?? new Date(0);
     const now = new Date();
@@ -139,6 +142,9 @@ export async function GET() {
       }
     }
 
+    const enabledAlerts = alerts.filter((a) => kindOn(a.kind));
+    alerts.length = 0;
+    alerts.push(...enabledAlerts);
     alerts.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
 
     const unseenCount = alerts.filter(

@@ -114,9 +114,10 @@ export function PartnerAccountPanel({ partnerId, costRateBps }: { partnerId: str
   return (
     <div className="space-y-4 border-t border-border pt-4">
       <div>
-        <p className="mb-1 text-sm font-bold">نسبة الشراء من سعر البيع (%)</p>
+        <label htmlFor="partner-cost-rate" className="mb-1 block text-sm font-bold">نسبة الشراء من سعر البيع (%)</label>
         <div className="flex items-center gap-2">
           <Input
+            id="partner-cost-rate"
             type="number"
             inputMode="numeric"
             dir="ltr"
@@ -135,29 +136,41 @@ export function PartnerAccountPanel({ partnerId, costRateBps }: { partnerId: str
       <div>
         <p className="mb-2 text-sm font-bold">تسجيل دفعة</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Select value={kind} onChange={(e) => setKind(e.target.value as Payment["kind"])}>
-            <option value="DOWN_PAYMENT">دفعة مقدمة</option>
-            <option value="INSTALLMENT">قسط</option>
-          </Select>
-          <Input
-            type="number"
-            inputMode="decimal"
-            dir="ltr"
-            placeholder="المبلغ (ج.م)"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-          <Input type="date" dir="ltr" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} />
-          <Input
-            placeholder="مرجع (اختياري)"
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
-          />
+          <div>
+            <label htmlFor="partner-payment-kind" className="mb-1 block text-xs text-muted-foreground">النوع</label>
+            <Select id="partner-payment-kind" value={kind} onChange={(e) => setKind(e.target.value as Payment["kind"])}>
+              <option value="DOWN_PAYMENT">دفعة مقدمة</option>
+              <option value="INSTALLMENT">قسط</option>
+            </Select>
+          </div>
+          <div>
+            <label htmlFor="partner-payment-amount" className="mb-1 block text-xs text-muted-foreground">المبلغ (ج.م)</label>
+            <Input
+              id="partner-payment-amount"
+              type="number"
+              inputMode="decimal"
+              dir="ltr"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="partner-payment-paid-at" className="mb-1 block text-xs text-muted-foreground">تاريخ الدفع</label>
+            <Input id="partner-payment-paid-at" type="date" dir="ltr" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="partner-payment-reference" className="mb-1 block text-xs text-muted-foreground">مرجع (اختياري)</label>
+            <Input
+              id="partner-payment-reference"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+            />
+          </div>
         </div>
         {kind === "INSTALLMENT" && (
           <div className="mt-2 max-w-[220px]">
-            <label className="mb-1 block text-xs text-muted-foreground">تاريخ الاستحقاق (اختياري)</label>
-            <Input type="date" dir="ltr" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
+            <label htmlFor="partner-payment-due-at" className="mb-1 block text-xs text-muted-foreground">تاريخ الاستحقاق (اختياري)</label>
+            <Input id="partner-payment-due-at" type="date" dir="ltr" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
           </div>
         )}
         {error && <p className="mt-2 text-sm font-semibold text-destructive">{error}</p>}

@@ -16,6 +16,7 @@ export function PanelCard({
   className,
   contentClassName,
   noPadding,
+  layout = "stacked",
 }: {
   title: string;
   description?: string;
@@ -25,7 +26,24 @@ export function PanelCard({
   className?: string;
   contentClassName?: string;
   noPadding?: boolean;
+  /** `split` = the settings artboard's `260px | fields` grid per card (stacks below lg). */
+  layout?: "stacked" | "split";
 }) {
+  if (layout === "split") {
+    return (
+      <div className={cn("grid gap-6 rounded-2xl bg-white p-5 shadow-soft lg:grid-cols-[260px_minmax(0,1fr)]", className)}>
+        <div>
+          <h2 className="flex items-center gap-2 text-[15px] font-extrabold text-ink">
+            {icon}
+            {title}
+          </h2>
+          {description && <p className="mt-1 text-xs leading-relaxed text-ink-soft">{description}</p>}
+          {toolbar && <div className="mt-3">{toolbar}</div>}
+        </div>
+        <div className={cn("flex min-w-0 flex-col gap-3.5", contentClassName)}>{children}</div>
+      </div>
+    );
+  }
   return (
     <div className={cn("overflow-hidden rounded-2xl bg-white shadow-soft", className)}>
       <div

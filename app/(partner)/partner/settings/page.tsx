@@ -117,7 +117,7 @@ function WorkingProfileSection() {
   });
 
   return (
-    <PanelCard title="ملف العمل" description="يحدد ما تراه في «اليوم»: مقياس الطاقة، وقاعدة التأخير، وأيام الراحة." icon={<SettingsIcon className="h-4 w-4 text-ink-soft" />}>
+    <PanelCard layout="split" title="ملف العمل" description="يحدد ما تراه في «اليوم»: مقياس الطاقة، وقاعدة التأخير، وأيام الراحة." icon={<SettingsIcon className="h-4 w-4 text-ink-soft" />}>
       {isLoading ? (
         <Skeleton className="h-40 w-full rounded-2xl" />
       ) : isError ? (
@@ -285,7 +285,7 @@ function ThresholdsSection() {
   };
 
   return (
-    <PanelCard title="حدود المخزون" description="الحد الذي يُعد الصنف عنده منخفضًا. يُحسب لكل منتج ← فئة ← الافتراضي." icon={<Boxes className="h-4 w-4 text-ink-soft" />}>
+    <PanelCard layout="split" title="حدود المخزون" description="الحد الذي يُعد الصنف عنده منخفضًا. يُحسب لكل منتج ← فئة ← الافتراضي." icon={<Boxes className="h-4 w-4 text-ink-soft" />}>
       <div className="space-y-4">
         <div className="max-w-[220px] space-y-1.5">
           <label className="text-xs font-bold text-ink-soft" htmlFor="default-threshold">الحد الافتراضي</label>
@@ -459,7 +459,7 @@ function AlertsSection() {
   };
 
   return (
-    <PanelCard title="التنبيهات" description="ما يظهر في الجرس وفي «اليوم». كل التنبيهات داخل البوابة فقط." icon={<Bell className="h-4 w-4 text-ink-soft" />}>
+    <PanelCard layout="split" title="التنبيهات" description="ما يظهر في الجرس وفي «اليوم». كل التنبيهات داخل البوابة فقط." icon={<Bell className="h-4 w-4 text-ink-soft" />}>
       {isLoading ? (
         <Skeleton className="h-32 w-full rounded-2xl" />
       ) : isError ? (
@@ -493,7 +493,7 @@ function AlertsSection() {
 function AccountWithFactorySection() {
   const { data, isLoading, isError, refetch, isFetching } = usePartnerSettings();
   return (
-    <PanelCard
+    <PanelCard layout="split"
       title="حسابك مع المصنع"
       description="نسبة شرائك تحددها الإدارة ولا تُعدَّل من هنا. تُستخدم في تقرير المال وقيمة المخزون."
       icon={<Banknote className="h-4 w-4 text-ink-soft" />}
@@ -571,7 +571,7 @@ function ServiceAreasSection() {
   };
 
   return (
-    <PanelCard
+    <PanelCard layout="split"
       title="مناطق الخدمة"
       description="للعلم فقط في هذه المرحلة: تظهر للإدارة ولا تغيّر توجيه الطلبات."
       icon={<MapPin className="h-4 w-4 text-ink-soft" />}
@@ -642,7 +642,7 @@ function HandoverSection() {
   };
 
   return (
-    <PanelCard title="طريقة التسليم" description="الافتراضي عند تجهيز الطلب. يمكنك تغييره لكل طلب." icon={<Truck className="h-4 w-4 text-ink-soft" />}>
+    <PanelCard layout="split" title="طريقة التسليم" description="الافتراضي عند تجهيز الطلب. يمكنك تغييره لكل طلب." icon={<Truck className="h-4 w-4 text-ink-soft" />}>
       {isLoading ? (
         <Skeleton className="h-24 w-full rounded-2xl" />
       ) : isError ? (
