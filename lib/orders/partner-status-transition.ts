@@ -56,7 +56,6 @@ export const orderInclude = {
       },
     },
   },
-  routedOrder: true,
 } as const;
 
 export type PartnerOrderRow = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
