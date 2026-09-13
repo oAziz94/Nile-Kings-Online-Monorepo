@@ -539,3 +539,50 @@ test("reorder on a DELIVERED order puts the right variant/quantity in the cart",
 
   await prisma.cartItem.deleteMany({ where: { cart: { userId: fixtureUserId } } });
 });
+
+test("another customer cannot cancel this user's order (404) and the order is unchanged", async ({ page, browser }) => {
+  // A fresh CREATED order owned by the fixture user, seeded here so this test does not depend on
+  // what the earlier cancel tests left behind. No reservation — the cancel must never succeed.
+  const owner = await prisma.user.findUnique({ where: { phone: FIXTURE_PHONE } });
+  if (!owner) throw new Error("fixture user missing");
+  const variant = await prisma.variant.findFirst({ select: { id: true, sku: true, name: true } });
+  if (!variant) throw new Error("needs one Variant row");
+  const created = await prisma.order.create({
+    data: {
+      userId: owner.id,
+      status: "CREATED",
+      subtotalPiastres: 10000, discountPiastres: 0, shippingPiastres: 0, codFeePiastres: 0, totalPiastres: 10000,
+      shippingProvider: "Egypt Post", paymentMethod: "COD",
+      shippingAddress: { governorate: "القاهرة", city: "مدينة نصر", area: "x", street: "y", phone: FIXTURE_PHONE },
+      items: { create: [{ variantId: variant.id, productName: "p", variantName: variant.name, sku: variant.sku, quantity: 1, unitPricePiastres: 10000, totalPiastres: 10000 }] },
+    },
+  });
+  const otherPhone = "+201099933446";
+  const passwordHash = await hashPassword("OtherUser123!");
+  const other = await prisma.user.upsert({
+    where: { phone: otherPhone },
+    create: { phone: otherPhone, role: "CUSTOMER", passwordHash, name: "عميل آخر" },
+    update: { passwordHash, role: "CUSTOMER" },
+  });
+  try {
+    const ctx = await browser.newContext();
+    const p2 = await ctx.newPage();
+    await setGovernorate(p2);
+    await p2.goto("/login");
+    await p2.getByLabel("رقم الهاتف").fill(otherPhone.replace("+20", ""));
+    await p2.getByLabel("كلمة المرور").fill("OtherUser123!");
+    await p2.getByRole("button", { name: "تسجيل الدخول" }).click();
+    await expect(p2).toHaveURL("/", { timeout: 15000 });
+    const res = await p2.request.patch("/api/profile/orders/" + created.id + "/cancel");
+    expect([403, 404]).toContain(res.status());
+    await ctx.close();
+    const after = await prisma.order.findUnique({ where: { id: created.id }, select: { status: true } });
+    expect(after?.status).toBe("CREATED");
+  } finally {
+    await prisma.orderAuditLog.deleteMany({ where: { orderId: created.id } });
+    await prisma.orderItem.deleteMany({ where: { orderId: created.id } });
+    await prisma.order.delete({ where: { id: created.id } }).catch(() => {});
+    await prisma.user.delete({ where: { id: other.id } }).catch(() => {});
+  }
+  void page;
+});

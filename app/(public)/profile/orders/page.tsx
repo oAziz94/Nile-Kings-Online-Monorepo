@@ -129,22 +129,22 @@ function Stepper({ status }: { status: string }) {
               <span
                 aria-hidden="true"
                 className="absolute top-[4.5px] h-px w-1/2"
-                style={{ insetInlineEnd: "50%", background: done ? "#B8902F" : "rgba(21,26,53,.16)" }}
+                style={{ insetInlineEnd: "50%", background: done ? "hsl(var(--gold-500))" : "rgba(21,26,53,.16)" }}
               />
             )}
             {i < STEP_STATUSES.length - 1 && (
               <span
                 aria-hidden="true"
                 className="absolute top-[4.5px] h-px w-1/2"
-                style={{ insetInlineStart: "50%", background: i < idx ? "#B8902F" : "rgba(21,26,53,.16)" }}
+                style={{ insetInlineStart: "50%", background: i < idx ? "hsl(var(--gold-500))" : "rgba(21,26,53,.16)" }}
               />
             )}
             <i
               aria-hidden="true"
               className="z-10 block h-2.5 w-2.5 rounded-full border-[1.5px]"
               style={{
-                background: done ? "#B8902F" : now ? "#151A35" : "#FFFDFA",
-                borderColor: done ? "#B8902F" : now ? "#151A35" : "rgba(21,26,53,.16)",
+                background: done ? "hsl(var(--gold-500))" : now ? "#151A35" : "#FFFDFA",
+                borderColor: done ? "hsl(var(--gold-500))" : now ? "#151A35" : "rgba(21,26,53,.16)",
                 boxShadow: now ? "0 0 0 4px rgba(184,144,47,.14)" : "none",
               }}
             />
@@ -220,6 +220,7 @@ function OrderCard({
   onRequestCancel: () => void;
   reordering: boolean;
 }) {
+  const detailId = `order-detail-${order.id}`;
   const shown = order.items.slice(0, 3);
   const total = piastresToEgp(order.totalPiastres);
   const canReorder = order.status === "DELIVERED" || order.status === "CANCELLED";
@@ -289,7 +290,9 @@ function OrderCard({
         <button
           type="button"
           onClick={onToggleExpand}
-          className="inline-flex items-center gap-1.5 border-b border-[#B8902F] text-[13.5px] text-[#151A35]"
+          aria-expanded={expanded}
+          aria-controls={detailId}
+          className="inline-flex items-center gap-1.5 border-b border-gold-500 text-[13.5px] text-[#151A35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
         >
           {expanded ? "إخفاء التفاصيل" : "عرض التفاصيل"}
           {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -325,7 +328,7 @@ function OrderCard({
       </footer>
 
       {expanded && (
-        <div className="grid grid-cols-1 gap-7 border-t border-[rgba(21,26,53,.09)] pt-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div id={detailId} className="grid grid-cols-1 gap-7 border-t border-[rgba(21,26,53,.09)] pt-5 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div className="flex flex-col gap-3.5">
             <p className="m-0 text-[12px] tracking-[.06em] text-[#8A8C9A]">الأصناف</p>
             {order.items.map((item) => (
@@ -608,7 +611,7 @@ export default function ProfileOrdersPage() {
 
       {orders.length === 0 ? (
         <div className="mt-8 flex flex-col items-center gap-3 border border-[rgba(21,26,53,.16)] bg-[#FFFDFA] p-14 text-center">
-          <span style={{ color: "#B8902F" }}>
+          <span style={{ color: "hsl(var(--gold-500))" }}>
             <Package className="h-10 w-10" strokeWidth={1.3} />
           </span>
           <h2 className="font-amiri text-2xl font-bold text-[#151A35]">لا توجد طلبات حتى الآن.</h2>
@@ -635,7 +638,8 @@ export default function ProfileOrdersPage() {
                   key={key}
                   type="button"
                   onClick={() => setFilter(key)}
-                  className="relative flex h-9 items-center border px-4 text-[13.5px]"
+                  aria-pressed={filter === key}
+                  className="relative flex h-9 items-center border px-4 text-[13.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
                   style={{
                     borderColor: filter === key ? "#151A35" : "rgba(21,26,53,.16)",
                     color: filter === key ? "#151A35" : "rgba(21,26,53,.8)",
@@ -652,13 +656,13 @@ export default function ProfileOrdersPage() {
                     <span
                       aria-hidden="true"
                       className="absolute bottom-[3px] h-px"
-                      style={{ insetInline: 12, background: "#B8902F" }}
+                      style={{ insetInline: 12, background: "hsl(var(--gold-500))" }}
                     />
                   )}
                 </button>
               ))}
             </div>
-            <div className="flex h-9 min-w-[220px] items-center gap-2 border border-[rgba(21,26,53,.16)] px-3 text-[13px] text-[#8A8C9A] focus-within:border-[#B8902F]">
+            <div className="flex h-9 min-w-[220px] items-center gap-2 border border-[rgba(21,26,53,.16)] px-3 text-[13px] text-[#8A8C9A] focus-within:border-gold-500">
               <label htmlFor="orders-search" className="sr-only">
                 ابحث برقم الطلب أو المنتج
               </label>

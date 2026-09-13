@@ -43,7 +43,7 @@ export const ORDER_STATUS_BADGE_CLASSES: Record<string, string> = {
 export const ORDER_STATUS_COLORS: Record<string, string> = {
   CREATED: "#8A8C9A",
   CONFIRMED: "#3B6EA5",
-  PROCESSING: "#B8902F",
+  PROCESSING: "hsl(var(--gold-500))",
   READY_TO_SHIP: "#6B4FA5",
   SHIPPED: "#6B4FA5",
   DELIVERED: "#2F6B4C",
