@@ -121,46 +121,23 @@ const logo = (h = 72) => `<img src="logo-lapis.png" alt="قطن ملوك الن�
 const control = (svg, opts = {}) => `<span style="position:relative; display:grid; place-items:center; width:44px; height:44px; color:${opts.on ? T.ink : T.ink80};">${svg}${opts.badge ? `<span class="num" style="position:absolute; top:2px; inset-inline-end:2px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:${T.ink}; color:${T.ivory}; font-size:10px; font-weight:600; display:grid; place-items:center;">${opts.badge}</span>` : ""}${opts.on ? `<span style="position:absolute; inset-inline:11px; bottom:3px; height:1px; background:${T.gold};"></span>` : ""}</span>`;
 
 // ---- the navbar (desktop 84px) ----
-function navbarDesktop({ current = "", catOpen = false, accountOpen = false, loggedIn = true } = {}) {
-  const cats = [
-    { l: "كولكشن رجالي", on: false },
-    { l: "كولكشن حريمي", on: catOpen },
-    { l: "كولكشن أطفال", on: false },
-    { l: "الأكثر مبيعًا", on: false },
-  ];
+function navbarDesktop({ current = "", accountOpen = false, loggedIn = true } = {}) {
   return `
-<header style="position:relative; height:84px; background:${T.ivory}; border-bottom:1px solid ${T.rule}; display:grid; grid-template-columns:auto 1fr auto; align-items:center; padding:0 40px; gap:32px;">
-  <a href="#" aria-label="قطن ملوك النيل">${logo(64)}</a>
-  <nav aria-label="أقسام المتجر" style="display:flex; align-items:center; gap:4px; justify-self:center;">
-    ${cats.map((c) => `<a href="#" style="position:relative; display:inline-flex; align-items:center; gap:6px; height:84px; padding:0 16px; font-size:15px; ${c.on ? `color:${T.ink}; font-weight:500;` : `color:${T.ink80};`}">${c.l}${c.on ? `<span style="position:absolute; inset-inline:16px; bottom:24px; height:1px; background:${T.gold};"></span>` : ""}</a>`).join("")}
-  </nav>
-  <div style="display:flex; align-items:center; gap:2px;">
-    <span style="display:flex; align-items:center; gap:8px; height:40px; padding:0 4px 0 14px; margin-inline-end:10px; border-bottom:1px solid ${T.rule}; color:${T.muted}; font-size:13.5px; min-width:200px;">${I.search(18)}<span>ابحث عن منتج…</span></span>
+<header style="position:relative; height:84px; background:${T.ivory}; border-bottom:1px solid ${T.rule}; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:0 32px;">
+  <div style="display:flex; align-items:center; justify-self:start;">
+    <span style="display:inline-flex; align-items:center; gap:10px; height:44px; padding:0 10px 0 6px; color:${T.ink80};">${I.menu(22)}<span style="font-size:13.5px;">القائمة</span></span>
+    <span style="display:flex; align-items:center; gap:8px; height:40px; padding:0 4px 0 14px; margin-inline-start:14px; border-bottom:1px solid ${T.rule}; color:${T.muted}; font-size:13.5px; min-width:220px;">${I.search(18)}<span>ابحث عن منتج…</span></span>
+  </div>
+  <a href="#" aria-label="قطن ملوك النيل" style="justify-self:center;">${logo(72)}</a>
+  <div style="display:flex; align-items:center; gap:2px; justify-self:end;">
     ${control(I.heart(22))}
     ${control(I.bag(22), { badge: 3, on: current === "cart" })}
     ${loggedIn
       ? `<a href="#" style="display:inline-flex; align-items:center; gap:8px; height:44px; padding:0 6px 0 12px; ${current === "account" ? `color:${T.ink};` : `color:${T.ink80};`} position:relative;">${I.user(22)}<span style="font-size:13.5px; font-weight:500;">أهلًا، عمر</span>${I.chevD(14)}${current === "account" ? `<span style="position:absolute; inset-inline:12px; bottom:3px; height:1px; background:${T.gold};"></span>` : ""}</a>`
       : `<a href="#" style="display:inline-flex; align-items:center; gap:8px; height:44px; padding:0 8px; color:${T.ink80};">${I.user(22)}<span style="font-size:13.5px;">تسجيل الدخول</span></a>`}
   </div>
-  ${catOpen ? `
-  <div role="menu" style="position:absolute; top:84px; inset-inline-start:50%; transform:translateX(50%); width:720px; background:${T.paper}; border:1px solid ${T.rule}; border-top:0; display:grid; grid-template-columns:200px 1fr; box-shadow:0 24px 48px -24px rgba(21,26,53,.35); z-index:5;">
-    <div style="padding:28px 28px 28px 0; border-inline-end:1px solid ${T.ruleSoft};">
-      <p style="margin:0 0 14px; font-size:12px; letter-spacing:.06em; color:${T.muted};">كولكشن حريمي</p>
-      <div style="display:flex; flex-direction:column; gap:10px; font-size:15px;">
-        <a href="#" style="color:${T.ink}; font-weight:500;">الكل</a>
-        <a href="#" style="color:${T.ink80};">الأكثر مبيعًا</a>
-        <a href="#" style="color:${T.ink80};">وصل حديثًا</a>
-        <a href="#" style="color:${T.ink80};">تيشيرتات</a>
-        <a href="#" style="color:${T.ink80};">بيجامات</a>
-        <a href="#" style="color:${T.ink80};">أطقم</a>
-      </div>
-    </div>
-    <div style="padding:28px; display:grid; grid-template-columns:repeat(3,1fr); gap:20px;">
-      ${["الأكثر مبيعًا هذا الأسبوع", "بيجامات قطن 100%", "وصل حديثًا"].map((t) => `<a href="#" style="display:flex; flex-direction:column; gap:10px;"><span style="aspect-ratio:4/5; background:${T.sand}; display:block;"></span><span style="font-size:13.5px; color:${T.ink};">${t}</span></a>`).join("")}
-    </div>
-  </div>` : ""}
   ${accountOpen ? `
-  <div role="menu" style="position:absolute; top:76px; inset-inline-end:40px; width:280px; background:${T.paper}; border:1px solid ${T.rule}; box-shadow:0 24px 48px -24px rgba(21,26,53,.35); z-index:5;">
+  <div role="menu" style="position:absolute; top:76px; inset-inline-end:32px; width:280px; background:${T.paper}; border:1px solid ${T.rule}; box-shadow:0 24px 48px -24px rgba(21,26,53,.35); z-index:5;">
     <div style="padding:18px 20px 16px; border-bottom:1px solid ${T.ruleSoft}; display:flex; align-items:center; gap:12px;">
       <span class="amiri" style="width:40px; height:40px; border:1px solid ${T.gold}; border-radius:999px; display:grid; place-items:center; font-size:20px; color:${T.ink};">ع</span>
       <span style="display:flex; flex-direction:column;"><b style="font-weight:500; font-size:14.5px;">عمر عبد العزيز</b><span class="num muted" style="font-size:12.5px;">+20 100 234 5678</span></span>
@@ -174,6 +151,60 @@ function navbarDesktop({ current = "", catOpen = false, accountOpen = false, log
   </div>` : ""}
 </header>
 <div class="goldrule"></div>`;
+}
+
+// ---- the drawer panel body (shared by the desktop-open state and the phone artboards) ----
+function drawerPanel({ loggedIn = true, width = 420, compact = false } = {}) {
+  const sections = ["كولكشن رجالي", "كولكشن حريمي", "كولكشن أطفال"];
+  const px = compact ? 20 : 24;
+  return `
+  <div role="dialog" aria-label="القائمة" style="position:absolute; top:0; bottom:0; inset-inline-start:0; width:${width}px; background:${T.ivory}; box-shadow:24px 0 48px -24px rgba(21,26,53,.5); display:flex; flex-direction:column;">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 8px 10px 16px; border-bottom:1px solid ${T.rule};">${logo(40)}<span style="width:44px; height:44px; display:grid; place-items:center; color:${T.ink80};">${I.x(22)}</span></div>
+    <div style="flex:1; overflow:auto;">
+      ${loggedIn ? `
+      <a href="#" style="display:flex; align-items:center; gap:12px; padding:16px ${px}px; border-bottom:1px solid ${T.rule}; background:${T.paper};">
+        <span class="amiri" style="width:40px; height:40px; border:1px solid ${T.gold}; border-radius:999px; display:grid; place-items:center; font-size:20px;">ع</span>
+        <span style="flex:1; display:flex; flex-direction:column;"><b style="font-weight:500; font-size:14.5px;">أهلًا، عمر</b><span class="muted" style="font-size:12.5px;">طلبان جاريان · <span class="num">2</span> عناوين</span></span>
+        ${I.chevL(18)}
+      </a>` : `
+      <div style="display:flex; gap:10px; padding:16px ${px}px; border-bottom:1px solid ${T.rule};">
+        <a href="#" class="btn btn-sm" style="flex:1;">تسجيل الدخول</a>
+        <a href="#" class="btn btn-o btn-sm" style="flex:1;">حساب جديد</a>
+      </div>`}
+      ${compact ? `<div style="padding:16px ${px}px 0;"><span style="display:flex; align-items:center; gap:8px; height:44px; padding:0 14px; border:1px solid ${T.rule}; color:${T.muted}; font-size:13.5px;">${I.search(18)}ابحث عن منتج…</span></div>` : ""}
+      <nav aria-label="تصنيفات المتجر" style="padding:0 ${px}px;">
+        ${sections.map((s, i) => `
+        <div style="border-bottom:1px solid ${T.rule};">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 0;"><span class="amiri" style="font-size:20px; ${i === 1 ? "font-weight:700;" : ""}">${s}</span>${i === 1 ? I.chevU(18) : I.chevD(18)}</div>
+          ${i === 1 ? `<div style="display:flex; flex-direction:column; gap:2px; padding:0 0 12px 0;">${["الكل", "الأكثر مبيعًا", "وصل حديثًا", "بيجامات"].map((c, j) => `<a href="#" style="padding:8px 12px 8px 0; font-size:15px; color:${j === 0 ? T.ink : T.ink80}; border-inline-start:1px solid ${j === 0 ? T.gold : "transparent"};">${c}</a>`).join("")}</div>` : ""}
+        </div>`).join("")}
+        <a href="#" style="display:flex; align-items:center; justify-content:space-between; padding:16px 0; border-bottom:1px solid ${T.rule};"><span class="amiri" style="font-size:20px;">الأكثر مبيعًا</span>${I.chevL(18)}</a>
+      </nav>
+      ${loggedIn ? `
+      <div style="padding:8px ${px}px 0;">
+        ${[[I.pkg(18), "طلباتي"], [I.pin(18), "عناويني"], [I.user(18), "حسابي"]].map(([s, l]) => `<a href="#" style="display:flex; align-items:center; gap:12px; padding:12px 0; font-size:15px; color:${T.ink};">${s}${l}</a>`).join("")}
+      </div>` : ""}
+      <div style="margin:12px ${px}px 0; padding-top:12px; border-top:1px solid ${T.rule}; display:flex; flex-direction:column;">
+        ${[[I.chat(18), "تواصل معنا على واتساب"], [I.phone(18), "خدمة العملاء"], [I.fb(18), "تابعنا على فيسبوك"]].map(([s, l]) => `<a href="#" style="display:flex; align-items:center; gap:12px; padding:10px 0; font-size:14px; color:${T.ink80};">${s}${l}</a>`).join("")}
+      </div>
+      <div style="margin:16px ${px}px 24px; padding:16px; background:${T.paper}; border:1px solid ${T.rule};">
+        <p style="margin:0 0 4px; font-size:14px; font-weight:500;">كن شريكًا لملوك النيل</p>
+        <p class="muted" style="margin:0 0 12px; font-size:12.5px;">وكيل أو موزع أونلاين — سجّل طلبك في دقيقة.</p>
+        <div style="display:flex; gap:8px;"><a href="#" class="btn btn-o btn-sm" style="flex:1;">وكيل</a><a href="#" class="btn btn-o btn-sm" style="flex:1;">موزع</a></div>
+      </div>
+      ${loggedIn ? `<a href="#" style="display:flex; align-items:center; gap:12px; margin:0 ${px}px 28px; font-size:14px; color:${T.ink60};">${I.out(18)}تسجيل الخروج</a>` : ""}
+    </div>
+  </div>`;
+}
+
+// ---- desktop: the drawer open over the dimmed page ----
+function desktopDrawerOpen() {
+  return `
+<div style="position:relative; height:1000px; overflow:hidden; background:${T.ivory};">
+  <div style="opacity:.55;">${navbarDesktop({ current: "account" })}</div>
+  <div style="position:absolute; inset:0; background:rgba(21,26,53,.45);"></div>
+  ${drawerPanel({ loggedIn: true, width: 420 })}
+</div>`;
 }
 
 // ---- mobile navbar (60px) ----
@@ -279,7 +310,7 @@ function stepper(status, { compact = false } = {}) {
   return `<div class="steps" style="${compact ? "font-size:11px;" : ""}">${STEPS.map((s, i) => `<div class="step ${i < idx ? "done" : i === idx ? "now" : ""}"><i></i><span>${stepLabels[s]}</span></div>`).join("")}</div>`;
 }
 const ORDERS = [
-  { id: "K7M2P9QX", date: "13 سبتمبر 2026", status: "SHIPPED", total: 1430, pay: "الدفع عند الاستلام", items: [["تيشيرت قطن جيزة 100%", "أبيض · L", 1, 650], ["تيشرت أطفال مطبوع", "مطبوع · 6–7 سنوات", 2, 780]], addr: "القاهرة، مدينة نصر، الحي السابع — 12 ش عباس العقاد، الدور 3", sub: 1430, disc: 0, ship: 0 },
+  { id: "K7M2P9QX", date: "13 سبتمبر 2026", status: "SHIPPED", total: 1430, pay: "الدفع عند الاستلام", ticket: "ANSWERED", items: [["تيشيرت قطن جيزة 100%", "أبيض · L", 1, 650], ["تيشرت أطفال مطبوع", "مطبوع · 6–7 سنوات", 2, 780]], addr: "القاهرة، مدينة نصر، الحي السابع — 12 ش عباس العقاد، الدور 3", sub: 1430, disc: 0, ship: 0 },
   { id: "H3T8R1LC", date: "6 سبتمبر 2026", status: "PROCESSING", total: 1245, pay: "الدفع عبر InstaPay", items: [["بيجامة قطن رجالي", "كحلي · XL", 1, 1190]], addr: "القاهرة، مدينة نصر، الحي السابع — 12 ش عباس العقاد", sub: 1190, disc: 0, ship: 55 },
   { id: "B9W4N6ZD", date: "22 أغسطس 2026", status: "DELIVERED", total: 2030, pay: "الدفع عند الاستلام", items: [["قميص بولو بيكيه", "زيتي · M", 1, 890], ["قميص بولو بيكيه", "أبيض · M", 1, 890]], addr: "الجيزة، الشيخ زايد، الحي الرابع — فيلا 18", sub: 1780, disc: 0, ship: 250 },
   { id: "F2Q5V7MA", date: "3 أغسطس 2026", status: "CANCELLED", total: 780, pay: "الدفع عند الاستلام", items: [["تيشرت أطفال مطبوع", "مطبوع · 4–5 سنوات", 2, 780]], addr: "القاهرة، مدينة نصر", sub: 780, disc: 0, ship: 0 },
@@ -315,7 +346,7 @@ function orderCard(o, { expanded = false, compact = false } = {}) {
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
       ${o.status === "DELIVERED" ? `<a href="#" class="btn btn-o btn-sm">${I.refresh(16)}إعادة الطلب</a>` : ""}
       ${["CREATED", "CONFIRMED"].includes(o.status) ? `<a href="#" class="btn btn-o btn-sm" style="border-color:${T.carn}; color:${T.carn};">إلغاء الطلب</a>` : ""}
-      <a href="#" class="btn btn-o btn-sm">${I.chat(16)}سؤال عن الطلب</a>
+      ${o.ticket ? `<a href="#" class="btn btn-o btn-sm" style="border-color:${T.gold};">${I.chat(16)}سؤالك · ${TICKET_STATUS[o.ticket][0]}</a>` : `<a href="#" class="btn btn-o btn-sm">${I.chat(16)}سؤال عن الطلب</a>`}
     </div>
   </footer>
   ${expanded ? `
@@ -460,55 +491,55 @@ ${ordersFilters(compact)}
 
 // ---- drawer (mobile) ----
 function drawer({ loggedIn = true } = {}) {
-  const sections = ["كولكشن رجالي", "كولكشن حريمي", "كولكشن أطفال"];
   return `<!doctype html>
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><script src="./support.js"></script></head><body>
 <x-dc><helmet>${FONTS}<style>${CSS}</style></helmet>
 <div dir="rtl" style="width:390px; min-height:1100px; background:rgba(21,26,53,.45); position:relative;">
-  <div role="dialog" aria-label="القائمة" style="position:absolute; inset:0 0 0 52px; background:${T.ivory}; display:flex; flex-direction:column; box-shadow:-24px 0 48px -24px rgba(21,26,53,.5);">
-    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 8px 10px 16px; border-bottom:1px solid ${T.rule};">
-      ${logo(40)}
-      <span style="width:44px; height:44px; display:grid; place-items:center; color:${T.ink80};">${I.x(22)}</span>
-    </div>
-    <div style="flex:1; overflow:auto;">
-      ${loggedIn ? `
-      <a href="#" style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid ${T.rule}; background:${T.paper};">
-        <span class="amiri" style="width:40px; height:40px; border:1px solid ${T.gold}; border-radius:999px; display:grid; place-items:center; font-size:20px;">ع</span>
-        <span style="flex:1; display:flex; flex-direction:column;"><b style="font-weight:500; font-size:14.5px;">أهلًا، عمر</b><span class="muted" style="font-size:12.5px;">طلبان جاريان · <span class="num">2</span> عناوين</span></span>
-        ${I.chevL(18)}
-      </a>` : `
-      <div style="display:flex; gap:10px; padding:16px 20px; border-bottom:1px solid ${T.rule};">
-        <a href="#" class="btn btn-sm" style="flex:1;">تسجيل الدخول</a>
-        <a href="#" class="btn btn-o btn-sm" style="flex:1;">حساب جديد</a>
-      </div>`}
-      <div style="padding:16px 20px 0; display:flex; align-items:center; gap:8px; height:64px;">
-        <span style="flex:1; display:flex; align-items:center; gap:8px; height:44px; padding:0 14px; border:1px solid ${T.rule}; color:${T.muted}; font-size:13.5px;">${I.search(18)}ابحث عن منتج…</span>
-      </div>
-      <nav aria-label="تصنيفات المتجر" style="padding:0 20px;">
-        ${sections.map((s, i) => `
-        <div style="border-bottom:1px solid ${T.rule};">
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 0; font-size:17px; ${i === 1 ? "font-weight:500;" : ""}"><span class="amiri" style="font-size:20px;">${s}</span>${i === 1 ? I.chevU(18) : I.chevD(18)}</div>
-          ${i === 1 ? `<div style="display:flex; flex-direction:column; gap:2px; padding:0 0 12px 0;">${["الكل", "الأكثر مبيعًا", "وصل حديثًا", "بيجامات"].map((c, j) => `<a href="#" style="padding:8px 12px 8px 0; font-size:15px; color:${j === 0 ? T.ink : T.ink80}; border-inline-start:1px solid ${j === 0 ? T.gold : "transparent"};">${c}</a>`).join("")}</div>` : ""}
-        </div>`).join("")}
-        <a href="#" style="display:flex; align-items:center; justify-content:space-between; padding:16px 0; border-bottom:1px solid ${T.rule};"><span class="amiri" style="font-size:20px;">الأكثر مبيعًا</span>${I.chevL(18)}</a>
-      </nav>
-      ${loggedIn ? `
-      <div style="padding:8px 20px 0;">
-        ${[[I.pkg(18), "طلباتي"], [I.pin(18), "عناويني"], [I.user(18), "حسابي"]].map(([s, l]) => `<a href="#" style="display:flex; align-items:center; gap:12px; padding:12px 0; font-size:15px; color:${T.ink};">${s}${l}</a>`).join("")}
-      </div>` : ""}
-      <div style="margin:12px 20px 0; padding-top:12px; border-top:1px solid ${T.rule}; display:flex; flex-direction:column;">
-        ${[[I.chat(18), "تواصل معنا على واتساب"], [I.phone(18), "خدمة العملاء"], [I.fb(18), "تابعنا على فيسبوك"]].map(([s, l]) => `<a href="#" style="display:flex; align-items:center; gap:12px; padding:10px 0; font-size:14px; color:${T.ink80};">${s}${l}</a>`).join("")}
-      </div>
-      <div style="margin:16px 20px 24px; padding:16px; background:${T.paper}; border:1px solid ${T.rule};">
-        <p style="margin:0 0 4px; font-size:14px; font-weight:500;">كن شريكًا لملوك النيل</p>
-        <p class="muted" style="margin:0 0 12px; font-size:12.5px;">وكيل أو موزع أونلاين — سجّل طلبك في دقيقة.</p>
-        <div style="display:flex; gap:8px;"><a href="#" class="btn btn-o btn-sm" style="flex:1;">وكيل</a><a href="#" class="btn btn-o btn-sm" style="flex:1;">موزع</a></div>
-      </div>
-      ${loggedIn ? `<a href="#" style="display:flex; align-items:center; gap:12px; margin:0 20px 28px; font-size:14px; color:${T.ink60};">${I.out(18)}تسجيل الخروج</a>` : ""}
-    </div>
-  </div>
+  ${drawerPanel({ loggedIn, width: 338, compact: true })}
 </div>
 </x-dc></body></html>`;
+}
+
+// ---- order ticket ("سؤال عن الطلب" as an in-site ticket, not WhatsApp) ----
+const TICKET_REASONS = ["تأخير في التوصيل", "تعديل العنوان أو الهاتف", "مشكلة في المنتج", "استبدال أو إرجاع", "سؤال آخر"];
+function ticketDialog({ compact = false } = {}) {
+  return `
+<div role="dialog" aria-label="سؤال عن الطلب" style="background:${T.paper}; border:1px solid ${T.rule}; box-shadow:0 24px 48px -24px rgba(21,26,53,.4); padding:${compact ? "24px 20px" : "28px 32px"}; width:${compact ? "100%" : "560px"};">
+  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+    <div><h2 style="font-size:24px;">سؤال عن الطلب <span class="num" style="font-family:Archivo, sans-serif; font-size:18px; font-weight:600;">#K7M2P9QX</span></h2><p class="muted" style="margin:4px 0 0; font-size:13px;">نرد خلال يوم عمل. ستجد الرد هنا تحت الطلب.</p></div>
+    <span style="width:40px; height:40px; display:grid; place-items:center; color:${T.ink80}; flex:none;">${I.x(20)}</span>
+  </div>
+  <p style="margin:22px 0 10px; font-size:13px; font-weight:500; color:${T.ink80};">موضوع السؤال</p>
+  <div role="radiogroup" style="display:flex; flex-wrap:wrap; gap:8px;">${TICKET_REASONS.map((r, i) => `<span class="chip ${i === 0 ? "on" : ""}">${r}</span>`).join("")}</div>
+  <div class="field" style="margin-top:20px;"><label>رسالتك</label><span class="input focus" style="height:112px; align-items:flex-start; padding-top:12px; line-height:1.6;">الطلب متأخر عن الموعد المتوقع بيومين. هل يمكن معرفة موعد التوصيل الجديد؟</span><span class="hint">لا حاجة لكتابة رقم الطلب أو بياناتك — نراها مع الرسالة.</span></div>
+  <div class="field" style="margin-top:16px;"><label>رقم للتواصل</label><span class="input num" style="direction:ltr; justify-content:flex-start; gap:10px;">${I.phone(16)}+20 100 234 5678</span></div>
+  <div style="display:flex; gap:12px; margin-top:24px; padding-top:20px; border-top:1px solid ${T.ruleSoft};"><a href="#" class="btn" style="${compact ? "flex:1;" : ""}">إرسال السؤال</a><a href="#" class="btn btn-o" style="${compact ? "flex:1;" : ""}">إلغاء</a></div>
+</div>`;
+}
+const TICKET_STATUS = { OPEN: ["بانتظار الرد", T.gold], ANSWERED: ["تم الرد", T.malachite], CLOSED: ["مغلقة", T.muted] };
+const tpill = (k) => `<span class="pill" style="color:${TICKET_STATUS[k][1]};"><i style="background:${TICKET_STATUS[k][1]};"></i>${TICKET_STATUS[k][0]}</span>`;
+function ticketThread({ compact = false } = {}) {
+  const msg = (who, when, text, mine) => `
+  <div style="display:flex; flex-direction:column; gap:6px; align-items:${mine ? "flex-start" : "flex-end"};">
+    <span class="muted" style="font-size:12px;">${who} · ${when}</span>
+    <p style="margin:0; max-width:${compact ? "100%" : "78%"}; padding:12px 16px; font-size:14px; line-height:1.7; ${mine ? `background:${T.ivory}; border:1px solid ${T.ruleSoft};` : `background:${T.paper}; border:1px solid ${T.rule}; border-inline-end:2px solid ${T.gold};`}">${text}</p>
+  </div>`;
+  return `
+<section class="panel" style="padding:${compact ? "18px" : "24px 28px"}; display:flex; flex-direction:column; gap:18px;">
+  <header style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;"><h3 style="font-size:20px;">سؤالك عن الطلب</h3><span class="tag">تأخير في التوصيل</span></div>
+    ${tpill("ANSWERED")}
+  </header>
+  <div style="display:flex; flex-direction:column; gap:14px;">
+    ${msg("أنت", "أمس 14:20", "الطلب متأخر عن الموعد المتوقع بيومين. هل يمكن معرفة موعد التوصيل الجديد؟", true)}
+    ${msg("خدمة عملاء ملوك النيل", "أمس 16:05", "أهلًا عمر، الشحنة مع المندوب وستصلك غدًا قبل الساعة 6 مساءً. نعتذر عن التأخير.", false)}
+  </div>
+  <div style="display:flex; gap:10px; align-items:flex-end; border-top:1px solid ${T.ruleSoft}; padding-top:16px; ${compact ? "flex-direction:column; align-items:stretch;" : ""}">
+    <span class="input" style="flex:1; height:48px; color:${T.muted};">اكتب ردًا…</span>
+    <a href="#" class="btn btn-sm" style="height:48px;">إرسال</a>
+    <a href="#" class="btn btn-o btn-sm" style="height:48px;">إغلاق السؤال</a>
+  </div>
+</section>`;
 }
 
 // ---- artboards ----
@@ -521,11 +552,11 @@ const wrap = (w, h, body) => `<!doctype html>
 const label = (t) => `<p style="margin:0 40px -28px; font-size:12px; letter-spacing:.08em; color:${T.ink60}; font-family:Archivo, sans-serif;">${t}</p>`;
 
 // 1. Main — the navbar, four states
-files["Main.dc.html"] = wrap(1440, 1180, `
+files["Main.dc.html"] = wrap(1440, 1780, `
 ${label("01 · NAVBAR — DEFAULT (LOGGED IN, ON /PROFILE)")}
 <div style="background:${T.ivory};">${navbarDesktop({ current: "account" })}</div>
-${label("02 · CATEGORY MENU OPEN")}
-<div style="background:${T.ivory}; height:420px; position:relative;">${navbarDesktop({ catOpen: true })}</div>
+${label("02 · MENU OPEN — THE SAME DRAWER AS MOBILE; CATEGORIES LIVE HERE ON EVERY SCREEN")}
+${desktopDrawerOpen()}
 ${label("03 · ACCOUNT MENU OPEN")}
 <div style="background:${T.ivory}; height:360px; position:relative;">${navbarDesktop({ accountOpen: true, current: "account" })}</div>
 ${label("04 · LOGGED OUT")}
@@ -566,6 +597,27 @@ files["AddressForm.dc.html"] = `<!doctype html>
   </div>
 </div>
 </x-dc></body></html>`;
+
+// 6b. Order ticket — dialog over the orders page + the answered thread under the order
+files["OrderTicket.dc.html"] = `<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><script src="./support.js"></script></head><body>
+<x-dc><helmet>${FONTS}<style>${CSS}</style></helmet>
+<div dir="rtl" style="width:1440px; min-height:1500px; background:${T.ivory}; position:relative;">
+  <div style="opacity:.5;">${navbarDesktop({ current: "account" })}
+  <div style="max-width:1200px; margin:0 auto; padding:44px 40px 0;">${identityStrip()}<div style="margin-top:28px; border-top:1px solid ${T.rule}; padding-top:36px; display:grid; grid-template-columns:200px minmax(0,1fr); gap:56px;">${rail("orders")}<main>${sectionH("طلباتي", "تتبّع طلباتك الجارية وراجع ما سبق.")}${ordersFilters()}${orderCard(ORDERS[1])}</main></div></div></div>
+  <div style="position:absolute; inset:0 0 auto 0; height:760px; background:rgba(21,26,53,.35);"></div>
+  <div style="position:absolute; top:120px; inset-inline-start:50%; transform:translateX(50%);">${ticketDialog()}</div>
+  <div style="max-width:1200px; margin:0 auto; padding:40px 40px 60px;">
+    <p style="margin:0 0 16px; font-size:12px; letter-spacing:.08em; color:${T.ink60}; font-family:Archivo, sans-serif;">AFTER SENDING — THE THREAD LIVES UNDER THE EXPANDED ORDER; THE FOOTER BUTTON BECOMES A STATUS LINK</p>
+    <div style="display:grid; grid-template-columns:200px minmax(0,1fr); gap:56px;"><div></div><div style="display:flex; flex-direction:column; gap:16px;">${orderCard(ORDERS[0], { expanded: true })}${ticketThread()}</div></div>
+  </div>
+</div>
+</x-dc></body></html>`;
+files["MobileOrderTicket.dc.html"] = mobileShell("orders", `
+<div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;"><a href="#" aria-label="رجوع" style="width:40px; height:40px; display:grid; place-items:center; color:${T.ink80}; border:1px solid ${T.rule};">${I.arrL(18)}</a><h2 style="font-size:24px;">الطلب <span class="num" style="font-family:Archivo, sans-serif; font-size:16px; font-weight:600;">#K7M2P9QX</span></h2></div>
+${ticketDialog({ compact: true })}
+<p style="margin:32px 0 12px; font-size:12px; letter-spacing:.08em; color:${T.ink60}; font-family:Archivo, sans-serif;">AFTER SENDING</p>
+${ticketThread({ compact: true })}`, { h: 1500, nav: false });
 
 // 7–9. Mobile pages
 files["MobileProfile.dc.html"] = mobileShell("account", accountBody(true), { h: 1560 });
@@ -611,22 +663,25 @@ ${label("BUTTONS + CHIPS + TAGS")}
 
 const canvas = {
   artboards: [
-    { file: "Main.dc.html", title: "شريط التنقل — 4 حالات", x: 0, y: 0, w: 1440, h: 1180 },
+    { file: "Main.dc.html", title: "شريط التنقل — 4 حالات", x: 0, y: 0, w: 1440, h: 1780 },
     { file: "MobileDrawer.dc.html", title: "القائمة الجانبية — مسجّل", x: 1540, y: 0, w: 390, h: 1100 },
     { file: "MobileDrawerOut.dc.html", title: "القائمة الجانبية — زائر", x: 2010, y: 0, w: 390, h: 1100 },
-    { file: "Profile.dc.html", title: "حسابي", x: 0, y: 1320, w: 1440, h: 1240 },
-    { file: "MobileProfile.dc.html", title: "حسابي — موبايل", x: 1540, y: 1320, w: 390, h: 1560 },
-    { file: "Addresses.dc.html", title: "عناويني", x: 0, y: 3020, w: 1440, h: 1000 },
-    { file: "AddressForm.dc.html", title: "عنوان جديد + حذف", x: 1540, y: 3020, w: 1440, h: 1000 },
-    { file: "MobileAddresses.dc.html", title: "عناويني — موبايل", x: 3080, y: 3020, w: 390, h: 1200 },
-    { file: "MobileAddressForm.dc.html", title: "عنوان جديد — موبايل", x: 3550, y: 3020, w: 390, h: 1180 },
-    { file: "Orders.dc.html", title: "طلباتي", x: 0, y: 4360, w: 1440, h: 1900 },
-    { file: "MobileOrders.dc.html", title: "طلباتي — موبايل", x: 1540, y: 4360, w: 390, h: 2300 },
-    { file: "Components.dc.html", title: "الحالات والمكوّنات", x: 0, y: 6800, w: 1440, h: 1500 },
+    { file: "Profile.dc.html", title: "حسابي", x: 0, y: 1920, w: 1440, h: 1240 },
+    { file: "MobileProfile.dc.html", title: "حسابي — موبايل", x: 1540, y: 1920, w: 390, h: 1560 },
+    { file: "Addresses.dc.html", title: "عناويني", x: 0, y: 3620, w: 1440, h: 1000 },
+    { file: "AddressForm.dc.html", title: "عنوان جديد + حذف", x: 1540, y: 3620, w: 1440, h: 1000 },
+    { file: "MobileAddresses.dc.html", title: "عناويني — موبايل", x: 3080, y: 3620, w: 390, h: 1200 },
+    { file: "MobileAddressForm.dc.html", title: "عنوان جديد — موبايل", x: 3550, y: 3620, w: 390, h: 1180 },
+    { file: "Orders.dc.html", title: "طلباتي", x: 0, y: 4960, w: 1440, h: 1900 },
+    { file: "MobileOrders.dc.html", title: "طلباتي — موبايل", x: 1540, y: 4960, w: 390, h: 2300 },
+    { file: "OrderTicket.dc.html", title: "سؤال عن الطلب — تذكرة", x: 2010, y: 4960, w: 1440, h: 1500 },
+    { file: "MobileOrderTicket.dc.html", title: "سؤال عن الطلب — موبايل", x: 3530, y: 4960, w: 390, h: 1500 },
+    { file: "Components.dc.html", title: "الحالات والمكوّنات", x: 0, y: 7400, w: 1440, h: 1500 },
   ],
   annotations: [
-    { id: "brief", x: 0, y: -200, w: 520, text: "منطقة الحساب — نفس لغة المتجر (عاجي، لازورد، خط ذهبي، Amiri/Plex/Archivo). الجديد: روابط الأقسام في الشريط نفسه، قائمة حساب باسم المستخدم، شريط هوية أعلى الحساب، متتبّع حالة لكل طلب مع تفاصيل قابلة للفتح، بطاقات عناوين مع حوار حذف حقيقي." },
-    { id: "scope", x: 560, y: -200, w: 520, text: "مقترحات تحتاج موافقة (ليست تكافؤًا): بحث المنتجات في الشريط، إعادة الطلب، إلغاء الطلب قبل التأكيد، «سؤال عن الطلب» (واتساب)، «عرض طلبات أقدم» (ترقيم)، إكمال العنوان الناقص من البطاقة. صفحة كبار السن خارج النطاق." },
+    { id: "brief", x: 0, y: -200, w: 520, text: "منطقة الحساب — نفس لغة المتجر (عاجي، لازورد، خط ذهبي، Amiri/Plex/Archivo). الجديد: الأقسام تبقى داخل قائمة البرجر على كل المقاسات، بحث في الشريط، قائمة حساب باسم المستخدم، شريط هوية أعلى الحساب، متتبّع حالة لكل طلب مع تفاصيل قابلة للفتح، بطاقات عناوين مع حوار حذف حقيقي." },
+    { id: "ticket", x: 1120, y: -200, w: 520, text: "«سؤال عن الطلب» (قرار المستخدم 2026-09-13): تذكرة داخل الموقع لا واتساب — موضوع من قائمة + رسالة + رقم تواصل، تظهر كخيط تحت الطلب بحالة (بانتظار الرد / تم الرد / مغلقة)، والرد يأتي من لوحة الأدمن. يحتاج نموذج OrderTicket + صندوق وارد في الأدمن." },
+    { id: "scope", x: 560, y: -200, w: 520, text: "مقترحات تحتاج موافقة (ليست تكافؤًا): بحث المنتجات في الشريط، إعادة الطلب، إلغاء الطلب قبل التأكيد، «سؤال عن الطلب» = تذكرة داخل الموقع (لوحة OrderTicket)، «عرض طلبات أقدم» (ترقيم)، إكمال العنوان الناقص من البطاقة. صفحة كبار السن خارج النطاق." },
   ],
   launch: { view: "canvas" },
 };
