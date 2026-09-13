@@ -35,7 +35,6 @@ const orderInclude = {
       },
     },
   },
-  routedOrder: true,
 } as const;
 
 type OrderRow = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
@@ -51,6 +50,17 @@ function mapOrder(order: OrderRow) {
       variant: undefined,
     })),
   };
+}
+
+/** Backlog 5.3 — every response from this route (GET and every PATCH branch) carries the
+ * audit-log timeline and the partner's SLA hours, so the order detail page's timeline/SLA
+ * card stay in sync after a save without a second round-trip or a full reload. */
+async function withOrderExtras<T extends { id: string }>(order: T, partnerId: string) {
+  const [partner, auditLog] = await Promise.all([
+    prisma.partner.findUnique({ where: { id: partnerId }, select: { confirmSlaHours: true, shipSlaHours: true } }),
+    prisma.orderAuditLog.findMany({ where: { orderId: order.id }, orderBy: { createdAt: "asc" } }),
+  ]);
+  return { ...order, auditLog, partnerSla: partner ?? { confirmSlaHours: 24, shipSlaHours: 48 } };
 }
 
 async function requireAgentPartner() {
@@ -76,7 +86,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       include: orderInclude,
     });
     if (!order) return apiNotFound("الطلب غير موجود");
-    return apiSuccess(mapOrder(order));
+    return apiSuccess(await withOrderExtras(mapOrder(order), user.partnerId));
   } catch (error: unknown) {
     const err = error as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -139,7 +149,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           nextStatus,
           adminNotes: body.adminNotes,
         });
-        return apiSuccess(mapPartnerOrder(order));
+        return apiSuccess(await withOrderExtras(mapPartnerOrder(order), user.partnerId));
       } catch (error) {
         if (error instanceof PartnerOrderTransitionError) {
           return error.status === 404 ? apiNotFound(error.message) : apiBadRequest(error.message);
@@ -319,7 +329,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           },
           { maxWait: 15_000, timeout: 60_000 }
         );
-        return apiSuccess(mapOrder(order));
+        return apiSuccess(await withOrderExtras(mapOrder(order), user.partnerId));
       } catch (error) {
         if (error instanceof InsufficientPartnerStockError) {
           return apiBadRequest("كمية غير متوفرة في مخزون الشريك لتعديل الطلب بهذه الأصناف");
@@ -337,7 +347,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           },
           { maxWait: 15_000, timeout: 60_000 }
         );
-        return apiSuccess(mapOrder(order));
+        return apiSuccess(await withOrderExtras(mapOrder(order), user.partnerId));
       } catch (error) {
         if (error instanceof InsufficientPartnerStockError) {
           return apiBadRequest("كمية غير متوفرة في مخزون الشريك لتأكيد الطلب");
@@ -352,7 +362,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       }
       return tx.order.update({ where: { id }, data, include: orderInclude });
     });
-    return apiSuccess(mapOrder(order));
+    return apiSuccess(await withOrderExtras(mapOrder(order), user.partnerId));
   } catch (error: unknown) {
     const err = error as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
