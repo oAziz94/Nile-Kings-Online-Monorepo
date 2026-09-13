@@ -60,6 +60,7 @@ model User {
   savedAddresses     SavedAddress[]
   seniorVerification SeniorVerification?
   partner            Partner?
+  orderTickets       OrderTicket[]
 
   @@index([phone])
   @@index([role])
@@ -371,6 +372,7 @@ model Order {
   items          OrderItem[]
   paymentAttempts PaymentAttempt[]
   routedOrder    RoutedOrder?
+  ticket         OrderTicket?
 
   @@index([userId])
   @@index([status])
@@ -382,6 +384,60 @@ model Order {
   @@index([shippingProvider])
   @@index([assignedPartnerId])
   @@index([shippingOriginGovernorate])
+}
+
+// ---------------------------------------------------------------------------
+// Order tickets (backlog 6.5a) — "سؤال عن الطلب" is an in-site ticket, not a WhatsApp link
+// (04-decisions.md 2026-09-13 "Account canvas round 2"). One thread per order
+// (`@@unique([orderId])`): a second question on the same order is a reply, not a new ticket.
+// ---------------------------------------------------------------------------
+enum OrderTicketSubject {
+  DELIVERY_DELAY
+  ADDRESS_CHANGE
+}
+
+enum OrderTicketStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
+
+enum TicketAuthor {
+  CUSTOMER
+  ADMIN
+}
+
+model OrderTicket {
+  id            String            @id @default(cuid())
+  orderId       String            @unique
+  userId        String
+  subject       OrderTicketSubject
+  status        OrderTicketStatus @default(OPEN)
+  contactPhone  String
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  closedAt      DateTime?
+
+  order    Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  messages OrderTicketMessage[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderTicketMessage {
+  id            String       @id @default(cuid())
+  ticketId      String
+  authorRole    TicketAuthor
+  authorUserId  String
+  body          String
+  createdAt     DateTime     @default(now())
+
+  ticket OrderTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([createdAt])
 }
 
 // Audit trail for order lifecycle (create, confirm, cancel, etc.)
