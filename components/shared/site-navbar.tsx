@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,7 +9,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -93,6 +92,22 @@ function CartBadge({ count }: { count?: number }) {
 }
 
 type NavbarUser = { name: string | null; phone: string } | null;
+type OrderSummary = { openCount: number; orderCount: number; addressCount: number } | null;
+
+/** First whitespace-separated token of the name; falls back to the phone when there's no name
+ * (backlog 6.1's "أهلًا، <first name>" greeting rule). */
+function greetingFor(user: NavbarUser): string {
+  const trimmed = user?.name?.trim();
+  if (trimmed) return trimmed.split(/\s+/)[0];
+  return user?.phone ?? "";
+}
+
+/** Amiri initial for the gold-ringed avatar — first character of the name, or a neutral glyph
+ * when there's no name to draw from. */
+function initialFor(user: NavbarUser): string {
+  const trimmed = user?.name?.trim();
+  return trimmed ? trimmed[0] : "؟";
+}
 
 export function SiteNavbar({
   current,
@@ -141,10 +156,14 @@ export function SiteNavbar({
   const isTransparent = transparent && !scrolled;
   const onDark = isTransparent && transparentTone === "cream";
   const [menuOpen, setMenuOpen] = useState(false);
+  const [drawerFocusSearch, setDrawerFocusSearch] = useState(false);
   const [user, setUser] = useState<NavbarUser>(null);
+  const [summary, setSummary] = useState<OrderSummary>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const fetchedRef = useRef(false);
+  const summaryFetchedRef = useRef(false);
 
   useEffect(() => {
     if (!accountMenu || fetchedRef.current) return;
@@ -161,11 +180,37 @@ export function SiteNavbar({
       .catch(() => setUser(null));
   }, [accountMenu]);
 
+  // The open-order count only makes sense for a real, logged-in customer, and only when the
+  // account menu is actually rendered — no point paying for the round trip on (auth).
+  useEffect(() => {
+    if (!accountMenu || !user || summaryFetchedRef.current) return;
+    summaryFetchedRef.current = true;
+    fetch("/api/profile/orders/summary", { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.success) setSummary(data.data);
+      })
+      .catch(() => {});
+  }, [accountMenu, user]);
+
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     setUser(null);
+    setSummary(null);
+    summaryFetchedRef.current = false;
     setAccountOpen(false);
     router.refresh();
+  }
+
+  function handleSearchSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+  }
+
+  function openDrawer(focusSearch: boolean) {
+    setDrawerFocusSearch(focusSearch);
+    setMenuOpen(true);
   }
 
   return (
@@ -178,19 +223,71 @@ export function SiteNavbar({
           isTransparent ? "border-transparent bg-transparent" : "border-[hsl(40_14%_84%)] bg-papyrus"
         )}
       >
-        <button
-          type="button"
-          onClick={() => setMenuOpen(true)}
-          aria-label="القائمة"
-          aria-expanded={menuOpen}
-          className={cn(controlClass(false, onDark), "justify-self-start")}
-        >
-          <svg {...iconProps} className={iconClass}>
-            <path d="M3.6 6.4h13.8" />
-            <path d="M3.6 10.5h13.8" />
-            <path d="M3.6 14.6h13.8" />
-          </svg>
-        </button>
+        <div className="flex items-center justify-self-start lg:gap-3">
+          <button
+            type="button"
+            onClick={() => openDrawer(false)}
+            aria-label="القائمة"
+            aria-expanded={menuOpen}
+            className={controlClass(false, onDark)}
+          >
+            <svg {...iconProps} className={iconClass}>
+              <path d="M3.6 6.4h13.8" />
+              <path d="M3.6 10.5h13.8" />
+              <path d="M3.6 14.6h13.8" />
+            </svg>
+          </button>
+
+          {/* Phone: a search icon next to the burger that opens the drawer with its search box
+              focused (backlog 6.1a). Desktop gets the real inline field below instead. */}
+          <button
+            type="button"
+            onClick={() => openDrawer(true)}
+            aria-label="بحث عن منتج"
+            className={cn(controlClass(false, onDark), "lg:hidden")}
+          >
+            <svg {...iconProps} className={iconClass}>
+              <circle cx="9.5" cy="9.5" r="5.5" />
+              <path d="M17.5 17.5l-4.1-4.1" />
+            </svg>
+          </button>
+
+          {/* Desktop `lg+`: the hairline-underlined search field next to the burger. */}
+          <form
+            role="search"
+            onSubmit={handleSearchSubmit}
+            className="hidden lg:flex lg:items-center"
+          >
+            <label htmlFor="navbar-search" className="sr-only">
+              ابحث عن منتج
+            </label>
+            <div
+              className={cn(
+                "flex h-10 w-[220px] items-center gap-2 border-b px-1 transition-colors",
+                // Visible focus: the hairline turns gold and thickens while the input has focus
+                // (verifier finding, 6.1) — same language as the drawer's search box.
+                "focus-within:border-b-2 focus-within:border-gold-500",
+                onDark ? "border-papyrus/40 text-papyrus" : "border-[hsl(228_20%_70%)] text-[hsl(228_30%_22%)]"
+              )}
+            >
+              <svg {...iconProps} className="block h-[18px] w-[18px] shrink-0">
+                <circle cx="9.5" cy="9.5" r="5.5" />
+                <path d="M17.5 17.5l-4.1-4.1" />
+              </svg>
+              <input
+                id="navbar-search"
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="ابحث عن منتج…"
+                className={cn(
+                  "w-full bg-transparent text-[13.5px] outline-none",
+                  onDark ? "placeholder:text-papyrus/60" : "placeholder:text-[hsl(228_18%_55%)]"
+                )}
+              />
+            </div>
+          </form>
+        </div>
 
         <Link
           href="/"
@@ -241,37 +338,84 @@ export function SiteNavbar({
                   aria-label="حسابي"
                   aria-current={current === "account" ? "page" : undefined}
                   aria-expanded={accountOpen}
-                  className={controlClass(current === "account", onDark)}
+                  className={cn(
+                    controlClass(current === "account", onDark),
+                    "lg:inline-flex lg:w-auto lg:items-center lg:gap-1.5 lg:px-2"
+                  )}
                 >
-                  <svg {...iconProps} className={iconClass}>
+                  <svg {...iconProps} className={cn(iconClass, "lg:hidden")}>
                     <circle cx="10.5" cy="7.6" r="3.1" />
                     <path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8" />
+                  </svg>
+                  <span className="hidden text-[13.5px] font-medium lg:inline">
+                    أهلًا، {greetingFor(user)}
+                  </span>
+                  <svg {...iconProps} className="hidden h-[14px] w-[14px] lg:block">
+                    <path d="M6 8.5l4.5 4.5L15 8.5" />
                   </svg>
                   {current === "account" && <CurrentMark />}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 rounded-none border-[hsl(228_20%_86%)]">
-                <DropdownMenuLabel className="font-plex-arabic text-sm font-medium text-[hsl(228_26%_24%)]">
-                  {user.name?.trim() || user.phone || "حسابي"}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/profile/account" onClick={() => setAccountOpen(false)}>
-                    حسابي
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/profile/orders" onClick={() => setAccountOpen(false)}>
-                    طلباتي
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/profile/addresses" onClick={() => setAccountOpen(false)}>
-                    عناويني
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>تسجيل الخروج</DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-64 rounded-none border-[hsl(228_20%_86%)] p-0">
+                <div className="flex items-center gap-3 border-b border-[hsl(228_20%_88%)] px-4 py-3.5">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-gold-500 font-amiri text-lg text-[hsl(228_40%_14%)]">
+                    {initialFor(user)}
+                  </span>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm font-medium text-[hsl(228_26%_24%)]">
+                      {user.name?.trim() || "حسابي"}
+                    </span>
+                    {user.phone ? (
+                      <span className="font-archivo text-xs text-muted-foreground" dir="ltr">
+                        {user.phone}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="p-1">
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile/orders" onClick={() => setAccountOpen(false)} className="gap-3">
+                      <svg {...iconProps} className="block h-[18px] w-[18px] shrink-0">
+                        <path d="M3.5 7l7-3.5 7 3.5v7l-7 3.5-7-3.5z" />
+                        <path d="M3.5 7l7 3.5 7-3.5M10.5 10.5v7" />
+                      </svg>
+                      <span className="flex-1">طلباتي</span>
+                      {summary && summary.openCount > 0 ? (
+                        <span className="font-archivo text-xs text-muted-foreground" dir="ltr">
+                          {summary.openCount}
+                        </span>
+                      ) : null}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile/addresses" onClick={() => setAccountOpen(false)} className="gap-3">
+                      <svg {...iconProps} className="block h-[18px] w-[18px] shrink-0">
+                        <path d="M10.5 18s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z" />
+                        <circle cx="10.5" cy="9" r="2" />
+                      </svg>
+                      عناويني
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile/account" onClick={() => setAccountOpen(false)} className="gap-3">
+                      <svg {...iconProps} className="block h-[18px] w-[18px] shrink-0">
+                        <circle cx="10.5" cy="7.6" r="3.1" />
+                        <path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8" />
+                      </svg>
+                      حسابي
+                    </Link>
+                  </DropdownMenuItem>
+                </div>
+                <DropdownMenuSeparator className="mx-0" />
+                <div className="p-1">
+                  <DropdownMenuItem onClick={handleLogout} className="gap-3">
+                    <svg {...iconProps} className="block h-[18px] w-[18px] shrink-0">
+                      <path d="M8 17.5H4.5v-14H8" />
+                      <path d="M13 14l3.5-3.5L13 7M16.5 10.5H8" />
+                    </svg>
+                    تسجيل الخروج
+                  </DropdownMenuItem>
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
@@ -279,18 +423,26 @@ export function SiteNavbar({
               href="/login"
               aria-label="حسابي"
               aria-current={current === "account" ? "page" : undefined}
-              className={controlClass(current === "account", onDark)}
+              className={cn(
+                controlClass(current === "account", onDark),
+                "lg:inline-flex lg:w-auto lg:items-center lg:gap-1.5 lg:px-2"
+              )}
             >
               <svg {...iconProps} className={iconClass}>
                 <circle cx="10.5" cy="7.6" r="3.1" />
                 <path d="M4.8 17.4c0-3 2.6-4.8 5.7-4.8s5.7 1.8 5.7 4.8" />
               </svg>
+              <span className="hidden text-[13.5px] lg:inline">تسجيل الدخول</span>
               {current === "account" && <CurrentMark />}
             </Link>
           )}
         </div>
       </header>
-      <MenuDrawer isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+      <MenuDrawer
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        focusSearch={drawerFocusSearch}
+      />
     </>
   );
 }
