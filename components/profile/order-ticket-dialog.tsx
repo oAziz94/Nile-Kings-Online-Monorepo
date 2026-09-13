@@ -52,14 +52,23 @@ export function OrderTicketDialog({
   const [errors, setErrors] = React.useState<{ subject?: string; body?: string; phone?: string }>({});
   const radioRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
 
+  // Reset only on the closed → open transition. `defaultPhone` arrives asynchronously from
+  // `/api/auth/me`; if it resolves after the customer has started typing, re-running this reset
+  // would silently wipe their subject and message (verifier finding, 6.5a). The phone field is
+  // filled in separately below, and only while it is still empty.
+  const defaultPhoneRef = React.useRef(defaultPhone);
+  defaultPhoneRef.current = defaultPhone;
   React.useEffect(() => {
     if (open) {
       setSubject(null);
       setBody("");
-      setPhone(defaultPhone);
+      setPhone(defaultPhoneRef.current);
       setErrors({});
       setSubmitting(false);
     }
+  }, [open]);
+  React.useEffect(() => {
+    if (open && defaultPhone) setPhone((current) => (current === "" ? defaultPhone : current));
   }, [open, defaultPhone]);
 
   const moveFocus = (fromIndex: number, delta: 1 | -1) => {
