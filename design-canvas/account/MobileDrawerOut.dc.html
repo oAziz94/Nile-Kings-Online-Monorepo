@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><script src="./support.js"></script></head><body>
+<x-dc><helmet><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet"><style>
+  * { box-sizing:border-box; }
+  body { margin:0; background:#F7F4EE; color:#151A35; font-family:'IBM Plex Sans Arabic', Tahoma, sans-serif; font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  a { color:inherit; text-decoration:none; }
+  h1,h2,h3 { font-family:Amiri, serif; font-weight:700; margin:0; line-height:1.2; }
+  .num { font-family:Archivo, sans-serif; direction:ltr; unicode-bidi:isolate; font-variant-numeric:tabular-nums; }
+  .amiri { font-family:Amiri, serif; }
+  .muted { color:#8A8C9A; }
+  .rule { border-top:1px solid rgba(21,26,53,.16); }
+  .goldrule { height:1px; background:linear-gradient(90deg, transparent, #B8902F 20%, #B8902F 80%, transparent); }
+  .panel { background:#FFFDFA; border:1px solid rgba(21,26,53,.16); }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:10px; height:48px; padding:0 24px; font-size:14px; font-weight:500; border:1px solid #151A35; background:#151A35; color:#F7F4EE; white-space:nowrap; }
+  .btn-o { background:transparent; color:#151A35; }
+  .btn-g { background:transparent; color:#151A35; border-color:transparent; text-decoration:underline; text-underline-offset:4px; text-decoration-color:#B8902F; padding:0 4px; }
+  .btn-sm { height:40px; padding:0 18px; font-size:13px; }
+  .btn-xl { height:56px; padding:0 32px; font-size:15px; }
+  .btn-d { border-color:#A83A2A; background:#A83A2A; color:#fff; }
+  .field { display:flex; flex-direction:column; gap:8px; }
+  .field label { font-size:13px; font-weight:500; color:rgba(21,26,53,.8); }
+  .field .hint { font-size:12px; color:#8A8C9A; }
+  .input { height:48px; border:1px solid rgba(21,26,53,.16); background:#fff; padding:0 14px; font-size:15px; display:flex; align-items:center; color:#151A35; }
+  .input.ro { background:#EFEAE0; color:rgba(21,26,53,.6); }
+  .input.focus { border-color:#B8902F; box-shadow:0 0 0 2px rgba(184,144,47,.14); }
+  .input.err { border-color:#A83A2A; }
+  .err-line { font-size:12.5px; color:#A83A2A; }
+  .tag { display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 8px; font-size:12px; font-weight:500; border:1px solid rgba(21,26,53,.16); color:rgba(21,26,53,.8); }
+  .tag-gold { border-color:#B8902F; color:#B8902F; }
+  .tag-amber { border-color:transparent; background:rgba(184,144,47,.16); color:#9A6B12; }
+  .pill { display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:500; }
+  .pill i { width:7px; height:7px; border-radius:999px; display:inline-block; }
+  .chip { display:inline-flex; align-items:center; height:36px; padding:0 16px; font-size:13.5px; border:1px solid rgba(21,26,53,.16); color:rgba(21,26,53,.8); background:transparent; position:relative; }
+  .chip.on { border-color:#151A35; color:#151A35; font-weight:500; }
+  .chip.on::after { content:""; position:absolute; inset-inline:12px; bottom:3px; height:1px; background:#B8902F; }
+  .rail a { display:flex; align-items:center; gap:12px; padding:10px 0; font-size:15px; color:rgba(21,26,53,.8); position:relative; }
+  .rail a.on { color:#151A35; font-weight:500; }
+  .rail a.on::before { content:""; position:absolute; inset-inline-start:-24px; top:12px; bottom:12px; width:2px; background:#B8902F; }
+  .rail svg { color:rgba(21,26,53,.6); } .rail a.on svg { color:#151A35; }
+  .thumb { width:64px; height:80px; background:#E7E2D8; flex:none; display:flex; align-items:flex-end; justify-content:center; font-size:9px; color:rgba(21,26,53,.6); padding-bottom:4px; }
+  .sk { background:linear-gradient(90deg, #EFEAE0 25%, #fff 50%, #EFEAE0 75%); background-size:200% 100%; }
+  .toast { display:flex; align-items:center; gap:12px; background:#151A35; color:#F7F4EE; padding:14px 18px; font-size:14px; border-inline-start:3px solid #B8902F; box-shadow:0 12px 32px -12px rgba(21,26,53,.45); }
+  .steps { display:flex; align-items:center; gap:0; }
+  .step { display:flex; flex-direction:column; align-items:center; gap:8px; flex:1; position:relative; font-size:12px; color:#8A8C9A; }
+  .step i { width:10px; height:10px; border-radius:999px; border:1.5px solid rgba(21,26,53,.16); background:#FFFDFA; z-index:1; }
+  .step.done i { background:#B8902F; border-color:#B8902F; }
+  .step.now i { background:#151A35; border-color:#151A35; box-shadow:0 0 0 4px rgba(184,144,47,.14); }
+  .step.done, .step.now { color:#151A35; }
+  .step.now { font-weight:500; }
+  .step::before { content:""; position:absolute; top:4.5px; inset-inline-start:50%; width:100%; height:1px; background:rgba(21,26,53,.16); }
+  .step:last-child::before { display:none; }
+  .step.done::before { background:#B8902F; }
+  .kv { display:flex; justify-content:space-between; gap:12px; font-size:14px; padding:6px 0; }
+  .kv b { font-weight:500; }
+</style></helmet>
+<div dir="rtl" style="width:390px; min-height:1100px; background:rgba(21,26,53,.45); position:relative;">
+  <div role="dialog" aria-label="القائمة" style="position:absolute; inset:0 0 0 52px; background:#F7F4EE; display:flex; flex-direction:column; box-shadow:-24px 0 48px -24px rgba(21,26,53,.5);">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 8px 10px 16px; border-bottom:1px solid rgba(21,26,53,.16);">
+      <img src="logo-lapis.png" alt="قطن ملوك النيل" style="height:40px; width:auto; display:block;">
+      <span style="width:44px; height:44px; display:grid; place-items:center; color:rgba(21,26,53,.8);"><svg width="22" height="22" viewBox="0 0 21 21" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 5.5l10 10M15.5 5.5l-10 10"/></svg></span>
+    </div>
+    <div style="flex:1; overflow:auto;">
+      
+      <div style="display:flex; gap:10px; padding:16px 20px; border-bottom:1px solid rgba(21,26,53,.16);">
+        <a href="#" class="btn btn-sm" style="flex:1;">تسجيل الدخول</a>
+        <a href="#" class="btn btn-o btn-sm" style="flex:1;">حساب جديد</a>
+      </div>
+      <div style="padding:16px 20px 0; display:flex; align-items:center; gap:8px; height:64px;">
+        <span style="flex:1; display:flex; align-items:center; gap:8px; height:44px; padding:0 14px; border:1px solid rgba(21,26,53,.16); color:#8A8C9A; font-size:13.5px;"><svg width="18" height="18" viewBox="0 0 21 21" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9.5" cy="9.5" r="5.5"/><path d="M17.5 17.5l-4.1-4.1"/></svg>ابحث عن منتج…</span>
+      </div>
+      <nav aria-label="تصنيفات المتجر" style="padding:0 20px;">
+        
+        <div style="border-bottom:1px solid rgba(21,26,53,.16);">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 0; font-size:17px; "><span class="amiri" style="font-size:20px;">كولكشن رجالي</span><svg width="18" height="18" viewBox="0 0 21 21" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8.5l4.5 4.5L15 8.5"/></svg></div>
+          
+        </div>
+        <div style="border-bottom:1px solid rgba(21,26,53,.16);">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 0; font-size:17px; font-weight:500;"><span class="amiri" style="font-size:20px;">كولكشن حريمي</span><svg width="18" height="18" viewBox="0 0 21 21" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 12.5l4.5-4.5L15 12.5"/></svg></div>
+          <div style="display:flex; flex-direction:column; gap:2px; padding:0 0 12px 0;"><a href="#" style="padding:8px 12px 8px 0; font-size:15px; color:#151A35; border-inline-start:1px solid #B8902F;">الكل</a><a href="#" style="padding:8px 12px 8px 0; font-size:15px; color:rgba(21,26,53,.8); border-inline-start:1px solid transparent;">الأكثر مبيعًا</a><a href="#" style="padding:8px 12px 8px 0; font-size:15px; color:rgba(21,26,53,.8); border-inline-start:1px solid transparent;">وصل حديثًا</a><a href="#" style="padding:8px 12px 8px 0; font-size:15px; color:rgba(21,26,53,.8); border-inline-start:1px solid transparent;">بيجامات</a></div>
+        </div>
+        <div style="border-bottom:1px solid rgba(21,26,53,.16);">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 0; font-size:17px; "><span class="amiri" style="font-size:20px;">كولكشن أطفال</span><svg width="18" height="18" viewBox="0 0 21 21" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8.5l4.5 4.5L15 8.5"/></svg></div>
+          
+        </div>
+        <a href="#" style="display:flex; align-items:center; justify-content:space-between; padding:16px 0; border-bottom:1px solid rgba(21,26,53,.16);"><span class="amiri" style="font-size:20px;">الأكثر مبيعًا</span><svg width="18" height="18" viewBox="0 0 21 21" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 5.5L7.5 10.5l5 5"/></svg></a>
+      </nav>
+      
+      <div style="margin:12px 20px 0; padding-top:12px; border-top:1px solid rgba(21,26,53,.16); display:flex; flex-direction:column;">
+        <a href="#" style="display:flex; align-items:center; gap:12px; padding:10px 0; font-size:14px; color:rgba(21,26,53,.8);"><svg width="18" height="18" viewBox="0 0 21 21" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15.5l1-3A6.5 6.5 0 1 1 7.5 15z"/></svg>تواصل معنا على واتساب</a><a href="#" style="display:flex; align-items:center; gap:12px; padding:10px 0; font-size:14px; color:rgba(21,26,53,.8);"><svg width="18" height="18" viewBox="0 0 21 21" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h3l1.5 3.5-2 1.2a8 8 0 0 0 3.8 3.8l1.2-2 3.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5A12.5 12.5 0 0 1 5 5a1.5 1.5 0 0 1 1.5-1.5z"/></svg>خدمة العملاء</a><a href="#" style="display:flex; align-items:center; gap:12px; padding:10px 0; font-size:14px; color:rgba(21,26,53,.8);"><svg width="18" height="18" viewBox="0 0 21 21" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 3.5h-2a3 3 0 0 0-3 3v2H5.5v3h2v6h3v-6h2.2l.5-3H10.5v-1.5a.5.5 0 0 1 .5-.5h1.5z"/></svg>تابعنا على فيسبوك</a>
+      </div>
+      <div style="margin:16px 20px 24px; padding:16px; background:#FFFDFA; border:1px solid rgba(21,26,53,.16);">
+        <p style="margin:0 0 4px; font-size:14px; font-weight:500;">كن شريكًا لملوك النيل</p>
+        <p class="muted" style="margin:0 0 12px; font-size:12.5px;">وكيل أو موزع أونلاين — سجّل طلبك في دقيقة.</p>
+        <div style="display:flex; gap:8px;"><a href="#" class="btn btn-o btn-sm" style="flex:1;">وكيل</a><a href="#" class="btn btn-o btn-sm" style="flex:1;">موزع</a></div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+</x-dc></body></html>
