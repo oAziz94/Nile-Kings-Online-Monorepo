@@ -31,6 +31,9 @@ const ORDER_STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "
 
 const orderDetailInclude = {
   user: { select: { id: true, phone: true, name: true } },
+  // Additive (backlog 6.5b): the order's ticket id/status for the admin order page's
+  // "سؤال العميل" link.
+  ticket: { select: { id: true, status: true } },
   items: {
     include: {
       variant: {

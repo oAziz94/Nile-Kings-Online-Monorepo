@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowRight, Link2, MapPin, Package, Save, ShoppingBag, UserRound } from "lucide-react";
+import { ArrowRight, Link2, MapPin, MessageCircleQuestion, Package, Save, ShoppingBag, UserRound } from "lucide-react";
+import { getOrderTicketStatusLabel } from "@/lib/constants/order-ticket";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +45,8 @@ type Order = {
   createdAt: string;
   shippingAddress: Record<string, unknown>;
   user: { id: string; phone: string; name: string | null };
+  // Additive (backlog 6.5b): present only when the customer has opened an order ticket.
+  ticket: { id: string; status: "OPEN" | "ANSWERED" | "CLOSED" } | null;
   items: {
     variantId: string;
     productName: string;
@@ -499,15 +503,25 @@ export default function AdminOrderDetailPage() {
           </Badge>
         }
         actions={
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-md"
-            onClick={() => router.back()}
-          >
-            <ArrowRight className="h-4 w-4" />
-            رجوع للطلبات
-          </Button>
+          <>
+            {order.ticket && (
+              <Button asChild type="button" variant="outline" size="sm" className="rounded-full">
+                <Link href={`/admin/order-tickets/${order.ticket.id}`}>
+                  <MessageCircleQuestion className="h-3.5 w-3.5" />
+                  سؤال العميل · {getOrderTicketStatusLabel(order.ticket.status)}
+                </Link>
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-md"
+              onClick={() => router.back()}
+            >
+              <ArrowRight className="h-4 w-4" />
+              رجوع للطلبات
+            </Button>
+          </>
         }
       />
 

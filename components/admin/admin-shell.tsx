@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageCircleQuestion,
   Package,
   Route,
   Settings,
@@ -39,6 +40,7 @@ const NAV_GROUPS = [
     label: "العمليات",
     items: [
       { href: "/admin/orders", label: "الطلبات", icon: ShoppingBag },
+      { href: "/admin/order-tickets", label: "أسئلة العملاء", icon: MessageCircleQuestion },
       { href: "/admin/routed-orders", label: "الطلبات الموجهة", icon: Truck },
       { href: "/admin/rerouting-rules", label: "قواعد التوجيه", icon: Route },
     ],
@@ -77,9 +79,11 @@ function isActive(pathname: string, href: string, exact?: boolean): boolean {
 function AdminNavLinks({
   pathname,
   onNavigate,
+  ticketOpenCount,
 }: {
   pathname: string;
   onNavigate?: () => void;
+  ticketOpenCount?: number;
 }) {
   return (
     <div className="space-y-4">
@@ -92,6 +96,7 @@ function AdminNavLinks({
             const { href, label, icon: Icon } = item;
             const exact = "exact" in item ? item.exact : undefined;
             const active = isActive(pathname, href, exact);
+            const badgeCount = href === "/admin/order-tickets" ? ticketOpenCount : undefined;
             return (
               <Link
                 key={href}
@@ -105,7 +110,15 @@ function AdminNavLinks({
                 )}
               >
                 <Icon className={cn("h-4 w-4 shrink-0", active && "text-burgundy")} />
-                {label}
+                <span className="flex-1">{label}</span>
+                {Boolean(badgeCount) && (
+                  <span
+                    className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gold-500 px-1.5 text-[11px] font-extrabold text-lapis-900"
+                    aria-label={`${badgeCount} سؤال بانتظار الرد`}
+                  >
+                    {badgeCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -143,10 +156,12 @@ function AdminNavDrawer({
   isOpen,
   onClose,
   pathname,
+  ticketOpenCount,
 }: {
   isOpen: boolean;
   onClose: () => void;
   pathname: string;
+  ticketOpenCount?: number;
 }) {
   React.useEffect(() => {
     if (!isOpen) return;
@@ -197,7 +212,7 @@ function AdminNavDrawer({
           </Button>
         </div>
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
-          <AdminNavLinks pathname={pathname} onNavigate={onClose} />
+          <AdminNavLinks pathname={pathname} onNavigate={onClose} ticketOpenCount={ticketOpenCount} />
         </nav>
       </aside>
     </>
@@ -208,9 +223,25 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [navOpen, setNavOpen] = React.useState(false);
   const [identity, setIdentity] = React.useState<AdminIdentity | null>(null);
+  const [ticketOpenCount, setTicketOpenCount] = React.useState<number | undefined>(undefined);
 
   React.useEffect(() => {
     setNavOpen(false);
+  }, [pathname]);
+
+  React.useEffect(() => {
+    let alive = true;
+    fetch("/api/admin/order-tickets/counts", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!alive) return;
+        const open = json?.data?.open;
+        if (typeof open === "number") setTicketOpenCount(open);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
   }, [pathname]);
 
   React.useEffect(() => {
@@ -257,6 +288,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         isOpen={navOpen}
         onClose={() => setNavOpen(false)}
         pathname={pathname}
+        ticketOpenCount={ticketOpenCount}
       />
 
       <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-l border-border bg-card lg:flex">
@@ -269,7 +301,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          <AdminNavLinks pathname={pathname} />
+          <AdminNavLinks pathname={pathname} ticketOpenCount={ticketOpenCount} />
         </nav>
       </aside>
 
