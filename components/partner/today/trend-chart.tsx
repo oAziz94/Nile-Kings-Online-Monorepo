@@ -82,12 +82,33 @@ export function TrendChart({
       <svg
         ref={svgRef}
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="block w-full"
         style={{ direction: "ltr" }}
         onMouseMove={handleMove}
         onMouseLeave={() => setHoverIndex(null)}
+        tabIndex={0}
+        onFocus={() => setHoverIndex((i) => i ?? current.length - 1)}
+        onBlur={() => setHoverIndex(null)}
+        onKeyDown={(e) => {
+          if (current.length === 0) return;
+          const last = current.length - 1;
+          if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+            e.preventDefault();
+            // The SVG is ltr: right moves to a later day, left to an earlier one.
+            const step = e.key === "ArrowRight" ? 1 : -1;
+            setHoverIndex((i) => Math.min(last, Math.max(0, (i ?? last) + step)));
+          } else if (e.key === "Home") {
+            e.preventDefault();
+            setHoverIndex(0);
+          } else if (e.key === "End") {
+            e.preventDefault();
+            setHoverIndex(last);
+          } else if (e.key === "Escape") {
+            setHoverIndex(null);
+          }
+        }}
         role="img"
-        aria-label={metric === "revenue" ? "الإيراد آخر 30 يومًا" : "الطلبات آخر 30 يومًا"}
+        aria-label={`${metric === "revenue" ? "الإيراد آخر 30 يومًا" : "الطلبات آخر 30 يومًا"} — استخدم الأسهم لتصفح الأيام`}
+        className="block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
       >
         {gridLines.map((g, i) => (
           <g key={i}>
@@ -140,6 +161,8 @@ export function TrendChart({
 
       {hoverIndex !== null && current[hoverIndex] && (
         <div
+          role="status"
+          aria-live="polite"
           className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg bg-lapis-900 px-2.5 py-1.5 text-xs font-bold text-white shadow-lg"
           style={{
             left: `${(x(hoverIndex) / WIDTH) * 100}%`,
