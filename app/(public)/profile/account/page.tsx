@@ -86,7 +86,7 @@ function fieldBoxClass(hasError?: boolean) {
     "flex h-12 items-center gap-2.5 border bg-white px-3.5 transition-[border-color,box-shadow]",
     hasError
       ? "border-[#A83A2A]"
-      : "border-[rgba(21,26,53,.16)] focus-within:border-[#B8902F] focus-within:shadow-[0_0_0_2px_rgba(184,144,47,.14)]"
+      : "border-[rgba(21,26,53,.16)] focus-within:border-gold-500 focus-within:ring-2 focus-within:ring-gold-500/20"
   );
 }
 const bareInputClass =
@@ -404,7 +404,7 @@ export default function ProfileAccountPage() {
               <button
                 type="submit"
                 disabled={infoForm.formState.isSubmitting}
-                className="inline-flex h-12 items-center justify-center px-6 font-plex-arabic text-[14px] font-medium text-[#F7F4EE] transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-12 items-center justify-center px-6 font-plex-arabic text-[14px] font-medium text-[#F7F4EE] transition-opacity disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
                 style={{ backgroundColor: INK }}
               >
                 {infoForm.formState.isSubmitting ? "جاري الحفظ…" : "حفظ التعديلات"}
@@ -450,7 +450,7 @@ export default function ProfileAccountPage() {
                     onClick={() => setShowCurrent((s) => !s)}
                     aria-pressed={showCurrent}
                     aria-label={showCurrent ? "إخفاء قيمة الحقل المُدخلة" : "إظهار قيمة الحقل المُدخلة"}
-                    className="grid h-8 w-8 shrink-0 place-items-center text-[#8A8C9A] hover:text-[#151A35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#B8902F]"
+                    className="grid h-8 w-8 shrink-0 place-items-center text-[#8A8C9A] hover:text-[#151A35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-500"
                   >
                     <EyeIcon open={showCurrent} />
                   </button>
@@ -479,7 +479,7 @@ export default function ProfileAccountPage() {
                     onClick={() => setShowNew((s) => !s)}
                     aria-pressed={showNew}
                     aria-label={showNew ? "إخفاء قيمة الحقل المُدخلة" : "إظهار قيمة الحقل المُدخلة"}
-                    className="grid h-8 w-8 shrink-0 place-items-center text-[#8A8C9A] hover:text-[#151A35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#B8902F]"
+                    className="grid h-8 w-8 shrink-0 place-items-center text-[#8A8C9A] hover:text-[#151A35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-500"
                   >
                     <EyeIcon open={showNew} />
                   </button>
@@ -507,7 +507,7 @@ export default function ProfileAccountPage() {
                     onClick={() => setShowConfirm((s) => !s)}
                     aria-pressed={showConfirm}
                     aria-label={showConfirm ? "إخفاء قيمة الحقل المُدخلة" : "إظهار قيمة الحقل المُدخلة"}
-                    className="grid h-8 w-8 shrink-0 place-items-center text-[#8A8C9A] hover:text-[#151A35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#B8902F]"
+                    className="grid h-8 w-8 shrink-0 place-items-center text-[#8A8C9A] hover:text-[#151A35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-500"
                   >
                     <EyeIcon open={showConfirm} />
                   </button>
@@ -519,7 +519,7 @@ export default function ProfileAccountPage() {
               <button
                 type="submit"
                 disabled={passwordForm.formState.isSubmitting}
-                className="inline-flex h-12 items-center justify-center border px-6 font-plex-arabic text-[14px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-12 items-center justify-center border px-6 font-plex-arabic text-[14px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
                 style={{ borderColor: INK, color: INK }}
               >
                 {passwordForm.formState.isSubmitting ? "جاري التغيير…" : "تغيير كلمة المرور"}
@@ -546,7 +546,7 @@ export default function ProfileAccountPage() {
           type="button"
           onClick={handleLogout}
           disabled={loggingOut}
-          className="inline-flex h-10 items-center gap-2 border px-4 font-plex-arabic text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 items-center gap-2 border px-4 font-plex-arabic text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
           style={{ borderColor: RULE, color: INK }}
         >
           <LogoutIcon />

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 const INK = "#151A35";
 const INK_60 = "rgba(21,26,53,.6)";
 const RULE = "rgba(21,26,53,.16)";
-const GOLD = "#B8902F";
+const GOLD = "hsl(var(--gold-500))"; // the site token, not the canvas literal — one gold across the storefront (04-decisions 2026-09-13)
 
 /** Same "first letter of the name, or a neutral glyph" rule as the navbar's account control. */
 function initialFor(name: string | null): string {

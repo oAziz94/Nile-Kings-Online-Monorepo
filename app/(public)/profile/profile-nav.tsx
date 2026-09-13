@@ -24,7 +24,7 @@ const INK = "#151A35";
 const INK_60 = "rgba(21,26,53,.6)";
 const INK_80 = "rgba(21,26,53,.8)";
 const RULE_SOFT = "rgba(21,26,53,.09)";
-const GOLD = "#B8902F";
+const GOLD = "hsl(var(--gold-500))"; // the site token, not the canvas literal — one gold across the storefront (04-decisions 2026-09-13)
 
 const iconProps = {
   viewBox: "0 0 21 21",
