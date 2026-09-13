@@ -3,9 +3,13 @@ import {
   Banknote,
   Boxes,
   Calendar,
+  CheckCircle2,
+  Clock,
   Package,
   ShoppingCart,
   TrendingUp,
+  Truck,
+  Users,
   Wallet,
   XCircle,
 } from "lucide-react";
@@ -26,6 +30,21 @@ const HEADLINE_ICONS: Record<string, React.ComponentType<{ className?: string }>
   medianCover: Calendar,
   deadStockCount: AlertTriangle,
   stockOutSkus: AlertTriangle,
+  medianHoursToConfirm: Clock,
+  medianHoursToShip: Truck,
+  overdueRate: AlertTriangle,
+  deliveredRate: CheckCircle2,
+  activeDistributors: Users,
+  unitsTransferred: Package,
+  requestsPending: Clock,
+  fillRate: CheckCircle2,
+  receivedAllTime: Banknote,
+  paidAllTime: Wallet,
+  balance: Banknote,
+  receivedInPeriod: Banknote,
+  collectedInPeriod: Wallet,
+  codPendingNow: Clock,
+  marginEstimate: TrendingUp,
 };
 
 /**
@@ -38,22 +57,26 @@ export function formatHeadlineValue(h: ReportHeadline): string {
   if (h.unit === "piastres") return `${formatNumberEn(piastresToEgp(h.value))} ج.م`;
   if (h.unit === "percent") return `${formatNumberEn(Number(h.value.toFixed(1)))}%`;
   if (h.unit === "days") return `${formatNumberEn(Number(h.value.toFixed(0)))} يوم`;
+  if (h.unit === "hours") return `${formatNumberEn(Number(h.value.toFixed(1)))} ساعة`;
   return formatNumberEn(Math.round(h.value));
 }
 
 function formatDeltaText(h: ReportHeadline): string {
   if (h.delta.direction === "flat") return "—";
   const sign = h.delta.direction === "up" ? "+" : "";
-  if (h.unit === "percent" || h.unit === "days") {
-    return `${sign}${h.delta.changeAbs.toFixed(1)} ${h.unit === "percent" ? "نقطة" : "يوم"}`;
+  if (h.unit === "percent" || h.unit === "days" || h.unit === "hours") {
+    const label = h.unit === "percent" ? "نقطة" : h.unit === "days" ? "يوم" : "ساعة";
+    return `${sign}${h.delta.changeAbs.toFixed(1)} ${label}`;
   }
   if (h.delta.changePct === null) return h.delta.direction === "up" ? "جديد" : "—";
   return `${sign}${Math.round(h.delta.changePct)}%`;
 }
 
 const GRID_COLS: Record<number, string> = {
+  4: "lg:grid-cols-4",
   5: "lg:grid-cols-5",
   6: "lg:grid-cols-6",
+  7: "lg:grid-cols-4",
 };
 
 export function HeadlineTiles({
