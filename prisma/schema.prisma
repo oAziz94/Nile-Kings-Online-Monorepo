@@ -546,6 +546,10 @@ model Partner {
   // The partner's buying rate in basis points (7500 = 75%) — admin-write only
   // (`04-decisions.md`/backlog rule 18: "a partner API that accepts it is a defect").
   costRateBps       Int      @default(7500)
+  // Reports platform (backlog 5.6a) — inventory report settings. `deadStockDays`: no sale in
+  // N days marks a SKU "dead". `targetCoverDays`: the reorder formula's target cover.
+  deadStockDays     Int      @default(60)
+  targetCoverDays   Int      @default(21)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 

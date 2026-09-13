@@ -28,6 +28,9 @@ const patchSchema = z
     handoverMethod: z.enum(HANDOVER_METHODS).optional(),
     serviceAreas: z.record(z.string(), z.array(z.string())).nullable().optional(),
     alertPrefs: z.record(z.string(), z.boolean()).nullable().optional(),
+    // Reports platform (backlog 5.6a) — inventory report settings.
+    deadStockDays: z.number().int().min(1).max(3650).optional(),
+    targetCoverDays: z.number().int().min(1).max(3650).optional(),
   })
   .strict();
 
@@ -41,6 +44,8 @@ function serialize(partner: {
   serviceAreas: unknown;
   alertPrefs: unknown;
   costRateBps: number;
+  deadStockDays: number;
+  targetCoverDays: number;
 }) {
   return {
     lowStockThreshold: partner.lowStockThreshold,
@@ -51,6 +56,8 @@ function serialize(partner: {
     handoverMethod: partner.handoverMethod,
     serviceAreas: partner.serviceAreas ?? null,
     alertPrefs: partner.alertPrefs ?? null,
+    deadStockDays: partner.deadStockDays,
+    targetCoverDays: partner.targetCoverDays,
     // Read-only account-with-the-factory block (backlog 5.1).
     costRateBps: partner.costRateBps,
     marginBps: 10_000 - partner.costRateBps,
@@ -68,6 +75,8 @@ const SETTINGS_SELECT = {
   serviceAreas: true,
   alertPrefs: true,
   costRateBps: true,
+  deadStockDays: true,
+  targetCoverDays: true,
 } as const;
 
 export async function GET() {

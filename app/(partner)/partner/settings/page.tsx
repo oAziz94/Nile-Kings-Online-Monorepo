@@ -434,6 +434,100 @@ function ThresholdsSection() {
   );
 }
 
+const inventoryReportSettingsSchema = z.object({
+  deadStockDays: z.string().refine((v) => /^\d+$/.test(v) && Number(v) >= 1, "رقم صحيح أكبر من صفر"),
+  targetCoverDays: z.string().refine((v) => /^\d+$/.test(v) && Number(v) >= 1, "رقم صحيح أكبر من صفر"),
+});
+type InventoryReportSettingsValues = z.infer<typeof inventoryReportSettingsSchema>;
+
+/**
+ * Reports platform (backlog 5.6a) — the two inventory-report settings: `deadStockDays`
+ * (no sale in N days marks a SKU "راكد") and `targetCoverDays` (the reorder formula's
+ * target cover). Same save-per-section pattern as `WorkingProfileSection`.
+ */
+function InventoryReportSettingsSection() {
+  const { toast } = useToast();
+  const { data, isLoading, isError, refetch, isFetching } = usePartnerSettings();
+  const update = useUpdatePartnerSettings();
+  const form = useForm<InventoryReportSettingsValues>({
+    resolver: zodResolver(inventoryReportSettingsSchema),
+    defaultValues: { deadStockDays: "60", targetCoverDays: "21" },
+  });
+
+  React.useEffect(() => {
+    if (data) {
+      form.reset({
+        deadStockDays: String(data.deadStockDays),
+        targetCoverDays: String(data.targetCoverDays),
+      });
+    }
+  }, [data, form]);
+
+  const onSubmit = async (values: InventoryReportSettingsValues) => {
+    try {
+      await update.mutateAsync({
+        deadStockDays: Number(values.deadStockDays),
+        targetCoverDays: Number(values.targetCoverDays),
+      });
+      toast({ title: "تم حفظ إعدادات تقرير المخزون" });
+      form.reset(values);
+    } catch (error) {
+      toast({ title: "تعذر الحفظ", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+    }
+  };
+
+  return (
+    <PanelCard
+      layout="split"
+      title="تقرير المخزون"
+      description="تستخدمها صفحة «تقرير المخزون» لحساب الراكد ومقترح إعادة الطلب."
+      icon={<Boxes className="h-4 w-4 text-ink-soft" />}
+    >
+      {isLoading ? (
+        <Skeleton className="h-24 w-full rounded-2xl" />
+      ) : isError ? (
+        <ErrorBlock onRetry={() => refetch()} isFetching={isFetching} />
+      ) : (
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="deadStockDays"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>الراكد = بلا بيع (يوم)</FormLabel>
+                    <FormControl>
+                      <Input type="number" inputMode="numeric" dir="ltr" min={1} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="targetCoverDays"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>هدف أيام التغطية</FormLabel>
+                    <FormControl>
+                      <Input type="number" inputMode="numeric" dir="ltr" min={1} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <Button type="submit" size="sm" disabled={update.isPending || !form.formState.isDirty}>
+              {update.isPending ? "جاري الحفظ…" : "حفظ"}
+            </Button>
+          </form>
+        </Form>
+      )}
+    </PanelCard>
+  );
+}
+
 function AlertsSection() {
   const { toast } = useToast();
   const { data, isLoading, isError, refetch, isFetching } = usePartnerSettings();
@@ -694,6 +788,7 @@ export default function PartnerSettingsPage() {
       <div className="flex flex-col gap-5">
         <WorkingProfileSection />
         <ThresholdsSection />
+        <InventoryReportSettingsSection />
         <AlertsSection />
         <AccountWithFactorySection />
         <ServiceAreasSection />

@@ -1,592 +1,255 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  AlertTriangle,
-  BarChart3,
-  Banknote,
-  CalendarRange,
-  CheckCircle2,
-  Download,
-  GitBranch,
-  Package,
-  ShoppingCart,
-  TrendingUp,
-} from "lucide-react";
-import { PageHeader, StatusBadge } from "@/components/dashboard/page-header";
+import * as React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Download } from "lucide-react";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
-import { KpiCard } from "@/components/dashboard/kpi-card";
-import { EmptyState } from "@/components/dashboard/empty-state";
-import { SearchInput } from "@/components/dashboard/search-input";
-import { TableScroll } from "@/components/dashboard/table-scroll";
-import { DataTable, type ColumnDef } from "@/components/ui/data-table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { TableCell } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  clampEndDate,
-  clampStartDate,
-  defaultReportRange,
-  rangeForPreset,
-  resolveEndWhenStartChanges,
-  todayIso,
-  type ReportRangePreset,
-} from "@/lib/analytics/date-range";
-import { getOrderStatusLabel } from "@/lib/constants/order-status";
+import { PartnerTopbarSlot } from "@/components/partner/partner-shell";
+import { ReportTabs } from "@/components/partner/reports/report-tabs";
+import { PeriodBar } from "@/components/partner/reports/period-bar";
+import { HeadlineTiles } from "@/components/partner/reports/headline-tiles";
+import { TrendChart } from "@/components/partner/reports/trend-chart";
+import { BreakdownTable } from "@/components/partner/reports/breakdown-table";
+import { ActionPanel } from "@/components/partner/reports/action-panel";
+import { formatNumberEn } from "@/lib/format-en-numbers";
 import { piastresToEgp } from "@/lib/catalog";
-import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
-import { cn } from "@/lib/utils";
-import type { SortingState } from "@tanstack/table-core";
+import type { SalesReportPreset } from "@/lib/analytics/partner-reports";
+import type { SalesReportResponse } from "@/lib/analytics/partner-sales-report";
 
-type Kpis = {
-  totalRevenuePiastres: number;
-  netMerchandisePiastres: number;
-  orderCount: number;
-  period: { from: string; to: string };
-};
+/**
+ * `/partner/reports/sales` (backlog 5.6a, `ReportSales.dc.html`) — the reports platform's
+ * representative/default family. Every number carries a period + comparison (rule 12).
+ */
 
-type RevenueBucket = {
-  period: string;
-  totalRevenuePiastres: number;
-  netMerchandisePiastres: number;
-  orderCount: number;
-};
-
-type ProductVariantRow = {
-  variantId: string;
-  productName: string;
-  variantName: string;
-  colorName: string | null;
-  sku: string;
-  pricePiastres: number;
-  quantitySold: number;
-  lineRevenuePiastres: number;
-  stockAvailable: number;
-  stockReserved: number;
-};
-
-type StockReportRow = {
-  variantId: string;
-  productName: string;
-  variantName: string;
-  colorName: string | null;
-  sku: string;
-  stockAvailable: number;
-  stockReserved: number;
-  sellable: number;
-  unitsSold30d: number;
-  dailyVelocity: number;
-  daysOfCover: number | null;
-  low: boolean;
-  out: boolean;
-};
-
-type OrderFunnelRow = {
-  status: string;
-  count: number;
-};
-
-type AnalyticsData = {
-  kpis: Kpis;
-  revenue: RevenueBucket[];
-  products: ProductVariantRow[];
-  stock: StockReportRow[];
-  funnel: OrderFunnelRow[];
-};
-
-const PRESETS: { id: ReportRangePreset; label: string }[] = [
-  { id: "7d", label: "آخر 7 أيام" },
-  { id: "30d", label: "آخر 30 يوم" },
+const PRESETS: { id: SalesReportPreset; label: string }[] = [
+  { id: "today", label: "اليوم" },
+  { id: "7d", label: "7 أيام" },
+  { id: "30d", label: "30 يومًا" },
   { id: "month", label: "هذا الشهر" },
-  { id: "all", label: "من البداية" },
+  { id: "lastMonth", label: "الشهر الماضي" },
+  { id: "custom", label: "مخصص" },
 ];
 
-const DATE_INPUT_CLASS =
-  "h-10 w-full min-w-[10.5rem] rounded-xl border border-stone-200 bg-white px-3 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500";
+const BREAKDOWN_TABS: { id: keyof SalesReportResponse["breakdowns"]; label: string }[] = [
+  { id: "product", label: "حسب المنتج" },
+  { id: "category", label: "حسب الفئة" },
+  { id: "governorate", label: "حسب المحافظة" },
+  { id: "payment", label: "حسب طريقة الدفع" },
+  { id: "day", label: "حسب اليوم" },
+];
 
-function matchesPreset(from: string, to: string, preset: ReportRangePreset): boolean {
-  const range = rangeForPreset(preset);
-  return from === range.from && to === range.to;
+async function fetchSalesReport(params: URLSearchParams): Promise<SalesReportResponse> {
+  const res = await fetch(`/api/partner/reports/sales?${params}`, { credentials: "include" });
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.data) throw new Error(json?.error?.message ?? "تعذر تحميل التقرير");
+  return json.data;
 }
 
-function ReportsSkeleton() {
+function DeltaCell({ current, previous }: { current: number; previous: number }) {
+  const diff = current - previous;
+  const pct = previous !== 0 ? (diff / Math.abs(previous)) * 100 : current > 0 ? 100 : 0;
+  const tone = diff > 0 ? "success" : diff < 0 ? "destructive" : "secondary";
   return (
-    <div className="space-y-8">
-      <Skeleton className="h-28 w-full rounded-2xl" />
-      <div className="grid gap-4 md:grid-cols-3">
-        <Skeleton className="h-36 rounded-2xl" />
-        <Skeleton className="h-36 rounded-2xl" />
-        <Skeleton className="h-36 rounded-2xl" />
-      </div>
-      <Skeleton className="h-64 rounded-2xl" />
-      <Skeleton className="h-64 rounded-2xl" />
-      <Skeleton className="h-64 rounded-2xl" />
-      <Skeleton className="h-96 rounded-2xl" />
-    </div>
+    <Badge variant={tone} className="gap-1">
+      <span dir="ltr">{diff === 0 ? "0%" : `${diff > 0 ? "+" : ""}${Math.round(pct)}%`}</span>
+    </Badge>
   );
 }
 
-function ExportButton({ onClick, label = "تصدير CSV" }: { onClick: () => void; label?: string }) {
-  return (
-    <Button variant="outline" size="sm" className="gap-1.5 rounded-xl border-dashed" onClick={onClick}>
-      <Download className="h-4 w-4" />
-      {label}
-    </Button>
-  );
-}
+export default function PartnerSalesReportPage() {
+  const [preset, setPreset] = React.useState<SalesReportPreset>("30d");
+  const [customRange, setCustomRange] = React.useState({ from: "", to: "" });
+  const [activeTab, setActiveTab] = React.useState<keyof SalesReportResponse["breakdowns"]>("product");
+  const [page, setPage] = React.useState(1);
 
-/** Order status -> pill variant, per the canvas's p-success/p-warning/p-info/p-neutral/carnelian legend. */
-const STATUS_PILL_VARIANT: Record<string, "success" | "warning" | "info" | "secondary" | "destructive"> = {
-  CREATED: "secondary",
-  CONFIRMED: "info",
-  PROCESSING: "warning",
-  READY_TO_SHIP: "info",
-  SHIPPED: "info",
-  DELIVERED: "success",
-  CANCELLED: "destructive",
-};
+  const params = new URLSearchParams({ preset, page: String(page) });
+  if (preset === "custom" && customRange.from && customRange.to) {
+    params.set("from", customRange.from);
+    params.set("to", customRange.to);
+  }
 
-function ErrorPanel({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div
-      role="alert"
-      className="flex flex-col items-center gap-3 rounded-[14px] border border-carnelian-500/30 bg-danger-bg p-8 text-center text-danger-text"
-    >
-      <AlertTriangle className="h-8 w-8" />
-      <p className="text-[15px] font-extrabold">{message}</p>
-      <p className="text-[13px] text-danger-text/80">هذا خطأ حقيقي في تحميل البيانات، وليس غياب بيانات في الفترة المحددة.</p>
-      <Button type="button" variant="outline" size="sm" className="mt-1 rounded-xl border-carnelian-500/40" onClick={onRetry}>
-        إعادة المحاولة
-      </Button>
-    </div>
-  );
-}
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: ["partner-reports-sales", preset, customRange.from, customRange.to, page],
+    queryFn: () => fetchSalesReport(params),
+    enabled: preset !== "custom" || Boolean(customRange.from && customRange.to),
+  });
 
-function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div
-      role="alert"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-carnelian-500/30 bg-danger-bg px-4 py-3 text-danger-text"
-    >
-      <p className="flex items-center gap-2 text-sm font-bold">
-        <AlertTriangle className="h-4 w-4 shrink-0" />
-        {message}
-      </p>
-      <Button type="button" variant="outline" size="sm" className="rounded-lg border-carnelian-500/40" onClick={onRetry}>
-        إعادة المحاولة
-      </Button>
-    </div>
-  );
-}
-
-export default function PartnerReportsPage() {
-  const initialRange = defaultReportRange();
-  const [data, setData] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [from, setFrom] = useState(initialRange.from);
-  const [to, setTo] = useState(initialRange.to);
-  const [granularity, setGranularity] = useState<"day" | "week" | "month">("day");
-  const [productSearch, setProductSearch] = useState("");
-  const [stockSorting, setStockSorting] = useState<SortingState>([]);
-  const today = todayIso();
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams({ section: "all", granularity });
-    if (from) params.set("from", from);
-    if (to) params.set("to", to);
-    try {
-      const res = await fetch(`/api/partner/analytics?${params}`, { credentials: "include" });
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.success || !json?.data) {
-        setError(json?.error?.message ?? "تعذر تحميل التقارير. حاول مرة أخرى.");
-        setLoading(false);
-        return;
-      }
-      setData(json.data);
-      setError(null);
-      setLoading(false);
-    } catch {
-      setError("تعذر الاتصال بالخادم. تحقق من الاتصال وحاول مرة أخرى.");
-      setLoading(false);
+  const exportCsv = (breakdown: string) => {
+    const p = new URLSearchParams({ preset, format: "csv", breakdown });
+    if (preset === "custom" && customRange.from && customRange.to) {
+      p.set("from", customRange.from);
+      p.set("to", customRange.to);
     }
-  }, [from, to, granularity]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleFromChange = (value: string) => {
-    const newFrom = clampStartDate(value);
-    setFrom(newFrom);
-    setTo(resolveEndWhenStartChanges(newFrom, from, to));
+    window.open(`/api/partner/reports/sales?${p}`, "_blank");
   };
-
-  const handleToChange = (value: string) => {
-    setTo(clampEndDate(value, from));
-  };
-
-  const applyPreset = (preset: ReportRangePreset) => {
-    const range = rangeForPreset(preset);
-    setFrom(range.from);
-    setTo(range.to);
-  };
-
-  const exportCsv = (report: "summary" | "revenue" | "products" | "stock" | "funnel") => {
-    const params = new URLSearchParams({ report });
-    if (from) params.set("from", from);
-    if (to) params.set("to", to);
-    if (report === "revenue" || report === "funnel") params.set("granularity", granularity);
-    window.open(`/api/partner/analytics/export?${params}`, "_blank");
-  };
-
-  const kpis = data?.kpis;
-  const revenue = data?.revenue ?? [];
-  const products = data?.products ?? [];
-  const stock = data?.stock ?? [];
-  const funnel = data?.funnel ?? [];
-  const maxRevenue = useMemo(() => Math.max(...revenue.map((row) => row.totalRevenuePiastres), 1), [revenue]);
-  const maxFunnel = useMemo(() => Math.max(...funnel.map((row) => row.count), 1), [funnel]);
-  const soldCount = useMemo(() => products.filter((row) => row.quantitySold > 0).length, [products]);
-  const lowOrOutCount = useMemo(() => stock.filter((row) => row.low || row.out).length, [stock]);
-  const filteredProducts = useMemo(() => {
-    const q = productSearch.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter(
-      (row) =>
-        row.productName.toLowerCase().includes(q) ||
-        row.variantName.toLowerCase().includes(q) ||
-        row.sku.toLowerCase().includes(q) ||
-        (row.colorName?.toLowerCase().includes(q) ?? false)
-    );
-  }, [productSearch, products]);
-
-  const stockColumns = useMemo<ColumnDef<StockReportRow, unknown>[]>(
-    () => [
-      {
-        id: "productName",
-        header: "المنتج",
-        accessorKey: "productName",
-        enableSorting: true,
-        cell: ({ row }) => (
-          <div>
-            <p className="font-semibold text-ink">{row.original.productName}</p>
-            <p className="text-xs text-ink-soft">
-              {row.original.variantName}
-              {row.original.colorName ? ` · ${row.original.colorName}` : ""}
-            </p>
-          </div>
-        ),
-      },
-      {
-        id: "sku",
-        header: "SKU",
-        accessorKey: "sku",
-        enableSorting: true,
-        cell: ({ getValue }) => <span dir="ltr" className="font-mono text-xs text-ink-soft">{getValue() as string}</span>,
-      },
-      {
-        id: "sellable",
-        header: "قابل للبيع",
-        accessorKey: "sellable",
-        enableSorting: true,
-        cell: ({ row }) => (
-          <div className="text-center">
-            <p className="font-semibold text-ink">{formatNumberEn(row.original.sellable)}</p>
-            <p className="text-[11px] text-ink-soft">
-              {formatNumberEn(row.original.stockAvailable)} متاح · {formatNumberEn(row.original.stockReserved)} محجوز
-            </p>
-          </div>
-        ),
-      },
-      {
-        id: "unitsSold30d",
-        header: "مباع (30 يوم)",
-        accessorKey: "unitsSold30d",
-        enableSorting: true,
-        cell: ({ getValue }) => <span className="text-center block">{formatNumberEn(getValue() as number)}</span>,
-      },
-      {
-        id: "dailyVelocity",
-        header: "السرعة اليومية",
-        accessorKey: "dailyVelocity",
-        enableSorting: true,
-        cell: ({ getValue }) => <span className="text-center block">{formatNumberEn(Number((getValue() as number).toFixed(2)))}</span>,
-      },
-      {
-        id: "daysOfCover",
-        header: "أيام التغطية",
-        accessorKey: "daysOfCover",
-        enableSorting: true,
-        cell: ({ getValue }) => {
-          const v = getValue() as number | null;
-          return <span className="text-center block">{v === null ? "-" : formatNumberEn(Number(v.toFixed(1)))}</span>;
-        },
-      },
-      {
-        id: "status",
-        header: "الحالة",
-        cell: ({ row }) => {
-          const { low, out } = row.original;
-          if (out) return <Badge variant="destructive" className="gap-1">نفد</Badge>;
-          if (low) return <Badge variant="warning" className="gap-1">منخفض</Badge>;
-          return <Badge variant="success" className="gap-1">جيد</Badge>;
-        },
-      },
-    ],
-    []
-  );
-
-  if (loading && !data) {
-    return (
-      <div>
-        <h1 className="mb-6 text-2xl font-extrabold text-ink">التقارير</h1>
-        <ReportsSkeleton />
-      </div>
-    );
-  }
-
-  if (error && !data) {
-    return (
-      <div>
-        <PageHeader title="التقارير" description="ملخص الإيرادات والمبيعات للطلبات المُسلَّمة والمسندة لك فقط." />
-        <ErrorPanel message={error} onRetry={fetchData} />
-      </div>
-    );
-  }
 
   return (
-    <div className={cn("space-y-8 transition-opacity", loading && data && "opacity-70")}>
-      <PageHeader
-        title="التقارير"
-        badge={
-          <StatusBadge>
-            <CheckCircle2 className="h-3 w-3" />
-            تم التسليم فقط
-          </StatusBadge>
-        }
-        description="ملخص الإيرادات والمبيعات ومسار الطلبات للطلبات المسندة لك فقط."
-        meta={
-          kpis && (
-            <span>
-              <span className="font-semibold text-ink">الفترة المعروضة:</span>{" "}
-              {formatDateEn(kpis.period.from)} - {formatDateEn(kpis.period.to)}
-            </span>
-          )
-        }
-      />
+    <div>
+      <PartnerTopbarSlot>
+        <ReportTabs />
+      </PartnerTopbarSlot>
 
-      {error && data && <ErrorBanner message={error} onRetry={fetchData} />}
+      <PageHeader title="تقرير المبيعات" description="التقارير · المبيعات" />
 
-      <PanelCard
-        title="فترة التقرير"
-        icon={<CalendarRange className="h-4 w-4 text-lapis-800" />}
-        className="border-stone-200"
-      >
-        <div className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="space-y-1.5">
-              <Label htmlFor="partner-report-from" className="text-xs text-ink-soft">من</Label>
-              <input id="partner-report-from" type="date" className={DATE_INPUT_CLASS} value={from} max={to || today} onChange={(e) => handleFromChange(e.target.value)} />
-            </label>
-            <label className="space-y-1.5">
-              <Label htmlFor="partner-report-to" className="text-xs text-ink-soft">إلى</Label>
-              <input id="partner-report-to" type="date" className={DATE_INPUT_CLASS} value={to} min={from} max={today} onChange={(e) => handleToChange(e.target.value)} />
-            </label>
-            <label className="space-y-1.5">
-              <Label htmlFor="partner-report-granularity" className="text-xs text-ink-soft">التجميع</Label>
-              <select id="partner-report-granularity" className={DATE_INPUT_CLASS} value={granularity} onChange={(e) => setGranularity(e.target.value as "day" | "week" | "month")}>
-                <option value="day">يومي</option>
-                <option value="week">أسبوعي</option>
-                <option value="month">شهري</option>
-              </select>
-            </label>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {PRESETS.map(({ id, label }) => (
-              <Button key={id} type="button" variant={matchesPreset(from, to, id) ? "default" : "outline"} size="sm" className="h-8 rounded-full px-3 text-xs" onClick={() => applyPreset(id)}>
-                {label}
-              </Button>
+      <div className="flex flex-col gap-5">
+        <PeriodBar
+          presets={PRESETS}
+          preset={preset}
+          onPresetChange={(p) => {
+            setPreset(p);
+            setPage(1);
+          }}
+          from={customRange.from}
+          to={customRange.to}
+          onCustomRangeChange={setCustomRange}
+          comparisonLabel={data?.comparisonLabel}
+          toolbar={
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={() => exportCsv(activeTab)}>
+              <Download className="h-3.5 w-3.5" />
+              CSV
+            </Button>
+          }
+        />
+
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 rounded-2xl" />
             ))}
           </div>
-        </div>
-      </PanelCard>
+        ) : isError || !data ? (
+          <div role="alert" className="rounded-xl border border-carnelian-500/30 bg-danger-bg p-4 text-danger-text">
+            <p className="text-sm font-bold">تعذر تحميل التقرير.</p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => refetch()}>
+              إعادة المحاولة
+            </Button>
+          </div>
+        ) : (
+          <>
+            <HeadlineTiles headline={data.headline} higherIsBetter={{ cancellationRate: false }} />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <KpiCard title="إجمالي الإيراد" value={kpis ? `${formatNumberEn(piastresToEgp(kpis.totalRevenuePiastres))} ج.م` : "-"} hint="شامل الشحن ورسوم COD" icon={<TrendingUp className="h-5 w-5" />} accent="burgundy" loading={loading} footer={<Button variant="link" size="sm" className="mt-2 h-auto p-0 text-xs text-lapis-800" onClick={() => exportCsv("summary")}><Download className="ml-1 h-3 w-3" />تصدير الملخص</Button>} />
-        <KpiCard title="صافي المنتجات" value={kpis ? `${formatNumberEn(piastresToEgp(kpis.netMerchandisePiastres))} ج.م` : "-"} hint="بعد الخصومات، بدون الشحن ورسوم COD" icon={<Banknote className="h-5 w-5" />} accent="gold" loading={loading} />
-        <KpiCard title="طلبات مُسلَّمة" value={kpis ? formatNumberEn(kpis.orderCount) : "-"} hint="عدد طلباتك في الفترة" icon={<ShoppingCart className="h-5 w-5" />} accent="emerald" loading={loading} />
-      </div>
-
-      <PanelCard
-        title="الإيرادات عبر الزمن"
-        description="مقارنة الإيراد الكلي وصافي المنتجات حسب الفترة"
-        icon={<BarChart3 className="h-4 w-4 text-lapis-800" />}
-        toolbar={<ExportButton onClick={() => exportCsv("revenue")} />}
-        noPadding
-      >
-        {revenue.length > 0 ? (
-          <div className="space-y-6 p-4 sm:p-[22px]">
-            <div className="flex items-end gap-1 overflow-x-auto pb-2 pt-1">
-              {revenue.map((row) => {
-                const height = Math.max(8, Math.round((row.totalRevenuePiastres / maxRevenue) * 120));
-                return (
-                  <div key={row.period} className="flex min-w-[2.5rem] flex-1 flex-col items-center gap-2">
-                    <div className="w-full max-w-[3rem] rounded-t-lg bg-gradient-to-t from-lapis-800 to-gold-500" style={{ height: `${height}px` }} />
-                    <span className="max-w-[3.5rem] truncate text-center text-[10px] text-ink-soft">{row.period}</span>
-                  </div>
-                );
-              })}
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+              <PanelCard title="الإيراد اليومي" description="الخط الباهت هو الفترة السابقة">
+                {data.series[0] ? (
+                  <TrendChart series={data.series[0]} unit="piastres" />
+                ) : (
+                  <p className="text-sm text-ink-soft">لا توجد بيانات.</p>
+                )}
+              </PanelCard>
+              <PanelCard title="ما يستحق فعلًا" description="مستنتج من هذا التقرير">
+                <ActionPanel actions={data.actions} />
+              </PanelCard>
             </div>
-            <TableScroll>
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-stone-100 hover:bg-stone-100">
-                    <TableHead className="text-xs font-extrabold text-ink-soft">الفترة</TableHead>
-                    <TableHead className="text-xs font-extrabold text-ink-soft">إجمالي الإيراد</TableHead>
-                    <TableHead className="text-xs font-extrabold text-ink-soft">صافي المنتجات</TableHead>
-                    <TableHead className="text-center text-xs font-extrabold text-ink-soft">الطلبات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {revenue.map((row) => (
-                    <TableRow key={row.period} className="border-stone-200">
-                      <TableCell className="font-medium text-ink">{row.period}</TableCell>
-                      <TableCell className="text-ink">{formatNumberEn(piastresToEgp(row.totalRevenuePiastres))}</TableCell>
-                      <TableCell className="text-ink">{formatNumberEn(piastresToEgp(row.netMerchandisePiastres))}</TableCell>
-                      <TableCell className="text-center"><Badge variant="secondary">{row.orderCount}</Badge></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableScroll>
-          </div>
-        ) : (
-          <EmptyState icon={<BarChart3 className="h-8 w-8" strokeWidth={1.5} />} title="لا توجد بيانات في الفترة المحددة." className="m-4 sm:m-[22px]" />
-        )}
-      </PanelCard>
 
-      <PanelCard
-        title="تقرير المخزون"
-        description="السرعة اليومية وأيام التغطية محسوبة على مبيعات آخر 30 يومًا، بصرف النظر عن الفترة المختارة أعلاه."
-        icon={<Package className="h-4 w-4 text-lapis-800" />}
-        toolbar={<ExportButton onClick={() => exportCsv("stock")} />}
-        noPadding
-      >
-        <div className="border-b border-stone-200 px-4 py-3 text-xs text-ink-soft sm:px-[22px]">
-          {formatNumberEn(stock.length)} متغير · {formatNumberEn(lowOrOutCount)} منخفض أو نافد
-        </div>
-        <div className="p-4 sm:p-[22px]">
-          <DataTable
-            columns={stockColumns}
-            data={stock}
-            getRowId={(row) => row.variantId}
-            sorting={stockSorting}
-            onSortingChange={setStockSorting}
-            emptyTitle="لا توجد منتجات نشطة."
-            emptyIcon={<Package className="h-8 w-8" strokeWidth={1.5} />}
-          />
-        </div>
-      </PanelCard>
-
-      <PanelCard
-        title="مسار الطلبات"
-        description="عدد الطلبات المسندة لك حسب حالتها الحالية، في الفترة المحددة (يشمل الملغاة)."
-        icon={<GitBranch className="h-4 w-4 text-lapis-800" />}
-        toolbar={<ExportButton onClick={() => exportCsv("funnel")} />}
-      >
-        {funnel.some((row) => row.count > 0) ? (
-          <div className="space-y-3">
-            {funnel.map((row) => {
-              const width = Math.max(2, Math.round((row.count / maxFunnel) * 100));
-              const variant = STATUS_PILL_VARIANT[row.status] ?? "secondary";
-              return (
-                <div key={row.status} className="flex items-center gap-3">
-                  <Badge variant={variant} className="w-28 shrink-0 justify-center gap-1">
-                    {getOrderStatusLabel(row.status)}
-                  </Badge>
-                  <div className="h-3 flex-1 overflow-hidden rounded-full bg-stone-100">
-                    <div
-                      className={cn(
-                        "h-full rounded-full",
-                        row.status === "CANCELLED" ? "bg-carnelian-500" : "bg-lapis-800"
-                      )}
-                      style={{ width: `${width}%` }}
-                    />
-                  </div>
-                  <span className="w-10 shrink-0 text-left text-sm font-bold text-ink">{formatNumberEn(row.count)}</span>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <EmptyState icon={<GitBranch className="h-8 w-8" strokeWidth={1.5} />} title="لا توجد طلبات في الفترة المحددة." />
-        )}
-      </PanelCard>
-
-      <PanelCard
-        title="المنتجات والمتغيرات"
-        description={`${formatNumberEn(products.length)} متغير · ${formatNumberEn(soldCount)} بمبيعات في الفترة`}
-        icon={<Package className="h-4 w-4 text-lapis-800" />}
-        toolbar={
-          <div className="flex flex-wrap items-center gap-2">
-            <SearchInput value={productSearch} onChange={setProductSearch} placeholder="بحث منتج، مقاس، SKU..." />
-            <ExportButton onClick={() => exportCsv("products")} />
-          </div>
-        }
-        noPadding
-      >
-        {filteredProducts.length > 0 ? (
-          <div className="max-h-[32rem] overflow-auto">
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-stone-100">
-                <TableRow className="bg-stone-100 hover:bg-stone-100">
-                  <TableHead className="text-xs font-extrabold text-ink-soft">المنتج</TableHead>
-                  <TableHead className="text-xs font-extrabold text-ink-soft">المقاس</TableHead>
-                  <TableHead className="text-xs font-extrabold text-ink-soft">اللون</TableHead>
-                  <TableHead className="text-xs font-extrabold text-ink-soft">SKU</TableHead>
-                  <TableHead className="text-xs font-extrabold text-ink-soft">السعر</TableHead>
-                  <TableHead className="text-center text-xs font-extrabold text-ink-soft">مباع</TableHead>
-                  <TableHead className="text-xs font-extrabold text-ink-soft">إيراد البنود</TableHead>
-                  <TableHead className="text-center text-xs font-extrabold text-ink-soft">متبقي</TableHead>
-                  <TableHead className="text-center text-xs font-extrabold text-ink-soft">محجوز</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProducts.map((row) => (
-                  <TableRow key={row.variantId} className={cn("border-stone-200", row.quantitySold > 0 && "bg-malachite-bg/40")}>
-                    <TableCell className="font-medium text-ink">{row.productName}</TableCell>
-                    <TableCell className="text-ink">{row.variantName}</TableCell>
-                    <TableCell className="text-ink-soft">{row.colorName ?? "-"}</TableCell>
-                    <TableCell dir="ltr" className="font-mono text-xs text-ink-soft">{row.sku}</TableCell>
-                    <TableCell className="text-ink">{formatNumberEn(piastresToEgp(row.pricePiastres))}</TableCell>
-                    <TableCell className="text-center">{row.quantitySold > 0 ? <Badge variant="success">{row.quantitySold}</Badge> : <span className="text-ink-soft">0</span>}</TableCell>
-                    <TableCell className="text-ink">{row.lineRevenuePiastres > 0 ? `${formatNumberEn(piastresToEgp(row.lineRevenuePiastres))} ج.م` : "-"}</TableCell>
-                    <TableCell className="text-center"><Badge variant={row.stockAvailable === 0 ? "destructive" : "outline"}>{row.stockAvailable}</Badge></TableCell>
-                    <TableCell className="text-center text-ink-soft">{row.stockReserved}</TableCell>
-                  </TableRow>
+            <PanelCard title="التفصيل" noPadding>
+              <div className="flex gap-1 overflow-x-auto border-b border-stone-200 px-4 sm:px-5">
+                {BREAKDOWN_TABS.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(t.id);
+                      setPage(1);
+                    }}
+                    className={
+                      "shrink-0 border-b-2 px-3.5 py-2.5 text-[13px] font-bold transition-colors " +
+                      (activeTab === t.id ? "border-gold-500 text-lapis-800" : "border-transparent text-ink-soft hover:text-ink")
+                    }
+                  >
+                    {t.label}
+                  </button>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <EmptyState
-            icon={<Package className="h-8 w-8" strokeWidth={1.5} />}
-            title={productSearch.trim() ? "لا توجد نتائج للبحث." : "لا توجد منتجات نشطة."}
-            className="m-4 sm:m-[22px]"
-          />
+              </div>
+              <div className={isFetching ? "opacity-70" : undefined}>
+                {activeTab === "product" && (
+                  <BreakdownTable
+                    page={data.breakdowns.product}
+                    columns={["المنتج", "القطع", "الإيراد", "مقارنة بالفترة السابقة", "حصة الإيراد"]}
+                    rowKey={(r) => r.variantId}
+                    onPageChange={setPage}
+                    renderRow={(r) => (
+                      <>
+                        <TableCell className="font-semibold text-ink">{r.productName}</TableCell>
+                        <TableCell dir="ltr" className="text-ink">{formatNumberEn(r.units)}</TableCell>
+                        <TableCell dir="ltr" className="font-bold text-ink">{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
+                        <TableCell><DeltaCell current={r.revenuePiastres} previous={r.previousRevenuePiastres} /></TableCell>
+                        <TableCell dir="ltr" className="text-ink-soft">{r.revenueSharePct.toFixed(0)}%</TableCell>
+                      </>
+                    )}
+                  />
+                )}
+                {activeTab === "category" && (
+                  <BreakdownTable
+                    page={data.breakdowns.category}
+                    columns={["الفئة", "القطع", "الإيراد", "الطلبات"]}
+                    rowKey={(r) => r.key}
+                    onPageChange={setPage}
+                    renderRow={(r) => (
+                      <>
+                        <TableCell className="font-semibold text-ink">{r.label}</TableCell>
+                        <TableCell dir="ltr" className="text-ink">{formatNumberEn(r.units)}</TableCell>
+                        <TableCell dir="ltr" className="font-bold text-ink">{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
+                        <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.orderCount)}</TableCell>
+                      </>
+                    )}
+                  />
+                )}
+                {activeTab === "governorate" && (
+                  <BreakdownTable
+                    page={data.breakdowns.governorate}
+                    columns={["المحافظة", "الإيراد", "الطلبات", "نسبة الإلغاء"]}
+                    rowKey={(r) => r.key}
+                    onPageChange={setPage}
+                    renderRow={(r) => (
+                      <>
+                        <TableCell className="font-semibold text-ink">{r.label}</TableCell>
+                        <TableCell dir="ltr" className="font-bold text-ink">{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
+                        <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.orderCount)}</TableCell>
+                        <TableCell dir="ltr" className="text-ink-soft">{r.cancellationRatePct.toFixed(1)}%</TableCell>
+                      </>
+                    )}
+                  />
+                )}
+                {activeTab === "payment" && (
+                  <BreakdownTable
+                    page={data.breakdowns.payment}
+                    columns={["طريقة الدفع", "الإيراد", "الطلبات"]}
+                    rowKey={(r) => r.key}
+                    onPageChange={setPage}
+                    renderRow={(r) => (
+                      <>
+                        <TableCell className="font-semibold text-ink">{r.label}</TableCell>
+                        <TableCell dir="ltr" className="font-bold text-ink">{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
+                        <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.orderCount)}</TableCell>
+                      </>
+                    )}
+                  />
+                )}
+                {activeTab === "day" && (
+                  <BreakdownTable
+                    page={data.breakdowns.day}
+                    columns={["اليوم", "الإيراد", "الطلبات"]}
+                    rowKey={(r) => r.date}
+                    onPageChange={setPage}
+                    renderRow={(r) => (
+                      <>
+                        <TableCell className="font-semibold text-ink" dir="ltr">{r.date}</TableCell>
+                        <TableCell dir="ltr" className="font-bold text-ink">{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
+                        <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.orderCount)}</TableCell>
+                      </>
+                    )}
+                  />
+                )}
+              </div>
+            </PanelCard>
+          </>
         )}
-      </PanelCard>
+      </div>
     </div>
   );
 }
