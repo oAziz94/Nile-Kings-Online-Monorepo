@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { OrderStatus, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/api/response";
@@ -11,17 +11,16 @@ import {
   parsePaymentMethod,
   resolveOrderCheckoutAddress,
 } from "@/lib/admin/order-create";
+import { ORDER_STAGE_STATUSES, parseStage, stageWhereClause } from "@/lib/admin/orders-list";
+import { computeOrderSla, SLA_ELIGIBLE_STATUSES, type PartnerSlaHours } from "@/lib/orders/order-sla";
+import { findOverdueAssignedOrders } from "@/lib/partner/today";
 
-const ORDER_STATUSES: OrderStatus[] = [
-  "CREATED",
-  "CONFIRMED",
-  "PROCESSING",
-  "READY_TO_SHIP",
-  "SHIPPED",
-  "DELIVERED",
-  "CANCELLED",
-];
-
+/**
+ * GET /api/admin/orders — the network-wide pipeline (backlog 9.3 b): additive filters over
+ * the v1 route (`partner=<id>|none`, `governorate`, `payment`, `overdue=1`, `days=7|30`),
+ * `stage` (an `OrderStatus` or the pseudo-stage `UNASSIGNED`, `lib/admin/orders-list.ts`),
+ * per-stage `counts` respecting every other filter, and `assignedPartner` per row.
+ */
 export async function GET(req: NextRequest) {
   try {
     await requireAdmin();
@@ -32,15 +31,21 @@ export async function GET(req: NextRequest) {
     throw e;
   }
   const { searchParams } = new URL(req.url);
-  const statusParam = searchParams.get("status") ?? undefined;
-  const status =
-    statusParam && ORDER_STATUSES.includes(statusParam as OrderStatus)
-      ? (statusParam as OrderStatus)
-      : undefined;
+  const stage = parseStage(searchParams.get("stage") ?? searchParams.get("status"));
   const qRaw = (searchParams.get("q") ?? "").trim().slice(0, 100);
   const q = qRaw.length > 0 ? qRaw : undefined;
+  const partnerParam = (searchParams.get("partner") ?? "").trim() || undefined;
+  const governorate = (searchParams.get("governorate") ?? "").trim() || undefined;
+  const payment = (searchParams.get("payment") ?? "").trim() || undefined;
+  const overdueOnly = (searchParams.get("overdue") ?? "").trim() === "1";
+  const daysParam = (searchParams.get("days") ?? "").trim();
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10) || 20));
   const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0", 10) || 0);
+
+  const createdAtRange: Prisma.DateTimeFilter | undefined =
+    daysParam === "7" || daysParam === "30"
+      ? { gte: new Date(Date.now() - Number(daysParam) * 24 * 3_600_000) }
+      : undefined;
 
   const searchWhere: Prisma.OrderWhereInput | undefined = q
     ? {
@@ -62,12 +67,27 @@ export async function GET(req: NextRequest) {
     }
     : undefined;
 
-  const where: Prisma.OrderWhereInput = {
-    ...(status ? { status } : {}),
+  // Every filter except the stage tab itself — reused for the tab counts (rule: a tab never
+  // advertises more orders than the list will show for the filters currently in effect).
+  const baseWhere: Prisma.OrderWhereInput = {
+    ...(partnerParam === "none" ? { assignedPartnerId: null } : partnerParam ? { assignedPartnerId: partnerParam } : {}),
+    ...(governorate ? { shippingAddress: { path: ["governorate"], equals: governorate } } : {}),
+    ...(payment ? { paymentMethod: payment } : {}),
+    ...(createdAtRange ? { createdAt: createdAtRange } : {}),
     ...(searchWhere ?? {}),
   };
 
-  const [orders, total] = await Promise.all([
+  let countsWhere: Prisma.OrderWhereInput = baseWhere;
+  if (overdueOnly) {
+    const overdueRows = await findOverdueAssignedOrders(
+      partnerParam && partnerParam !== "none" ? { partnerId: partnerParam } : {}
+    );
+    countsWhere = { ...baseWhere, id: { in: overdueRows.map((r) => r.id) } };
+  }
+
+  const where: Prisma.OrderWhereInput = { ...countsWhere, ...stageWhereClause(stage) };
+
+  const [orders, total, statusGroups, unassignedCount, allCount] = await Promise.all([
     prisma.order.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -76,12 +96,56 @@ export async function GET(req: NextRequest) {
       include: {
         user: { select: { id: true, phone: true, name: true } },
         items: { select: { id: true, productName: true, variantName: true, quantity: true, totalPiastres: true } },
+        assignedPartner: { select: { id: true, name: true, confirmSlaHours: true, shipSlaHours: true } },
       },
     }),
     prisma.order.count({ where }),
+    prisma.order.groupBy({ by: ["status"], where: countsWhere, _count: { _all: true } }),
+    prisma.order.count({ where: { ...countsWhere, ...stageWhereClause("UNASSIGNED") } }),
+    prisma.order.count({ where: countsWhere }),
   ]);
 
-  return apiSuccess({ orders, total, limit, offset });
+  const orderIds = orders.map((o) => o.id);
+  const latestRows = orderIds.length
+    ? await prisma.orderAuditLog.groupBy({
+        by: ["orderId"],
+        where: { orderId: { in: orderIds }, event: { in: ["status_change", "confirmed"] } },
+        _max: { createdAt: true },
+      })
+    : [];
+  const latestMap = new Map(latestRows.map((r) => [r.orderId, r._max.createdAt]));
+
+  const now = new Date();
+  const rows = orders.map((o) => {
+    const itemCount = o.items.reduce((sum, i) => sum + i.quantity, 0);
+    const since = latestMap.get(o.id) ?? o.createdAt;
+    let overdue = false;
+    if (
+      o.assignedPartner &&
+      (SLA_ELIGIBLE_STATUSES as readonly string[]).includes(o.status)
+    ) {
+      const sla: PartnerSlaHours = {
+        confirmSlaHours: o.assignedPartner.confirmSlaHours,
+        shipSlaHours: o.assignedPartner.shipSlaHours,
+      };
+      const result = computeOrderSla({ status: o.status, since, partner: sla, now });
+      overdue = result.applicable && result.overdue;
+    }
+    return {
+      ...o,
+      items: undefined,
+      itemCount,
+      statusSince: since,
+      overdue,
+      assignedPartner: o.assignedPartner ? { id: o.assignedPartner.id, name: o.assignedPartner.name } : null,
+    };
+  });
+
+  const counts: Record<string, number> = Object.fromEntries(ORDER_STAGE_STATUSES.map((s) => [s, 0]));
+  for (const g of statusGroups) counts[g.status] = g._count._all;
+  counts.UNASSIGNED = unassignedCount;
+
+  return apiSuccess({ orders: rows, total, limit, offset, counts, allCount });
 }
 
 export async function POST(req: NextRequest) {
