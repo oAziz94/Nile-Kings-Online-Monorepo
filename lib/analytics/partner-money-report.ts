@@ -17,10 +17,12 @@ import { prisma } from "@/lib/db";
 import { getPartnerCostRate } from "@/lib/partner/cost-rate";
 import { netMerchandisePiastres } from "./queries";
 import {
+  attachPreviousAndDelta,
   computeDelta,
   formatComparisonLabel,
   periodToDateRange,
   resolvePeriod,
+  type Delta,
   type MoneyReportPreset,
   type PartnerReportResponse,
   type ReportAction,
@@ -57,7 +59,15 @@ export type PaymentRow = {
   stockReceiptReference: string | null;
 };
 
-export type CollectedByMethodRow = { key: string; label: string; amountPiastres: number; orderCount: number };
+export type CollectedByMethodRow = {
+  key: string;
+  label: string;
+  amountPiastres: number;
+  orderCount: number;
+  /** 7.4 — previous-period collected amount for the same method, over `period.previous`. */
+  previousPiastres: number;
+  delta: Delta;
+};
 export type CollectedByWeekPoint = { weekStart: string; amountPiastres: number };
 
 export type MoneyReportBreakdowns = {
@@ -168,7 +178,7 @@ export async function getPartnerMoneyReport(
     }),
     prisma.order.findMany({
       where: { assignedPartnerId: partnerId, status: "DELIVERED", createdAt: { gte: previousRange.from, lte: previousRange.to } },
-      select: { totalPiastres: true },
+      select: { totalPiastres: true, paymentMethod: true },
     }),
     prisma.order.aggregate({
       where: { assignedPartnerId: partnerId, paymentMethod: "COD", status: "SHIPPED" },
@@ -277,7 +287,7 @@ export async function getPartnerMoneyReport(
   ];
 
   // --- collected by method (current period, delivered) ---
-  const methodMap = new Map<string, CollectedByMethodRow>();
+  const methodMap = new Map<string, { key: string; label: string; amountPiastres: number; orderCount: number }>();
   for (const o of currentDelivered) {
     const key = o.paymentMethod;
     const row = methodMap.get(key) ?? { key, label: PAYMENT_METHOD_LABELS[key] ?? key, amountPiastres: 0, orderCount: 0 };
@@ -285,7 +295,18 @@ export async function getPartnerMoneyReport(
     row.orderCount += 1;
     methodMap.set(key, row);
   }
-  const methodRows = Array.from(methodMap.values()).sort((a, b) => b.amountPiastres - a.amountPiastres);
+  const methodRowsBase = Array.from(methodMap.values()).sort((a, b) => b.amountPiastres - a.amountPiastres);
+  const prevMethodMap = new Map<string, number>();
+  for (const o of previousDelivered) {
+    prevMethodMap.set(o.paymentMethod, (prevMethodMap.get(o.paymentMethod) ?? 0) + o.totalPiastres);
+  }
+  const methodRows: CollectedByMethodRow[] = attachPreviousAndDelta(
+    methodRowsBase,
+    (r) => r.key,
+    (r) => r.amountPiastres,
+    prevMethodMap,
+    { previousKey: "previousPiastres", deltaKey: "delta" }
+  );
 
   // --- collected by week (whole period, current) ---
   const weekMap = new Map<string, number>();

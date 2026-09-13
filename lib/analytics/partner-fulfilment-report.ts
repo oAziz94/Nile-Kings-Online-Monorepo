@@ -12,11 +12,13 @@
 import { prisma } from "@/lib/db";
 import { isOrderOverdue, type OverdueStatus } from "@/lib/partner/today";
 import {
+  attachPreviousAndDelta,
   computeDelta,
   formatComparisonLabel,
   median,
   periodToDateRange,
   resolvePeriod,
+  type Delta,
   type PartnerReportResponse,
   type ReportAction,
   type ReportBreakdownPage,
@@ -139,7 +141,14 @@ export type SlowestOrderRow = {
   hoursToShip: number | null;
 };
 
-export type CancellationReasonRow = { key: string; label: string; count: number };
+export type CancellationReasonRow = {
+  key: string;
+  label: string;
+  count: number;
+  /** 7.4 — previous-period count of the same reason, over `period.previous`. */
+  previousCount: number;
+  countDelta: Delta;
+};
 
 export type FulfilmentReportBreakdowns = {
   slowest: ReportBreakdownPage<SlowestOrderRow>;
@@ -264,9 +273,22 @@ export async function getPartnerFulfilmentReport(
     const key = o.cancellationReason?.trim() || "غير محدد";
     reasonMap.set(key, (reasonMap.get(key) ?? 0) + 1);
   }
-  const reasonRows: CancellationReasonRow[] = Array.from(reasonMap.entries())
+  const prevReasonMap = new Map<string, number>();
+  for (const o of previousOrders) {
+    if (o.status !== "CANCELLED") continue;
+    const key = o.cancellationReason?.trim() || "غير محدد";
+    prevReasonMap.set(key, (prevReasonMap.get(key) ?? 0) + 1);
+  }
+  const reasonRowsBase = Array.from(reasonMap.entries())
     .map(([key, count]) => ({ key, label: key, count }))
     .sort((a, b) => b.count - a.count);
+  const reasonRows: CancellationReasonRow[] = attachPreviousAndDelta(
+    reasonRowsBase,
+    (r) => r.key,
+    (r) => r.count,
+    prevReasonMap,
+    { previousKey: "previousCount", deltaKey: "countDelta" }
+  );
 
   const paginate = <T,>(rows: T[]): ReportBreakdownPage<T> => ({
     rows: rows.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE),

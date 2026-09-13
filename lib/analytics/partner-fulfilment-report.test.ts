@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeFulfilmentStats, computeOrderTimings } from "./partner-fulfilment-report";
+import { attachPreviousAndDelta } from "./partner-reports";
 
 function hoursLater(base: Date, hours: number): Date {
   return new Date(base.getTime() + hours * 3_600_000);
@@ -116,5 +117,28 @@ describe("computeFulfilmentStats — medians and rates", () => {
     expect(stats.cancellationRate).toBe(0);
     expect(stats.deliveredRate).toBe(0);
     expect(stats.medianHoursToConfirm).toBeNull();
+  });
+});
+
+describe("7.4 — cancellationReason rows gain previousCount + countDelta", () => {
+  it("a reason cancelled in both periods gets a hand-computed delta; one only in the current period compares against 0", () => {
+    const currentRows = [
+      { key: "customer", label: "customer", count: 3 },
+      { key: "out_of_stock", label: "out_of_stock", count: 1 },
+    ];
+    // "customer": 3 now vs. 6 previously -> down, -50%. "out_of_stock": no previous-period row.
+    const previousByKey = new Map([["customer", 6]]);
+    const rows = attachPreviousAndDelta(currentRows, (r) => r.key, (r) => r.count, previousByKey, {
+      previousKey: "previousCount",
+      deltaKey: "countDelta",
+    });
+
+    const customer = rows.find((r) => r.key === "customer")!;
+    expect(customer.previousCount).toBe(6);
+    expect(customer.countDelta).toEqual({ direction: "down", changeAbs: -3, changePct: -50 });
+
+    const outOfStock = rows.find((r) => r.key === "out_of_stock")!;
+    expect(outOfStock.previousCount).toBe(0);
+    expect(outOfStock.countDelta.changePct).toBeNull();
   });
 });

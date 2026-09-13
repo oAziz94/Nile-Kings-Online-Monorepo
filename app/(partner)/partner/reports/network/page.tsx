@@ -14,6 +14,7 @@ import { PeriodBar } from "@/components/partner/reports/period-bar";
 import { HeadlineTiles } from "@/components/partner/reports/headline-tiles";
 import { BreakdownTable } from "@/components/partner/reports/breakdown-table";
 import { ActionPanel } from "@/components/partner/reports/action-panel";
+import { DeltaCell } from "@/components/partner/reports/delta-cell";
 import { PartnerRoleGatePanel } from "@/components/partner/role-gate-panel";
 import { usePartnerMe } from "@/hooks/use-partner-me";
 import { formatNumberEn } from "@/lib/format-en-numbers";
@@ -114,7 +115,7 @@ export default function PartnerNetworkReportPage() {
               <PanelCard title="الموزعون" noPadding>
                 <BreakdownTable
                   page={data.breakdowns.distributor}
-                  columns={["الموزع", "المبيعات", "قابل للبيع", "طلبات معلقة", "معدّل التنفيذ", "قطع محوّلة"]}
+                  columns={["الموزع", "المبيعات", "مقارنة بالفترة السابقة", "قابل للبيع", "طلبات معلقة", "معدّل التنفيذ", "قطع محوّلة"]}
                   rowKey={(r) => r.partnerId}
                   onPageChange={setPage}
                   renderRow={(r) => (
@@ -128,6 +129,7 @@ export default function PartnerNetworkReportPage() {
                         </div>
                       </TableCell>
                       <TableCell dir="ltr" className="font-bold text-ink">{formatNumberEn(piastresToEgp(r.salesPiastres))}</TableCell>
+                      <TableCell><DeltaCell current={r.salesPiastres} previous={r.previousSalesPiastres} /></TableCell>
                       <TableCell dir="ltr" className="text-ink">{formatNumberEn(r.sellable)}</TableCell>
                       <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.pendingRequests)}</TableCell>
                       <TableCell dir="ltr" className="text-ink-soft">{r.fillRatePct === null ? "—" : `${Math.round(r.fillRatePct)}%`}</TableCell>

@@ -7,7 +7,6 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
 import { Button } from "@/components/ui/button";
 import { TableCell } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
 import { PartnerTopbarSlot } from "@/components/partner/partner-shell";
 import { ReportTabs } from "@/components/partner/reports/report-tabs";
@@ -16,6 +15,7 @@ import { HeadlineTiles } from "@/components/partner/reports/headline-tiles";
 import { TrendChart } from "@/components/partner/reports/trend-chart";
 import { BreakdownTable } from "@/components/partner/reports/breakdown-table";
 import { ActionPanel } from "@/components/partner/reports/action-panel";
+import { DeltaCell } from "@/components/partner/reports/delta-cell";
 import { formatNumberEn } from "@/lib/format-en-numbers";
 import { piastresToEgp } from "@/lib/catalog";
 import type { SalesReportPreset } from "@/lib/analytics/partner-reports";
@@ -48,17 +48,6 @@ async function fetchSalesReport(params: URLSearchParams): Promise<SalesReportRes
   const json = await res.json().catch(() => null);
   if (!res.ok || !json?.data) throw new Error(json?.error?.message ?? "تعذر تحميل التقرير");
   return json.data;
-}
-
-function DeltaCell({ current, previous }: { current: number; previous: number }) {
-  const diff = current - previous;
-  const pct = previous !== 0 ? (diff / Math.abs(previous)) * 100 : current > 0 ? 100 : 0;
-  const tone = diff > 0 ? "success" : diff < 0 ? "destructive" : "secondary";
-  return (
-    <Badge variant={tone} className="gap-1">
-      <span dir="ltr">{diff === 0 ? "0%" : `${diff > 0 ? "+" : ""}${Math.round(pct)}%`}</span>
-    </Badge>
-  );
 }
 
 export default function PartnerSalesReportPage() {
@@ -186,7 +175,7 @@ export default function PartnerSalesReportPage() {
                 {activeTab === "category" && (
                   <BreakdownTable
                     page={data.breakdowns.category}
-                    columns={["الفئة", "القطع", "الإيراد", "الطلبات"]}
+                    columns={["الفئة", "القطع", "الإيراد", "مقارنة بالفترة السابقة", "الطلبات"]}
                     rowKey={(r) => r.key}
                     onPageChange={setPage}
                     renderRow={(r) => (
@@ -194,6 +183,7 @@ export default function PartnerSalesReportPage() {
                         <TableCell className="font-semibold text-ink">{r.label}</TableCell>
                         <TableCell dir="ltr" className="text-ink">{formatNumberEn(r.units)}</TableCell>
                         <TableCell dir="ltr" className="font-bold text-ink">{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
+                        <TableCell><DeltaCell current={r.revenuePiastres} previous={r.previousRevenuePiastres} /></TableCell>
                         <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.orderCount)}</TableCell>
                       </>
                     )}
@@ -202,13 +192,14 @@ export default function PartnerSalesReportPage() {
                 {activeTab === "governorate" && (
                   <BreakdownTable
                     page={data.breakdowns.governorate}
-                    columns={["المحافظة", "الإيراد", "الطلبات", "نسبة الإلغاء"]}
+                    columns={["المحافظة", "الإيراد", "مقارنة بالفترة السابقة", "الطلبات", "نسبة الإلغاء"]}
                     rowKey={(r) => r.key}
                     onPageChange={setPage}
                     renderRow={(r) => (
                       <>
                         <TableCell className="font-semibold text-ink">{r.label}</TableCell>
                         <TableCell dir="ltr" className="font-bold text-ink">{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
+                        <TableCell><DeltaCell current={r.revenuePiastres} previous={r.previousRevenuePiastres} /></TableCell>
                         <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.orderCount)}</TableCell>
                         <TableCell dir="ltr" className="text-ink-soft">{r.cancellationRatePct.toFixed(1)}%</TableCell>
                       </>
@@ -218,13 +209,14 @@ export default function PartnerSalesReportPage() {
                 {activeTab === "payment" && (
                   <BreakdownTable
                     page={data.breakdowns.payment}
-                    columns={["طريقة الدفع", "الإيراد", "الطلبات"]}
+                    columns={["طريقة الدفع", "الإيراد", "مقارنة بالفترة السابقة", "الطلبات"]}
                     rowKey={(r) => r.key}
                     onPageChange={setPage}
                     renderRow={(r) => (
                       <>
                         <TableCell className="font-semibold text-ink">{r.label}</TableCell>
                         <TableCell dir="ltr" className="font-bold text-ink">{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
+                        <TableCell><DeltaCell current={r.revenuePiastres} previous={r.previousRevenuePiastres} /></TableCell>
                         <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.orderCount)}</TableCell>
                       </>
                     )}
