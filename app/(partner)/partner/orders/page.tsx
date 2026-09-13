@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeftRight, Eye, FileDown, Printer, RefreshCw, ShoppingBag } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PaginationBar } from "@/components/dashboard/pagination";
@@ -170,6 +171,7 @@ function PartnerOrdersPageInner() {
   const [bulkSubmitting, setBulkSubmitting] = React.useState(false);
 
   const { rememberRow } = useRowScrollRestore("partner-orders-last-row", orders);
+  const router = useRouter();
 
   React.useEffect(() => {
     setSelectedIds(new Set());
@@ -340,7 +342,19 @@ function PartnerOrdersPageInner() {
       {
         id: "id",
         header: "رقم الطلب",
-        cell: ({ row }) => <span dir="ltr" className="font-mono text-xs text-ink-soft">#{row.original.id.slice(0, 8)}</span>,
+        cell: ({ row }) =>
+          isAgent ? (
+            <Link
+              href={`/partner/orders/${row.original.id}`}
+              dir="ltr"
+              onClick={(e) => { e.stopPropagation(); rememberRow(row.original.id); }}
+              className="font-mono text-xs text-lapis-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 rounded"
+            >
+              #{row.original.id.slice(0, 8)}
+            </Link>
+          ) : (
+            <span dir="ltr" className="font-mono text-xs text-ink-soft">#{row.original.id.slice(0, 8)}</span>
+          ),
       },
       {
         id: "customer",
@@ -403,33 +417,38 @@ function PartnerOrdersPageInner() {
       cell: ({ row }) => {
         const o = row.original;
         const next = NEXT_STATUS[o.status];
+        // Every row offers "فتح" (the detail: full order, status change, item edits) next to
+        // the quick advance — user report 2026-09-13: the link used to appear only on rows
+        // with no next status, so an active order could not be opened from the list at all.
+        const open = isAgent ? (
+          <Button asChild type="button" size="sm" variant="outline" className="rounded-lg">
+            <Link href={`/partner/orders/${o.id}`} onClick={(e) => { e.stopPropagation(); rememberRow(o.id); }}>
+              <Eye className="h-3.5 w-3.5" />
+              فتح
+            </Link>
+          </Button>
+        ) : null;
         if (!next) {
-          return isAgent ? (
-            <Button asChild type="button" size="sm" variant="outline" className="rounded-lg">
-              <Link href={`/partner/orders/${o.id}`} onClick={(e) => { e.stopPropagation(); rememberRow(o.id); }}>
-                <Eye className="h-3.5 w-3.5" />
-                فتح
-              </Link>
-            </Button>
-          ) : (
-            <span className="text-xs text-ink-soft">—</span>
-          );
+          return open ?? <span className="text-xs text-ink-soft">—</span>;
         }
         return (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="rounded-lg"
-            disabled={rowUpdating === o.id}
-            onClick={(e) => {
-              e.stopPropagation();
-              advanceRowStatus(o);
-            }}
-          >
-            <ArrowLeftRight className="h-3.5 w-3.5" />
-            {rowUpdating === o.id ? "جاري…" : STATUS_LABELS[next] ?? next}
-          </Button>
+          <div className="flex items-center gap-1.5">
+            {open}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="rounded-lg"
+              disabled={rowUpdating === o.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                advanceRowStatus(o);
+              }}
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              {rowUpdating === o.id ? "جاري…" : STATUS_LABELS[next] ?? next}
+            </Button>
+          </div>
         );
       },
     });
@@ -643,6 +662,7 @@ function PartnerOrdersPageInner() {
                 selectedIds={selectedIds}
                 onSelectedIdsChange={setSelectedIds}
                 getRowProps={(o) => ({ "data-row-id": o.id } as React.HTMLAttributes<HTMLTableRowElement>)}
+                onRowClick={isAgent ? (o) => { rememberRow(o.id); router.push(`/partner/orders/${o.id}`); } : undefined}
                 loading={loading}
                 emptyTitle={debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات"}
               />
