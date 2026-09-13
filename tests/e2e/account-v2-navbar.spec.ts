@@ -192,11 +192,45 @@ test("drawer shows the login/register buttons when logged out, and every link re
   await expect(dialog.getByRole("link", { name: "حساب جديد" })).toBeVisible();
 
   const links = await dialog.locator("a[href]").evaluateAll((els) =>
-    els.map((el) => el.getAttribute("href")).filter((href): href is string => Boolean(href) && !href.startsWith("http") && !href.startsWith("tel:"))
+    els
+      .map((el) => el.getAttribute("href"))
+      .filter((href): href is string => typeof href === "string" && href.length > 0)
+      .filter((href) => !href.startsWith("http") && !href.startsWith("tel:"))
   );
   expect(links.length).toBeGreaterThan(0);
   for (const href of links) {
     const res = await page.request.get(href);
     expect(res.status(), `${href} should resolve`).toBeLessThan(400);
   }
+});
+
+test("drawer traps focus while open and returns it to the burger on Escape", async ({ page, baseURL }) => {
+  await setStorefrontLocation(page, baseURL);
+  await page.goto("/");
+  const burger = page.getByRole("button", { name: "القائمة" });
+  await burger.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "القائمة" });
+  await expect(dialog).toBeVisible();
+  // Focus lands inside the dialog, and 40 Tabs never leave it.
+  await expect.poll(() => page.evaluate(() => document.activeElement?.closest('[role="dialog"]') !== null)).toBe(true);
+  for (let i = 0; i < 40; i++) {
+    await page.keyboard.press("Tab");
+    const inside = await page.evaluate(() => document.activeElement?.closest('[role="dialog"]') !== null);
+    expect(inside, `Tab #${i + 1} should stay inside the drawer`).toBe(true);
+  }
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(burger).toBeFocused();
+});
+
+test("drawer highlights only the category child whose path AND query match the current page", async ({ page, baseURL }) => {
+  await setStorefrontLocation(page, baseURL);
+  await page.goto("/categories/men?sort=best_sales");
+  await page.getByRole("button", { name: "القائمة" }).click();
+  const dialog = page.getByRole("dialog", { name: "القائمة" });
+  await dialog.getByRole("button", { name: "كولكشن رجالي" }).click();
+  const current = dialog.locator('a[href^="/categories/men"].border-s-gold-500');
+  await expect(current).toHaveCount(1);
+  await expect(current).toHaveAttribute("href", "/categories/men?sort=best_sales");
 });

@@ -42,13 +42,13 @@ function MenuAccordionSection({
   isExpanded,
   onToggle,
   onClose,
-  pathname,
+  currentHref,
 }: {
   section: MenuSection;
   isExpanded: boolean;
   onToggle: () => void;
   onClose: () => void;
-  pathname: string;
+  currentHref: string;
 }) {
   const id = `menu-accordion-${section.id}`;
   return (
@@ -86,13 +86,10 @@ function MenuAccordionSection({
         <div className="min-h-0">
           <ul className="flex flex-col gap-0.5 pb-3">
             {section.children.map((item) => {
-              let itemPath = item.href;
-              try {
-                itemPath = new URL(item.href, "http://x").pathname;
-              } catch {
-                // href already a bare path
-              }
-              const isCurrent = itemPath === pathname;
+              // Compare path + query, not the path alone: siblings like `/categories/men`,
+              // `/categories/men?sort=best_sales` and `/categories/men?section=…` share a
+              // pathname, so a pathname-only match lit several of them at once (verifier, 6.1).
+              const isCurrent = normalizeHref(item.href) === currentHref;
               return (
                 <li key={item.href + item.labelAr}>
                   <Link
@@ -161,9 +158,34 @@ const drawerIconProps = {
   focusable: false,
 };
 
+/** `/categories/men?section=%D8%A8` and `/categories/men?section=ب` are the same link. */
+function normalizeHref(href: string): string {
+  try {
+    const u = new URL(href, "http://x");
+    const params = new URLSearchParams(u.search);
+    params.sort();
+    const qs = params.toString();
+    return u.pathname + (qs ? `?${qs}` : "");
+  } catch {
+    return href;
+  }
+}
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function MenuDrawer({ isOpen, onClose, focusSearch = false }: MenuDrawerProps) {
   const pathname = usePathname() ?? "";
+  // Path + query of the page the drawer opened on. Read from `window.location` on open rather
+  // than `useSearchParams()`, which would force a Suspense boundary on every public page.
+  const [currentHref, setCurrentHref] = React.useState("");
+  React.useEffect(() => {
+    if (isOpen) setCurrentHref(normalizeHref(`${window.location.pathname}${window.location.search}`));
+  }, [isOpen, pathname]);
   const router = useRouter();
+  const dialogRef = React.useRef<HTMLDivElement>(null);
+  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
+  const triggerRef = React.useRef<HTMLElement | null>(null);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [sections, setSections] = React.useState<MenuSection[]>(MENU_SECTIONS);
   const [user, setUser] = React.useState<NavbarUser>(null);
@@ -221,18 +243,49 @@ export function MenuDrawer({ isOpen, onClose, focusSearch = false }: MenuDrawerP
     };
   }, [isOpen, user]);
 
+  // Dialog focus management (design-system accessibility bar; verifier finding, 6.1): remember
+  // the opener, move focus into the panel, keep Tab/Shift+Tab inside it, and hand focus back to
+  // the opener on close. Escape closes, as before.
   React.useEffect(() => {
     if (!isOpen) return;
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      const nodes = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (el) => el.offsetParent !== null
+      );
+      if (nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      const active = document.activeElement;
+      const inside = dialogRef.current.contains(active);
+      if (e.shiftKey && (active === first || !inside)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !inside)) {
+        e.preventDefault();
+        first.focus();
+      }
     };
-    document.addEventListener("keydown", handleEscape);
+    document.addEventListener("keydown", handleKey);
     document.body.style.overflow = "hidden";
+    // `focusSearch` wins (its own effect below); otherwise land on the close control.
+    const handle = window.setTimeout(() => {
+      if (!focusSearch) closeButtonRef.current?.focus();
+    }, 50);
     return () => {
-      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = "";
+      window.clearTimeout(handle);
+      const opener = triggerRef.current;
+      triggerRef.current = null;
+      if (opener && document.contains(opener)) opener.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, focusSearch]);
 
   React.useEffect(() => {
     if (!isOpen) {
@@ -280,6 +333,7 @@ export function MenuDrawer({ isOpen, onClose, focusSearch = false }: MenuDrawerP
         onClick={onClose}
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="القائمة"
@@ -295,6 +349,7 @@ export function MenuDrawer({ isOpen, onClose, focusSearch = false }: MenuDrawerP
         <div className="flex shrink-0 items-center justify-between gap-4 border-b border-[hsl(228_16%_86%)] px-4 py-2.5">
           <Image src="/brand/logo-lapis.png" alt="قطن ملوك النيل" width={200} height={125} className="h-10 w-auto" />
           <Button
+            ref={closeButtonRef}
             variant="ghost"
             size="icon"
             onClick={onClose}
@@ -383,7 +438,7 @@ export function MenuDrawer({ isOpen, onClose, focusSearch = false }: MenuDrawerP
                   isExpanded={expandedId === section.id}
                   onToggle={() => toggleSection(section.id)}
                   onClose={onClose}
-                  pathname={pathname}
+                  currentHref={currentHref}
                 />
               ))}
               <Link

@@ -264,6 +264,9 @@ export function SiteNavbar({
             <div
               className={cn(
                 "flex h-10 w-[220px] items-center gap-2 border-b px-1 transition-colors",
+                // Visible focus: the hairline turns gold and thickens while the input has focus
+                // (verifier finding, 6.1) — same language as the drawer's search box.
+                "focus-within:border-b-2 focus-within:border-gold-500",
                 onDark ? "border-papyrus/40 text-papyrus" : "border-[hsl(228_20%_70%)] text-[hsl(228_30%_22%)]"
               )}
             >
