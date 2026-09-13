@@ -1,6 +1,6 @@
 # Admin dashboard v2 — the operations console
 
-Status: **draft for user approval, 2026-09-13 (revised the same day: catalog ownership, media library, control matrix).** User direction: "you should propose and redesign the dashboard logically, not just as a style. Make the admin's life easier, control the things we already need in the partner dashboard, and remove anything that has no necessity."
+Status: **approved as the basis for the canvas, 2026-09-13** (revisions the same day: catalog ownership, media library, control matrix, audit log screen; priority tool discarded; applications and admins are tabs). User direction: "you should propose and redesign the dashboard logically, not just as a style. Make the admin's life easier, control the things we already need in the partner dashboard, and remove anything that has no necessity."
 
 ## 1. What the admin is for
 
@@ -50,7 +50,7 @@ Result: **9 nav items** instead of 14, and every remaining item answers one of t
 - As shipped in 6.5b, restyled. The open count also feeds the home queue.
 
 ### 3.4 الشركاء (the hub)
-- **List**: every agent and distributor with health at a glance — open orders, overdue %, days of stock cover, balance owed to the factory, active/inactive. Search, filter by type/governorate/health. Applications ("طلبات الشراكة") are a tab here, not a separate concept.
+- **List**: every agent and distributor with health at a glance — open orders, overdue %, days of stock cover, balance owed to the factory, active/inactive. Search, filter by type/governorate/health. Applications ("طلبات الشراكة") are a tab here with a pending-count badge, not a separate nav item (PM decision 2026-09-13, user delegated: an application is a partner-to-be and is reviewed with the roster in view).
 - **Partner profile** (`/admin/partners/[id]`), tabs:
   - **الملف**: identity, contact, socials, linked agent, active toggle (8.2's form, moved here).
   - **الأداء**: this partner's own reports (sales, fulfilment, inventory) — the same pages the partner sees, read by the admin.
@@ -58,7 +58,7 @@ Result: **9 nav items** instead of 14, and every remaining item answers one of t
   - **المخزون**: the editable grid from today's مخزون الشركاء, per partner, ledger-backed.
   - **الحساب المالي**: cost rate, receipts (what they took from the factory at what rate), payments recorded, running balance, next `dueAt`. Record a payment here (5.1's panel, moved).
   - **الإعدادات**: every knob partner v2 introduced, admin-controlled in one place — `confirmSlaHours`, `shipSlaHours`, `workingDays`, `dailyOrderCapacity`, `lowStockThreshold`, `deadStockDays`, `targetCoverDays`, `costRateBps`. Today these are scattered or partner-editable; the admin gets them all with the partner's current values and the network default beside each.
-- **التوجيه** (tab or sub-page): the governorate matrix described in §2 — and the **priority tool**: for each governorate the admin orders its partners by dragging (this writes `ReroutingRulePartner.priority`, which the round-robin in `lib/rerouting/assign.ts` already honours: lower = earlier), pauses a partner in that governorate without removing them, and sees each partner's share of the governorate's orders over the last 30 days next to their position so the order can be judged, not guessed. A governorate with no active partner is highlighted and counted on the home queue as بلا شريك. Manual mode per governorate (every order waits for an admin to assign) stays available.
+- **التوجيه** (tab): the governorate matrix described in §2 — every governorate on one page with its partners (add/remove, pause), order volume per partner over the last 30 days, and a highlight on any governorate with no active partner (counted on the home queue as بلا شريك). Round-robin order stays as today (creation order); **the priority-ordering tool is discarded for now (user, 2026-09-13)** — `ReroutingRulePartner.priority` is left untouched and not surfaced. Manual mode per governorate stays available.
 - **مخزون الشبكة**: the cross-partner low-stock view.
 
 ### 3.5 الكتالوج — the admin owns the catalog, the partner owns only stock
@@ -91,7 +91,7 @@ Result: **9 nav items** instead of 14, and every remaining item answers one of t
 - One save per group, a confirm dialog on anything that changes a customer's price, and the change written to the audit log with the old and new values.
 
 ### 3.8 العملاء
-- List and detail as today, restyled; a **المسؤولون** tab with grant/revoke (8.3).
+- List and detail as today, restyled; a **المسؤولون** tab with grant/revoke (8.3) — a tab, not a nav item (PM decision 2026-09-13, user delegated: an admin is a user with a role, and the grant action already starts from a customer's profile).
 
 ### 3.9 السجل (audit log)
 - Its own nav item, not a footnote. One `AdminAuditLog { id, actorUserId, actorRole, action, entityType, entityId, entityLabel, before Json?, after Json?, reason?, ip?, createdAt }` written by every admin and partner write that changes money, stock, status, catalog, routing, roles or a setting (rule B1). The existing `OrderAuditLog` keeps feeding order timelines and is mirrored into the new table so one screen shows everything.
@@ -113,7 +113,7 @@ Result: **9 nav items** instead of 14, and every remaining item answers one of t
 The partner v2 rules (1)–(10) and A7–A8 apply, plus: (B1) every admin write that changes money, stock, status or a setting appends an audit row with actor, before and after; (B2) the shell, `DataTable`, report platform and status pills are shared with partner v2 — no admin-only variants; (B3) an admin screen never re-implements a partner computation — it calls the same `lib/**` function with a wider scope; (B4) removing a screen requires a redirect from its old URL to its new home.
 
 ## 7. Process and order
-1. **Canvas round** (this week): artboards for اليوم, الطلبات + detail with reassign/proof, the partner hub list + profile (الحساب المالي and الإعدادات tabs), the routing matrix with the priority ordering, network stock, one report page, settings, the audit log, the product page (colour panel + sizes grid + inline gallery) and the media library. Published for approval like the partner v2 and account canvases; no task starts before approval.
+1. **Canvas round** (this week): artboards for اليوم, الطلبات + detail with reassign/proof, the partner hub list + profile (الحساب المالي and الإعدادات tabs), the routing matrix, network stock, one report page, settings, the audit log, the product page (colour panel + sizes grid + inline gallery) and the media library. Published for approval like the partner v2 and account canvases; no task starts before approval.
 2. Tasks after approval, numbered 9.x: 9.1 shell + nav + redirects + `AdminAuditLog` foundation (table, writer helper, mirror of order audit); 9.2 اليوم; 9.3 orders pipeline + detail (absorbs routed-orders); 9.4 partner hub list + profile tabs (absorbs partner-inventory, admins-into-clients); 9.5 routing matrix + network stock; 9.6 reports network-wide (deletes v1 analytics); 9.7 settings + السجل screen; 9.8 catalog: product page rebuilt around colours and sizes, `MediaAsset` + the media library + Cloudinary reconcile, galleries, bulk edit; 9.9 legacy variant stock columns retired; 9.10 full suite + version.
 3. Each task through implementer → verifier → PM fixes → merge, as before.
 
