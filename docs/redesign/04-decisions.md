@@ -1,3 +1,9 @@
+## 2026-09-13 — The first scheduled job (7.5, v2.3.8)
+
+The site now has a cron: one aggregate stock row per partner per day, written at a fixed UTC instant with the *day* computed in Africa/Cairo by `Intl`, not by a hardcoded offset — Egypt observes DST again since 2023 and the implementer caught that the spec's own arithmetic assumed it did not. Rulings that came with it: a snapshot table stores aggregates, never per-SKU rows, and prunes itself on a window sized by how far the reports compare back (400 days), not by storage guesses; one totals function feeds both the snapshot and the live tiles so the two can never disagree; a tile with no honest previous value keeps saying so rather than borrowing one — which is why the sale-price valuation got its own column instead of reusing the cost one. Two things this unlocks: the inventory tiles carry real deltas from tomorrow onward, and "أيام نفاد" is finally what its name says, reconstructed from the ledger.
+
+Operational: `CRON_SECRET` must exist in the Vercel project for the schedule to do anything; until then the route answers 500 and no snapshot is written.
+
 ## 2026-09-13 — One delta grammar for every report number (7.4, v2.3.6)
 
 Every breakdown table now carries the same previous-period comparison the product table had, computed with exactly the filters its current column uses. The ruling that came out of verification: a percentage change from zero is undefined, and the site says so the same way everywhere — the headline tiles already printed "جديد", the table cell printed "+100%"; the cell now goes through `computeDelta` and reads "جديد" too, with "—" for no change. Any future number with a comparison uses `computeDelta` and those three renderings; nobody recomputes a percentage inline.
