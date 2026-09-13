@@ -133,7 +133,8 @@ test("creating a coupon with a validity window round-trips both dates through ed
   await page.getByLabel("ينتهي في").fill(untilValue);
 
   await page.getByRole("button", { name: "إنشاء" }).click();
-  await expect(page.getByText("تم إنشاء الكوبون").first()).toBeVisible();
+  // 20s: the first POST/PATCH on a cold dev server waits for the route to compile (verifier, 8.1).
+  await expect(page.getByText("تم إنشاء الكوبون").first()).toBeVisible({ timeout: 20_000 });
 
   const created = await prisma.coupon.findUnique({ where: { code: CREATE_CODE } });
   expect(created).not.toBeNull();
@@ -155,7 +156,8 @@ test("creating a coupon with a validity window round-trips both dates through ed
   await page.getByRole("button", { name: "مسح" }).click();
   await expect(page.getByLabel("ينتهي في")).toHaveValue("");
   await page.getByRole("button", { name: "حفظ" }).click();
-  await expect(page.getByText("تم حفظ التعديلات").first()).toBeVisible();
+  // 20s: the first POST/PATCH on a cold dev server waits for the route to compile (verifier, 8.1).
+  await expect(page.getByText("تم حفظ التعديلات").first()).toBeVisible({ timeout: 20_000 });
 
   await expect(row.getByText("بلا نهاية")).toBeVisible();
 
