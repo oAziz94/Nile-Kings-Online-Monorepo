@@ -15,6 +15,10 @@ export type RestockRequestStatus =
   | "CANCELLED";
 
 export type RestockRequestPartyInfo = {
+  /** Already returned by `GET /api/partner/restock-requests` (both parties' `select` includes
+   * `id`) — added here for backlog 5.5's network sheet, which filters this shared list by
+   * `destinationPartner.id` per distributor. Additive; existing consumers ignored it. */
+  id: string;
   name: string;
   phone: string;
 };

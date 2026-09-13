@@ -1,106 +1,66 @@
 "use client";
 
 /**
- * Partner — Distributors roster (backlog 4.21). Read-only AGENT-only directory of every
- * DISTRIBUTOR linked beneath the current agent, rebuilt on the shared `DataTable` shell
- * per `00-feature-inventory/partner/distributors.md`. No API change: `GET
- * /api/partner/distributors` is untouched, same columns/labels/links/sort order.
+ * Partner — الشبكة (backlog 5.5, `05-partner-portal-v2.md` §4.5). AGENT-only roster of
+ * every linked DISTRIBUTOR, rebuilt as cards (name, phone ltr, active pill, sellable
+ * units, pending requests, last activity) per the `.card`/`.pill`/`.well` vocabulary from
+ * `design-canvas/partner-v2/{Main,Stock}.dc.html` — there is no dedicated network
+ * artboard. Each card opens a `Sheet` (side="right") with the distributor's stock, their
+ * restock requests (agent actions unchanged), and their fill rate.
  *
- * Role gate is client-side via `usePartnerMe()` (standing rule 3) rendering the explicit
- * "هذه الصفحة متاحة للوكلاء فقط" panel for a DISTRIBUTOR (standing rule 5) instead of the
- * old generic destructive-toast-on-403 behaviour — this is the task's named change from
- * strict parity (backlog 4.21 + the partner-portal standing rules supersede the
- * inventory's "moot in normal navigation" 403 toast path).
+ * Role gate: `GET /api/partner/distributors` 403s a non-AGENT server-side (unchanged);
+ * this page also gates client-side via `usePartnerMe()` (standing rule 3) to render the
+ * explicit "هذه الصفحة متاحة للوكلاء فقط" panel instead of an empty grid.
  */
 import * as React from "react";
-import { AlertTriangle, ShieldAlert, Users } from "lucide-react";
+import { AlertTriangle, Users } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader, StatusBadge } from "@/components/dashboard/page-header";
-import { PanelCard } from "@/components/dashboard/panel-card";
-import { DataTable, type ColumnDef } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/shared/skeleton";
+import { PartnerRoleGatePanel } from "@/components/partner/role-gate-panel";
+import { RosterCard, type RosterDistributor } from "@/components/partner/network/roster-card";
 import { usePartnerMe } from "@/hooks/use-partner-me";
-import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
 
-type Distributor = {
+type ApiEnvelope<T> = { success?: boolean; data?: T; error?: { message?: string } };
+
+type DistributorRow = {
   id: string;
   name: string;
   phone: string;
-  governorate: string;
-  facebookUrl: string | null;
-  instagramUrl: string | null;
-  tiktokUrl: string | null;
-  youtubeUrl: string | null;
-  websiteUrl: string | null;
-  otherUrl: string | null;
   isActive: boolean;
-  createdAt: string;
-  user: { email: string | null } | null;
-  inventoryTotals: { available: number; reserved: number; sellable: number };
+  inventoryTotals: { sellable: number };
+  pendingRequestsCount: number;
+  lastActivityAt: string | null;
 };
 
-async function fetchDistributors(): Promise<Distributor[]> {
+async function fetchDistributors(): Promise<RosterDistributor[]> {
   const res = await fetch("/api/partner/distributors", { credentials: "include" });
-  const json = await res.json().catch(() => null);
+  const json = (await res.json().catch(() => null)) as ApiEnvelope<{ distributors: DistributorRow[] }> | null;
   if (!res.ok || !json?.success) {
     throw new Error(json?.error?.message ?? "فشل تحميل الموزعين");
   }
-  return json.data.distributors ?? [];
-}
-
-function ContactLink({ href, label }: { href: string | null; label: string }) {
-  if (!href) return null;
-  return (
-    <a
-      className="text-xs font-semibold text-lapis-800 hover:underline"
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-    >
-      {label}
-    </a>
-  );
-}
-
-function StatusPill({ active }: { active: boolean }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-3 py-[5px] text-xs font-extrabold",
-        active ? "bg-malachite-bg text-malachite-text" : "bg-neutral-bg text-neutral-text"
-      )}
-    >
-      <span
-        className={cn(
-          "h-1.5 w-1.5 rounded-full",
-          active ? "bg-malachite-text" : "bg-neutral-text"
-        )}
-      />
-      {active ? "نشط" : "معطّل"}
-    </span>
-  );
-}
-
-/** In-page role gate — standing rule 5: a wrong-role visit gets an explicit panel, not an empty table. */
-function RoleGatePanel({ message }: { message: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-[14px] border border-stone-200 bg-white py-14 text-center">
-      <ShieldAlert className="h-9 w-9 text-stone-300" strokeWidth={1.5} />
-      <p className="text-[15px] font-extrabold text-ink">{message}</p>
-    </div>
-  );
+  return (json.data?.distributors ?? []).map((d) => ({
+    id: d.id,
+    name: d.name,
+    phone: d.phone,
+    isActive: d.isActive,
+    sellableUnits: d.inventoryTotals.sellable,
+    pendingRequestsCount: d.pendingRequestsCount,
+    lastActivityAt: d.lastActivityAt,
+  }));
 }
 
 function LoadErrorPanel({ onRetry }: { onRetry: () => void }) {
   return (
     <div
       role="alert"
-      className="flex flex-col items-center justify-center gap-2 rounded-[14px] border border-carnelian-500/30 bg-danger-bg py-14 text-center text-danger-text"
+      className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-white p-10 text-center shadow-soft"
     >
-      <AlertTriangle className="h-9 w-9" strokeWidth={1.5} />
-      <p className="text-[15px] font-extrabold">فشل تحميل الموزعين</p>
+      <AlertTriangle className="h-9 w-9 text-danger-text" strokeWidth={1.5} />
+      <p className="text-[15px] font-extrabold text-danger-text">فشل تحميل الموزعين</p>
       <Button type="button" variant="outline" className="mt-2 rounded-xl" onClick={onRetry}>
         إعادة المحاولة
       </Button>
@@ -108,90 +68,7 @@ function LoadErrorPanel({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-const columns: ColumnDef<Distributor, unknown>[] = [
-  {
-    id: "name",
-    header: "الاسم",
-    enableSorting: false,
-    cell: ({ row }) => <span className="font-bold text-ink">{row.original.name}</span>,
-  },
-  {
-    id: "governorate",
-    header: "المحافظة",
-    enableSorting: false,
-    cell: ({ row }) => row.original.governorate,
-  },
-  {
-    id: "phone",
-    header: "الهاتف",
-    enableSorting: false,
-    cell: ({ row }) => (
-      <span dir="ltr" className="block text-right font-mono text-sm">
-        {row.original.phone}
-      </span>
-    ),
-  },
-  {
-    id: "email",
-    header: "البريد",
-    enableSorting: false,
-    cell: ({ row }) => row.original.user?.email ?? "—",
-  },
-  {
-    id: "contact",
-    header: "التواصل",
-    enableSorting: false,
-    cell: ({ row }) => {
-      const d = row.original;
-      const links = [
-        { href: d.facebookUrl, label: "Facebook" },
-        { href: d.instagramUrl, label: "Instagram" },
-        { href: d.tiktokUrl, label: "TikTok" },
-        { href: d.youtubeUrl, label: "YouTube" },
-        { href: d.websiteUrl, label: "Website" },
-        { href: d.otherUrl, label: "Other" },
-      ];
-      const hasAny = links.some((l) => l.href);
-      return (
-        <div className="flex flex-wrap gap-2">
-          {links.map((l) => (
-            <ContactLink key={l.label} href={l.href} label={l.label} />
-          ))}
-          {!hasAny && "—"}
-        </div>
-      );
-    },
-  },
-  {
-    id: "inventory",
-    header: "المخزون",
-    enableSorting: false,
-    cell: ({ row }) => {
-      const t = row.original.inventoryTotals;
-      return (
-        <div className="space-y-1 text-xs text-ink-soft">
-          <p>متاح: {formatNumberEn(t.available)}</p>
-          <p>محجوز: {formatNumberEn(t.reserved)}</p>
-          <p>قابل للبيع: {formatNumberEn(t.sellable)}</p>
-        </div>
-      );
-    },
-  },
-  {
-    id: "status",
-    header: "الحالة",
-    enableSorting: false,
-    cell: ({ row }) => <StatusPill active={row.original.isActive} />,
-  },
-  {
-    id: "createdAt",
-    header: "تاريخ الربط",
-    enableSorting: false,
-    cell: ({ row }) => formatDateEn(row.original.createdAt),
-  },
-];
-
-export default function PartnerDistributorsPage() {
+export default function PartnerNetworkPage() {
   const { data: partner, isLoading: partnerLoading, isError: partnerError, refetch: refetchPartner } =
     usePartnerMe();
 
@@ -209,60 +86,61 @@ export default function PartnerDistributorsPage() {
     enabled: isAgent,
   });
 
-  const actions = (
-    <Button
-      type="button"
-      variant="outline"
-      className="rounded-xl"
-      onClick={() => refetchList()}
-      disabled={!isAgent || listFetching}
-    >
-      تحديث
-    </Button>
-  );
-
   let body: React.ReactNode;
 
   if (partnerLoading) {
     body = (
-      <div className="space-y-2 rounded-[14px] border border-stone-200 bg-white p-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full rounded-md" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-44 w-full rounded-2xl" />
         ))}
       </div>
     );
   } else if (partnerError) {
     body = <LoadErrorPanel onRetry={() => refetchPartner()} />;
   } else if (!isAgent) {
-    body = <RoleGatePanel message="هذه الصفحة متاحة للوكلاء فقط" />;
+    body = <PartnerRoleGatePanel allowedRole="AGENT" />;
+  } else if (listLoading) {
+    body = (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-44 w-full rounded-2xl" />
+        ))}
+      </div>
+    );
   } else if (listError) {
     body = <LoadErrorPanel onRetry={() => refetchList()} />;
+  } else if (!distributors || distributors.length === 0) {
+    body = <EmptyState icon={<Users className="h-10 w-10" />} title="لا يوجد موزعون مرتبطون بعد" />;
   } else {
     body = (
-      <DataTable
-        columns={columns}
-        data={distributors ?? []}
-        loading={listLoading}
-        getRowId={(row) => row.id}
-        emptyTitle="لا يوجد موزعون مرتبطون بعد"
-        emptyIcon={<Users className="h-8 w-8" strokeWidth={1.5} />}
-        className={cn(listFetching && !listLoading && "opacity-70")}
-      />
+      <div className={cn("grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3", listFetching && "opacity-70")}>
+        {distributors.map((distributor) => (
+          <RosterCard key={distributor.id} distributor={distributor} />
+        ))}
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="الموزعون"
-        description="الموزعون المرتبطون بحسابك وبيانات التواصل والمخزون المختصر."
+        title="الشبكة"
+        description="حالة كل موزع مرتبط بك — مخزونه وطلباته ومعدّل تنفيذك لها."
         badge={<StatusBadge>وكلاء فقط</StatusBadge>}
-        actions={actions}
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-xl"
+            onClick={() => refetchList()}
+            disabled={!isAgent || listFetching}
+          >
+            تحديث
+          </Button>
+        }
       />
-
-      <PanelCard title="الموزعون المرتبطون" icon={<Users className="h-5 w-5 text-lapis-800" />} noPadding>
-        <div className="p-4 sm:p-[22px]">{body}</div>
-      </PanelCard>
+      {body}
     </div>
   );
 }

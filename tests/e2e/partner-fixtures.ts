@@ -155,6 +155,41 @@ export async function seedPartnerPair(
   };
 }
 
+/**
+ * Backlog 5.5 — a second (or third...) DISTRIBUTOR linked to an already-seeded agent, for
+ * the network roster's "seeded mix" (`seedPartnerPair()` only creates one agent + one
+ * distributor). Caller is responsible for passing every returned id into
+ * `cleanupPartnerPair`'s `extraPartnerIds`.
+ */
+export async function seedLinkedDistributor(
+  prisma: PrismaClient,
+  agentPartnerId: string,
+  overrides: Partial<{ name: string; governorate: string; isActive: boolean }> = {}
+): Promise<PartnerFixtureSide> {
+  const passwordHash = await hashPassword(PASSWORD);
+  const localPhone = uniqueLocalPhone();
+  const phone = `+20${localPhone}`;
+  const user = await prisma.user.create({ data: { phone, role: "CUSTOMER", passwordHash } });
+  const partner = await prisma.partner.create({
+    data: {
+      userId: user.id,
+      partnerType: "DISTRIBUTOR",
+      name: overrides.name ?? "موزع إضافي للاختبار",
+      governorate: overrides.governorate ?? "الجيزة",
+      phone,
+      linkedAgentId: agentPartnerId,
+      isActive: overrides.isActive ?? true,
+    },
+  });
+  return {
+    userId: user.id,
+    partnerId: partner.id,
+    phone,
+    localPhone,
+    name: partner.name,
+  };
+}
+
 /** Logs in via the real `/login` form (phone + password) as the given fixture side. */
 export async function loginAs(
   page: Page,
@@ -169,9 +204,18 @@ export async function loginAs(
   await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 15_000 });
 }
 
-/** Removes everything `seedPartnerPair` created, plus any inventory/orders/requests/receipts tied to it. */
-export async function cleanupPartnerPair(prisma: PrismaClient, pair: PartnerFixturePair): Promise<void> {
-  const partnerIds = [pair.agent.partnerId, pair.distributor.partnerId];
+/**
+ * Removes everything `seedPartnerPair` created, plus any inventory/orders/requests/receipts
+ * tied to it. `extraPartnerIds` (backlog 5.5) additionally removes distributors created via
+ * `seedLinkedDistributor` — their users are not deleted here (caller seeded them, caller's
+ * `userId`s are already known to it); pass them via `extraUserIds` too.
+ */
+export async function cleanupPartnerPair(
+  prisma: PrismaClient,
+  pair: PartnerFixturePair,
+  extra: { partnerIds?: string[]; userIds?: string[] } = {}
+): Promise<void> {
+  const partnerIds = [pair.agent.partnerId, pair.distributor.partnerId, ...(extra.partnerIds ?? [])];
 
   // Backlog 5.1 — new tables, deleted before their `StockReceipt`/`Partner` parents.
   await prisma.partnerPayment.deleteMany({ where: { partnerId: { in: partnerIds } } });
@@ -191,5 +235,7 @@ export async function cleanupPartnerPair(prisma: PrismaClient, pair: PartnerFixt
     data: { assignedPartnerId: null },
   });
   await prisma.partner.deleteMany({ where: { id: { in: partnerIds } } });
-  await prisma.user.deleteMany({ where: { id: { in: [pair.agent.userId, pair.distributor.userId] } } });
+  await prisma.user.deleteMany({
+    where: { id: { in: [pair.agent.userId, pair.distributor.userId, ...(extra.userIds ?? [])] } },
+  });
 }
