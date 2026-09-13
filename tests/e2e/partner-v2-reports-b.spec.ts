@@ -33,7 +33,7 @@ function hoursAgo(hours: number): Date {
 }
 
 test.beforeAll(async () => {
-  pair = await seedPartnerPair(prisma, { agent: { costRateBps: 7500, confirmSlaHours: 24, shipSlaHours: 48 } });
+  pair = await seedPartnerPair(prisma, { agent: { costRateBps: 7500, confirmSlaHours: 48, shipSlaHours: 24 } });
 
   const adminUser = await prisma.user.create({
     data: { phone: ADMIN_PHONE, role: "ADMIN", passwordHash: await hashPassword(ADMIN_PASSWORD) },
@@ -89,7 +89,7 @@ test.beforeAll(async () => {
     ],
   });
 
-  // --- Overdue seed: a CONFIRMED order that entered CONFIRMED 30h ago (> 24h confirmSlaHours) -> overdue.
+  // --- Overdue seed: a CONFIRMED order that entered CONFIRMED 30h ago (> 24h shipSlaHours) -> overdue.
   const order2 = await prisma.order.create({
     data: {
       userId: customerUserId,
@@ -171,7 +171,7 @@ test("fulfilment report: timings equal the seeded audit rows", async ({ page }) 
   expect(byKey.medianHoursToConfirm.value).toBeCloseTo(7.5, 1);
   expect(byKey.medianHoursToShip.value).toBeCloseTo(12, 1); // order1 only: confirmed -15h, shipped -3h
 
-  // order2 is CONFIRMED, entered 30h ago > 24h confirmSlaHours -> the only open order, so
+  // order2 is CONFIRMED, entered 30h ago > 24h shipSlaHours -> the only open order, so
   // overdueRate over open (CONFIRMED/PROCESSING) orders = 100%.
   expect(byKey.overdueRate.value).toBeCloseTo(100, 1);
 

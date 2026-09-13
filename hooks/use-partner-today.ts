@@ -26,6 +26,8 @@ export type PartnerTodayStockRow = {
   variantName: string;
   sellable: number;
   threshold: number;
+  /** Units sold per week over the last 30 days; null when nothing sold. */
+  velocityPerWeek: number | null;
 };
 
 export type PartnerTodayGroup<T> = { count: number; rows: T[]; moreCount: number };

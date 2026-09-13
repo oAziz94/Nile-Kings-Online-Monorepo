@@ -82,18 +82,18 @@ describe("computeFulfilmentStats — medians and rates", () => {
     expect(stats.noAuditCount).toBe(1); // o2 has zero audit rows
   });
 
-  it("overdue rate: a CONFIRMED order past confirmSlaHours since its last audit row is overdue", () => {
+  it("overdue rate: a CONFIRMED order past shipSlaHours since its last audit row is overdue", () => {
     const orders = [
       { id: "o1", createdAt: base, updatedAt: base, status: "CONFIRMED", cancellationReason: null },
       { id: "o2", createdAt: base, updatedAt: base, status: "CONFIRMED", cancellationReason: null },
     ];
-    // o1 entered CONFIRMED 30h before "now" (> 24h SLA) -> overdue; o2 entered 5h before -> not.
+    // o1 entered CONFIRMED 30h before "now" (> 24h ship SLA) -> overdue; o2 entered 5h before -> not.
     const auditRows = [
       { orderId: "o1", statusTo: "CONFIRMED", createdAt: hoursLater(now, -30) },
       { orderId: "o2", statusTo: "CONFIRMED", createdAt: hoursLater(now, -5) },
     ];
     const timings = computeOrderTimings(orders, auditRows);
-    const stats = computeFulfilmentStats(orders, timings, sla, now);
+    const stats = computeFulfilmentStats(orders, timings, { ...sla, shipSlaHours: 24 }, now);
     expect(stats.overdueRate).toBeCloseTo(50, 5);
   });
 

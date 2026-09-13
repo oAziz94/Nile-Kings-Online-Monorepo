@@ -106,7 +106,7 @@ export function computeFulfilmentStats(
   const confirmHours = timings.map((t) => t.hoursToConfirm).filter((v): v is number => v !== null);
   const shipHours = timings.map((t) => t.hoursToShip).filter((v): v is number => v !== null);
 
-  const openStatuses: OverdueStatus[] = ["CONFIRMED", "PROCESSING"];
+  const openStatuses: OverdueStatus[] = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP"];
   const openOrders = orders.filter((o) => openStatuses.includes(o.status as OverdueStatus));
   const overdueCount = openOrders.filter((o) => {
     const timing = timingByOrder.get(o.id);

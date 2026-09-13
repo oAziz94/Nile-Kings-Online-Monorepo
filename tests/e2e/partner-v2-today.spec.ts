@@ -31,10 +31,10 @@ const allOrderIds: string[] = [];
 const uniqueSuffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
 test.beforeAll(async () => {
-  // Short confirmSlaHours (5h) and shipSlaHours (50h) so a 10h-old CONFIRMED order is
+  // Short shipSlaHours (5h) and long confirmSlaHours (50h) so a 10h-old CONFIRMED order is
   // overdue while a 1h-old one is not; a small capacity so the meter has a non-zero "used".
   pair = await seedPartnerPair(prisma, {
-    agent: { confirmSlaHours: 5, shipSlaHours: 50, dailyOrderCapacity: 10, lowStockThreshold: 5 },
+    agent: { confirmSlaHours: 50, shipSlaHours: 5, dailyOrderCapacity: 10, lowStockThreshold: 5 },
   });
 
   const customer = await prisma.user.create({
@@ -108,7 +108,7 @@ test.beforeAll(async () => {
       event: "confirmed",
       statusFrom: "CREATED",
       statusTo: "CONFIRMED",
-      createdAt: new Date(now - 10 * 60 * 60 * 1000), // 10h ago > 5h confirmSlaHours -> overdue
+      createdAt: new Date(now - 10 * 60 * 60 * 1000), // 10h ago > 5h shipSlaHours -> overdue
     },
   });
 
@@ -120,7 +120,7 @@ test.beforeAll(async () => {
       event: "confirmed",
       statusFrom: "CREATED",
       statusTo: "CONFIRMED",
-      createdAt: new Date(now - 1 * 60 * 60 * 1000), // 1h ago < 5h -> not overdue
+      createdAt: new Date(now - 1 * 60 * 60 * 1000), // 1h ago < 5h shipSlaHours -> not overdue
     },
   });
 
@@ -178,12 +178,12 @@ test("every KPI and queue-group count equals the API", async ({ page }) => {
   await expect(page.getByTestId(`queue-row-${orderCreatedId}`)).toBeVisible();
 });
 
-test("the overdue rule follows a changed confirmSlaHours", async ({ page }) => {
+test("the overdue rule follows a changed shipSlaHours", async ({ page }) => {
   await loginAs(page, pair, "AGENT");
 
-  // Raising confirmSlaHours past 10h should un-overdue orderOverdueId.
+  // Raising shipSlaHours past 10h should un-overdue orderOverdueId.
   const patchRes = await page.request.patch("/api/partner/settings", {
-    data: { confirmSlaHours: 20 },
+    data: { shipSlaHours: 20 },
   });
   expect(patchRes.ok()).toBe(true);
 
@@ -196,7 +196,7 @@ test("the overdue rule follows a changed confirmSlaHours", async ({ page }) => {
     .toBe(false);
 
   // Restore for the remaining tests.
-  const restoreRes = await page.request.patch("/api/partner/settings", { data: { confirmSlaHours: 5 } });
+  const restoreRes = await page.request.patch("/api/partner/settings", { data: { shipSlaHours: 5 } });
   expect(restoreRes.ok()).toBe(true);
   await expect
     .poll(async () => {

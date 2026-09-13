@@ -61,7 +61,7 @@ export async function GET() {
         select: { id: true, status: true, createdAt: true },
       }),
       prisma.order.findMany({
-        where: { assignedPartnerId: partner.id, status: { in: ["CONFIRMED", "PROCESSING"] } },
+        where: { assignedPartnerId: partner.id, status: { in: ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP"] } },
         select: { id: true, status: true, updatedAt: true },
       }),
       resolveThreshold(partner.id),

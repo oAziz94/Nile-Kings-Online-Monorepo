@@ -5,6 +5,8 @@
  * wrapper that feeds these functions real rows.
  */
 
+import { computeOrderSla, SLA_ELIGIBLE_STATUSES, type PartnerSlaHours } from "@/lib/orders/order-sla";
+
 export type DateRange = { start: Date; end: Date };
 
 /**
@@ -27,8 +29,9 @@ export function resolveWeekRanges(now: Date): { thisWeek: DateRange; lastWeek: D
   };
 }
 
-export type OverdueSla = { confirmSlaHours: number; shipSlaHours: number };
-export type OverdueStatus = "CONFIRMED" | "PROCESSING";
+export type OverdueSla = PartnerSlaHours;
+export type OverdueStatus = (typeof SLA_ELIGIBLE_STATUSES)[number];
+export { SLA_ELIGIBLE_STATUSES };
 
 /**
  * The moment an order entered its current status: the latest `OrderAuditLog` row's
@@ -40,18 +43,17 @@ export function resolveStatusEnteredAt(row: { updatedAt: Date; latestStatusLogAt
 }
 
 /**
- * Overdue rule (replaces the hard-coded 24h everywhere): a CONFIRMED order is overdue past
- * `confirmSlaHours` since it entered CONFIRMED; a PROCESSING order is overdue past
- * `shipSlaHours` since it entered PROCESSING.
+ * Overdue rule (replaces the hard-coded 24h everywhere) — one source, `lib/orders/order-sla.ts`
+ * (5.7 unification): CREATED is timed against `confirmSlaHours`; CONFIRMED / PROCESSING /
+ * READY_TO_SHIP against `shipSlaHours` ("مهلة الشحن بعد التأكيد"); terminal statuses never.
  */
 export function isOrderOverdue(
-  row: { status: OverdueStatus; updatedAt: Date; latestStatusLogAt: Date | null },
+  row: { status: string; updatedAt: Date; latestStatusLogAt: Date | null },
   sla: OverdueSla,
   now: Date
 ): boolean {
-  const slaHours = row.status === "CONFIRMED" ? sla.confirmSlaHours : sla.shipSlaHours;
-  const enteredAt = resolveStatusEnteredAt(row);
-  return now.getTime() - enteredAt.getTime() > slaHours * 60 * 60 * 1000;
+  const result = computeOrderSla({ status: row.status, since: resolveStatusEnteredAt(row), partner: sla, now });
+  return result.applicable && result.overdue;
 }
 
 export type CapacityMeter = { used: number; capacity: number | null; remaining: number | null };

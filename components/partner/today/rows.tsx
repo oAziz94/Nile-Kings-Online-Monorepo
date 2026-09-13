@@ -121,6 +121,11 @@ export function LowStockQueueRow({
       </span>
       <span className="min-w-0 flex-1 text-xs text-ink-soft">
         الحد <span dir="ltr">{formatNumberEn(row.threshold)}</span>
+        {row.velocityPerWeek !== null && (
+          <>
+            {" · "}يبيع <span dir="ltr">{formatNumberEn(row.velocityPerWeek)}</span>/أسبوع
+          </>
+        )}
       </span>
       <Button
         type="button"

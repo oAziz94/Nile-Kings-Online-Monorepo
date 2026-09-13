@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { apiForbidden, apiSuccess, apiUnauthorized } from "@/lib/api/response";
 import { resolveThreshold } from "@/lib/partner/resolve-threshold";
 import { isWorkingDay } from "@/lib/partner/working-day";
+import { COVER_DAYS_WINDOW, getVariantVelocities } from "@/lib/partner/stock-cover";
 import {
   buildCapacityMeter,
   buildTrendSeries,
@@ -190,7 +191,7 @@ export async function GET() {
         },
       }),
       prisma.order.findMany({
-        where: { assignedPartnerId: partner.id, status: { in: ["CONFIRMED", "PROCESSING"] } },
+        where: { assignedPartnerId: partner.id, status: { in: ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP"] } },
         orderBy: { updatedAt: "asc" },
         select: {
           id: true,
@@ -275,6 +276,7 @@ export async function GET() {
       variantName: string;
       sellable: number;
       threshold: number;
+      velocityPerWeek: number | null;
     }[] = [];
     for (const row of inventoryRows) {
       const sellable = row.stockAvailable - row.stockReserved;
@@ -293,10 +295,19 @@ export async function GET() {
           variantName: [sizeLabel, row.variant.colorName].filter(Boolean).join(" · "),
           sellable,
           threshold: rowThreshold,
+          velocityPerWeek: null,
         });
       }
     }
     lowStockLines.sort((a, b) => a.sellable - b.sellable);
+    const velocities = await getVariantVelocities(
+      partner.id,
+      lowStockLines.map((l) => l.variantId)
+    );
+    for (const line of lowStockLines) {
+      const sold = velocities.get(line.variantId) ?? 0;
+      line.velocityPerWeek = sold > 0 ? Math.round((sold / COVER_DAYS_WINDOW) * 7 * 10) / 10 : null;
+    }
 
     const restock =
       partner.partnerType === "AGENT"

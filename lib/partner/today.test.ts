@@ -42,29 +42,37 @@ describe("resolveStatusEnteredAt", () => {
 describe("isOrderOverdue", () => {
   const now = new Date("2026-09-13T12:00:00Z");
 
-  it("a CONFIRMED order uses confirmSlaHours", () => {
+  it("a CREATED order waits on confirmSlaHours", () => {
     const enteredAt = new Date("2026-09-13T00:00:00Z"); // 12h ago
     const sla = { confirmSlaHours: 24, shipSlaHours: 48 };
-    expect(isOrderOverdue({ status: "CONFIRMED", updatedAt: enteredAt, latestStatusLogAt: null }, sla, now)).toBe(false);
+    expect(isOrderOverdue({ status: "CREATED", updatedAt: enteredAt, latestStatusLogAt: null }, sla, now)).toBe(false);
     expect(
-      isOrderOverdue({ status: "CONFIRMED", updatedAt: enteredAt, latestStatusLogAt: null }, { ...sla, confirmSlaHours: 6 }, now)
+      isOrderOverdue({ status: "CREATED", updatedAt: enteredAt, latestStatusLogAt: null }, { ...sla, confirmSlaHours: 6 }, now)
     ).toBe(true);
   });
 
-  it("a PROCESSING order uses shipSlaHours", () => {
+  it("CONFIRMED, PROCESSING and READY_TO_SHIP use shipSlaHours (مهلة الشحن بعد التأكيد)", () => {
     const enteredAt = new Date("2026-09-11T12:00:00Z"); // 48h ago
     const sla = { confirmSlaHours: 24, shipSlaHours: 48 };
-    expect(isOrderOverdue({ status: "PROCESSING", updatedAt: enteredAt, latestStatusLogAt: null }, sla, now)).toBe(false);
-    expect(
-      isOrderOverdue({ status: "PROCESSING", updatedAt: enteredAt, latestStatusLogAt: null }, { ...sla, shipSlaHours: 40 }, now)
-    ).toBe(true);
+    for (const status of ["CONFIRMED", "PROCESSING", "READY_TO_SHIP"]) {
+      expect(isOrderOverdue({ status, updatedAt: enteredAt, latestStatusLogAt: null }, sla, now)).toBe(false);
+      expect(isOrderOverdue({ status, updatedAt: enteredAt, latestStatusLogAt: null }, { ...sla, shipSlaHours: 40 }, now)).toBe(true);
+    }
+  });
+
+  it("terminal statuses are never overdue", () => {
+    const enteredAt = new Date("2026-09-01T00:00:00Z");
+    const sla = { confirmSlaHours: 1, shipSlaHours: 1 };
+    for (const status of ["SHIPPED", "DELIVERED", "CANCELLED"]) {
+      expect(isOrderOverdue({ status, updatedAt: enteredAt, latestStatusLogAt: null }, sla, now)).toBe(false);
+    }
   });
 
   it("a changed SLA immediately changes the overdue verdict for the same order", () => {
     const enteredAt = new Date("2026-09-13T00:00:00Z"); // 12h ago
     const row = { status: "CONFIRMED" as const, updatedAt: enteredAt, latestStatusLogAt: null };
-    expect(isOrderOverdue(row, { confirmSlaHours: 10, shipSlaHours: 48 }, now)).toBe(true);
-    expect(isOrderOverdue(row, { confirmSlaHours: 13, shipSlaHours: 48 }, now)).toBe(false);
+    expect(isOrderOverdue(row, { confirmSlaHours: 48, shipSlaHours: 10 }, now)).toBe(true);
+    expect(isOrderOverdue(row, { confirmSlaHours: 48, shipSlaHours: 13 }, now)).toBe(false);
   });
 });
 
