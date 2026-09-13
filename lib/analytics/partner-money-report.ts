@@ -54,6 +54,9 @@ export type PaymentRow = {
   kind: "DOWN_PAYMENT" | "INSTALLMENT";
   amountPiastres: number;
   paidAt: string;
+  /** Backlog 9.2 — the admin home's "مستحقات شركاء" queue needs this per payment; the money
+   * report itself still reads `dueAt` from its own separate `allPayments` query below. */
+  dueAt: string | null;
   reference: string | null;
   stockReceiptId: string | null;
   stockReceiptReference: string | null;
@@ -114,6 +117,7 @@ export async function getPartnerStatementRows(
         kind: true,
         amountPiastres: true,
         paidAt: true,
+        dueAt: true,
         reference: true,
         stockReceiptId: true,
         stockReceipt: { select: { reference: true } },
@@ -134,6 +138,7 @@ export async function getPartnerStatementRows(
       kind: p.kind,
       amountPiastres: p.amountPiastres,
       paidAt: p.paidAt.toISOString(),
+      dueAt: p.dueAt ? p.dueAt.toISOString() : null,
       reference: p.reference,
       stockReceiptId: p.stockReceiptId,
       stockReceiptReference: p.stockReceipt?.reference ?? null,
@@ -330,6 +335,7 @@ export async function getPartnerMoneyReport(
     kind: p.kind,
     amountPiastres: p.amountPiastres,
     paidAt: p.paidAt.toISOString(),
+    dueAt: p.dueAt ? p.dueAt.toISOString() : null,
     reference: p.reference,
     stockReceiptId: p.stockReceiptId,
     stockReceiptReference: p.stockReceipt?.reference ?? null,

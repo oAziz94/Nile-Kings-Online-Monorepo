@@ -168,6 +168,51 @@ async function loadOrders(partnerId: string, range: { from: Date; to: Date }): P
   });
 }
 
+/**
+ * Backlog 9.2 (B3) — the same "how many open orders are overdue" question as
+ * `computeFulfilmentStats.overdueRate`, widened to the whole network: every order in range
+ * regardless of partner, each judged against *its own assigned partner's*
+ * `confirmSlaHours`/`shipSlaHours` (never a single network SLA). The admin home's "في
+ * الموعد · 30 يومًا" KPI is `100 − overdueRate` from this — on-time is the complement of
+ * overdue, the same number the partner's own fulfilment report already renders, just with
+ * no partner filter and a per-order SLA lookup instead of one partner's fixed SLA.
+ */
+export async function getNetworkOnTimeRate(range: { from: Date; to: Date }, now: Date = new Date()): Promise<number> {
+  const orders = await prisma.order.findMany({
+    where: { assignedPartnerId: { not: null }, createdAt: { gte: range.from, lte: range.to } },
+    select: {
+      id: true,
+      createdAt: true,
+      updatedAt: true,
+      status: true,
+      cancellationReason: true,
+      assignedPartnerId: true,
+      assignedPartner: { select: { confirmSlaHours: true, shipSlaHours: true } },
+    },
+  });
+  if (orders.length === 0) return 100;
+
+  const auditRows = await loadAuditRows(orders.map((o) => o.id));
+  const timings = computeOrderTimings(orders, auditRows);
+  const timingByOrder = new Map(timings.map((t) => [t.orderId, t]));
+
+  const openStatuses: OverdueStatus[] = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP"];
+  const openOrders = orders.filter((o) => openStatuses.includes(o.status as OverdueStatus) && o.assignedPartner);
+  if (openOrders.length === 0) return 100;
+
+  const overdueCount = openOrders.filter((o) => {
+    const timing = timingByOrder.get(o.id);
+    return isOrderOverdue(
+      { status: o.status as OverdueStatus, updatedAt: o.updatedAt, latestStatusLogAt: timing?.latestStatusLogAt ?? null },
+      { confirmSlaHours: o.assignedPartner!.confirmSlaHours, shipSlaHours: o.assignedPartner!.shipSlaHours },
+      now
+    );
+  }).length;
+
+  const overdueRate = (overdueCount / openOrders.length) * 100;
+  return Math.round((100 - overdueRate) * 10) / 10;
+}
+
 async function loadAuditRows(orderIds: string[]): Promise<FulfilmentAuditRow[]> {
   if (orderIds.length === 0) return [];
   const rows = await prisma.orderAuditLog.findMany({

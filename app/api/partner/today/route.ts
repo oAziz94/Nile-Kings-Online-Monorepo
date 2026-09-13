@@ -5,11 +5,11 @@ import { resolveThreshold } from "@/lib/partner/resolve-threshold";
 import { isWorkingDay } from "@/lib/partner/working-day";
 import { COVER_DAYS_WINDOW, getVariantVelocities } from "@/lib/partner/stock-cover";
 import {
+  addressLine as sharedAddressLine,
   buildCapacityMeter,
   buildTrendSeries,
-  isOrderOverdue,
+  findOverdueAssignedOrders,
   resolveWeekRanges,
-  type OverdueStatus,
 } from "@/lib/partner/today";
 import { getKpis, getRevenueOverTime } from "@/lib/analytics/queries";
 import { isKidsCategory, getDisplaySizeLabel } from "@/lib/size-display";
@@ -63,16 +63,11 @@ type OrderRow = {
   user: { name: string | null; phone: string };
 };
 
-function addressLine(shippingAddress: unknown): string {
-  const a = (shippingAddress ?? {}) as { governorate?: string; city?: string | null; area?: string | null };
-  return [a.city || a.area, a.governorate].filter(Boolean).join(" · ");
-}
-
 function mapOrderRow(o: OrderRow, enteredAt: Date) {
   return {
     id: o.id,
     customerName: o.user.name?.trim() || o.user.phone,
-    addressLine: addressLine(o.shippingAddress),
+    addressLine: sharedAddressLine(o.shippingAddress),
     totalPiastres: o.totalPiastres,
     enteredAt: enteredAt.toISOString(),
     status: o.status,
@@ -251,22 +246,27 @@ export async function GET() {
     ];
     const auditByOrderId = await latestStatusAuditAtByOrderId(orderIdsNeedingAudit);
 
-    const sla = { confirmSlaHours: partner.confirmSlaHours, shipSlaHours: partner.shipSlaHours };
+    // The overdue-per-partner-SLA query is shared with the admin's network-wide queue
+    // (backlog 9.2, B3): `findOverdueAssignedOrders` scoped to this partner replaces the
+    // route's own overdue evaluation, oldest-overdue first already, and already carries the
+    // exact fields the queue row needs (no round trip through `mapOrderRow`/`OrderRow`).
+    const overdueRows = await findOverdueAssignedOrders({ partnerId: partner.id });
+    const overdueIds = new Set(overdueRows.map((r) => r.id));
+    const overdueMapped = overdueRows.map((r) => ({
+      id: r.id,
+      customerName: r.customerName,
+      addressLine: r.addressLine,
+      totalPiastres: r.totalPiastres,
+      enteredAt: r.enteredAt.toISOString(),
+      status: r.status,
+    }));
 
-    const overdueOrders: { row: OrderRow; enteredAt: Date }[] = [];
     const confirmedOrders: { row: OrderRow; enteredAt: Date }[] = [];
     for (const o of confirmedProcessingOrders) {
+      if (o.status !== "CONFIRMED" || overdueIds.has(o.id)) continue;
       const enteredAt = auditByOrderId.get(o.id) ?? o.updatedAt;
-      const overdue = isOrderOverdue(
-        { status: o.status as OverdueStatus, updatedAt: o.updatedAt, latestStatusLogAt: auditByOrderId.get(o.id) ?? null },
-        sla,
-        now
-      );
-      if (overdue) overdueOrders.push({ row: o, enteredAt });
-      else if (o.status === "CONFIRMED") confirmedOrders.push({ row: o, enteredAt });
+      confirmedOrders.push({ row: o, enteredAt });
     }
-    // Most overdue (oldest) first.
-    overdueOrders.sort((a, b) => a.enteredAt.getTime() - b.enteredAt.getTime());
 
     let lowStockCount = 0;
     let sellableUnits = 0;
@@ -349,11 +349,11 @@ export async function GET() {
         revenueLastWeekPiastres: lastWeekKpis.netMerchandisePiastres,
         sellableUnits,
         underThresholdCount: lowStockCount,
-        overdueCount: overdueOrders.length,
+        overdueCount: overdueMapped.length,
       },
       queue: {
         toConfirm: group(createdOrders.map((o) => mapOrderRow(o, o.createdAt))),
-        overdue: group(overdueOrders.map(({ row, enteredAt }) => mapOrderRow(row, enteredAt))),
+        overdue: group(overdueMapped),
         readyToShip: group(
           readyToShipOrders.map((o) => mapOrderRow(o, auditByOrderId.get(o.id) ?? o.updatedAt))
         ),
