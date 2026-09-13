@@ -1,3 +1,11 @@
+## 2026-09-13 — Dashboard shells: collapsible sidebar and the governorate pill (7.1 v2.3.4, 7.2 v2.3.3)
+
+The user's sidebar idea shipped as one shared module used by both dashboards: the collapsed/expanded *state* only drives tooltips, `aria-expanded` and the button icon, while the narrow rail itself is CSS keyed off `html[data-sidebar-collapsed]`, set by an inline script before first paint. That split is the ruling worth keeping — a persisted layout preference is applied by CSS before React exists, never by state that has to catch up, so a reload never jumps. The admin shell keeps its v1 language and gains only the mechanism; when it is redesigned it inherits the module unchanged. Second ruling from the round: an element that changes place between two states is one element with variant classes, never two elements sharing an accessible name — the duplicate pair broke a strict-mode locator before it broke a screen reader, which is the cheaper way to learn it.
+
+The governorate pill fix went to the footer, not the page wrapper: padding on the last element keeps its own surface running under the pill, where a band on the wrapper painted the cream ground under the dark footer. Global, one line, one assertion.
+
+Open next, in order: the "member since" order count across statuses (decide whether cancelled orders count); the partner-v2 follow-ups; hero photo, size chart, Phase 5; admin dashboard tasks (now cheaper — the shell already has its collapse).
+
 ## 2026-09-13 — Search stays off the auth bar (v2.3.1)
 
 The 6.1 search control rendered on every mount of `SiteNavbar`, including login/register/forgot-password, because it sat next to the burger rather than behind a prop. The user's call on seeing it: hide it on auth, keep the site identity. It is now an opt-in `search` prop like `accountMenu` and `cartCount`, and the logged-out "تسجيل الدخول" text label is gated on `accountMenu` as well (v2.3.2) — the (auth) bar is byte-for-byte what shipped before this round: icons only. Rule reinforced: every storefront-only addition to the shared bar is opt-in from `public-site-navbar.tsx`; the default rendering is the identity bar and nothing else.
