@@ -86,13 +86,36 @@ export function mapPartnerOrder(order: PartnerOrderRow) {
 /**
  * Locks the order row for the rest of the transaction and rejects the transition if another
  * request already moved it (two parallel "confirm" clicks must commit reserved stock once).
+ * Exported so any other read-modify-write on `Order.status` (e.g. the customer's own cancel
+ * endpoint, backlog 6.4) reuses the same row-lock rule instead of duplicating the raw query.
  */
-async function lockOrderAtStatus(tx: Prisma.TransactionClient, orderId: string, expectedStatus: OrderStatus) {
+export async function lockOrderAtStatus(tx: Prisma.TransactionClient, orderId: string, expectedStatus: OrderStatus) {
   const rows = await tx.$queryRaw<{ status: OrderStatus }[]>`SELECT "status" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`;
   const locked = rows[0];
   if (!locked) throw new PartnerOrderTransitionError("الطلب غير موجود", 404);
   if (locked.status !== expectedStatus) {
     throw new PartnerOrderTransitionError("تغيّرت حالة الطلب بالفعل — حدّث الصفحة", 409);
+  }
+}
+
+/**
+ * Releases the stock a cancelled order was holding — a reservation-only release when the order
+ * was still CREATED, or a restore of previously committed stock otherwise. Shared by the
+ * partner cancellation branch below and the customer-facing cancel endpoint
+ * (`app/api/profile/orders/[id]/cancel/route.ts`, backlog 6.4) so the two paths never diverge.
+ */
+export async function releaseReservationForCancellation(
+  tx: Prisma.TransactionClient,
+  partnerId: string,
+  items: StockLine[],
+  orderId: string,
+  priorStatus: OrderStatus,
+  notes: string
+): Promise<void> {
+  if (orderUsesPartnerReservationOnly(priorStatus)) {
+    await releasePartnerReservation(tx, partnerId, items, orderId, notes);
+  } else {
+    await restorePartnerCommittedStock(tx, partnerId, items, orderId, notes);
   }
 }
 
@@ -141,11 +164,14 @@ export async function transitionPartnerOrderStatus(params: {
     const order = await prisma.$transaction(
       async (tx) => {
         await lockOrderAtStatus(tx, orderId, existing.status);
-        if (orderUsesPartnerReservationOnly(existing.status)) {
-          await releasePartnerReservation(tx, partnerId, oldItemStockLines, existing.id, "Partner order cancellation");
-        } else {
-          await restorePartnerCommittedStock(tx, partnerId, oldItemStockLines, existing.id, "Partner order cancellation");
-        }
+        await releaseReservationForCancellation(
+          tx,
+          partnerId,
+          oldItemStockLines,
+          existing.id,
+          existing.status,
+          "Partner order cancellation"
+        );
         await logOrderCancelled(tx, existing.id, "partner_agent", existing.status);
         return tx.order.update({ where: { id: orderId }, data, include: orderInclude });
       },
