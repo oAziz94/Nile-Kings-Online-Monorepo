@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
@@ -24,6 +25,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  SidebarCollapseButton,
+  SidebarCollapseScript,
+  SidebarCollapseTooltip,
+  useSidebarCollapsed,
+} from "@/components/dashboard/sidebar-collapse";
 
 type AdminIdentity = {
   name: string | null;
@@ -76,20 +84,34 @@ function isActive(pathname: string, href: string, exact?: boolean): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/**
+ * Backlog 7.1 — `collapsed` (real state) is only passed by the desktop aside, gating the
+ * Tooltip wrapper. `itemClassName`/`captionClassName`/`labelClassName` (CSS-only,
+ * `sidebar-collapsed:` variant) are also only passed by the desktop aside — the mobile
+ * drawer (`AdminNavDrawer`) calls this with none of them, so it's untouched.
+ */
 function AdminNavLinks({
   pathname,
   onNavigate,
   ticketOpenCount,
+  collapsed = false,
+  itemClassName,
+  captionClassName,
+  labelClassName,
 }: {
   pathname: string;
   onNavigate?: () => void;
   ticketOpenCount?: number;
+  collapsed?: boolean;
+  itemClassName?: string;
+  captionClassName?: string;
+  labelClassName?: string;
 }) {
   return (
     <div className="space-y-4">
       {NAV_GROUPS.map((group) => (
         <div key={group.label} className="space-y-1">
-          <p className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className={cn("px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", captionClassName)}>
             {group.label}
           </p>
           {group.items.map((item) => {
@@ -98,55 +120,70 @@ function AdminNavLinks({
             const active = isActive(pathname, href, exact);
             const badgeCount = href === "/admin/order-tickets" ? ticketOpenCount : undefined;
             return (
-              <Link
-                key={href}
-                href={href}
-                onClick={onNavigate}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-burgundy/10 text-burgundy shadow-sm ring-1 ring-inset ring-burgundy/15"
-                    : "text-muted-foreground hover:bg-accent hover:text-background"
-                )}
-              >
-                <Icon className={cn("h-4 w-4 shrink-0", active && "text-burgundy")} />
-                <span className="flex-1">{label}</span>
-                {Boolean(badgeCount) && (
-                  <span
-                    className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gold-500 px-1.5 text-[11px] font-extrabold text-lapis-900"
-                    aria-label={`${badgeCount} سؤال بانتظار الرد`}
-                  >
-                    {badgeCount}
-                  </span>
-                )}
-              </Link>
+              <SidebarCollapseTooltip key={href} active={collapsed} label={label}>
+                <Link
+                  href={href}
+                  onClick={onNavigate}
+                  className={cn(
+                    "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-burgundy/10 text-burgundy shadow-sm ring-1 ring-inset ring-burgundy/15"
+                      : "text-muted-foreground hover:bg-accent hover:text-background",
+                    itemClassName
+                  )}
+                >
+                  <Icon className={cn("h-4 w-4 shrink-0", active && "text-burgundy")} />
+                  <span className={cn("flex-1", labelClassName)}>{label}</span>
+                  {/* Expanded: today's inline pill, unchanged. Collapsed (sidebar-collapsed:):
+                      repositioned to the icon's top-start corner instead — one element, same
+                      `aria-label`, so it's never duplicated in the accessible tree. */}
+                  {Boolean(badgeCount) && (
+                    <span
+                      className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gold-500 px-1.5 text-[11px] font-extrabold text-lapis-900 sidebar-collapsed:absolute sidebar-collapsed:-top-1 sidebar-collapsed:inset-inline-start-1 sidebar-collapsed:h-3.5 sidebar-collapsed:min-w-3.5 sidebar-collapsed:px-0.5 sidebar-collapsed:text-[8px]"
+                      aria-label={`${badgeCount} سؤال بانتظار الرد`}
+                    >
+                      {badgeCount}
+                    </span>
+                  )}
+                </Link>
+              </SidebarCollapseTooltip>
             );
           })}
         </div>
       ))}
       <div className="space-y-1">
-        <p className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className={cn("px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", captionClassName)}>
           الحساب
         </p>
-        <Link
-          href="/"
-          onClick={onNavigate}
-          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <LayoutDashboard className="h-4 w-4 shrink-0" />
-          المتجر
-        </Link>
-        <button
-          type="button"
-          onClick={async () => {
-            await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-            window.location.href = "/login";
-          }}
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          تسجيل الخروج
-        </button>
+        <SidebarCollapseTooltip active={collapsed} label="المتجر">
+          <Link
+            href="/"
+            onClick={onNavigate}
+            className={cn(
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+              itemClassName
+            )}
+          >
+            <LayoutDashboard className="h-4 w-4 shrink-0" />
+            <span className={labelClassName}>المتجر</span>
+          </Link>
+        </SidebarCollapseTooltip>
+        <SidebarCollapseTooltip active={collapsed} label="تسجيل الخروج">
+          <button
+            type="button"
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+              window.location.href = "/login";
+            }}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+              itemClassName
+            )}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            <span className={labelClassName}>تسجيل الخروج</span>
+          </button>
+        </SidebarCollapseTooltip>
       </div>
     </div>
   );
@@ -264,9 +301,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   const displayName = identity?.name?.trim() || identity?.phone || "Admin";
+  const { collapsed, toggle } = useSidebarCollapsed();
 
   return (
+    <TooltipProvider delayDuration={150}>
     <div className="flex min-h-screen flex-col bg-background lg:flex-row" dir="rtl">
+      <SidebarCollapseScript />
       <header className="sticky top-0 z-50 flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-3 lg:hidden">
         <Button
           type="button"
@@ -291,23 +331,51 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         ticketOpenCount={ticketOpenCount}
       />
 
-      <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-l border-border bg-card lg:flex">
-        <div className="border-b border-border px-5 py-4">
-          <p className="text-base font-bold text-foreground">Nile Kings</p>
-          <p className="text-xs text-muted-foreground">Admin</p>
-          <div className="mt-4 rounded-md border border-border bg-muted/40 px-3 py-2">
-            <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
-            <p className="truncate text-xs text-muted-foreground">{identity?.phone || identity?.role || "Admin"}</p>
+      <aside
+        data-testid="dashboard-rail"
+        className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-l border-border bg-card lg:flex sidebar-collapsed:w-[72px]"
+      >
+        <div className="border-b border-border px-5 py-4 sidebar-collapsed:flex sidebar-collapsed:justify-center sidebar-collapsed:px-2">
+          <div className="sidebar-collapsed:hidden">
+            <p className="text-base font-bold text-foreground">Nile Kings</p>
+            <p className="text-xs text-muted-foreground">Admin</p>
+            <div className="mt-4 rounded-md border border-border bg-muted/40 px-3 py-2">
+              <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
+              <p className="truncate text-xs text-muted-foreground">{identity?.phone || identity?.role || "Admin"}</p>
+            </div>
           </div>
+          <Image
+            src="/brand/logo-gold-mark.png"
+            alt="Nile Kings"
+            width={34}
+            height={34}
+            className="hidden h-[34px] w-[34px] object-contain sidebar-collapsed:block"
+          />
         </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          <AdminNavLinks pathname={pathname} ticketOpenCount={ticketOpenCount} />
+        <nav id="admin-desktop-nav" className="flex-1 space-y-1 overflow-y-auto p-3">
+          <AdminNavLinks
+            pathname={pathname}
+            ticketOpenCount={ticketOpenCount}
+            collapsed={collapsed}
+            itemClassName="sidebar-collapsed:justify-center sidebar-collapsed:px-0 sidebar-collapsed:h-10 sidebar-collapsed:w-10 sidebar-collapsed:mx-auto"
+            captionClassName="sidebar-collapsed:hidden"
+            labelClassName="sidebar-collapsed:hidden"
+          />
         </nav>
+        <div className="mt-auto border-t border-border p-3">
+          <SidebarCollapseButton
+            collapsed={collapsed}
+            onToggle={toggle}
+            navId="admin-desktop-nav"
+            className="rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          />
+        </div>
       </aside>
 
       <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6 lg:overflow-auto lg:p-6">
         {children}
       </main>
     </div>
+    </TooltipProvider>
   );
 }

@@ -43,6 +43,7 @@ Thumbs.db
 /test-results/
 /blob-report/
 /screenshots/
+/.screenshots/
 
 # Prisma
 prisma/migrations/**/migration_lock.toml
