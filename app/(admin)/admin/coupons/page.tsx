@@ -62,8 +62,54 @@ type FormState = {
   promotionPopupMessage: string;
   minOrderPiastres: string;
   maxUses: string;
+  validFrom: string;
+  validUntil: string;
   active: boolean;
 };
+
+/** ISO datetime string -> value for an `<input type="datetime-local">` (local time, no timezone). */
+function isoToLocalInputValue(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** `<input type="datetime-local">` value -> ISO string (local time -> UTC). */
+function localInputValueToIso(local: string): string | null {
+  if (!local) return null;
+  const d = new Date(local);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+function formatCouponDateTime(iso: string): string {
+  const d = new Date(iso);
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(d);
+}
+
+function formatCouponValidity(c: Coupon): string {
+  const from = formatCouponDateTime(c.validFrom);
+  const until = c.validUntil ? formatCouponDateTime(c.validUntil) : "بلا نهاية";
+  return `${from} ← ${until}`;
+}
+
+function getCouponTimeStatus(c: Coupon): "not_started" | "expired" | null {
+  const now = new Date();
+  const from = new Date(c.validFrom);
+  if (from.getTime() > now.getTime()) return "not_started";
+  if (c.validUntil) {
+    const until = new Date(c.validUntil);
+    if (until.getTime() < now.getTime()) return "expired";
+  }
+  return null;
+}
 
 function emptyForm(): FormState {
   return {
@@ -77,6 +123,8 @@ function emptyForm(): FormState {
     promotionPopupMessage: "",
     minOrderPiastres: "",
     maxUses: "",
+    validFrom: isoToLocalInputValue(new Date().toISOString()),
+    validUntil: "",
     active: true,
   };
 }
@@ -98,8 +146,20 @@ function couponToForm(c: Coupon): FormState {
     promotionPopupMessage: c.promotionPopupMessage ?? "",
     minOrderPiastres: c.minOrderPiastres != null ? String(c.minOrderPiastres / 100) : "",
     maxUses: c.maxUses != null ? String(c.maxUses) : "",
+    validFrom: isoToLocalInputValue(c.validFrom),
+    validUntil: c.validUntil ? isoToLocalInputValue(c.validUntil) : "",
     active: c.active,
   };
+}
+
+/** `validUntil` must be strictly after `validFrom` when set. */
+function validityWindowError(form: FormState): string | null {
+  if (!form.validUntil) return null;
+  const from = new Date(form.validFrom);
+  const until = new Date(form.validUntil);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(until.getTime())) return null;
+  if (until.getTime() <= from.getTime()) return "تاريخ الانتهاء يجب أن يكون بعد تاريخ البدء";
+  return null;
 }
 
 function validateCouponForm(form: FormState): string | null {
@@ -116,6 +176,8 @@ function validateCouponForm(form: FormState): string | null {
     const free = Math.trunc(parseInt(form.bogoFreeQuantity, 10) || 0);
     if (pay < 1 || free < 1) return "أدخل كميات صحيحة (1 على الأقل) للعرض";
   }
+  const dateErr = validityWindowError(form);
+  if (dateErr) return dateErr;
   return null;
 }
 
@@ -137,6 +199,8 @@ function formToCreateBody(form: FormState): Record<string, unknown> {
     promotionPopupMessage: form.showPromotionPopup ? form.promotionPopupMessage.trim().slice(0, 8000) : null,
     minOrderPiastres: form.minOrderPiastres === "" ? null : Math.round(parseFloat(form.minOrderPiastres) * 100),
     maxUses: form.maxUses === "" ? null : parseInt(form.maxUses, 10),
+    validFrom: localInputValueToIso(form.validFrom) ?? undefined,
+    validUntil: localInputValueToIso(form.validUntil),
     active: form.active,
   };
   if (form.discountType === "BOGO_QTY") {
@@ -165,6 +229,8 @@ function formToPatchBody(form: FormState): Record<string, unknown> {
     promotionPopupMessage: form.showPromotionPopup ? form.promotionPopupMessage.trim().slice(0, 8000) : null,
     minOrderPiastres: form.minOrderPiastres === "" ? null : Math.round(parseFloat(form.minOrderPiastres) * 100),
     maxUses: form.maxUses === "" ? null : parseInt(form.maxUses, 10),
+    validFrom: localInputValueToIso(form.validFrom) ?? undefined,
+    validUntil: localInputValueToIso(form.validUntil),
     active: form.active,
   };
   if (form.discountType === "BOGO_QTY") {
@@ -191,12 +257,17 @@ function CouponFormFields({
   setForm,
   bogoSameId,
   promoPopupId,
+  validFromId,
+  validUntilId,
 }: {
   form: FormState;
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
   bogoSameId: string;
   promoPopupId: string;
+  validFromId: string;
+  validUntilId: string;
 }) {
+  const dateError = validityWindowError(form);
   return (
     <div className="grid gap-4 py-4">
       <div className="grid gap-2">
@@ -301,6 +372,47 @@ function CouponFormFields({
           onChange={(e) => setForm((f) => ({ ...f, promotionPopupMessage: e.target.value }))}
         />
       </div>
+      <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor={validFromId}>يبدأ في</Label>
+          <Input
+            id={validFromId}
+            type="datetime-local"
+            dir="ltr"
+            value={form.validFrom}
+            onChange={(e) => setForm((f) => ({ ...f, validFrom: e.target.value }))}
+            required
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={validUntilId}>ينتهي في</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id={validUntilId}
+              type="datetime-local"
+              dir="ltr"
+              value={form.validUntil}
+              onChange={(e) => setForm((f) => ({ ...f, validUntil: e.target.value }))}
+              placeholder="بلا نهاية"
+            />
+            {form.validUntil ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setForm((f) => ({ ...f, validUntil: "" }))}
+              >
+                مسح
+              </Button>
+            ) : null}
+          </div>
+        </div>
+        {dateError ? (
+          <p className="text-xs text-destructive sm:col-span-2" role="alert">
+            {dateError}
+          </p>
+        ) : null}
+      </div>
       <div className="grid gap-2">
         <Label>الحد الأدنى للطلب (ج.م)</Label>
         <Input
@@ -356,6 +468,8 @@ export default function AdminCouponsPage() {
   const formIds = React.useId();
   const bogoSameId = `${formIds}-bogo-same`;
   const promoPopupId = `${formIds}-promo-popup`;
+  const validFromId = `${formIds}-valid-from`;
+  const validUntilId = `${formIds}-valid-until`;
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -514,6 +628,8 @@ export default function AdminCouponsPage() {
               setForm={setForm}
               bogoSameId={bogoSameId}
               promoPopupId={promoPopupId}
+              validFromId={validFromId}
+              validUntilId={validUntilId}
             />
             <DialogFooter>
               <DialogClose asChild>
@@ -589,6 +705,7 @@ export default function AdminCouponsPage() {
                   <TableHead>نافذة الموقع</TableHead>
                   <TableHead>الحد الأدنى للطلب</TableHead>
                   <TableHead>المستخدم / الأقصى</TableHead>
+                  <TableHead>الصلاحية</TableHead>
                   <TableHead>الحالة</TableHead>
                   <TableHead className="w-[120px] text-left">إجراءات</TableHead>
                 </TableRow>
@@ -609,7 +726,20 @@ export default function AdminCouponsPage() {
                       {c.maxUses != null ? ` / ${c.maxUses}` : ""}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={c.active ? "success" : "secondary"}>{c.active ? "نشط" : "معطّل"}</Badge>
+                      <span dir="ltr" className="text-xs">
+                        {formatCouponValidity(c)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Badge variant={c.active ? "success" : "secondary"}>{c.active ? "نشط" : "معطّل"}</Badge>
+                        {getCouponTimeStatus(c) === "not_started" ? (
+                          <Badge variant="warning">لم يبدأ</Badge>
+                        ) : null}
+                        {getCouponTimeStatus(c) === "expired" ? (
+                          <Badge variant="danger">منتهٍ</Badge>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell className="text-left">
                       <div className="flex flex-wrap items-center justify-end gap-1">
