@@ -1,3 +1,7 @@
+## 2026-09-13 — A cancelled order is not one of the customer's orders (7.3, v2.3.5)
+
+The "عميل منذ · N طلبات" strip, the account API and the drawer summary counted every row including cancelled ones, so a customer whose only order was cancelled read "1 طلبات". All three now exclude `CANCELLED`; the drawer's open count already did. One rule for every customer-facing order count from here: cancelled rows are history in the list, never a number in a summary.
+
 ## 2026-09-13 — Dashboard shells: collapsible sidebar and the governorate pill (7.1 v2.3.4, 7.2 v2.3.3)
 
 The user's sidebar idea shipped as one shared module used by both dashboards: the collapsed/expanded *state* only drives tooltips, `aria-expanded` and the button icon, while the narrow rail itself is CSS keyed off `html[data-sidebar-collapsed]`, set by an inline script before first paint. That split is the ruling worth keeping — a persisted layout preference is applied by CSS before React exists, never by state that has to catch up, so a reload never jumps. The admin shell keeps its v1 language and gains only the mechanism; when it is redesigned it inherits the module unchanged. Second ruling from the round: an element that changes place between two states is one element with variant classes, never two elements sharing an accessible name — the duplicate pair broke a strict-mode locator before it broke a screen reader, which is the cheaper way to learn it.
