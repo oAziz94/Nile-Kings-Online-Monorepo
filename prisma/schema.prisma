@@ -702,6 +702,8 @@ model PartnerStockSnapshot {
   sellableUnits     Int
   reservedUnits     Int
   valuationPiastres BigInt
+  /// Sale-price valuation (sellable x price), 7.5 PM addition; null on rows written before it existed.
+  valuationPricePiastres BigInt?
   coverDays         Float?
   deadStockSkus     Int
   outOfStockSkus    Int

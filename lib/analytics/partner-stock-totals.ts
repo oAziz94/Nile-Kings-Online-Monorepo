@@ -172,6 +172,7 @@ export type NearestSnapshotRow = {
   day: Date;
   sellableUnits: number;
   valuationPiastres: bigint;
+  valuationPricePiastres: bigint | null;
   coverDays: number | null;
   deadStockSkus: number;
   outOfStockSkus: number;
@@ -196,6 +197,7 @@ export async function findNearestStockSnapshot(
       day: true,
       sellableUnits: true,
       valuationPiastres: true,
+      valuationPricePiastres: true,
       coverDays: true,
       deadStockSkus: true,
       outOfStockSkus: true,

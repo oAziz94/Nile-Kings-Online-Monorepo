@@ -178,6 +178,7 @@ test.beforeAll(async () => {
       sellableUnits: 10,
       reservedUnits: 5,
       valuationPiastres: BigInt(75000),
+      valuationPricePiastres: BigInt(100000),
       coverDays: 4,
       deadStockSkus: 1,
       outOfStockSkus: 2,
@@ -331,10 +332,11 @@ test("inventory report: point-in-time headline tiles compare against the seeded 
   expect(byKey.valuationCost.previous).toBe(75000);
   expect(byKey.valuationCost.noComparison).toBeFalsy();
 
-  // "القيمة بسعر البيع" has no snapshot field of its own (schema stores one aggregate
-  // `valuationPiastres`, the cost valuation) — stays without a comparison even though a
-  // snapshot row exists for the other five point-in-time tiles.
-  expect(byKey.valuationPrice.noComparison).toBeTruthy();
+  // Price valuation: live = 5 * 10000 = 50000; snapshot = 100000 -> -50%.
+  expect(byKey.valuationPrice.value).toBe(50000);
+  expect(byKey.valuationPrice.previous).toBe(100000);
+  expect(byKey.valuationPrice.delta.changePct).toBe(-50);
+  expect(byKey.valuationPrice.noComparison).toBeFalsy();
 
   // Dead-stock / stock-out counts: live = 0 both (recent sale, sellable > 0); snapshot 1 / 2.
   expect(byKey.deadStockCount.value).toBe(0);

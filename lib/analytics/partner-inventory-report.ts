@@ -277,10 +277,8 @@ function buildHeadline(
   // period's end, these tiles carry no comparison at all (rule 12's honest exception,
   // recorded in 04-decisions.md 2026-09-13) rather than a fabricated flat delta. Backlog
   // 7.5 adds a real comparison when a `PartnerStockSnapshot` row does exist — see
-  // `withSnapshot` below. "القيمة بسعر البيع" (valuationPrice) has no snapshot field of its
-  // own (the schema stores one aggregate `valuationPiastres`, deliberately the *cost*
-  // valuation — the money-relevant figure for the Money report and reorder decisions) and
-  // so stays without a comparison even when a snapshot row exists for the other five.
+  // `withSnapshot` below. Both valuations are snapshotted (`valuationPiastres` = cost,
+  // `valuationPricePiastres` = sale price, the latter nullable on rows written before it existed).
   const snapshotHint = "رصيد لحظي — بلا مقارنة";
   const periodHint = `على آخر ${days} يومًا`;
   const costRatePct = Math.round(costRateBps / 100);
@@ -330,7 +328,11 @@ function buildHeadline(
       snapshot ? Number(snapshot.valuationPiastres) : undefined,
       snapshot ? `بنسبتك ${costRatePct}% · ${snapshotDateLabel}` : undefined
     ),
-    point({ key: "valuationPrice", label: "القيمة بسعر البيع", value: totals.valuationPricePiastres, unit: "piastres", hint: snapshotHint }),
+    withSnapshot(
+      { key: "valuationPrice", label: "القيمة بسعر البيع", value: totals.valuationPricePiastres, unit: "piastres", hint: snapshotHint },
+      snapshot?.valuationPricePiastres === null || snapshot?.valuationPricePiastres === undefined ? undefined : Number(snapshot.valuationPricePiastres),
+      snapshotDateLabel ?? undefined
+    ),
     withSnapshot(
       { key: "medianCover", label: "متوسط التغطية", value: medianCover ?? 0, unit: "days", hint: `سرعة البيع ${periodHint}` },
       snapshot?.coverDays,
