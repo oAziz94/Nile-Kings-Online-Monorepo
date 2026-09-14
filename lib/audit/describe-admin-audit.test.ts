@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describeAdminAudit } from "./describe-admin-audit";
+import { ACTION_LABELS } from "./action-labels";
 
 describe("describeAdminAudit", () => {
   it("describes a partner cost-rate change in the canvas's own sentence shape", () => {
@@ -261,5 +264,20 @@ describe("describeAdminAudit", () => {
       });
       expect(sentence).toBe("غيّر المخزون المتاح ل3030-01-L-BLK 10 → 25");
     });
+  });
+
+  it("ACTION_LABELS (backlog 9.7 review fix) covers every real action this file exercises", () => {
+    // Derived from this file's own source rather than a hand-kept list, so a future test
+    // case added here without a matching ACTION_LABELS entry fails immediately. "sync" is
+    // the deliberate fallback-test action (an unrecognised action, never actually written)
+    // and is excluded on purpose.
+    const source = readFileSync(fileURLToPath(import.meta.url), "utf8");
+    const actions = new Set(
+      [...source.matchAll(/action:\s*"([a-z_]+)"/g)].map((m) => m[1]).filter((a) => a !== "sync")
+    );
+    expect(actions.size).toBeGreaterThan(10);
+    for (const action of actions) {
+      expect(ACTION_LABELS, `no ACTION_LABELS entry for "${action}"`).toHaveProperty(action);
+    }
   });
 });
