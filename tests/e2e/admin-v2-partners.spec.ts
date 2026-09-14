@@ -36,6 +36,11 @@ const ADMIN_PASSWORD = "AdminPartnersTest123!";
 const ADMIN_NAME = "مسؤول اختبار الشركاء";
 const CUSTOMER_PHONE = "+201099966302";
 const uniqueSuffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+// Seeded so "مستحق للمصنع" on the list (receipt cost − payment) is a real, assertable
+// number: 200 EGP received − 100 EGP paid = 100 EGP owed.
+const SEED_RECEIPT_COST_PIASTRES = 200_00;
+const SEED_PAYMENT_PIASTRES = 100_00;
+const SEED_BALANCE_PIASTRES = SEED_RECEIPT_COST_PIASTRES - SEED_PAYMENT_PIASTRES;
 
 let adminUserId: string;
 let customerUserId: string;
@@ -54,6 +59,12 @@ let requestId: string; // partner application, approved+converted during the tes
 const allOrderIds: string[] = [];
 const allReceiptIds: string[] = [];
 const allPaymentIds: string[] = [];
+
+/** Mirrors the list/finance UI's own `egp()` helper (`piastresToEgp` + `formatNumberEn`) —
+ * kept inline since the `@/*` alias does not resolve for a Playwright spec's own imports. */
+function egp(piastres: number): string {
+  return `${Math.round(piastres / 100).toLocaleString("en-US")} ج.م`;
+}
 
 async function loginAsAdmin(page: Page) {
   await page.goto("/login");
@@ -130,9 +141,17 @@ test.beforeAll(async () => {
   overdueOrderId = order.id;
   allOrderIds.push(order.id);
 
-  // One partner-recorded receipt (via prisma directly, to seed a fixed comparison point).
+  // One partner-recorded receipt (via prisma directly, to seed a fixed comparison point) —
+  // a real totalCostPiastres so "مستحق للمصنع" (receipt cost − payment) is a meaningful,
+  // assertable number rather than 0.
   const receipt = await prisma.stockReceipt.create({
-    data: { partnerId: pair.agent.partnerId, kind: "FACTORY", reference: `seed-${uniqueSuffix}`, recordedBy: "PARTNER" },
+    data: {
+      partnerId: pair.agent.partnerId,
+      kind: "FACTORY",
+      reference: `seed-${uniqueSuffix}`,
+      recordedBy: "PARTNER",
+      totalCostPiastres: SEED_RECEIPT_COST_PIASTRES,
+    },
   });
   partnerReceiptId = receipt.id;
   allReceiptIds.push(receipt.id);
@@ -142,7 +161,7 @@ test.beforeAll(async () => {
     data: {
       partnerId: pair.agent.partnerId,
       kind: "INSTALLMENT",
-      amountPiastres: 100_00,
+      amountPiastres: SEED_PAYMENT_PIASTRES,
       paidAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
       dueAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
       reference: `seed-pay-${uniqueSuffix}`,
@@ -194,6 +213,37 @@ test("list shows the health columns with the expected numbers", async ({ page })
   const row = page.locator("tr").filter({ has: page.getByText(pair.agent.name, { exact: true }) }).first();
   await expect(row).toBeVisible({ timeout: 20_000 });
   await expect(row).toContainText("1"); // overdue count
+  // مستحق للمصنع = receipt cost − payment (the same arithmetic the finance test uses,
+  // computeBalance) — 200 EGP seeded receipt − 100 EGP seeded payment = 100 EGP.
+  await expect(row).toContainText(egp(SEED_BALANCE_PIASTRES));
+});
+
+test("the list opens the profile three ways: the partner name link, the whole row, and فتح", async ({ page }) => {
+  await loginAsAdmin(page);
+  await Promise.all([
+    page.waitForResponse((r) => r.url().includes("/api/admin/partners?health=1"), { timeout: 20_000 }),
+    page.goto("/admin/partners"),
+  ]);
+  const row = page.locator("tr").filter({ has: page.getByText(pair.agent.name, { exact: true }) }).first();
+  await expect(row).toBeVisible({ timeout: 20_000 });
+
+  // 1. The partner name as a link.
+  await row.getByRole("link", { name: pair.agent.name, exact: true }).click();
+  await expect(page).toHaveURL(`/admin/partners/${pair.agent.partnerId}`, { timeout: 20_000 });
+
+  // 2. فتح.
+  await page.goto("/admin/partners");
+  const row2 = page.locator("tr").filter({ has: page.getByText(pair.agent.name, { exact: true }) }).first();
+  await expect(row2).toBeVisible({ timeout: 20_000 });
+  await row2.getByRole("link", { name: "فتح" }).click();
+  await expect(page).toHaveURL(`/admin/partners/${pair.agent.partnerId}`, { timeout: 20_000 });
+
+  // 3. Whole-row click (clicking a cell that is not the name link or فتح button).
+  await page.goto("/admin/partners");
+  const row3 = page.locator("tr").filter({ has: page.getByText(pair.agent.name, { exact: true }) }).first();
+  await expect(row3).toBeVisible({ timeout: 20_000 });
+  await row3.locator("td").nth(1).click();
+  await expect(page).toHaveURL(`/admin/partners/${pair.agent.partnerId}`, { timeout: 20_000 });
 });
 
 test("يحتاج انتباه filter keeps the fixture (overdue > 0)", async ({ page }) => {
@@ -310,12 +360,21 @@ test("الحساب المالي: record a receipt on behalf, compare arithmetic 
   expect(balanceAfterJson.data.balancePiastres).toBe(balancePiastresBefore - 50_00);
 });
 
-test("الإعدادات: change confirm SLA → audit row with before/after; partner settings page read-only", async ({ page }) => {
+test("الإعدادات: knob inputs are labelled; change confirm SLA from the UI → audit row with before/after; partner settings page read-only", async ({ page }) => {
   await loginAsAdmin(page);
-  const patchRes = await page.request.patch(`/api/admin/partners/${pair.agent.partnerId}`, {
-    data: { confirmSlaHours: 15 },
-  });
-  expect(patchRes.ok()).toBeTruthy();
+
+  // The settings tab's knob inputs are real `<Label htmlFor>` + `id` pairs (verifier fix,
+  // not just placeholders) — located here by their accessible name, same as the finance
+  // dialogs' fields.
+  await page.goto(`/admin/partners/${pair.agent.partnerId}?tab=settings`);
+  const confirmSlaInput = page.getByLabel("مهلة التأكيد (ساعة)");
+  const costRateInput = page.getByLabel("نسبة الشراء (%)");
+  await expect(confirmSlaInput).toBeVisible({ timeout: 20_000 });
+  await expect(costRateInput).toBeVisible();
+
+  await confirmSlaInput.fill("15");
+  await page.getByRole("button", { name: "حفظ التغييرات" }).click();
+  await expect(page.getByText("تم حفظ التغييرات").first()).toBeVisible({ timeout: 20_000 });
 
   const auditRow = await prisma.adminAuditLog.findFirst({
     where: { entityType: "partner", entityId: pair.agent.partnerId, action: "update" },
