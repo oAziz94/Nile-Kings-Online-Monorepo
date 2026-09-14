@@ -51,13 +51,13 @@ describe("describeAdminAudit", () => {
 
   it("falls back to a generic sentence for an unrecognised action/field", () => {
     const sentence = describeAdminAudit({
-      action: "sync",
-      entityType: "media",
+      action: "noop",
+      entityType: "unknown_type",
       entityLabel: "3030-01",
       before: null,
       after: null,
     });
-    expect(sentence).toBe("عدّل media 3030-01");
+    expect(sentence).toBe("عدّل unknown_type 3030-01");
   });
 
   // Backlog 9.5 close-out fix — the six التوجيه/مخزون الشبكة actions each get a dedicated
@@ -144,7 +144,7 @@ describe("describeAdminAudit", () => {
 
   it("falls back to the routing entity label for an unrecognised routing action", () => {
     const sentence = describeAdminAudit({
-      action: "sync",
+      action: "noop",
       entityType: "routing",
       entityLabel: "القليوبية",
       before: null,
@@ -155,7 +155,7 @@ describe("describeAdminAudit", () => {
 
   it("falls back to the مخزون الشريك entity label for an unrecognised partner-inventory action", () => {
     const sentence = describeAdminAudit({
-      action: "sync",
+      action: "noop",
       entityType: "partner-inventory",
       entityLabel: "3030-01-L-BLK",
       before: null,
@@ -266,14 +266,75 @@ describe("describeAdminAudit", () => {
     });
   });
 
+  describe("backlog 9.8a media additions", () => {
+    it("describes a Cloudinary sync", () => {
+      const sentence = describeAdminAudit({
+        action: "sync",
+        entityType: "media",
+        entityLabel: "Cloudinary",
+        before: null,
+        after: { imported: 3, missing: 1, adopted: 5 },
+      });
+      expect(sentence).toBe("زامن مكتبة الصور مع Cloudinary: 3 مستوردة، 1 مفقودة، 5 مرتبطة بروابط قديمة");
+    });
+
+    it("describes assigning images to a product colour", () => {
+      const sentence = describeAdminAudit({
+        action: "media_assign",
+        entityType: "media",
+        entityLabel: "تي شيرت رجالي",
+        before: null,
+        after: { count: 2, colorLabel: "أسود" },
+      });
+      expect(sentence).toBe("أسند 2 صورة إلى تي شيرت رجالي · أسود");
+    });
+
+    it("describes setting a product hero image", () => {
+      const sentence = describeAdminAudit({
+        action: "media_hero",
+        entityType: "media",
+        entityLabel: "تي شيرت رجالي",
+        before: null,
+        after: null,
+      });
+      expect(sentence).toBe("عيّن صورة رئيسية لـتي شيرت رجالي");
+    });
+
+    it("describes replacing an image", () => {
+      const sentence = describeAdminAudit({
+        action: "media_replace",
+        entityType: "media",
+        entityLabel: "products/old-photo",
+        before: null,
+        after: null,
+      });
+      expect(sentence).toBe("استبدل الصورة products/old-photo بصورة جديدة");
+    });
+
+    it("describes deleting and editing the alt text generically", () => {
+      expect(
+        describeAdminAudit({ action: "delete", entityType: "media", entityLabel: "products/x", before: null, after: null })
+      ).toBe("حذف الصورة products/x");
+      expect(
+        describeAdminAudit({
+          action: "update",
+          entityType: "media",
+          entityLabel: "products/x",
+          before: { alt: null },
+          after: { alt: "تي شيرت أسود" },
+        })
+      ).toBe("غيّر النص البديل لproducts/x — → تي شيرت أسود");
+    });
+  });
+
   it("ACTION_LABELS (backlog 9.7 review fix) covers every real action this file exercises", () => {
     // Derived from this file's own source rather than a hand-kept list, so a future test
-    // case added here without a matching ACTION_LABELS entry fails immediately. "sync" is
+    // case added here without a matching ACTION_LABELS entry fails immediately. "noop" is
     // the deliberate fallback-test action (an unrecognised action, never actually written)
     // and is excluded on purpose.
     const source = readFileSync(fileURLToPath(import.meta.url), "utf8");
     const actions = new Set(
-      [...source.matchAll(/action:\s*"([a-z_]+)"/g)].map((m) => m[1]).filter((a) => a !== "sync")
+      [...source.matchAll(/action:\s*"([a-z_]+)"/g)].map((m) => m[1]).filter((a) => a !== "noop")
     );
     expect(actions.size).toBeGreaterThan(10);
     for (const action of actions) {

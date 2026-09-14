@@ -61,6 +61,7 @@ model User {
   seniorVerification SeniorVerification?
   partner            Partner?
   orderTickets       OrderTicket[]
+  uploadedMediaAssets MediaAsset[]
 
   @@index([phone])
   @@index([role])
@@ -166,6 +167,7 @@ model Product {
   slug                String   @unique
   description         String?
   imageUrl            String?
+  heroAssetId         String?  // backlog 9.8a — the MediaAsset behind imageUrl, admin's handle; imageUrl stays what the storefront reads
   tags                String[] @default([]) // for search (Arabic + tags)
   sortOrder           Int      @default(0)
   active              Boolean  @default(true)
@@ -176,6 +178,7 @@ model Product {
   updatedAt           DateTime @updatedAt
 
   category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  heroAsset MediaAsset? @relation("ProductHeroAsset", fields: [heroAssetId], references: [id], onDelete: SetNull)
   variants Variant[]
   variantImages VariantImage[]
   partnerStockThresholds PartnerStockThreshold[]
@@ -183,6 +186,7 @@ model Product {
   @@index([categoryId])
   @@index([slug])
   @@index([active])
+  @@index([heroAssetId])
 }
 
 // A colour's photo gallery for the PDP (backlog: multi-image-per-variant, 2026-09-12). Grouped by
@@ -196,12 +200,15 @@ model VariantImage {
   productId String
   colorKey  String
   url       String
+  assetId   String?  // backlog 9.8a — the MediaAsset behind url, nullable for rows that predate it (legacy); url stays what the storefront reads
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  asset   MediaAsset? @relation("VariantImageAsset", fields: [assetId], references: [id], onDelete: SetNull)
 
   @@index([productId, colorKey, sortOrder])
+  @@index([assetId])
 }
 
 model Variant {
@@ -213,6 +220,7 @@ model Variant {
   colorHex            String?  // optional color hex e.g. "#000000"
   colorName           String?  // optional color name e.g. "أسود"
   imageUrl            String?  // optional image for this color variant; used on product page when selected
+  imageAssetId        String?  // backlog 9.8a — the MediaAsset behind imageUrl, admin's handle; imageUrl stays what the storefront reads
   basePricePiastres   Int?     // original price; null = use product's
   pricePiastres       Int      // selling/discounted price in piastres
   stockAvailable      Int      @default(0)
@@ -221,6 +229,7 @@ model Variant {
   updatedAt      DateTime @updatedAt
 
   product    Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  imageAsset MediaAsset? @relation("VariantImageAssetRepresentative", fields: [imageAssetId], references: [id], onDelete: SetNull)
   cartItems  CartItem[]
   orderItems OrderItem[]
   partnerInventories PartnerInventory[]
@@ -231,6 +240,35 @@ model Variant {
   @@index([productId])
   @@index([sku])
   @@index([stockAvailable])
+  @@index([imageAssetId])
+}
+
+// Every Cloudinary upload made through the site (backlog 9.8a, `06-admin-v2.md` §3.5): the
+// admin's handle on an image, registered at upload time. `Product.imageUrl` / `Variant.imageUrl`
+// / `VariantImage.url` are the columns the storefront actually reads and keep working
+// unmodified — the three `*AssetId` columns above are additive, admin-only bookkeeping so the
+// الصور library can show usage, reconcile with Cloudinary and let an asset be reassigned/
+// replaced without ever touching the storefront read path.
+model MediaAsset {
+  id                String    @id @default(cuid())
+  publicId          String    @unique
+  url               String
+  width             Int?
+  height            Int?
+  bytes             Int?
+  format            String?
+  folder            String
+  alt               String?
+  uploadedByUserId  String?
+  createdAt         DateTime  @default(now())
+  deletedAt         DateTime? // set by the sync reconcile when the Cloudinary resource is gone ("مسجّلة والملف غير موجود"); the row stays for its usage history
+
+  uploadedBy User? @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  products         Product[]      @relation("ProductHeroAsset")
+  variants         Variant[]      @relation("VariantImageAssetRepresentative")
+  variantImages    VariantImage[] @relation("VariantImageAsset")
+
+  @@index([folder, createdAt])
 }
 
 // ---------------------------------------------------------------------------

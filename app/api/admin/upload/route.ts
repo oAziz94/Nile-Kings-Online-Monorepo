@@ -1,15 +1,24 @@
 import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiInternal } from "@/lib/api/response";
 
 /**
  * POST /api/admin/upload
  * Body: multipart/form-data with "file" (image) or JSON { image: base64 }
  * Returns { url } for Cloudinary. If Cloudinary not configured, returns 501.
+ *
+ * Backlog 9.8a (b): every upload made through the site is registered as a `MediaAsset` row
+ * at upload time (id, Cloudinary's `public_id`, `secure_url`, width/height/bytes/format,
+ * folder) — the response gains `assetId`/`publicId` additively; every existing caller keeps
+ * working on `url` alone (`components/admin/image-upload.tsx` unchanged). Proof uploads
+ * (`nile-kings/routed-proofs`) register too; the folder is what the الصور library filters on
+ * to keep products default.
  */
 export async function POST(req: NextRequest) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -41,6 +50,7 @@ export async function POST(req: NextRequest) {
     imageData = body.image.replace(/^data:image\/\w+;base64,/, "");
     if (body.contentType) contentType = body.contentType;
     if (body.folder === "proofs" || body.folder === "routed-proofs") folderOverride = "nile-kings/routed-proofs";
+    else if (typeof body.folder === "string" && /^nile-kings\/products\/e2e-[\w-]+$/.test(body.folder)) folderOverride = body.folder;
   } else if (contentTypeHeader.includes("multipart/form-data")) {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -50,6 +60,7 @@ export async function POST(req: NextRequest) {
     if (file.type) contentType = file.type;
     const f = formData.get("folder");
     if (f === "proofs" || f === "routed-proofs") folderOverride = "nile-kings/routed-proofs";
+    else if (typeof f === "string" && /^nile-kings\/products\/e2e-[\w-]+$/.test(f)) folderOverride = f;
   } else {
     return apiBadRequest("Content-Type: application/json أو multipart/form-data");
   }
@@ -90,14 +101,40 @@ export async function POST(req: NextRequest) {
     return apiInternal("فشل رفع الصورة", { detail });
   }
 
-  let data: { secure_url?: string; public_id?: string };
+  let data: {
+    secure_url?: string;
+    public_id?: string;
+    width?: number;
+    height?: number;
+    bytes?: number;
+    format?: string;
+  };
   try {
-    data = JSON.parse(bodyText) as { secure_url?: string; public_id?: string };
+    data = JSON.parse(bodyText);
   } catch {
     return apiInternal("لم يُرجع Cloudinary رابطاً", { detail: "Invalid response" });
   }
   const url = data.secure_url;
   if (!url) return apiInternal("لم يُرجع Cloudinary رابطاً");
 
-  return apiSuccess({ url, publicId: data.public_id ?? undefined });
+  let assetId: string | undefined;
+  if (data.public_id) {
+    const asset = await prisma.mediaAsset.upsert({
+      where: { publicId: data.public_id },
+      create: {
+        publicId: data.public_id,
+        url,
+        width: data.width ?? null,
+        height: data.height ?? null,
+        bytes: data.bytes ?? null,
+        format: data.format ?? null,
+        folder,
+        uploadedByUserId: actor.userId,
+      },
+      update: { url, deletedAt: null },
+    });
+    assetId = asset.id;
+  }
+
+  return apiSuccess({ url, publicId: data.public_id ?? undefined, assetId });
 }
