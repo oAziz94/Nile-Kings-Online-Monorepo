@@ -50,6 +50,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   restock_request: "إعادة توريد",
   "partner-inventory": "مخزون شريك",
   product: "منتج",
+  media: "صورة",
 };
 
 const ENTITY_LINK: Record<string, (id: string) => string> = {
@@ -58,6 +59,7 @@ const ENTITY_LINK: Record<string, (id: string) => string> = {
   coupon: () => `/admin/coupons`,
   user: (id) => `/admin/clients/${id}`,
   settings: () => `/admin/settings`,
+  media: () => `/admin/media`,
 };
 
 const PERIOD_PRESETS = [

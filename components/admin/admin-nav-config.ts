@@ -18,6 +18,7 @@ import {
   Folder,
   Handshake,
   History,
+  ImageIcon,
   LayoutDashboard,
   MessageCircleQuestion,
   Settings,
@@ -53,6 +54,7 @@ export const ADMIN_NAV_SECTIONS: readonly ShellNavSection[] = [
     label: "الكتالوج",
     items: [
       { href: "/admin/products", label: "المنتجات", icon: Tag },
+      { href: "/admin/media", label: "الصور", icon: ImageIcon },
       { href: "/admin/categories", label: "الفئات", icon: Folder },
       { href: "/admin/coupons", label: "الكوبونات", icon: Ticket },
     ],

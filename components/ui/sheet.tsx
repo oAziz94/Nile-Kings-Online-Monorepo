@@ -68,23 +68,48 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      {side === "bottom" && (
-        <div className="flex shrink-0 justify-center pt-2" aria-hidden>
-          <span className="h-1 w-10 rounded-full bg-[hsl(228_16%_82%)]" />
-        </div>
-      )}
-      {children}
-    </DialogPrimitive.Content>
-  </SheetPortal>
-));
+>(({ side = "right", className, children, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
+  // Focus return (backlog 9.8a verifier fix — the media library's tile detail Sheet is opened
+  // programmatically via `open`/`onOpenChange`, never a `SheetTrigger`, so Radix had no trigger
+  // element to restore focus to on close and it fell back to `<body>`). Same pattern as
+  // `components/ui/dialog.tsx`'s `DialogContent`: remember whatever was focused right before
+  // Radix moves focus into the panel, and give it back on close unless the caller opts out via
+  // its own `onCloseAutoFocus`. A `SheetTrigger`-based caller (e.g. `CartDrawer`) is unaffected
+  // — the "whatever was focused" element in that case already *is* the trigger, so this matches
+  // Radix's own default behaviour for them.
+  const openerRef = React.useRef<HTMLElement | null>(null);
+  return (
+    <SheetPortal>
+      <SheetOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
+        onOpenAutoFocus={(e) => {
+          const active = document.activeElement;
+          openerRef.current = active instanceof HTMLElement ? active : null;
+          onOpenAutoFocus?.(e);
+        }}
+        onCloseAutoFocus={(e) => {
+          onCloseAutoFocus?.(e);
+          if (e.defaultPrevented) return;
+          const opener = openerRef.current;
+          if (opener && opener.isConnected) {
+            e.preventDefault();
+            opener.focus();
+          }
+        }}
+        className={cn(sheetVariants({ side }), className)}
+        {...props}
+      >
+        {side === "bottom" && (
+          <div className="flex shrink-0 justify-center pt-2" aria-hidden>
+            <span className="h-1 w-10 rounded-full bg-[hsl(228_16%_82%)]" />
+          </div>
+        )}
+        {children}
+      </DialogPrimitive.Content>
+    </SheetPortal>
+  );
+});
 SheetContent.displayName = DialogPrimitive.Content.displayName;
 
 function SheetHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

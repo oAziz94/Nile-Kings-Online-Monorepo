@@ -27,6 +27,10 @@ export const ACTION_LABELS: Record<string, string> = {
   ticket_reply: "رد على سؤال",
   ticket_close: "إغلاق سؤال",
   ticket_reopen: "إعادة فتح سؤال",
+  sync: "مزامنة مع Cloudinary",
+  media_assign: "إسناد صورة",
+  media_hero: "تعيين صورة رئيسية",
+  media_replace: "استبدال صورة",
 };
 
 export function actionLabelAr(action: string): string {

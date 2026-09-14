@@ -26,6 +26,7 @@ const ENTITY_LABEL_AR: Record<string, string> = {
   partner_request: "طلب الشريك",
   ticket: "التذكرة",
   restock_request: "طلب إعادة التوريد",
+  media: "الصورة",
 };
 
 /** `Order.status` values, in Arabic — kept local (not imported from
@@ -58,6 +59,7 @@ const FIELD_LABELS: Record<string, { label: string; format?: (v: unknown) => str
   targetCoverDays: { label: "تغطية مستهدفة", format: (v) => `${v} يوم` },
   enabled: { label: "الحالة", format: (v) => (v ? "مفعّل" : "معطّل") },
   stockAvailable: { label: "المخزون المتاح" },
+  alt: { label: "النص البديل" },
 };
 
 function asRecord(v: unknown): Record<string, unknown> {
@@ -156,6 +158,29 @@ export function describeAdminAudit(row: AdminAuditRowLike): string {
   }
   if (row.action === "proof_of_delivery") {
     return `رفع إثبات تسليم الطلب ${label}`.trim();
+  }
+
+  // Backlog 9.8a — الصور library writes. `sync`'s label is a fixed "Cloudinary" (there is no
+  // one entity the reconcile is "about"); the three selection-bar actions carry their subject
+  // in `after` since one write can touch several assets at once.
+  if (row.action === "sync" && row.entityType === "media") {
+    const after = asRecord(row.after);
+    const imported = Number(after.imported ?? 0);
+    const missing = Number(after.missing ?? 0);
+    const adopted = Number(after.adopted ?? 0);
+    return `زامن مكتبة الصور مع Cloudinary: ${imported} مستوردة، ${missing} مفقودة، ${adopted} مرتبطة بروابط قديمة`;
+  }
+  if (row.action === "media_assign") {
+    const after = asRecord(row.after);
+    const count = Number(after.count ?? 1);
+    const colorLabel = String(after.colorLabel ?? "");
+    return `أسند ${count} صورة إلى ${label}${colorLabel ? ` · ${colorLabel}` : ""}`.trim();
+  }
+  if (row.action === "media_hero") {
+    return `عيّن صورة رئيسية لـ${label}`.trim();
+  }
+  if (row.action === "media_replace") {
+    return `استبدل الصورة ${label} بصورة جديدة`.trim();
   }
 
   if (row.action === "create") {
