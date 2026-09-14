@@ -71,8 +71,6 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
           colorHex: hex,
           basePricePiastres: base,
           pricePiastres,
-          stockAvailable: 0,
-          stockReserved: 0,
         },
       })
     )

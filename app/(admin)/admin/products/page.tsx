@@ -45,7 +45,7 @@ type Product = {
   basePricePiastres: number | null;
   discountPricePiastres: number | null;
   category: { id: string; name: string; slug: string };
-  variants: { id: string; name: string; colorHex: string | null; colorName: string | null; stockAvailable: number }[];
+  variants: { id: string; name: string; colorHex: string | null; colorName: string | null }[];
 };
 
 type Category = { id: string; name: string; slug: string };
