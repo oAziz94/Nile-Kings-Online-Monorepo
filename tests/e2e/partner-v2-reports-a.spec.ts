@@ -171,6 +171,22 @@ test.beforeAll(async () => {
   // inventory report's point-in-time headline tiles get a real comparison. Live sellable is
   // 5 (20 available - 15 reserved on invVariantId, this fixture's only PartnerInventory
   // row) -> previous 10 gives sellable a hand-computable -5 / -50% delta.
+  //
+  // Backlog 9.0 diagnosis (closed by 9.10): this test was red on `redesign` before 9.9 —
+  // reproduced on a clean checkout of that commit, it failed the `deadStockCount`/
+  // `stockOutSkus` assertions below. The test's own expectations were correct; the code
+  // was not: before 9.9 retired the legacy Variant-level stock columns, this fixture's
+  // `prisma.variant.create` calls still wrote `stockAvailable`/`stockReserved` (both 0)
+  // alongside the real `PartnerInventory` row, and pre-9.9 order/stock plumbing (the
+  // "Variant-level order stock service", 9.9's `34edbfa`) read stock through the Variant
+  // columns in places `computePartnerStockTotals` (`lib/analytics/partner-stock-totals.ts`)
+  // did not, producing a live sellable/dead-stock count that didn't match this file's hand
+  // computation. 9.9 (`e334d9e`, `34edbfa`) dropped the legacy columns and the code path
+  // that read them, so `computePartnerStockTotals`'s `PartnerInventory`-only read became the
+  // single source of truth; this spec is green again as of `redesign`@`b2db23e` with no
+  // further code or assertion change needed — verified cold and warm on port 3165 before
+  // this comment was added. No test or lib change in this commit; recorded here per 9.10 so
+  // the history isn't lost once 03-backlog.md's 9.0 entry is closed out.
   await prisma.partnerStockSnapshot.create({
     data: {
       partnerId: pair.agent.partnerId,
