@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useRequestAbort } from "@/hooks/use-list-url-state";
 import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +71,7 @@ export function PartnerStockTab({ partnerId }: { partnerId: string }) {
   const [pageSize, setPageSize] = React.useState(20);
   const [drafts, setDrafts] = React.useState<Record<string, string>>({});
   const [savingVariantId, setSavingVariantId] = React.useState<string | null>(null);
+  const getAbortSignal = useRequestAbort();
 
   React.useEffect(() => {
     const timer = setTimeout(() => setDebouncedQ(search.trim()), 400);
@@ -83,8 +85,9 @@ export function PartnerStockTab({ partnerId }: { partnerId: string }) {
     if (debouncedQ) params.set("q", debouncedQ);
     if (lowOnly) params.set("lowOnly", "true");
     if (needsSetupOnly) params.set("needsSetupOnly", "true");
+    const signal = getAbortSignal();
     try {
-      const res = await fetch(`/api/admin/partner-inventory?${params}`, { credentials: "include" });
+      const res = await fetch(`/api/admin/partner-inventory?${params}`, { credentials: "include", signal });
       const json = await res.json();
       if (res.ok && json?.success) {
         setProducts(json.data.products ?? []);
@@ -94,12 +97,15 @@ export function PartnerStockTab({ partnerId }: { partnerId: string }) {
         toast({ title: json?.error?.message ?? "فشل تحميل المخزون", variant: "destructive" });
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       toast({ title: "فشل تحميل المخزون", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
     } finally {
-      setLoading(false);
-      setFetching(false);
+      if (!signal.aborted) {
+        setLoading(false);
+        setFetching(false);
+      }
     }
-  }, [partnerId, debouncedQ, lowOnly, needsSetupOnly, page, pageSize, toast]);
+  }, [partnerId, debouncedQ, lowOnly, needsSetupOnly, page, pageSize, toast, getAbortSignal]);
 
   React.useEffect(() => {
     load();

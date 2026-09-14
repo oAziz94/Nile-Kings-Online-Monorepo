@@ -22,7 +22,7 @@ import {
 import { Select } from "@/components/ui/select";
 import { usePartnerMe } from "@/hooks/use-partner-me";
 import { useToast } from "@/hooks/use-toast";
-import { useListUrlState } from "@/hooks/use-list-url-state";
+import { useListUrlState, useRequestAbort } from "@/hooks/use-list-url-state";
 import { useRowScrollRestore } from "@/hooks/use-row-scroll-restore";
 import { piastresToEgp } from "@/lib/catalog";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
@@ -172,6 +172,7 @@ function PartnerOrdersPageInner() {
 
   const { rememberRow } = useRowScrollRestore("partner-orders-last-row", orders);
   const router = useRouter();
+  const getAbortSignal = useRequestAbort();
 
   React.useEffect(() => {
     setSelectedIds(new Set());
@@ -193,8 +194,9 @@ function PartnerOrdersPageInner() {
     if (overdueOnly) params.set("overdue", "1");
     if (variantId) params.set("variantId", variantId);
 
+    const signal = getAbortSignal();
     try {
-      const res = await fetch(`/api/partner/routed-orders?${params}`, { credentials: "include" });
+      const res = await fetch(`/api/partner/routed-orders?${params}`, { credentials: "include", signal });
       const json = await res.json();
       if (res.ok && json?.success) {
         setOrders(json.data.orders ?? []);
@@ -207,14 +209,17 @@ function PartnerOrdersPageInner() {
         toast({ title: json?.error?.message ?? "فشل تحميل الطلبات", variant: "destructive" });
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       const message = error instanceof Error ? error.message : "خطأ غير متوقع";
       setLoadError("فشل تحميل الطلبات");
       toast({ title: "فشل تحميل الطلبات", description: message, variant: "destructive" });
     } finally {
-      setLoading(false);
-      setFetching(false);
+      if (!signal.aborted) {
+        setLoading(false);
+        setFetching(false);
+      }
     }
-  }, [debouncedQ, page, pageSize, statusFilter, governorateFilter, paymentFilter, overdueOnly, variantId, toast]);
+  }, [debouncedQ, page, pageSize, statusFilter, governorateFilter, paymentFilter, overdueOnly, variantId, toast, getAbortSignal]);
 
   React.useEffect(() => {
     load();
