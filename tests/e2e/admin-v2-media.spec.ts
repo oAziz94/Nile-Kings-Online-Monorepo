@@ -7,7 +7,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { uploadToCloudinary, cloudinaryCredentialsAvailable } from "@/lib/media/cloudinary-upload";
-import { destroyCloudinaryAsset } from "@/lib/media/cloudinary-admin";
+import { destroyCloudinaryAsset, cloudinaryResourceExists } from "@/lib/media/cloudinary-admin";
 
 /**
  * Backlog 9.8a coverage: MediaAsset registration at upload, usage matching, assign/hero/
@@ -102,7 +102,9 @@ async function createFakeAsset(suffix: string) {
 }
 
 /** Uploads the fixture PNG through our own registered upload route (test folder override),
- * so a real MediaAsset row and a real Cloudinary resource both exist. */
+ * so a real MediaAsset row and a real Cloudinary resource both exist. Registers the result for
+ * `afterAll` cleanup *before* asserting the response is ok — a failed/timed-out assertion must
+ * never skip cleanup of a row/resource that the request actually created server-side. */
 async function uploadRealAsset(page: Page, suffix: string) {
   const buf = fs.readFileSync(FIXTURE_PNG);
   const res = await page.request.post("/api/admin/upload", {
@@ -111,14 +113,39 @@ async function uploadRealAsset(page: Page, suffix: string) {
       folder: `${TEST_FOLDER}-${suffix}`,
     },
   });
+  const json = await res.json().catch(() => null);
+  if (json?.data?.assetId) createdAssetIds.push(json.data.assetId);
+  if (json?.data?.publicId) createdPublicIds.push(json.data.publicId);
   expect(res.ok()).toBeTruthy();
-  const json = await res.json();
-  createdAssetIds.push(json.data.assetId);
-  createdPublicIds.push(json.data.publicId);
   return json.data as { url: string; assetId: string; publicId: string };
 }
 
+/** Verifier fix (9.8a NEEDS REWORK item 4): sweeps `MediaAsset` rows left behind by a crashed
+ * previous run (a request that completed server-side — e.g. `POST /api/admin/media/sync`
+ * registering an imported resource — after the client already gave up and never got to record
+ * the id for its own `afterAll`). Only ever touches rows whose `publicId` starts with this
+ * suite's own `nile-kings/products/e2e-` prefix — nothing a human or another suite created —
+ * and only once they're at least 2 hours old (well past any single run's lifetime), and it
+ * confirms via a Cloudinary lookup before destroying anything (never blind). */
+async function sweepStaleE2eAssets() {
+  const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
+  const stale = await prisma.mediaAsset.findMany({
+    where: { publicId: { startsWith: "nile-kings/products/e2e-" }, createdAt: { lt: cutoff } },
+    select: { id: true, publicId: true },
+  });
+  for (const row of stale) {
+    if (HAS_CLOUDINARY) {
+      const exists = await cloudinaryResourceExists(row.publicId).catch(() => false);
+      if (exists) await destroyCloudinaryAsset(row.publicId).catch(() => undefined);
+    }
+    await prisma.adminAuditLog.deleteMany({ where: { entityId: row.id } });
+    await prisma.mediaAsset.delete({ where: { id: row.id } }).catch(() => undefined);
+  }
+  if (stale.length > 0) console.log(`[9.8a hygiene] swept ${stale.length} stale e2e MediaAsset row(s)`);
+}
+
 test.beforeAll(async () => {
+  await sweepStaleE2eAssets();
   const admin = await prisma.user.upsert({
     where: { phone: ADMIN_PHONE },
     create: { phone: ADMIN_PHONE, role: "ADMIN", passwordHash: await hashPassword(ADMIN_PASSWORD), name: "مسؤول اختبار الصور" },
@@ -163,9 +190,20 @@ test.afterAll(async () => {
       await destroyCloudinaryAsset(publicId).catch(() => undefined);
     }
   }
-  await prisma.adminAuditLog.deleteMany({ where: { OR: [{ entityId: productId }, { entityId: { in: createdAssetIds } }] } });
+  // Match by publicId as well as id: a request that completed server-side after the client
+  // already timed out (e.g. the sync test's `POST /api/admin/media/sync` importing the
+  // `unregistered` resource) creates a row this file never learned the id of, but the
+  // publicId was always known upfront (we chose it before uploading) — draining by either
+  // key is what makes this cleanup crash-safe rather than "best effort when nothing failed".
+  const rowsToDelete = await prisma.mediaAsset.findMany({
+    where: { OR: [{ id: { in: createdAssetIds } }, { publicId: { in: createdPublicIds } }] },
+    select: { id: true },
+  });
+  const allAssetIds = Array.from(new Set([...createdAssetIds, ...rowsToDelete.map((r) => r.id)]));
+
+  await prisma.adminAuditLog.deleteMany({ where: { OR: [{ entityId: productId }, { entityId: { in: allAssetIds } }] } });
   await prisma.variantImage.deleteMany({ where: { productId } });
-  await prisma.mediaAsset.deleteMany({ where: { id: { in: createdAssetIds } } });
+  await prisma.mediaAsset.deleteMany({ where: { id: { in: allAssetIds } } });
   await prisma.variant.deleteMany({ where: { productId } });
   await prisma.product.deleteMany({ where: { id: productId } });
   await prisma.category.deleteMany({ where: { id: categoryId } });
@@ -218,6 +256,30 @@ test("assign to a product colour creates a VariantImage row with assetId, and th
     const listItems = page.locator('[role="listitem"][aria-label^="صورة"]');
     await expect(listItems).toHaveCount(1, { timeout: 15_000 });
   }
+});
+
+test("اللون filter chip: disabled until المنتج is chosen, then lists that product's distinct colours (verifier fix)", async ({ page }) => {
+  await loginAsAdmin(page);
+  await page.goto("/admin/media");
+  await expect(page.getByRole("heading", { name: "الصور" })).toBeVisible({ timeout: 20_000 });
+
+  const colorSelect = page.getByLabel("اللون");
+  await expect(colorSelect).toBeDisabled();
+
+  // The fixture product is one of many real products in this DB and isn't guaranteed to be
+  // among the first page the المنتج select loads by default — narrow it via the shared search
+  // box first (it feeds both the tile filter and this dropdown's options).
+  await page.getByPlaceholder("اسم الملف أو المنتج").fill(productName);
+  const productSelect = page.getByLabel("المنتج");
+  await expect(productSelect.locator(`option`, { hasText: productName })).toHaveCount(1, { timeout: 10_000 });
+  await productSelect.selectOption({ label: productName });
+  await expect(colorSelect).toBeEnabled({ timeout: 10_000 });
+  await expect(colorSelect.locator(`option[value="${COLOR_KEY}"]`)).toHaveText(COLOR_NAME);
+
+  const responsePromise = page.waitForResponse((r) => r.url().includes("/api/admin/media") && r.url().includes("color="));
+  await colorSelect.selectOption(COLOR_KEY);
+  const response = await responsePromise;
+  expect(response.ok()).toBeTruthy();
 });
 
 test("hero sets Product.imageUrl and heroAssetId, and the storefront card shows it", async ({ page }) => {
@@ -308,6 +370,25 @@ test("alt text saves", async ({ page }) => {
   expect(updated.alt).toBe("تي شيرت أسود قطن");
 });
 
+test("Escape closes the tile detail Sheet and returns focus to the tile button (verifier fix)", async ({ page }) => {
+  await apiLoginAsAdmin(page);
+  const asset = HAS_CLOUDINARY ? await uploadRealAsset(page, "focus") : await createFakeAsset("focus");
+  const publicId = asset.publicId;
+
+  await page.goto(`/admin/media?q=${encodeURIComponent(publicId)}`);
+  await expect(page.getByRole("heading", { name: "الصور" })).toBeVisible({ timeout: 20_000 });
+
+  const tileButton = page.getByRole("button", { name: `فتح تفاصيل الصورة ${publicId}` });
+  await expect(tileButton).toBeVisible({ timeout: 15_000 });
+  await tileButton.focus();
+  await tileButton.click();
+
+  await expect(page.getByRole("heading", { name: "تفاصيل الصورة" })).toBeVisible({ timeout: 10_000 });
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("heading", { name: "تفاصيل الصورة" })).toBeHidden({ timeout: 10_000 });
+  await expect(tileButton).toBeFocused();
+});
+
 test("sync imports an unregistered Cloudinary resource as unused and flags a destroyed one as missing", async ({ page }) => {
   test.skip(!HAS_CLOUDINARY, "no CLOUDINARY_API_SECRET in the test env — sync skipped");
   // The real Cloudinary account's `nile-kings/products` + `nile-kings/routed-proofs` folders
@@ -329,9 +410,21 @@ test("sync imports an unregistered Cloudinary resource as unused and flags a des
   const piIdx = createdPublicIds.indexOf(toDestroy.publicId);
   if (piIdx >= 0) createdPublicIds.splice(piIdx, 1); // already gone from Cloudinary, nothing to destroy in afterAll
 
-  const syncRes = await page.request.post("/api/admin/media/sync");
-  expect(syncRes.ok()).toBeTruthy();
-  const syncJson = await syncRes.json();
+  // Resumable sync (verifier fix 5): loop on `nextCursor` exactly like the admin page's button
+  // does, in case the real folder doesn't finish within one 45s-budgeted request.
+  let cursor: string | null = null;
+  let syncJson: { data: { done: boolean; nextCursor: string | null; imported?: number; missing?: number; adopted?: number; total?: number; durationMs?: number; scannedSoFar?: number } };
+  let loops = 0;
+  do {
+    const endpoint = cursor ? `/api/admin/media/sync?cursor=${encodeURIComponent(cursor)}` : "/api/admin/media/sync";
+    const syncRes = await page.request.post(endpoint);
+    expect(syncRes.ok()).toBeTruthy();
+    syncJson = await syncRes.json();
+    cursor = syncJson.data.nextCursor;
+    loops++;
+    expect(loops).toBeLessThan(10); // guard against an infinite loop if the route ever misbehaves
+  } while (!syncJson.data.done);
+
   expect(syncJson.data.imported).toBeGreaterThanOrEqual(1);
   expect(syncJson.data.missing).toBeGreaterThanOrEqual(1);
   expect(typeof syncJson.data.durationMs).toBe("number");
