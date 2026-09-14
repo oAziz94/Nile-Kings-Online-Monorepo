@@ -348,7 +348,7 @@ test("assigning to a partner with insufficient stock names the SKU in a 409", as
   expect(json.error.message).toContain(variantBSku);
 });
 
-test("an unassigned order's items can be edited with no stock movement, but confirming it needs a partner (9.9)", async ({ page }) => {
+test("an unassigned order's items can be edited and it can be cancelled with no stock movement, but confirming it needs a partner (9.9)", async ({ page }) => {
   // Backlog 9.9 PM ruling: stock lives only in PartnerInventory, so an order with no assigned
   // partner has nothing reserved anywhere — editing its lines is allowed and touches no stock;
   // leaving CREATED (confirming) is refused until a partner is assigned.
@@ -377,6 +377,21 @@ test("an unassigned order's items can be edited with no stock movement, but conf
   expect((await confirm.json()).error.message).toContain("أسنِد الطلب لشريك أولاً");
   const order = await prisma.order.findUniqueOrThrow({ where: { id: insufficientOrderId } });
   expect(order.status).toBe("CREATED");
+
+  // Cancelling a genuinely unassigned order is a no-op on stock (verifier's required fix):
+  // the partner rows and the ledger are exactly as before, and the order stays unassigned.
+  const cancel = await page.request.patch(`/api/admin/orders/${insufficientOrderId}`, {
+    data: { status: "CANCELLED", cancellationReason: "اختبار إلغاء طلب غير مُسند" },
+  });
+  expect(cancel.ok()).toBeTruthy();
+  const cancelled = await prisma.order.findUniqueOrThrow({ where: { id: insufficientOrderId } });
+  expect(cancelled.status).toBe("CANCELLED");
+  expect(cancelled.assignedPartnerId).toBeNull();
+  expect(await prisma.inventoryLedger.count({ where: { orderId: insufficientOrderId } })).toBe(ledgerBefore);
+  const invAfterCancel = await prisma.partnerInventory.findMany({ where: { variantId: variantBId }, orderBy: { partnerId: "asc" } });
+  expect(invAfterCancel.map((r) => [r.partnerId, r.stockAvailable, r.stockReserved])).toEqual(
+    invBefore.map((r) => [r.partnerId, r.stockAvailable, r.stockReserved])
+  );
 });
 
 test("cancel with reason releases the reservation and stores the reason", async ({ page }) => {
