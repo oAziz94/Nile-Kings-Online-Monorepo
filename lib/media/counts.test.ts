@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 let assets: { id: string; deletedAt: Date | null }[] = [{ id: "a1", deletedAt: null }];
 let findManyCalls = 0;
+let refs = { gallery: 0, hero: 0, representative: 0 };
 
 vi.mock("@/lib/db", () => ({
   get prisma() {
@@ -25,6 +26,9 @@ vi.mock("@/lib/db", () => ({
           return assets.filter((a) => a.deletedAt === null).map((a) => ({ id: a.id, url: `https://x/${a.id}`, publicId: a.id }));
         },
       },
+      variantImage: { count: async () => refs.gallery },
+      product: { count: async () => refs.hero },
+      variant: { count: async () => refs.representative },
     };
   },
 }));
@@ -38,6 +42,7 @@ const { getMediaCounts, _resetMediaCountsCacheForTests } = await import("./count
 beforeEach(() => {
   assets = [{ id: "a1", deletedAt: null }];
   findManyCalls = 0;
+  refs = { gallery: 0, hero: 0, representative: 0 };
   _resetMediaCountsCacheForTests();
 });
 
@@ -60,6 +65,22 @@ describe("getMediaCounts cache", () => {
     assets[0].deletedAt = new Date(); // the Cloudinary reconcile marking a2... a1 missing
     await getMediaCounts({});
     expect(findManyCalls).toBe(3);
+  });
+
+  it("recomputes once an asset is assigned to or removed from a gallery, hero or representative slot (PM addition)", async () => {
+    await getMediaCounts({});
+    expect(findManyCalls).toBe(1);
+    refs.gallery += 1; // assigned from the library to a colour's gallery
+    await getMediaCounts({});
+    expect(findManyCalls).toBe(2);
+    refs.hero += 1; // set as a product hero
+    await getMediaCounts({});
+    expect(findManyCalls).toBe(3);
+    refs.representative += 1; // chosen as a colour's representative
+    await getMediaCounts({});
+    expect(findManyCalls).toBe(4);
+    await getMediaCounts({});
+    expect(findManyCalls).toBe(4);
   });
 
   it("keeps separate cache entries per filter", async () => {

@@ -6,13 +6,11 @@
  * every keystroke of a filter that doesn't change the underlying data.
  *
  * `MediaAsset` has no `updatedAt` column (see `prisma/schema.prisma`), so the cache key below
- * is a proxy for it: total row count + how many carry `deletedAt` — the two counters that
- * change on every write that actually affects these numbers (a new upload, the Cloudinary
- * reconcile marking a row missing). Assigning/clearing a hero or gallery image writes to
- * `Product`/`Variant`/`VariantImage`, not `MediaAsset` — a real `updatedAt` column here
- * wouldn't see those writes either, so this proxy is not a weaker signal than the literal
- * spec, just implemented without a schema change. The 60s TTL is the backstop for whatever
- * this proxy still misses. A real, precisely-invalidated cache is Phase 6's call.
+ * is a proxy for it: total row count + how many carry `deletedAt` (a new upload, the Cloudinary
+ * reconcile marking a row missing) + how many gallery/hero/representative slots point at an
+ * asset (an assign or a removal, which changes `unused` without touching `MediaAsset`). The
+ * 60s TTL is the backstop for whatever this proxy still misses (a same-count replace). A real,
+ * precisely-invalidated cache is Phase 6's call.
  */
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
@@ -31,8 +29,19 @@ const MEDIA_COUNTS_CACHE_MAX_ENTRIES = 50;
 const mediaCountsCache = new Map<string, CountsCacheEntry>();
 
 async function mediaDataVersion(): Promise<string> {
-  const [total, deleted] = await Promise.all([prisma.mediaAsset.count(), prisma.mediaAsset.count({ where: { deletedAt: { not: null } } })]);
-  return `${total}:${deleted}`;
+  // PM addition (9.10 review): `unused` also moves when an image is assigned to or removed
+  // from a gallery, a hero or a colour representative — writes that touch `VariantImage`,
+  // `Product` and `Variant`, not `MediaAsset`. Their "how many point at an asset" counts join
+  // the key, so an assign/remove invalidates immediately; only a same-count swap (replace A
+  // with B) still waits for the TTL.
+  const [total, deleted, galleryRefs, heroRefs, representativeRefs] = await Promise.all([
+    prisma.mediaAsset.count(),
+    prisma.mediaAsset.count({ where: { deletedAt: { not: null } } }),
+    prisma.variantImage.count({ where: { assetId: { not: null } } }),
+    prisma.product.count({ where: { heroAssetId: { not: null } } }),
+    prisma.variant.count({ where: { imageAssetId: { not: null } } }),
+  ]);
+  return `${total}:${deleted}:${galleryRefs}:${heroRefs}:${representativeRefs}`;
 }
 
 /** Bounded scan for the "غير مستخدمة (N)" filter chip count — same MAX_SCAN cap the page read
