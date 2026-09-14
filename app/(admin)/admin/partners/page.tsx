@@ -37,6 +37,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useListUrlState } from "@/hooks/use-list-url-state";
+import { useRowScrollRestore } from "@/hooks/use-row-scroll-restore";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
@@ -166,6 +167,8 @@ function PartnersTab() {
   const [newOpen, setNewOpen] = React.useState(false);
   const [exporting, setExporting] = React.useState(false);
 
+  const { rememberRow } = useRowScrollRestore("admin-partners-last-row", rows);
+
   const load = React.useCallback(async () => {
     setFetching(true);
     const params = new URLSearchParams({ health: "1", limit: String(pageSize), offset: String(page * pageSize) });
@@ -249,7 +252,13 @@ function PartnersTab() {
                 {p.name.trim().slice(0, 2) || "؟"}
               </span>
               <div className="min-w-0">
-                <p className="truncate font-bold text-ink">{p.name}</p>
+                <Link
+                  href={`/admin/partners/${p.id}`}
+                  onClick={(e) => { e.stopPropagation(); rememberRow(p.id); }}
+                  className="block truncate font-bold text-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 rounded"
+                >
+                  {p.name}
+                </Link>
                 <p className="truncate text-xs text-ink-soft">{subtitle}</p>
               </div>
             </div>
@@ -310,7 +319,7 @@ function PartnersTab() {
         header: "فتح",
         cell: ({ row }) => (
           <Button asChild type="button" size="sm" variant="outline" className="rounded-lg">
-            <Link href={`/admin/partners/${row.original.id}`} onClick={(e) => e.stopPropagation()}>
+            <Link href={`/admin/partners/${row.original.id}`} onClick={(e) => { e.stopPropagation(); rememberRow(row.original.id); }}>
               <Eye className="h-3.5 w-3.5" />
               فتح
             </Link>
@@ -318,7 +327,7 @@ function PartnersTab() {
         ),
       },
     ],
-    []
+    [rememberRow]
   );
 
   return (
@@ -372,7 +381,7 @@ function PartnersTab() {
             columns={columns}
             data={rows}
             getRowId={(p) => p.id}
-            onRowClick={(p) => router.push(`/admin/partners/${p.id}`)}
+            onRowClick={(p) => { rememberRow(p.id); router.push(`/admin/partners/${p.id}`); }}
             loading={loading}
             emptyTitle={debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد شركاء"}
           />
