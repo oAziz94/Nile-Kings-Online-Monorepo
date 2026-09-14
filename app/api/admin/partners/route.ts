@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/api/response";
 import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
+import { computePartnersHealth } from "@/lib/admin/partners-list";
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,18 +18,26 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const partnerType = searchParams.get("partnerType") as "AGENT" | "DISTRIBUTOR" | null;
-  if (!partnerType || !["AGENT", "DISTRIBUTOR"].includes(partnerType)) {
+  const health = searchParams.get("health") === "1";
+  const partnerTypeParam = searchParams.get("partnerType") as "AGENT" | "DISTRIBUTOR" | null;
+
+  // Backlog 9.4a (d) — the الشركاء hub list needs every agent AND distributor in one call
+  // with health columns; every other caller (agents/distributors dropdowns, orders page
+  // filters, etc.) keeps requiring `partnerType` unchanged.
+  if (!health && (!partnerTypeParam || !["AGENT", "DISTRIBUTOR"].includes(partnerTypeParam))) {
     return apiBadRequest("partnerType مطلوب (AGENT أو DISTRIBUTOR)");
   }
 
   const qRaw = (searchParams.get("q") ?? "").trim().slice(0, 100);
   const q = qRaw.length > 0 ? qRaw : undefined;
-  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50", 10) || 50));
+  const governorate = (searchParams.get("governorate") ?? "").trim() || undefined;
+  const needsAttentionOnly = searchParams.get("needsAttention") === "1";
+  const limit = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") ?? "50", 10) || 50));
   const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0", 10) || 0);
 
   const where: Prisma.PartnerWhereInput = {
-    partnerType,
+    ...(partnerTypeParam ? { partnerType: partnerTypeParam } : {}),
+    ...(governorate ? { governorate } : {}),
     ...(q
       ? {
           OR: [
@@ -38,23 +47,35 @@ export async function GET(req: NextRequest) {
         }
       : {}),
   };
-  const include =
-    partnerType === "DISTRIBUTOR"
-      ? { linkedAgent: { select: { id: true, name: true, phone: true } } }
-      : { _count: { select: { distributors: true } } };
 
-  const [partners, total] = await Promise.all([
-    prisma.partner.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      skip: offset,
-      include,
-    }),
-    prisma.partner.count({ where }),
-  ]);
+  if (!health) {
+    const include =
+      partnerTypeParam === "DISTRIBUTOR"
+        ? { linkedAgent: { select: { id: true, name: true, phone: true } } }
+        : { _count: { select: { distributors: true } } };
+    const [partners, total] = await Promise.all([
+      prisma.partner.findMany({ where, orderBy: { createdAt: "desc" }, take: limit, skip: offset, include }),
+      prisma.partner.count({ where }),
+    ]);
+    return apiSuccess({ partners, total, limit, offset });
+  }
 
-  return apiSuccess({ partners, total, limit, offset });
+  // health=1 — the list page's own call: every matching partner (no take/skip yet, since
+  // "يحتاج انتباه" filters *after* health is computed), with linkedAgent for the "تابع لـ…"
+  // subtitle on distributor rows.
+  const allMatching = await prisma.partner.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    include: { linkedAgent: { select: { id: true, name: true } } },
+  });
+
+  const healthByPartnerId = await computePartnersHealth(allMatching.map((p) => p.id));
+  let rows = allMatching.map((p) => ({ ...p, health: healthByPartnerId.get(p.id) ?? null }));
+  if (needsAttentionOnly) rows = rows.filter((r) => r.health?.needsAttention);
+
+  const total = rows.length;
+  const page = rows.slice(offset, offset + limit);
+  return apiSuccess({ partners: page, total, limit, offset });
 }
 
 export async function POST(req: NextRequest) {

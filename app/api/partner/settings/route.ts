@@ -4,33 +4,40 @@ import { Prisma } from "@prisma/client";
 import { requirePartner } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiBadRequest, apiForbidden, apiSuccess, apiUnauthorized } from "@/lib/api/response";
+import {
+  dailyOrderCapacitySchema,
+  deadStockDaysSchema,
+  handoverMethodSchema,
+  lowStockThresholdSchema,
+  targetCoverDaysSchema,
+  workingDaysSchema,
+} from "@/lib/partner/settings-schema";
 
 /**
  * GET/PATCH /api/partner/settings (backlog 4.17, extended 5.1) — the partner's working
  * profile: `lowStockThreshold` (4.17), plus `workingDays`/`dailyOrderCapacity`/
- * `confirmSlaHours`/`shipSlaHours`/`handoverMethod`/`serviceAreas`/`alertPrefs` (5.1,
- * `05-partner-portal-v2.md` §4.1). `costRateBps` is **read-only** here — rule (18):
- * "`Partner.costRateBps` is written only by admin routes — a partner API that accepts it
- * is a defect." A PATCH body carrying `costRateBps` is rejected with 400 rather than
- * silently ignored, so a bug that tries to write it is caught, not swallowed.
+ * `handoverMethod`/`serviceAreas`/`alertPrefs` (5.1, `05-partner-portal-v2.md` §4.1).
+ * `costRateBps` is **read-only** here — rule (18): "`Partner.costRateBps` is written only
+ * by admin routes — a partner API that accepts it is a defect." A PATCH body carrying
+ * `costRateBps` is rejected with 400 rather than silently ignored.
+ *
+ * Backlog 9.4a (c) / `06-admin-v2.md` §8 control-matrix change (a), approved 2026-09-13:
+ * `confirmSlaHours`/`shipSlaHours` are admin-set per partner with a network default — this
+ * route no longer accepts either field. A body carrying one gets 400 "المهل يحددها المصنع"
+ * rather than being silently ignored, same pattern as the `costRateBps` guard above.
  */
-
-const WORKING_DAY_CODES = ["SAT", "SUN", "MON", "TUE", "WED", "THU", "FRI"] as const;
-const HANDOVER_METHODS = ["COURIER", "PICKUP", "OWN_DELIVERY"] as const;
 
 const patchSchema = z
   .object({
-    lowStockThreshold: z.number().int().min(0).max(999).optional(),
-    workingDays: z.array(z.enum(WORKING_DAY_CODES)).optional(),
-    dailyOrderCapacity: z.number().int().min(0).max(100_000).nullable().optional(),
-    confirmSlaHours: z.number().int().min(1).max(24 * 30).optional(),
-    shipSlaHours: z.number().int().min(1).max(24 * 30).optional(),
-    handoverMethod: z.enum(HANDOVER_METHODS).optional(),
+    lowStockThreshold: lowStockThresholdSchema.optional(),
+    workingDays: workingDaysSchema.optional(),
+    dailyOrderCapacity: dailyOrderCapacitySchema.optional(),
+    handoverMethod: handoverMethodSchema.optional(),
     serviceAreas: z.record(z.string(), z.array(z.string())).nullable().optional(),
     alertPrefs: z.record(z.string(), z.boolean()).nullable().optional(),
     // Reports platform (backlog 5.6a) — inventory report settings.
-    deadStockDays: z.number().int().min(1).max(3650).optional(),
-    targetCoverDays: z.number().int().min(1).max(3650).optional(),
+    deadStockDays: deadStockDaysSchema.optional(),
+    targetCoverDays: targetCoverDaysSchema.optional(),
   })
   .strict();
 
@@ -108,6 +115,13 @@ export async function PATCH(req: NextRequest) {
 
     if (body && typeof body === "object" && "costRateBps" in (body as Record<string, unknown>)) {
       return apiBadRequest("نسبة الشراء من سعر البيع تُحددها الإدارة ولا يمكن تعديلها من هنا");
+    }
+    if (
+      body &&
+      typeof body === "object" &&
+      ("confirmSlaHours" in (body as Record<string, unknown>) || "shipSlaHours" in (body as Record<string, unknown>))
+    ) {
+      return apiBadRequest("المهل يحددها المصنع");
     }
 
     const parsed = patchSchema.safeParse(body);

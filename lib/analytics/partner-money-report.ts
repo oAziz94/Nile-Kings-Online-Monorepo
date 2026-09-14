@@ -47,6 +47,11 @@ export type ReceiptRow = {
   createdAt: string;
   units: number;
   totalCostPiastres: number;
+  /** Backlog 9.4a (b) — who entered this receipt, additive. */
+  recordedBy: "PARTNER" | "ADMIN";
+  /** The cost rate (basis points) snapshotted on this receipt's lines at apply time; null
+   * for COUNT receipts (no cost snapshot) or a receipt with no priced lines. */
+  rateBps: number | null;
 };
 
 export type PaymentRow = {
@@ -100,6 +105,43 @@ function isoWeekStart(d: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+const RECEIPT_SELECT = {
+  id: true,
+  reference: true,
+  createdAt: true,
+  totalCostPiastres: true,
+  recordedBy: true,
+  lines: { select: { quantity: true, unitCostPiastres: true, variant: { select: { pricePiastres: true } } } },
+} as const;
+
+type RawReceiptRow = {
+  id: string;
+  reference: string | null;
+  createdAt: Date;
+  totalCostPiastres: number | null;
+  recordedBy: "PARTNER" | "ADMIN";
+  lines: { quantity: number; unitCostPiastres: number | null; variant: { pricePiastres: number } }[];
+};
+
+/** All lines in one FACTORY receipt share the same rate (snapshotted once from the
+ * partner's `costRateBps` at apply time) — so any single priced line's ratio reveals the
+ * whole receipt's rate at that time. */
+function mapReceiptRow(r: RawReceiptRow): ReceiptRow {
+  const rateLine = r.lines.find((l) => l.unitCostPiastres !== null && l.variant.pricePiastres > 0);
+  const rateBps = rateLine
+    ? Math.round(((rateLine.unitCostPiastres as number) / rateLine.variant.pricePiastres) * 10_000)
+    : null;
+  return {
+    id: r.id,
+    reference: r.reference,
+    createdAt: r.createdAt.toISOString(),
+    units: r.lines.reduce((s, l) => s + l.quantity, 0),
+    totalCostPiastres: r.totalCostPiastres ?? 0,
+    recordedBy: r.recordedBy,
+    rateBps,
+  };
+}
+
 /** Every receipt + payment row, unpaginated — the "كشف حساب" CSV export's source of truth. */
 export async function getPartnerStatementRows(
   partnerId: string
@@ -107,7 +149,7 @@ export async function getPartnerStatementRows(
   const [receipts, payments] = await Promise.all([
     prisma.stockReceipt.findMany({
       where: { partnerId, kind: "FACTORY" },
-      select: { id: true, reference: true, createdAt: true, totalCostPiastres: true, lines: { select: { quantity: true } } },
+      select: RECEIPT_SELECT,
       orderBy: { createdAt: "desc" },
     }),
     prisma.partnerPayment.findMany({
@@ -126,13 +168,7 @@ export async function getPartnerStatementRows(
     }),
   ]);
   return {
-    receipts: receipts.map((r) => ({
-      id: r.id,
-      reference: r.reference,
-      createdAt: r.createdAt.toISOString(),
-      units: r.lines.reduce((s, l) => s + l.quantity, 0),
-      totalCostPiastres: r.totalCostPiastres ?? 0,
-    })),
+    receipts: receipts.map(mapReceiptRow),
     payments: payments.map((p) => ({
       id: p.id,
       kind: p.kind,
@@ -160,7 +196,7 @@ export async function getPartnerMoneyReport(
     getPartnerCostRate(partnerId),
     prisma.stockReceipt.findMany({
       where: { partnerId, kind: "FACTORY" },
-      select: { id: true, reference: true, createdAt: true, totalCostPiastres: true, lines: { select: { quantity: true } } },
+      select: RECEIPT_SELECT,
       orderBy: { createdAt: "desc" },
     }),
     prisma.partnerPayment.findMany({
@@ -323,13 +359,7 @@ export async function getPartnerMoneyReport(
     .map(([weekStart, amountPiastres]) => ({ weekStart, amountPiastres }))
     .sort((a, b) => a.weekStart.localeCompare(b.weekStart));
 
-  const receiptRows: ReceiptRow[] = allReceipts.map((r) => ({
-    id: r.id,
-    reference: r.reference,
-    createdAt: r.createdAt.toISOString(),
-    units: r.lines.reduce((s, l) => s + l.quantity, 0),
-    totalCostPiastres: r.totalCostPiastres ?? 0,
-  }));
+  const receiptRows: ReceiptRow[] = allReceipts.map(mapReceiptRow);
   const paymentRows: PaymentRow[] = allPayments.map((p) => ({
     id: p.id,
     kind: p.kind,

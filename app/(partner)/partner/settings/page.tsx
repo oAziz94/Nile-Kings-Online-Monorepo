@@ -71,12 +71,6 @@ function ErrorBlock({ onRetry, isFetching }: { onRetry: () => void; isFetching?:
 const workingProfileSchema = z.object({
   workingDays: z.array(z.string()).min(1, "اختر يوم عمل واحد على الأقل"),
   dailyOrderCapacity: z.string().refine((v) => v === "" || /^\d+$/.test(v), "رقم صحيح فقط"),
-  confirmSlaHours: z
-    .string()
-    .refine((v) => /^\d+$/.test(v) && Number(v) >= 1, "رقم صحيح أكبر من صفر"),
-  shipSlaHours: z
-    .string()
-    .refine((v) => /^\d+$/.test(v) && Number(v) >= 1, "رقم صحيح أكبر من صفر"),
 });
 type WorkingProfileValues = z.infer<typeof workingProfileSchema>;
 
@@ -86,7 +80,7 @@ function WorkingProfileSection() {
   const update = useUpdatePartnerSettings();
   const form = useForm<WorkingProfileValues>({
     resolver: zodResolver(workingProfileSchema),
-    defaultValues: { workingDays: [], dailyOrderCapacity: "", confirmSlaHours: "24", shipSlaHours: "48" },
+    defaultValues: { workingDays: [], dailyOrderCapacity: "" },
   });
 
   React.useEffect(() => {
@@ -94,8 +88,6 @@ function WorkingProfileSection() {
       form.reset({
         workingDays: data.workingDays,
         dailyOrderCapacity: data.dailyOrderCapacity == null ? "" : String(data.dailyOrderCapacity),
-        confirmSlaHours: String(data.confirmSlaHours),
-        shipSlaHours: String(data.shipSlaHours),
       });
     }
   }, [data, form]);
@@ -107,8 +99,6 @@ function WorkingProfileSection() {
       await update.mutateAsync({
         workingDays: values.workingDays,
         dailyOrderCapacity: values.dailyOrderCapacity === "" ? null : Number(values.dailyOrderCapacity),
-        confirmSlaHours: Number(values.confirmSlaHours),
-        shipSlaHours: Number(values.shipSlaHours),
       });
       toast({ title: "تم حفظ ملف العمل" });
     } catch (error) {
@@ -170,32 +160,16 @@ function WorkingProfileSection() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="confirmSlaHours"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>مهلة التأكيد (ساعة)</FormLabel>
-                    <FormControl>
-                      <Input type="number" inputMode="numeric" dir="ltr" min={1} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="shipSlaHours"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>مهلة الشحن بعد التأكيد (ساعة)</FormLabel>
-                    <FormControl>
-                      <Input type="number" inputMode="numeric" dir="ltr" min={1} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div>
+                <label htmlFor="confirm-sla-readonly" className="mb-1.5 block text-xs font-bold text-ink-soft">مهلة التأكيد (ساعة)</label>
+                <Input id="confirm-sla-readonly" type="number" dir="ltr" value={data ? String(data.confirmSlaHours) : ""} disabled readOnly />
+                <p className="mt-1 text-[11px] text-ink-soft">يحددها المصنع</p>
+              </div>
+              <div>
+                <label htmlFor="ship-sla-readonly" className="mb-1.5 block text-xs font-bold text-ink-soft">مهلة الشحن بعد التأكيد (ساعة)</label>
+                <Input id="ship-sla-readonly" type="number" dir="ltr" value={data ? String(data.shipSlaHours) : ""} disabled readOnly />
+                <p className="mt-1 text-[11px] text-ink-soft">يحددها المصنع</p>
+              </div>
             </div>
             <Button type="submit" size="sm" disabled={update.isPending || !form.formState.isDirty}>
               {update.isPending ? "جاري الحفظ…" : "حفظ"}

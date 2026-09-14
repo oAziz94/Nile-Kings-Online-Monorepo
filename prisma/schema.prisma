@@ -861,6 +861,14 @@ enum StockReceiptKind {
   COUNT
 }
 
+// Backlog 9.4a (b) / 06-admin-v2.md §8 control-matrix change (b), approved 2026-09-13:
+// intake receipts can be recorded by either side — the partner as today, or the admin on
+// the partner's behalf at hand-over.
+enum StockReceiptRecordedBy {
+  PARTNER
+  ADMIN
+}
+
 model StockReceipt {
   id        String           @id @default(cuid())
   partnerId String
@@ -871,6 +879,10 @@ model StockReceipt {
   // snapshotted at apply time from the partner's rate at that moment. Null for COUNT
   // receipts (a count is a correction, not a purchase).
   totalCostPiastres Int?
+  // Who entered this receipt (backlog 9.4a (b)) — additive, defaults to PARTNER for every
+  // row written before this column existed.
+  recordedBy       StockReceiptRecordedBy @default(PARTNER)
+  recordedByUserId String?
   createdAt DateTime         @default(now())
 
   partner Partner              @relation(fields: [partnerId], references: [id], onDelete: Cascade)
@@ -881,6 +893,7 @@ model StockReceipt {
   @@index([partnerId])
   @@index([kind])
   @@index([createdAt])
+  @@index([partnerId, createdAt])
 }
 
 model StockReceiptLine {

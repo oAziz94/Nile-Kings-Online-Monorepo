@@ -200,6 +200,53 @@ test("a partner PATCH carrying costRateBps is rejected with 400", async ({ page 
   expect(res.status()).toBe(400);
 });
 
+test("backlog 9.4a (c) — SLA hours moved to admin-only ownership", async ({ page }) => {
+  await loginAs(page, pair, "AGENT");
+
+  // A partner PATCH carrying either SLA field is rejected with 400, same pattern as costRateBps.
+  const confirmRes = await page.request.patch("/api/partner/settings", {
+    data: { confirmSlaHours: 10 },
+  });
+  expect(confirmRes.status()).toBe(400);
+  const shipRes = await page.request.patch("/api/partner/settings", {
+    data: { shipSlaHours: 10 },
+  });
+  expect(shipRes.status()).toBe(400);
+
+  // The partner settings page still shows both, read-only.
+  await page.goto("/partner/settings");
+  await expect(page.getByLabel("مهلة التأكيد (ساعة)")).toBeDisabled();
+  await expect(page.getByLabel("مهلة الشحن بعد التأكيد (ساعة)")).toBeDisabled();
+  await expect(page.getByText("يحددها المصنع").first()).toBeVisible();
+
+  // The admin PATCH accepts and persists a new value; the partner page reflects it read-only.
+  await page.context().clearCookies();
+  await page.goto("/login");
+  await page.getByLabel("رقم الهاتف").fill(ADMIN_PHONE.replace("+20", ""));
+  await page.getByLabel("كلمة المرور").fill(ADMIN_PASSWORD);
+  await page.getByRole("button", { name: "تسجيل الدخول" }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 15_000 });
+
+  const adminPatchRes = await page.request.patch(`/api/admin/partners/${pair.agent.partnerId}`, {
+    data: { confirmSlaHours: 30 },
+  });
+  expect(adminPatchRes.ok()).toBe(true);
+  const auditRows = await prisma.adminAuditLog.findMany({
+    where: { entityType: "partner", entityId: pair.agent.partnerId, action: "update" },
+    orderBy: { createdAt: "desc" },
+    take: 1,
+  });
+  expect(auditRows[0]?.after).toMatchObject({ confirmSlaHours: 30 });
+
+  await page.context().clearCookies();
+  await loginAs(page, pair, "AGENT");
+  await page.goto("/partner/settings");
+  await expect(page.getByLabel("مهلة التأكيد (ساعة)")).toHaveValue("30");
+
+  // Restore for any later test relying on the seeded confirmSlaHours default.
+  await prisma.partner.update({ where: { id: pair.agent.partnerId }, data: { confirmSlaHours: 24 } });
+});
+
 test("admin records an installment and the partner reads it", async ({ page }) => {
   await page.goto("/login");
   await page.getByLabel("رقم الهاتف").fill(ADMIN_PHONE.replace("+20", ""));

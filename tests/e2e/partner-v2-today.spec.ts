@@ -179,13 +179,16 @@ test("every KPI and queue-group count equals the API", async ({ page }) => {
 });
 
 test("the overdue rule follows a changed shipSlaHours", async ({ page }) => {
+  // Backlog 9.4a (c) — confirmSlaHours/shipSlaHours moved to admin-only ownership
+  // (`06-admin-v2.md` §8, approved 2026-09-13); `PATCH /api/partner/settings` no longer
+  // accepts either field (400 "المهل يحددها المصنع"). This test is about the overdue rule
+  // reacting to a changed `shipSlaHours`, not about the settings PATCH itself, so the SLA
+  // change here goes straight through Prisma (the admin PATCH route + its Zod bounds are
+  // covered by `admin-v2-partners.spec.ts`).
   await loginAs(page, pair, "AGENT");
 
   // Raising shipSlaHours past 10h should un-overdue orderOverdueId.
-  const patchRes = await page.request.patch("/api/partner/settings", {
-    data: { shipSlaHours: 20 },
-  });
-  expect(patchRes.ok()).toBe(true);
+  await prisma.partner.update({ where: { id: pair.agent.partnerId }, data: { shipSlaHours: 20 } });
 
   await expect
     .poll(async () => {
@@ -196,8 +199,7 @@ test("the overdue rule follows a changed shipSlaHours", async ({ page }) => {
     .toBe(false);
 
   // Restore for the remaining tests.
-  const restoreRes = await page.request.patch("/api/partner/settings", { data: { shipSlaHours: 5 } });
-  expect(restoreRes.ok()).toBe(true);
+  await prisma.partner.update({ where: { id: pair.agent.partnerId }, data: { shipSlaHours: 5 } });
   await expect
     .poll(async () => {
       const res = await page.request.get("/api/partner/today");

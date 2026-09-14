@@ -27,6 +27,7 @@ import { useRowScrollRestore } from "@/hooks/use-row-scroll-restore";
 import { piastresToEgp } from "@/lib/catalog";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import {
+  ADMIN_ORDER_STATUS_PILL_VARIANT,
   ORDER_STATUS_LABELS as STATUS_LABELS,
   ORDER_STATUSES,
 } from "@/lib/constants/order-status";
@@ -41,15 +42,7 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 type PillVariant = NonNullable<BadgeProps["variant"]>;
 
-const ORDER_STATUS_PILL_VARIANT: Record<string, PillVariant> = {
-  CREATED: "info",
-  CONFIRMED: "warning",
-  PROCESSING: "warning",
-  READY_TO_SHIP: "info",
-  SHIPPED: "neutral",
-  DELIVERED: "success",
-  CANCELLED: "danger",
-};
+const ORDER_STATUS_PILL_VARIANT: Record<string, PillVariant> = ADMIN_ORDER_STATUS_PILL_VARIANT;
 
 const PILL_DOT_CLASS: Record<PillVariant, string> = {
   default: "bg-primary-foreground",

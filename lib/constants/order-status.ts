@@ -40,6 +40,25 @@ export const ORDER_STATUS_BADGE_CLASSES: Record<string, string> = {
  * status pill (`.pill` = 13px/500 text with a 7px leading dot) — the screen no longer keeps its
  * own local colour map (the pre-redesign screen's `statusColors` had `READY_TO_SHIP` missing).
  */
+/**
+ * Admin v2 pill variant (`components/ui/badge.tsx`'s named variants) per status — lifted out
+ * of `app/(admin)/admin/orders/page.tsx` (backlog 9.4a) so the profile's الطلبات tab
+ * (`components/admin/partner-orders-tab.tsx`) renders the exact same status colours instead
+ * of a second copy of this table.
+ */
+export const ADMIN_ORDER_STATUS_PILL_VARIANT: Record<
+  string,
+  "success" | "warning" | "info" | "neutral" | "danger"
+> = {
+  CREATED: "info",
+  CONFIRMED: "warning",
+  PROCESSING: "warning",
+  READY_TO_SHIP: "info",
+  SHIPPED: "neutral",
+  DELIVERED: "success",
+  CANCELLED: "danger",
+};
+
 export const ORDER_STATUS_COLORS: Record<string, string> = {
   CREATED: "#8A8C9A",
   CONFIRMED: "#3B6EA5",
