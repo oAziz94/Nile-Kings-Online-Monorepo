@@ -156,7 +156,7 @@ test("desktop nav shows the canvas's sections/order/hrefs, and the ticket badge 
     ["الفئات", "/admin/categories"],
     ["الكوبونات", "/admin/coupons"],
     ["العملاء", "/admin/clients"],
-    ["التقارير", "/admin/analytics"],
+    ["التقارير", "/admin/reports/sales"],
     ["الإعدادات", "/admin/settings"],
   ];
   for (const [label, href] of expected) {
