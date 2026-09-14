@@ -73,7 +73,7 @@ describe("7.4 — collectedByMethod rows gain previousPiastres + delta", () => {
 describe("buildStatementCsv", () => {
   it("includes every receipt and payment row, tagged by type", () => {
     const csv = buildStatementCsv(
-      [{ id: "r1", reference: "FR-0001", createdAt: "2026-09-01T00:00:00.000Z", units: 100, totalCostPiastres: 500_00 }],
+      [{ id: "r1", reference: "FR-0001", createdAt: "2026-09-01T00:00:00.000Z", units: 100, totalCostPiastres: 500_00, recordedBy: "PARTNER", rateBps: 7500 }],
       [{ id: "p1", kind: "DOWN_PAYMENT", amountPiastres: 200_00, paidAt: "2026-09-02T00:00:00.000Z", dueAt: null, reference: null, stockReceiptId: "r1", stockReceiptReference: "FR-0001" }]
     );
     expect(csv).toContain("FR-0001");

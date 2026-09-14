@@ -1,50 +1,521 @@
 "use client";
 
 import * as React from "react";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/shared/skeleton";
+  Boxes,
+  Check,
+  ClipboardList,
+  Eye,
+  FileDown,
+  Handshake,
+  Loader2,
+  MessageSquare,
+  Plus,
+  Route as RouteIcon,
+  X,
+} from "lucide-react";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { PaginationBar } from "@/components/dashboard/pagination";
-import { TableScroll } from "@/components/dashboard/table-scroll";
-import { cn } from "@/lib/utils";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { SearchInput } from "@/components/dashboard/search-input";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DataTable, type ColumnDef } from "@/components/ui/data-table";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogClose,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  ClipboardList,
-  Users,
-  Truck,
-  UserPlus,
-  Eye,
-  Check,
-  X,
-  MessageSquare,
-  Loader2,
-  Search,
-} from "lucide-react";
-import { formatDateEn } from "@/lib/format-en-numbers";
-import { PageHeader } from "@/components/dashboard/page-header";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useListUrlState } from "@/hooks/use-list-url-state";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
-import { PartnerAccountPanel } from "@/components/admin/partner-account-panel";
-import { PartnerEditForm, type PartnerPatchResponse } from "@/components/admin/partner-edit-form";
+import { piastresToEgp } from "@/lib/catalog";
+import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
+import { cn } from "@/lib/utils";
+import type { CoverTone } from "@/lib/admin/partners-list";
 
-type TabId = "requests" | "agents" | "distributors" | "new";
+/**
+ * `/admin/partners` (backlog 9.4a (d)+(f)) — the الشركاء hub list, in the partner v2 list
+ * language (`PanelCard`/`DataTable`/`SearchInput`, matching `app/(admin)/admin/orders/page.tsx`).
+ * Tabs: الشركاء (health columns from `GET /api/admin/partners?health=1`) and طلبات الشراكة
+ * (the applications table, restyled). التوجيه/مخزون الشبكة are plain links to their
+ * *current* homes — `/admin/rerouting-rules` and `/admin/partner-inventory` — until 9.5
+ * builds their real tabs (per the task text: "until 9.5 lands they point at [...] — say so
+ * in a comment").
+ */
+
+function egp(piastres: number): string {
+  return `${formatNumberEn(piastresToEgp(piastres))} ج.م`;
+}
+
+type PillVariant = NonNullable<BadgeProps["variant"]>;
+const COVER_TONE_VARIANT: Record<CoverTone, PillVariant> = { d: "danger", w: "warning", s: "success" };
+const COVER_TONE_LABEL: Record<CoverTone, string> = { d: "منخفضة", w: "قريبة", s: "جيدة" };
+
+type PartnerHealth = {
+  openOrders: number;
+  overdueOrders: number;
+  overduePct: number;
+  coverDays: number | null;
+  coverTone: CoverTone | null;
+  balancePiastres: number;
+  nextDueAt: string | null;
+  needsAttention: boolean;
+};
+
+type PartnerRow = {
+  id: string;
+  partnerType: "AGENT" | "DISTRIBUTOR";
+  name: string;
+  governorate: string;
+  phone: string;
+  isActive: boolean;
+  linkedAgent?: { id: string; name: string } | null;
+  health: PartnerHealth | null;
+};
+
+const TABS = [
+  { id: "partners", label: "الشركاء" },
+  { id: "requests", label: "طلبات الشراكة" },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
+
+export default function AdminPartnersPage() {
+  const [tab, setTab] = React.useState<TabId>("partners");
+  const [pendingCount, setPendingCount] = React.useState(0);
+
+  React.useEffect(() => {
+    fetch("/api/admin/partner-requests?limit=1&status=PENDING", { credentials: "include" })
+      .then((r) => r.json())
+      .then((json: { success?: boolean; data?: { total?: number } }) => {
+        if (json?.success && json.data) setPendingCount(json.data.total ?? 0);
+      })
+      .catch(() => {});
+  }, [tab]);
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="الشركاء" description="الوكلاء والموزعون، صحتهم التشغيلية والمالية." />
+
+      <div role="tablist" aria-label="أقسام الشركاء" className="flex flex-wrap gap-1 rounded-2xl bg-white p-1.5 shadow-soft">
+        {TABS.map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500",
+                active ? "bg-lapis-800 text-white" : "text-ink-soft hover:bg-stone-50"
+              )}
+            >
+              {t.label}
+              {t.id === "requests" && pendingCount > 0 && (
+                <span className={cn("rounded-full px-1.5 text-[11px] font-extrabold", active ? "bg-white/20" : "bg-carnelian-50 text-danger-text")}>
+                  {formatNumberEn(pendingCount)}
+                </span>
+              )}
+            </button>
+          );
+        })}
+        {/* التوجيه · مخزون الشبكة — 9.5 builds the real matrix/network-stock tabs; until then
+            these are plain links to their current homes. */}
+        <Link
+          href="/admin/rerouting-rules"
+          className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-bold text-ink-soft hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+        >
+          <RouteIcon className="h-3.5 w-3.5" />
+          التوجيه
+        </Link>
+        <Link
+          href="/admin/partner-inventory"
+          className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-bold text-ink-soft hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+        >
+          <Boxes className="h-3.5 w-3.5" />
+          مخزون الشبكة
+        </Link>
+      </div>
+
+      {tab === "partners" ? <PartnersTab /> : <PartnerRequestsTab onChanged={() => setTab("partners")} />}
+    </div>
+  );
+}
+
+function PartnersTab() {
+  const { toast } = useToast();
+  const router = useRouter();
+  const { search, setSearch, debouncedQ, page, setPage, pageSize, setPageSize, filters, setFilter } =
+    useListUrlState({ type: "", governorate: "", attention: "" }, 25);
+
+  const [rows, setRows] = React.useState<PartnerRow[]>([]);
+  const [total, setTotal] = React.useState(0);
+  const [loading, setLoading] = React.useState(true);
+  const [fetching, setFetching] = React.useState(false);
+  const [newOpen, setNewOpen] = React.useState(false);
+  const [exporting, setExporting] = React.useState(false);
+
+  const load = React.useCallback(async () => {
+    setFetching(true);
+    const params = new URLSearchParams({ health: "1", limit: String(pageSize), offset: String(page * pageSize) });
+    if (debouncedQ) params.set("q", debouncedQ);
+    if (filters.type) params.set("partnerType", filters.type);
+    if (filters.governorate) params.set("governorate", filters.governorate);
+    if (filters.attention === "1") params.set("needsAttention", "1");
+    try {
+      const res = await fetch(`/api/admin/partners?${params}`, { credentials: "include" });
+      const json = await res.json();
+      if (res.ok && json?.success) {
+        setRows(json.data.partners ?? []);
+        setTotal(json.data.total ?? 0);
+      } else {
+        toast({ title: json?.error?.message ?? "فشل تحميل الشركاء", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "فشل تحميل الشركاء", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+    } finally {
+      setLoading(false);
+      setFetching(false);
+    }
+  }, [debouncedQ, filters.type, filters.governorate, filters.attention, page, pageSize, toast]);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  const exportCsv = React.useCallback(() => {
+    setExporting(true);
+    try {
+      const header = ["الشريك", "النوع", "المحافظة", "طلبات مفتوحة", "متأخرة", "نسبة التأخير", "تغطية المخزون (يوم)", "مستحق للمصنع (ج.م)", "الحالة"];
+      const escape = (s: string | number) => {
+        const str = String(s);
+        return /[",\n\r]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+      };
+      const lines = [header.map(escape).join(",")];
+      for (const r of rows) {
+        lines.push(
+          [
+            r.name,
+            r.partnerType === "AGENT" ? "وكيل" : "موزع",
+            r.governorate,
+            r.health?.openOrders ?? 0,
+            r.health?.overdueOrders ?? 0,
+            r.health?.overduePct ?? 0,
+            r.health?.coverDays ?? "",
+            r.health ? Math.round(r.health.balancePiastres) / 100 : "",
+            r.isActive ? "نشط" : "غير نشط",
+          ]
+            .map(escape)
+            .join(",")
+        );
+      }
+      const csv = `﻿${lines.join("\n")}`;
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "partners.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }, [rows]);
+
+  const columns = React.useMemo<ColumnDef<PartnerRow, unknown>[]>(
+    () => [
+      {
+        id: "partner",
+        header: "الشريك",
+        cell: ({ row }) => {
+          const p = row.original;
+          const subtitle = [p.partnerType === "AGENT" ? "وكيل" : "موزع", p.governorate, p.linkedAgent ? `تابع لـ ${p.linkedAgent.name}` : null]
+            .filter(Boolean)
+            .join(" · ");
+          return (
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lapis-800 text-[12px] font-extrabold text-gold-500">
+                {p.name.trim().slice(0, 2) || "؟"}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate font-bold text-ink">{p.name}</p>
+                <p className="truncate text-xs text-ink-soft">{subtitle}</p>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        id: "openOrders",
+        header: "طلبات مفتوحة",
+        cell: ({ row }) => <span dir="ltr">{formatNumberEn(row.original.health?.openOrders ?? 0)}</span>,
+      },
+      {
+        id: "overdue",
+        header: "متأخرة",
+        cell: ({ row }) => {
+          const n = row.original.health?.overdueOrders ?? 0;
+          return <span dir="ltr" className={cn("font-extrabold", n > 0 && "text-danger-text")}>{formatNumberEn(n)}</span>;
+        },
+      },
+      {
+        id: "overduePct",
+        header: "نسبة التأخير",
+        cell: ({ row }) => <span dir="ltr">{formatNumberEn(row.original.health?.overduePct ?? 0)}%</span>,
+      },
+      {
+        id: "cover",
+        header: "تغطية المخزون",
+        cell: ({ row }) => {
+          const h = row.original.health;
+          if (!h || h.coverDays === null || !h.coverTone) return <span className="text-ink-soft">—</span>;
+          return (
+            <Badge variant={COVER_TONE_VARIANT[h.coverTone]} className="gap-1.5 rounded-full text-[11px] font-extrabold">
+              {formatNumberEn(h.coverDays)} يوم · {COVER_TONE_LABEL[h.coverTone]}
+            </Badge>
+          );
+        },
+      },
+      {
+        id: "balance",
+        header: "مستحق للمصنع",
+        cell: ({ row }) => {
+          const h = row.original.health;
+          if (!h) return <span className="text-ink-soft">—</span>;
+          return <span className={cn("font-extrabold tabular-nums", h.balancePiastres > 0 && "text-danger-text")}>{egp(h.balancePiastres)}</span>;
+        },
+      },
+      {
+        id: "status",
+        header: "الحالة",
+        cell: ({ row }) => (
+          <Badge variant={row.original.isActive ? "success" : "neutral"} className="rounded-full text-[11px] font-extrabold">
+            {row.original.isActive ? "نشط" : "غير نشط"}
+          </Badge>
+        ),
+      },
+      {
+        id: "open",
+        header: "فتح",
+        cell: ({ row }) => (
+          <Button asChild type="button" size="sm" variant="outline" className="rounded-lg">
+            <Link href={`/admin/partners/${row.original.id}`} onClick={(e) => e.stopPropagation()}>
+              <Eye className="h-3.5 w-3.5" />
+              فتح
+            </Link>
+          </Button>
+        ),
+      },
+    ],
+    []
+  );
+
+  return (
+    <>
+      <PanelCard title="قائمة الشركاء" icon={<Handshake className="h-5 w-5 text-lapis-800" />} noPadding>
+        <div className="flex flex-wrap items-center gap-2.5 px-4 py-3.5 sm:px-[22px]">
+          <SearchInput value={search} onChange={setSearch} placeholder="الاسم أو الهاتف" className="sm:w-72" />
+          <Select value={filters.type} onChange={(e) => setFilter("type", e.target.value)} className="h-8 w-auto rounded-full border-stone-200 px-3 text-xs" aria-label="النوع">
+            <option value="">النوع</option>
+            <option value="AGENT">وكيل</option>
+            <option value="DISTRIBUTOR">موزع</option>
+          </Select>
+          <Select value={filters.governorate} onChange={(e) => setFilter("governorate", e.target.value)} className="h-8 w-auto rounded-full border-stone-200 px-3 text-xs" aria-label="المحافظة">
+            <option value="">المحافظة</option>
+            {GOVERNORATE_OPTIONS.map((g) => (
+              <option key={g.value} value={g.value}>{g.label}</option>
+            ))}
+          </Select>
+          <button
+            type="button"
+            aria-pressed={filters.attention === "1"}
+            onClick={() => setFilter("attention", filters.attention === "1" ? "" : "1")}
+            className={cn(
+              "flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500",
+              filters.attention === "1" ? "border-lapis-800 bg-lapis-800 text-white" : "border-stone-200 bg-white text-ink"
+            )}
+          >
+            يحتاج انتباه
+          </button>
+          <div className="mr-auto flex items-center gap-2">
+            <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={exportCsv} disabled={exporting || rows.length === 0}>
+              <FileDown className="h-3.5 w-3.5" />
+              تصدير
+            </Button>
+            <Button type="button" size="sm" className="rounded-full" onClick={() => setNewOpen(true)}>
+              <Plus className="h-3.5 w-3.5" />
+              شريك جديد
+            </Button>
+          </div>
+        </div>
+
+        {fetching && rows.length > 0 && (
+          <div className="flex items-center gap-2 border-b border-stone-200 px-4 py-2 text-sm text-ink-soft sm:px-[22px]">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            جاري التحديث…
+          </div>
+        )}
+
+        <div className={cn("p-4 sm:p-[22px]", fetching && "opacity-70")}>
+          <DataTable
+            columns={columns}
+            data={rows}
+            getRowId={(p) => p.id}
+            onRowClick={(p) => router.push(`/admin/partners/${p.id}`)}
+            loading={loading}
+            emptyTitle={debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد شركاء"}
+          />
+        </div>
+
+        {total > 0 && (
+          <div className="border-t border-stone-200 px-4 py-4 sm:px-[22px]">
+            <PaginationBar page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} disabled={fetching} pageSizeOptions={[25, 50, 100]} />
+          </div>
+        )}
+      </PanelCard>
+
+      <NewPartnerDialog open={newOpen} onOpenChange={setNewOpen} onCreated={load} />
+    </>
+  );
+}
+
+function NewPartnerDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: () => void;
+}) {
+  const { toast } = useToast();
+  const [partnerType, setPartnerType] = React.useState<"AGENT" | "DISTRIBUTOR">("AGENT");
+  const [name, setName] = React.useState("");
+  const [governorate, setGovernorate] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+  const [agents, setAgents] = React.useState<{ id: string; name: string }[]>([]);
+  const [linkedAgentId, setLinkedAgentId] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open && partnerType === "DISTRIBUTOR") {
+      fetch("/api/admin/partners?partnerType=AGENT&limit=200", { credentials: "include" })
+        .then((r) => r.json())
+        .then((json: { success?: boolean; data?: { partners: { id: string; name: string }[] } }) => {
+          if (json?.success && json.data) setAgents(json.data.partners);
+        });
+    }
+  }, [open, partnerType]);
+
+  const reset = () => {
+    setPartnerType("AGENT");
+    setName("");
+    setGovernorate("");
+    setPhone("");
+    setLinkedAgentId("");
+  };
+
+  const submit = async () => {
+    if (!name.trim() || !governorate.trim() || !phone.trim()) {
+      toast({ title: "الاسم والمحافظة ورقم التليفون مطلوبة", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/partners", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          partnerType,
+          name: name.trim(),
+          governorate: governorate.trim(),
+          phone: phone.trim(),
+          linkedAgentId: partnerType === "DISTRIBUTOR" && linkedAgentId ? linkedAgentId : null,
+          isActive: true,
+        }),
+      });
+      const json = await res.json();
+      if (json?.success) {
+        toast({ title: "تم إضافة الشريك" });
+        reset();
+        onOpenChange(false);
+        onCreated();
+      } else {
+        toast({ title: json?.error?.message ?? "فشل الإضافة", variant: "destructive" });
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="rounded-2xl border-stone-200 bg-white">
+        <DialogHeader>
+          <DialogTitle>شريك جديد</DialogTitle>
+          <DialogDescription>إضافة وكيل أو موزع يدوياً.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid gap-2">
+            <Label htmlFor="np-type">نوع الشريك *</Label>
+            <Select id="np-type" value={partnerType} onChange={(e) => setPartnerType(e.target.value as "AGENT" | "DISTRIBUTOR")}>
+              <option value="AGENT">وكيل</option>
+              <option value="DISTRIBUTOR">موزع</option>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="np-name">الاسم *</Label>
+            <Input id="np-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="np-gov">المحافظة *</Label>
+            <Select id="np-gov" value={governorate} onChange={(e) => setGovernorate(e.target.value)}>
+              <option value="">اختر المحافظة</option>
+              {GOVERNORATE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="np-phone">رقم التليفون *</Label>
+            <Input id="np-phone" dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          {partnerType === "DISTRIBUTOR" && (
+            <div className="grid gap-2">
+              <Label htmlFor="np-agent">الوكيل المرتبط (اختياري)</Label>
+              <Select id="np-agent" value={linkedAgentId} onChange={(e) => setLinkedAgentId(e.target.value)}>
+                <option value="">— لا وكيل —</option>
+                {agents.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </Select>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline" className="rounded-full" disabled={submitting}>إلغاء</Button>
+          </DialogClose>
+          <Button className="rounded-full" onClick={submit} disabled={submitting}>
+            {submitting ? "جاري الإضافة…" : "إضافة"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 type PartnerRequestRow = {
   id: string;
@@ -55,25 +526,6 @@ type PartnerRequestRow = {
   status: string;
   notes: string | null;
   createdAt: string;
-  facebookUrl: string | null;
-  instagramUrl: string | null;
-  tiktokUrl: string | null;
-  youtubeUrl: string | null;
-  websiteUrl: string | null;
-  otherUrl: string | null;
-};
-
-type PartnerRow = {
-  id: string;
-  partnerType: string;
-  name: string;
-  governorate: string;
-  phone: string;
-  isActive: boolean;
-  linkedAgent?: { id: string; name: string; phone: string } | null;
-  _count?: { distributors: number };
-  /** Backlog 5.1 admin minimum — the factory settlement rate (basis points, admin-write only). */
-  costRateBps?: number;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -83,60 +535,15 @@ const STATUS_LABELS: Record<string, string> = {
   REJECTED: "مرفوض",
 };
 
-const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: "requests", label: "طلبات شراكة", icon: <ClipboardList className="h-4 w-4" /> },
-  { id: "agents", label: "وكلاء", icon: <Users className="h-4 w-4" /> },
-  { id: "distributors", label: "موزعين", icon: <Truck className="h-4 w-4" /> },
-  { id: "new", label: "إدخال شريك جديد", icon: <UserPlus className="h-4 w-4" /> },
-];
-
-export default function AdminPartnersPage() {
-  const [activeTab, setActiveTab] = React.useState<TabId>("requests");
+function PartnerRequestsTab({ onChanged }: { onChanged: () => void }) {
   const { toast } = useToast();
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="شركاؤنا"
-        description="طلبات الشراكة، الوكلاء، الموزعون، وإدخال شركاء جدد."
-      />
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-border/80 bg-card p-2 shadow-subtle">
-        {TABS.map((tab) => (
-          <Button
-            key={tab.id}
-            variant={activeTab === tab.id ? "default" : "ghost"}
-            size="sm"
-            className={cn(
-              "gap-2 rounded-xl",
-              activeTab === tab.id && "shadow-sm"
-            )}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.icon}
-            {tab.label}
-          </Button>
-        ))}
-      </div>
-
-      {activeTab === "requests" && <PartnerRequestsTab toast={toast} />}
-      {activeTab === "agents" && <AgentsTab toast={toast} />}
-      {activeTab === "distributors" && <DistributorsTab toast={toast} />}
-      {activeTab === "new" && <NewPartnerTab toast={toast} onSuccess={() => setActiveTab("agents")} />}
-    </div>
-  );
-}
-
-function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
   const [requests, setRequests] = React.useState<PartnerRequestRow[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
-  const [fetching, setFetching] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [debouncedQ, setDebouncedQ] = React.useState("");
   const [page, setPage] = React.useState(0);
   const [pageSize, setPageSize] = React.useState(20);
-  const [detailId, setDetailId] = React.useState<string | null>(null);
-  const [detail, setDetail] = React.useState<PartnerRequestRow | null>(null);
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [statusModal, setStatusModal] = React.useState<{ id: string; status: string; notes: string } | null>(null);
   const [convertModal, setConvertModal] = React.useState<{ id: string; requestType: string } | null>(null);
@@ -148,21 +555,8 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
     return () => clearTimeout(t);
   }, [search]);
 
-  React.useEffect(() => {
-    setPage(0);
-  }, [debouncedQ]);
-
-  React.useEffect(() => {
-    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
-    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
-  }, [total, pageSize, page]);
-
   const load = React.useCallback(() => {
-    setFetching(true);
-    const params = new URLSearchParams({
-      limit: String(pageSize),
-      offset: String(page * pageSize),
-    });
+    const params = new URLSearchParams({ limit: String(pageSize), offset: String(page * pageSize) });
     if (debouncedQ) params.set("q", debouncedQ);
     fetch(`/api/admin/partner-requests?${params}`, { credentials: "include" })
       .then((r) => r.json())
@@ -173,27 +567,12 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
         }
       })
       .catch(() => toast({ title: "فشل تحميل الطلبات", variant: "destructive" }))
-      .finally(() => {
-        setLoading(false);
-        setFetching(false);
-      });
+      .finally(() => setLoading(false));
   }, [toast, debouncedQ, page, pageSize]);
 
   React.useEffect(() => {
     load();
   }, [load]);
-
-  React.useEffect(() => {
-    if (detailId) {
-      fetch(`/api/admin/partner-requests/${detailId}`, { credentials: "include" })
-        .then((r) => r.json())
-        .then((json: { success?: boolean; data?: PartnerRequestRow }) => {
-          if (json?.success && json.data) setDetail(json.data);
-        });
-    } else {
-      setDetail(null);
-    }
-  }, [detailId]);
 
   React.useEffect(() => {
     if (convertModal?.requestType === "DISTRIBUTOR") {
@@ -251,197 +630,111 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
       .then((r) => r.json())
       .then((json) => {
         if (json?.success) {
-          const convertedType = convertModal?.requestType;
           toast({ title: "تم التحويل إلى شريك بنجاح" });
           setConvertModal(null);
           setConvertAgentId("");
           load();
-          if (convertedType) {
-            window.dispatchEvent(new CustomEvent("partners-list-updated", { detail: { type: convertedType } }));
-          }
+          onChanged();
         } else toast({ title: json?.error?.message ?? "فشل التحويل", variant: "destructive" });
       })
       .finally(() => setActionLoading(null));
   };
 
-  if (loading && requests.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
-
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle>طلبات شراكة</CardTitle>
-            <CardDescription>عرض وإدارة طلبات التسجيل كوكيل أو موزع.</CardDescription>
+      <PanelCard title="طلبات الشراكة" icon={<ClipboardList className="h-5 w-5 text-lapis-800" />} noPadding>
+        <div className="flex flex-wrap items-center gap-2.5 px-4 py-3.5 sm:px-[22px]">
+          <SearchInput value={search} onChange={setSearch} placeholder="الاسم أو الهاتف أو المحافظة" className="sm:w-72" />
+        </div>
+        <div className="p-4 sm:p-[22px]">
+          <DataTable
+            columns={
+              [
+                { id: "type", header: "النوع", cell: ({ row }) => (row.original.requestType === "AGENT" ? "وكيل" : "موزع") },
+                { id: "name", header: "الاسم", cell: ({ row }) => row.original.name },
+                { id: "gov", header: "المحافظة", cell: ({ row }) => row.original.governorate },
+                { id: "phone", header: "الهاتف", cell: ({ row }) => <span dir="ltr" className="font-mono text-xs">{row.original.phone}</span> },
+                { id: "date", header: "تاريخ الطلب", cell: ({ row }) => formatDateEn(row.original.createdAt) },
+                {
+                  id: "status",
+                  header: "الحالة",
+                  cell: ({ row }) => (
+                    <Badge variant={row.original.status === "APPROVED" ? "success" : row.original.status === "REJECTED" ? "danger" : "neutral"} className="rounded-full text-[11px] font-extrabold">
+                      {STATUS_LABELS[row.original.status] ?? row.original.status}
+                    </Badge>
+                  ),
+                },
+                {
+                  id: "actions",
+                  header: "الإجراءات",
+                  cell: ({ row }) => {
+                    const r = row.original;
+                    return (
+                      <div className="flex flex-wrap gap-1.5">
+                        <Button type="button" size="sm" variant="outline" className="rounded-lg" onClick={() => setStatusModal({ id: r.id, status: r.status, notes: r.notes ?? "" })}>
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          حالة
+                        </Button>
+                        {r.status !== "APPROVED" && r.status !== "REJECTED" && (
+                          <>
+                            <Button type="button" size="sm" className="rounded-lg" onClick={() => setConvertModal({ id: r.id, requestType: r.requestType })} disabled={!!actionLoading}>
+                              {actionLoading === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                              قبول وتحويل
+                            </Button>
+                            <Button type="button" size="sm" variant="outline" className="rounded-lg" onClick={() => reject(r.id)} disabled={!!actionLoading}>
+                              <X className="h-3.5 w-3.5" />
+                              رفض
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    );
+                  },
+                },
+              ] satisfies ColumnDef<PartnerRequestRow, unknown>[]
+            }
+            data={requests}
+            getRowId={(r) => r.id}
+            loading={loading}
+            emptyTitle={debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات شراكة"}
+          />
+        </div>
+        {total > 0 && (
+          <div className="border-t border-stone-200 px-4 py-4 sm:px-[22px]">
+            <PaginationBar page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
           </div>
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="بحث بالاسم أو الهاتف أو المحافظة…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pr-9"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {fetching && requests.length > 0 && (
-            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              جاري التحديث…
-            </div>
-          )}
-          {requests.length === 0 && !fetching ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
-              <ClipboardList className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-muted-foreground">{debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات شراكة"}</p>
-            </div>
-          ) : (
-            <TableScroll>
-            <Table className={cn(fetching && "opacity-70")}>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>النوع</TableHead>
-                  <TableHead>الاسم</TableHead>
-                  <TableHead>المحافظة</TableHead>
-                  <TableHead>رقم التليفون</TableHead>
-                  <TableHead>تاريخ الطلب</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead className="text-left">الإجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {requests.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell>{r.requestType === "AGENT" ? "وكيل" : "موزع"}</TableCell>
-                    <TableCell>{r.name}</TableCell>
-                    <TableCell>{r.governorate}</TableCell>
-                    <TableCell className="font-mono">{r.phone}</TableCell>
-                    <TableCell>{formatDateEn(r.createdAt)}</TableCell>
-                    <TableCell>
-                      <Badge variant={r.status === "APPROVED" ? "default" : r.status === "REJECTED" ? "destructive" : "secondary"}>
-                        {STATUS_LABELS[r.status] ?? r.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-left flex flex-wrap gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => setDetailId(r.id)}>
-                        <Eye className="h-4 w-4 ml-1" />
-                        عرض
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setStatusModal({ id: r.id, status: r.status, notes: r.notes ?? "" })}>
-                        <MessageSquare className="h-4 w-4 ml-1" />
-                        حالة
-                      </Button>
-                      {r.status !== "APPROVED" && r.status !== "REJECTED" && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setConvertModal({ id: r.id, requestType: r.requestType })}
-                            disabled={!!actionLoading}
-                          >
-                            {actionLoading === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 ml-1" />}
-                            قبول وتحويل
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => reject(r.id)} disabled={!!actionLoading}>
-                            <X className="h-4 w-4 ml-1" />
-                            رفض
-                          </Button>
-                        </>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            </TableScroll>
-          )}
-          {total > 0 && (
-            <PaginationBar
-              className="mt-6"
-              page={page}
-              pageSize={pageSize}
-              total={total}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-              disabled={fetching}
-            />
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </PanelCard>
 
-      {/* Detail modal */}
-      <Dialog open={!!detailId} onOpenChange={(open) => !open && setDetailId(null)}>
-        <DialogContent className="max-w-lg" dir="rtl">
-          <DialogHeader>
-            <DialogTitle>تفاصيل طلب الشريك</DialogTitle>
-          </DialogHeader>
-          {detail && (
-            <div className="space-y-2 text-sm">
-              <p><strong>النوع:</strong> {detail.requestType === "AGENT" ? "وكيل" : "موزع"}</p>
-              <p><strong>الاسم:</strong> {detail.name}</p>
-              <p><strong>المحافظة:</strong> {detail.governorate}</p>
-              <p><strong>رقم التليفون:</strong> {detail.phone}</p>
-              <p><strong>تاريخ الطلب:</strong> {formatDateEn(detail.createdAt)}</p>
-              <p><strong>الحالة:</strong> {STATUS_LABELS[detail.status] ?? detail.status}</p>
-              {detail.notes && <p><strong>ملاحظات:</strong> {detail.notes}</p>}
-              {(detail.facebookUrl || detail.instagramUrl || detail.websiteUrl) && (
-                <div>
-                  <strong>روابط:</strong>
-                  <ul className="list-disc pr-4 mt-1">
-                    {detail.facebookUrl && <li>Facebook: {detail.facebookUrl}</li>}
-                    {detail.instagramUrl && <li>Instagram: {detail.instagramUrl}</li>}
-                    {detail.tiktokUrl && <li>TikTok: {detail.tiktokUrl}</li>}
-                    {detail.youtubeUrl && <li>YouTube: {detail.youtubeUrl}</li>}
-                    {detail.websiteUrl && <li>Website: {detail.websiteUrl}</li>}
-                    {detail.otherUrl && <li>Other: {detail.otherUrl}</li>}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <DialogClose asChild><Button variant="outline">إغلاق</Button></DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Status/notes modal */}
       <Dialog open={!!statusModal} onOpenChange={(open) => !open && setStatusModal(null)}>
-        <DialogContent className="max-w-md" dir="rtl">
+        <DialogContent className="rounded-2xl border-stone-200 bg-white">
           <DialogHeader><DialogTitle>تغيير الحالة / إضافة ملاحظات</DialogTitle></DialogHeader>
           {statusModal && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">الحالة</label>
-                <select
-                  value={statusModal.status}
-                  onChange={(e) => setStatusModal((m) => m ? { ...m, status: e.target.value } : null)}
-                  className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-                >
+            <div className="grid gap-3">
+              <div className="grid gap-2">
+                <Label htmlFor="req-status">الحالة</Label>
+                <Select id="req-status" value={statusModal.status} onChange={(e) => setStatusModal((m) => (m ? { ...m, status: e.target.value } : null))}>
                   {Object.entries(STATUS_LABELS).map(([v, l]) => (
                     <option key={v} value={v}>{l}</option>
                   ))}
-                </select>
+                </Select>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">ملاحظات</label>
+              <div className="grid gap-2">
+                <Label htmlFor="req-notes">ملاحظات</Label>
                 <textarea
+                  id="req-notes"
                   value={statusModal.notes}
-                  onChange={(e) => setStatusModal((m) => m ? { ...m, notes: e.target.value } : null)}
-                  className="flex min-h-[80px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                  onChange={(e) => setStatusModal((m) => (m ? { ...m, notes: e.target.value } : null))}
+                  className="flex min-h-[80px] w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
                   rows={3}
                 />
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setStatusModal(null)}>إلغاء</Button>
+            <Button variant="outline" className="rounded-full" onClick={() => setStatusModal(null)}>إلغاء</Button>
             {statusModal && (
-              <Button
-                onClick={() => updateStatus(statusModal.id, statusModal.status, statusModal.notes)}
-                disabled={!!actionLoading}
-              >
+              <Button className="rounded-full" onClick={() => updateStatus(statusModal.id, statusModal.status, statusModal.notes)} disabled={!!actionLoading}>
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "حفظ"}
               </Button>
             )}
@@ -449,39 +742,33 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
         </DialogContent>
       </Dialog>
 
-      {/* Convert modal */}
       <Dialog open={!!convertModal} onOpenChange={(open) => !open && setConvertModal(null)}>
-        <DialogContent className="max-w-md" dir="rtl">
+        <DialogContent className="rounded-2xl border-stone-200 bg-white">
           <DialogHeader><DialogTitle>قبول وتحويل إلى شريك</DialogTitle></DialogHeader>
           {convertModal && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {convertModal.requestType === "DISTRIBUTOR"
-                  ? "اختر الوكيل المرتبط (اختياري):"
-                  : "سيتم إنشاء وكيل جديد."}
+            <div className="grid gap-3">
+              <p className="text-sm text-ink-soft">
+                {convertModal.requestType === "DISTRIBUTOR" ? "اختر الوكيل المرتبط (اختياري):" : "سيتم إنشاء وكيل جديد."}
               </p>
               {convertModal.requestType === "DISTRIBUTOR" && (
-                <div>
-                  <label className="block text-sm font-medium mb-1">الوكيل</label>
-                  <select
-                    value={convertAgentId}
-                    onChange={(e) => setConvertAgentId(e.target.value)}
-                    className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-                  >
+                <div className="grid gap-2">
+                  <Label htmlFor="convert-agent">الوكيل</Label>
+                  <Select id="convert-agent" value={convertAgentId} onChange={(e) => setConvertAgentId(e.target.value)}>
                     <option value="">— لا وكيل —</option>
                     {agents.map((a) => (
                       <option key={a.id} value={a.id}>{a.name}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               )}
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConvertModal(null)}>إلغاء</Button>
+            <Button variant="outline" className="rounded-full" onClick={() => setConvertModal(null)}>إلغاء</Button>
             {convertModal && (
               <Button
-                onClick={() => convert(convertModal.id, convertModal.requestType === "DISTRIBUTOR" ? (convertAgentId || null) : null)}
+                className="rounded-full"
+                onClick={() => convert(convertModal.id, convertModal.requestType === "DISTRIBUTOR" ? convertAgentId || null : null)}
                 disabled={!!actionLoading}
               >
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "تحويل"}
@@ -491,591 +778,5 @@ function PartnerRequestsTab({ toast }: { toast: ReturnType<typeof useToast>["toa
         </DialogContent>
       </Dialog>
     </>
-  );
-}
-
-function AgentsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
-  const [partners, setPartners] = React.useState<(PartnerRow & { _count?: { distributors: number } })[]>([]);
-  const [total, setTotal] = React.useState(0);
-  const [loading, setLoading] = React.useState(true);
-  const [fetching, setFetching] = React.useState(false);
-  const [search, setSearch] = React.useState("");
-  const [debouncedQ, setDebouncedQ] = React.useState("");
-  const [page, setPage] = React.useState(0);
-  const [pageSize, setPageSize] = React.useState(20);
-  const [detailId, setDetailId] = React.useState<string | null>(null);
-  const [detail, setDetail] = React.useState<PartnerRow | null>(null);
-
-  React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(search.trim()), 400);
-    return () => clearTimeout(t);
-  }, [search]);
-
-  React.useEffect(() => {
-    setPage(0);
-  }, [debouncedQ]);
-
-  React.useEffect(() => {
-    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
-    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
-  }, [total, pageSize, page]);
-
-  const load = React.useCallback(() => {
-    setFetching(true);
-    const params = new URLSearchParams({
-      partnerType: "AGENT",
-      limit: String(pageSize),
-      offset: String(page * pageSize),
-    });
-    if (debouncedQ) params.set("q", debouncedQ);
-    fetch(`/api/admin/partners?${params}`, {
-      credentials: "include",
-      cache: "no-store",
-      headers: { "Cache-Control": "no-cache" },
-    })
-      .then((r) => r.json())
-      .then((json: { success?: boolean; data?: { partners?: PartnerRow[]; total?: number } }) => {
-        if (json?.success && json.data) {
-          setPartners(Array.isArray(json.data.partners) ? json.data.partners : []);
-          setTotal(typeof json.data.total === "number" ? json.data.total : 0);
-        }
-      })
-      .catch(() => toast({ title: "فشل تحميل الوكلاء", variant: "destructive" }))
-      .finally(() => {
-        setLoading(false);
-        setFetching(false);
-      });
-  }, [toast, debouncedQ, page, pageSize]);
-
-  React.useEffect(() => load(), [load]);
-  React.useEffect(() => {
-    const handler = (e: CustomEvent<{ type?: string }>) => {
-      if (e.detail?.type === "AGENT") load();
-    };
-    window.addEventListener("partners-list-updated", handler as EventListener);
-    return () => window.removeEventListener("partners-list-updated", handler as EventListener);
-  }, [load]);
-  const loadDetail = React.useCallback((id: string) => {
-    fetch(`/api/admin/partners/${id}`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((json: { success?: boolean; data?: PartnerRow & { distributors?: PartnerRow[] } }) => {
-        if (json?.success && json.data) setDetail(json.data);
-      });
-  }, []);
-
-  React.useEffect(() => {
-    if (detailId) loadDetail(detailId);
-    else setDetail(null);
-  }, [detailId, loadDetail]);
-
-  const handleUpdated = (updated: PartnerPatchResponse) => {
-    setDetail((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
-    setPartners((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
-    if (detailId) loadDetail(detailId);
-    load();
-  };
-
-  if (loading && partners.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
-
-  return (
-    <>
-      <Card>
-        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle>وكلاء</CardTitle>
-            <CardDescription>قائمة الوكلاء وعدد الموزعين المرتبطين.</CardDescription>
-          </div>
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="بحث بالاسم أو الهاتف…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pr-9"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {fetching && partners.length > 0 && (
-            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              جاري التحديث…
-            </div>
-          )}
-          {partners.length === 0 && !fetching ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
-              <Users className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-muted-foreground">{debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد وكلاء"}</p>
-            </div>
-          ) : (
-            <TableScroll>
-            <Table className={cn(fetching && "opacity-70")}>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>الاسم</TableHead>
-                  <TableHead>المحافظة</TableHead>
-                  <TableHead>رقم التليفون</TableHead>
-                  <TableHead>عدد الموزعين المرتبطين</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead className="text-left">الإجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {partners.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell>{p.name}</TableCell>
-                    <TableCell>{p.governorate}</TableCell>
-                    <TableCell className="font-mono">{p.phone}</TableCell>
-                    <TableCell>{p._count?.distributors ?? 0}</TableCell>
-                    <TableCell>
-                      <Badge variant={p.isActive ? "default" : "secondary"}>{p.isActive ? "نشط" : "غير نشط"}</Badge>
-                    </TableCell>
-                    <TableCell className="text-left">
-                      <Button variant="ghost" size="sm" onClick={() => setDetailId(p.id)}>عرض التفاصيل</Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            </TableScroll>
-          )}
-          {total > 0 && (
-            <PaginationBar
-              className="mt-6"
-              page={page}
-              pageSize={pageSize}
-              total={total}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-              disabled={fetching}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={!!detailId} onOpenChange={(open) => !open && setDetailId(null)}>
-        <DialogContent className="max-w-lg" dir="rtl">
-          <DialogHeader><DialogTitle>تفاصيل الوكيل</DialogTitle></DialogHeader>
-          {detail && (
-            <div className="space-y-2 text-sm">
-              <p><strong>الحالة:</strong> {detail.isActive ? "نشط" : "غير نشط"}</p>
-              <PartnerEditForm partner={detail} agents={[]} onUpdated={handleUpdated} />
-              {detail && "distributors" in detail && Array.isArray((detail as { distributors?: PartnerRow[] }).distributors) && (
-                <div>
-                  <strong>الموزعون المرتبطين:</strong>
-                  <ul className="list-disc pr-4 mt-1">
-                    {((detail as { distributors: PartnerRow[] }).distributors || []).map((d) => (
-                      <li key={d.id}>{d.name} – {d.phone}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {detail && <PartnerAccountPanel partnerId={detail.id} costRateBps={detail.costRateBps ?? 7500} />}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-
-function DistributorsTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
-  const [partners, setPartners] = React.useState<PartnerRow[]>([]);
-  const [total, setTotal] = React.useState(0);
-  const [loading, setLoading] = React.useState(true);
-  const [fetching, setFetching] = React.useState(false);
-  const [search, setSearch] = React.useState("");
-  const [debouncedQ, setDebouncedQ] = React.useState("");
-  const [page, setPage] = React.useState(0);
-  const [pageSize, setPageSize] = React.useState(20);
-  const [detailId, setDetailId] = React.useState<string | null>(null);
-  const [detail, setDetail] = React.useState<PartnerRow | null>(null);
-  const [agents, setAgents] = React.useState<{ id: string; name: string }[]>([]);
-
-  React.useEffect(() => {
-    fetch("/api/admin/partners?partnerType=AGENT&limit=200", { credentials: "include" })
-      .then((r) => r.json())
-      .then((json: { success?: boolean; data?: { partners: { id: string; name: string }[] } }) => {
-        if (json?.success && json.data) setAgents(json.data.partners);
-      });
-  }, []);
-
-  React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(search.trim()), 400);
-    return () => clearTimeout(t);
-  }, [search]);
-
-  React.useEffect(() => {
-    setPage(0);
-  }, [debouncedQ]);
-
-  React.useEffect(() => {
-    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
-    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
-  }, [total, pageSize, page]);
-
-  const load = React.useCallback(() => {
-    setFetching(true);
-    const params = new URLSearchParams({
-      partnerType: "DISTRIBUTOR",
-      limit: String(pageSize),
-      offset: String(page * pageSize),
-    });
-    if (debouncedQ) params.set("q", debouncedQ);
-    fetch(`/api/admin/partners?${params}`, {
-      credentials: "include",
-      cache: "no-store",
-      headers: { "Cache-Control": "no-cache" },
-    })
-      .then((r) => r.json())
-      .then((json: { success?: boolean; data?: { partners?: PartnerRow[]; total?: number } }) => {
-        if (json?.success && json.data) {
-          setPartners(Array.isArray(json.data.partners) ? json.data.partners : []);
-          setTotal(typeof json.data.total === "number" ? json.data.total : 0);
-        }
-      })
-      .catch(() => toast({ title: "فشل تحميل الموزعين", variant: "destructive" }))
-      .finally(() => {
-        setLoading(false);
-        setFetching(false);
-      });
-  }, [toast, debouncedQ, page, pageSize]);
-
-  React.useEffect(() => load(), [load]);
-  React.useEffect(() => {
-    const handler = (e: CustomEvent<{ type?: string }>) => {
-      if (e.detail?.type === "DISTRIBUTOR") load();
-    };
-    window.addEventListener("partners-list-updated", handler as EventListener);
-    return () => window.removeEventListener("partners-list-updated", handler as EventListener);
-  }, [load]);
-  const loadDetail = React.useCallback((id: string) => {
-    fetch(`/api/admin/partners/${id}`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((json: { success?: boolean; data?: PartnerRow }) => {
-        if (json?.success && json.data) setDetail(json.data);
-      });
-  }, []);
-
-  React.useEffect(() => {
-    if (detailId) loadDetail(detailId);
-    else setDetail(null);
-  }, [detailId, loadDetail]);
-
-  const handleUpdated = (updated: PartnerPatchResponse) => {
-    const linkedAgent = updated.linkedAgentId
-      ? agents.find((a) => a.id === updated.linkedAgentId)
-      : null;
-    setDetail((prev) =>
-      prev && prev.id === updated.id
-        ? { ...prev, ...updated, linkedAgent: linkedAgent ? { ...linkedAgent, phone: "" } : null }
-        : prev
-    );
-    setPartners((prev) =>
-      prev.map((p) =>
-        p.id === updated.id
-          ? { ...p, ...updated, linkedAgent: linkedAgent ? { ...linkedAgent, phone: "" } : null }
-          : p
-      )
-    );
-    // The merged linkedAgent above has no phone (PATCH doesn't return the related row); the
-    // full detail dialog and the row both need the real one, so refetch once in the background.
-    if (detailId) loadDetail(detailId);
-    load();
-  };
-
-  if (loading && partners.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
-
-  return (
-    <>
-      <Card>
-        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle>موزعين</CardTitle>
-            <CardDescription>قائمة الموزعين والوكيل المرتبط بكل موزع.</CardDescription>
-          </div>
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="بحث بالاسم أو الهاتف…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pr-9"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {fetching && partners.length > 0 && (
-            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              جاري التحديث…
-            </div>
-          )}
-          {partners.length === 0 && !fetching ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
-              <Truck className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-muted-foreground">{debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد موزعين"}</p>
-            </div>
-          ) : (
-            <TableScroll>
-            <Table className={cn(fetching && "opacity-70")}>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>الاسم</TableHead>
-                  <TableHead>المحافظة</TableHead>
-                  <TableHead>رقم التليفون</TableHead>
-                  <TableHead>الوكيل المرتبط</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead className="text-left">الإجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {partners.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell>{p.name}</TableCell>
-                    <TableCell>{p.governorate}</TableCell>
-                    <TableCell className="font-mono">{p.phone}</TableCell>
-                    <TableCell>{p.linkedAgent ? p.linkedAgent.name : "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant={p.isActive ? "default" : "secondary"}>{p.isActive ? "نشط" : "غير نشط"}</Badge>
-                    </TableCell>
-                    <TableCell className="text-left">
-                      <Button variant="ghost" size="sm" onClick={() => setDetailId(p.id)}>عرض التفاصيل</Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            </TableScroll>
-          )}
-          {total > 0 && (
-            <PaginationBar
-              className="mt-6"
-              page={page}
-              pageSize={pageSize}
-              total={total}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-              disabled={fetching}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={!!detailId} onOpenChange={(open) => !open && setDetailId(null)}>
-        <DialogContent className="max-w-lg" dir="rtl">
-          <DialogHeader><DialogTitle>تفاصيل الموزع</DialogTitle></DialogHeader>
-          {detail && (
-            <div className="space-y-2 text-sm">
-              <p><strong>الحالة:</strong> {detail.isActive ? "نشط" : "غير نشط"}</p>
-              <PartnerEditForm
-                partner={{ ...detail, linkedAgentId: detail.linkedAgent?.id ?? null }}
-                agents={agents}
-                onUpdated={handleUpdated}
-              />
-              <PartnerAccountPanel partnerId={detail.id} costRateBps={detail.costRateBps ?? 7500} />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-
-type NewPartnerForm = {
-  partnerType: "AGENT" | "DISTRIBUTOR";
-  name: string;
-  governorate: string;
-  phone: string;
-  facebookUrl: string;
-  instagramUrl: string;
-  tiktokUrl: string;
-  youtubeUrl: string;
-  websiteUrl: string;
-  otherUrl: string;
-  linkedAgentId: string;
-  isActive: boolean;
-  notes: string;
-};
-
-function NewPartnerTab({
-  toast,
-  onSuccess,
-}: {
-  toast: ReturnType<typeof useToast>["toast"];
-  onSuccess: () => void;
-}) {
-  const [form, setForm] = React.useState<NewPartnerForm>({
-    partnerType: "AGENT",
-    name: "",
-    governorate: "",
-    phone: "",
-    facebookUrl: "",
-    instagramUrl: "",
-    tiktokUrl: "",
-    youtubeUrl: "",
-    websiteUrl: "",
-    otherUrl: "",
-    linkedAgentId: "",
-    isActive: true,
-    notes: "",
-  });
-  const [agents, setAgents] = React.useState<{ id: string; name: string }[]>([]);
-  const [loading, setLoading] = React.useState(false);
-
-  React.useEffect(() => {
-    if (form.partnerType === "DISTRIBUTOR") {
-      fetch("/api/admin/partners?partnerType=AGENT&limit=200", { credentials: "include" })
-        .then((r) => r.json())
-        .then((json: { success?: boolean; data?: { partners: { id: string; name: string }[] } }) => {
-          if (json?.success && json.data) setAgents(json.data.partners);
-        });
-    }
-  }, [form.partnerType]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name.trim() || !form.governorate.trim() || !form.phone.trim()) {
-      toast({ title: "الاسم والمحافظة ورقم التليفون مطلوبة", variant: "destructive" });
-      return;
-    }
-    setLoading(true);
-    fetch("/api/admin/partners", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        partnerType: form.partnerType,
-        name: form.name.trim(),
-        governorate: form.governorate.trim(),
-        phone: form.phone.trim(),
-        facebookUrl: form.facebookUrl.trim() || null,
-        instagramUrl: form.instagramUrl.trim() || null,
-        tiktokUrl: form.tiktokUrl.trim() || null,
-        youtubeUrl: form.youtubeUrl.trim() || null,
-        websiteUrl: form.websiteUrl.trim() || null,
-        otherUrl: form.otherUrl.trim() || null,
-        linkedAgentId: form.partnerType === "DISTRIBUTOR" && form.linkedAgentId ? form.linkedAgentId : null,
-        isActive: form.isActive,
-        notes: form.notes.trim() || null,
-      }),
-    })
-      .then((r) => r.json())
-      .then((json) => {
-        if (json?.success) {
-          toast({ title: "تم إضافة الشريك بنجاح" });
-          setForm({
-            partnerType: "AGENT",
-            name: "",
-            governorate: "",
-            phone: "",
-            facebookUrl: "",
-            instagramUrl: "",
-            tiktokUrl: "",
-            youtubeUrl: "",
-            websiteUrl: "",
-            otherUrl: "",
-            linkedAgentId: "",
-            isActive: true,
-            notes: "",
-          });
-          onSuccess();
-        } else toast({ title: json?.error?.message ?? "فشل الإضافة", variant: "destructive" });
-      })
-      .finally(() => setLoading(false));
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>إدخال شريك جديد</CardTitle>
-        <CardDescription>إضافة وكيل أو موزع يدوياً.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
-          <div>
-            <label className="mb-1 block text-sm font-medium">نوع الشريك *</label>
-            <select
-              value={form.partnerType}
-              onChange={(e) => setForm((f) => ({ ...f, partnerType: e.target.value as "AGENT" | "DISTRIBUTOR" }))}
-              className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="AGENT">وكيل</option>
-              <option value="DISTRIBUTOR">موزع</option>
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">الاسم *</label>
-            <Input
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="الاسم"
-              required
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">المحافظة *</label>
-            <select
-              value={form.governorate}
-              onChange={(e) => setForm((f) => ({ ...f, governorate: e.target.value }))}
-              className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-              required
-            >
-              <option value="">اختر المحافظة</option>
-              {GOVERNORATE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">رقم التليفون *</label>
-            <Input
-              value={form.phone}
-              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-              placeholder="رقم التليفون"
-              required
-            />
-          </div>
-          {form.partnerType === "DISTRIBUTOR" && (
-            <div>
-              <label className="mb-1 block text-sm font-medium">الوكيل المرتبط (اختياري)</label>
-              <select
-                value={form.linkedAgentId}
-                onChange={(e) => setForm((f) => ({ ...f, linkedAgentId: e.target.value }))}
-                className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">— لا وكيل —</option>
-                {agents.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="new-partner-active"
-              checked={form.isActive}
-              onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
-              className="rounded border-input"
-            />
-            <label htmlFor="new-partner-active" className="text-sm font-medium">نشط</label>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">ملاحظات</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              className="flex min-h-[80px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-              rows={3}
-            />
-          </div>
-          <Button type="submit" disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : null}
-            إضافة الشريك
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
   );
 }

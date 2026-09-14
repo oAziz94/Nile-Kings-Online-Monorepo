@@ -4,6 +4,16 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
+import {
+  confirmSlaHoursSchema,
+  costRateBpsSchema,
+  dailyOrderCapacitySchema,
+  deadStockDaysSchema,
+  lowStockThresholdSchema,
+  shipSlaHoursSchema,
+  targetCoverDaysSchema,
+  workingDaysSchema,
+} from "@/lib/partner/settings-schema";
 
 type Params = Promise<{ id: string }>;
 
@@ -59,6 +69,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     // API accepting this is a defect; this is the admin route, so it's the one place
     // allowed to write it).
     costRateBps?: number;
+    // Backlog 9.4a (c) / `06-admin-v2.md` §8 control matrix — every knob partner v2
+    // introduced, admin-controlled in one place. Same Zod bounds `PATCH
+    // /api/partner/settings` uses, imported from `lib/partner/settings-schema.ts` (not
+    // retyped). `confirmSlaHours`/`shipSlaHours` are admin-only from v2; the other five are
+    // partner-owned defaults the admin can still see/override here.
+    confirmSlaHours?: number;
+    shipSlaHours?: number;
+    lowStockThreshold?: number;
+    deadStockDays?: number;
+    targetCoverDays?: number;
+    dailyOrderCapacity?: number | null;
+    workingDays?: string[];
   };
   try {
     body = await req.json();
@@ -66,11 +88,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     return apiBadRequest("جسم الطلب غير صالح");
   }
 
-  if (
-    body.costRateBps !== undefined &&
-    (!Number.isInteger(body.costRateBps) || body.costRateBps < 0 || body.costRateBps > 10_000)
-  ) {
+  if (body.costRateBps !== undefined && !costRateBpsSchema.safeParse(body.costRateBps).success) {
     return apiBadRequest("نسبة الشراء يجب أن تكون رقماً صحيحاً بين 0 و10000 (بالبيسيس بوينت)");
+  }
+  if (body.confirmSlaHours !== undefined && !confirmSlaHoursSchema.safeParse(body.confirmSlaHours).success) {
+    return apiBadRequest("مهلة التأكيد غير صالحة");
+  }
+  if (body.shipSlaHours !== undefined && !shipSlaHoursSchema.safeParse(body.shipSlaHours).success) {
+    return apiBadRequest("مهلة الشحن غير صالحة");
+  }
+  if (body.lowStockThreshold !== undefined && !lowStockThresholdSchema.safeParse(body.lowStockThreshold).success) {
+    return apiBadRequest("الحد الأدنى للمخزون غير صالح");
+  }
+  if (body.deadStockDays !== undefined && !deadStockDaysSchema.safeParse(body.deadStockDays).success) {
+    return apiBadRequest("عدد أيام الركود غير صالح");
+  }
+  if (body.targetCoverDays !== undefined && !targetCoverDaysSchema.safeParse(body.targetCoverDays).success) {
+    return apiBadRequest("هدف أيام التغطية غير صالح");
+  }
+  if (
+    body.dailyOrderCapacity !== undefined &&
+    body.dailyOrderCapacity !== null &&
+    !dailyOrderCapacitySchema.safeParse(body.dailyOrderCapacity).success
+  ) {
+    return apiBadRequest("الطاقة اليومية غير صالحة");
+  }
+  if (body.workingDays !== undefined && !workingDaysSchema.safeParse(body.workingDays).success) {
+    return apiBadRequest("أيام العمل غير صالحة");
   }
   if (body.name !== undefined && !body.name?.trim()) return apiBadRequest("الاسم لا يمكن أن يكون فارغاً");
   if (body.governorate !== undefined && !body.governorate?.trim()) return apiBadRequest("المحافظة مطلوبة");
@@ -110,6 +154,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       ...(body.isActive !== undefined && { isActive: body.isActive }),
       ...(body.notes !== undefined && { notes: body.notes?.trim() || null }),
       ...(body.costRateBps !== undefined && { costRateBps: body.costRateBps }),
+      ...(body.confirmSlaHours !== undefined && { confirmSlaHours: body.confirmSlaHours }),
+      ...(body.shipSlaHours !== undefined && { shipSlaHours: body.shipSlaHours }),
+      ...(body.lowStockThreshold !== undefined && { lowStockThreshold: body.lowStockThreshold }),
+      ...(body.deadStockDays !== undefined && { deadStockDays: body.deadStockDays }),
+      ...(body.targetCoverDays !== undefined && { targetCoverDays: body.targetCoverDays }),
+      ...(body.dailyOrderCapacity !== undefined && { dailyOrderCapacity: body.dailyOrderCapacity }),
+      ...(body.workingDays !== undefined && { workingDays: body.workingDays }),
     },
   });
   await logAdminAction(prisma, {
