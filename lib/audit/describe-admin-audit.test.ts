@@ -327,6 +327,108 @@ describe("describeAdminAudit", () => {
     });
   });
 
+  // Backlog 9.8b review fix 3 — every catalog action the product page writes gets its own
+  // sentence assertion (not just the generic ACTION_LABELS coverage scan below).
+  describe("9.8b catalog actions", () => {
+    it("color_add", () => {
+      const sentence = describeAdminAudit({
+        action: "color_add",
+        entityType: "product",
+        entityLabel: "تي شيرت رجالي",
+        before: null,
+        after: { colorName: "أسود", colorHex: "#000000", sizes: ["S", "M", "L"], pricePiastres: 10000 },
+      });
+      expect(sentence).toBe("أضاف لون أسود (3 مقاس) إلى تي شيرت رجالي");
+    });
+
+    it("color_visibility keeps the colour name even though `active` is the only field that changed (9.5 ruling: colorName lives on `after` only, never stripped by auditDiff)", () => {
+      const hidden = describeAdminAudit({
+        action: "color_visibility",
+        entityType: "product",
+        entityLabel: "تي شيرت رجالي",
+        before: { active: true },
+        after: { active: false, colorName: "أحمر" },
+      });
+      expect(hidden).toBe("أخفى لون أحمر من تي شيرت رجالي");
+      expect(hidden).toContain("أحمر");
+
+      const shown = describeAdminAudit({
+        action: "color_visibility",
+        entityType: "product",
+        entityLabel: "تي شيرت رجالي",
+        before: { active: false },
+        after: { active: true, colorName: "أحمر" },
+      });
+      expect(shown).toBe("أظهر لون أحمر في تي شيرت رجالي");
+    });
+
+    it("color_rename", () => {
+      const sentence = describeAdminAudit({
+        action: "color_rename",
+        entityType: "product",
+        entityLabel: "تي شيرت رجالي",
+        before: { colorName: "احمر", colorHex: "#ff0000" },
+        after: { colorName: "أحمر", colorHex: "#ff0000" },
+      });
+      expect(sentence).toBe("عدّل بيانات لون تي شيرت رجالي احمر → أحمر");
+    });
+
+    it("color_representative: set", () => {
+      const sentence = describeAdminAudit({
+        action: "color_representative",
+        entityType: "product",
+        entityLabel: "تي شيرت رجالي",
+        before: { imageAssetId: null },
+        after: { imageAssetId: "asset-1", colorName: "أسود" },
+      });
+      expect(sentence).toBe("عيّن صورة تمثيلية للون أسود في تي شيرت رجالي");
+    });
+
+    it("color_representative: cleared", () => {
+      const sentence = describeAdminAudit({
+        action: "color_representative",
+        entityType: "product",
+        entityLabel: "تي شيرت رجالي",
+        before: { imageAssetId: "asset-1" },
+        after: { imageAssetId: null, colorName: "أسود" },
+      });
+      expect(sentence).toBe("أزال الصورة التمثيلية للون أسود من تي شيرت رجالي");
+    });
+
+    it("gallery_reorder", () => {
+      const sentence = describeAdminAudit({
+        action: "gallery_reorder",
+        entityType: "media",
+        entityLabel: "تي شيرت رجالي",
+        before: null,
+        after: { colorKey: "أسود|#000000", order: ["a", "b", "c"] },
+      });
+      expect(sentence).toBe("أعاد ترتيب صور لون في تي شيرت رجالي");
+    });
+
+    it("gallery_remove", () => {
+      const sentence = describeAdminAudit({
+        action: "gallery_remove",
+        entityType: "media",
+        entityLabel: "تي شيرت رجالي",
+        before: null,
+        after: { colorKey: "أسود|#000000", removedUrl: "https://example.com/x.png" },
+      });
+      expect(sentence).toBe("أزال صورة من معرض لون في تي شيرت رجالي");
+    });
+
+    it("bulk_edit", () => {
+      const sentence = describeAdminAudit({
+        action: "bulk_edit",
+        entityType: "product",
+        entityLabel: "تي شيرت رجالي",
+        before: { active: true },
+        after: { active: false, priceRule: { field: "selling", mode: "percent", value: 10 } },
+      });
+      expect(sentence).toBe("تعديل جماعي على تي شيرت رجالي: الحالة، الأسعار");
+    });
+  });
+
   it("ACTION_LABELS (backlog 9.7 review fix) covers every real action this file exercises", () => {
     // Derived from this file's own source rather than a hand-kept list, so a future test
     // case added here without a matching ACTION_LABELS entry fails immediately. "noop" is

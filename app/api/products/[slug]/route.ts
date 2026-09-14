@@ -101,7 +101,9 @@ export async function GET(
     where: { slug, active: true },
     include: {
       category: { select: { slug: true, name: true } },
+      // backlog 9.8b — an invisible colour's variants are inactive together.
       variants: {
+        where: { active: true },
         select: {
           id: true,
           sku: true,

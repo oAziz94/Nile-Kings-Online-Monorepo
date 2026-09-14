@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/admin/slug";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound, apiConflict } from "@/lib/api/response";
+import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 
 type Params = Promise<{ id: string }>;
 
@@ -25,8 +26,9 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -37,7 +39,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   const existing = await prisma.category.findUnique({ where: { id } });
   if (!existing) return apiNotFound("الفئة غير موجودة");
 
-  let body: { name?: string; slug?: string; sortOrder?: number };
+  let body: { name?: string; slug?: string; sortOrder?: number; imageUrl?: string | null };
   try {
     body = await req.json();
   } catch {
@@ -58,14 +60,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       ...(body.name !== undefined && { name: body.name.trim() }),
       ...(slug !== undefined && { slug }),
       ...(typeof body.sortOrder === "number" && { sortOrder: body.sortOrder }),
+      ...(body.imageUrl !== undefined && { imageUrl: body.imageUrl?.trim() || null }),
     },
   });
+
+  await logAdminAction(prisma, {
+    actor,
+    action: "update",
+    entityType: "category",
+    entityId: id,
+    entityLabel: category.name,
+    before: sanitizeForAudit(existing),
+    after: sanitizeForAudit(category),
+    ip: requestIp(req),
+  });
+
   return apiSuccess(category);
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Params }) {
+export async function DELETE(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -77,5 +93,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
   if (!cat) return apiNotFound("الفئة غير موجودة");
   if (cat._count.products > 0) return apiBadRequest("لا يمكن حذف فئة تحتوي منتجات");
   await prisma.category.delete({ where: { id } });
+  await logAdminAction(prisma, {
+    actor,
+    action: "delete",
+    entityType: "category",
+    entityId: id,
+    entityLabel: cat.name,
+    before: sanitizeForAudit(cat, ["_count"]),
+    ip: requestIp(req),
+  });
   return apiSuccess({ deleted: true });
 }

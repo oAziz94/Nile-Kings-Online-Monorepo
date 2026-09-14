@@ -38,12 +38,16 @@ const getProductRowCatalog = unstable_cache(
     // a direct link to a variant of a deactivated product would bypass the product-slug path's
     // own `active: true` filter and still render.
     const variantBySlug = await prisma.variant.findFirst({
-      where: { slug, product: { active: true } },
+      where: { slug, active: true, product: { active: true } },
       include: {
         product: {
           include: {
             category: { select: { slug: true, name: true } },
+            // backlog 9.8b — an inactive colour ("مرئي في المتجر" off) is hidden from the PDP;
+            // every variant of that colour is inactive together, so filtering the variant list
+            // is enough to make the whole colour disappear from the chooser.
             variants: {
+              where: { active: true },
               select: {
                 id: true,
                 sku: true,
@@ -73,6 +77,7 @@ const getProductRowCatalog = unstable_cache(
         include: {
           category: { select: { slug: true, name: true } },
           variants: {
+            where: { active: true },
             select: {
               id: true,
               sku: true,

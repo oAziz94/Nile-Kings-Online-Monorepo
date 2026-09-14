@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/admin/slug";
 import { sortVariants } from "@/lib/admin/variant-sort";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiConflict } from "@/lib/api/response";
+import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -21,10 +22,14 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10) || 20));
   const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0", 10) || 0);
   const active = searchParams.get("active");
+  const categoryId = searchParams.get("categoryId");
+  const noImage = searchParams.get("noImage") === "1";
 
   const where: Prisma.ProductWhereInput = {
     ...(active === "true" && { active: true }),
     ...(active === "false" && { active: false }),
+    ...(categoryId && { categoryId }),
+    ...(noImage && { imageUrl: null }),
     ...(q && {
       OR: [
         { name: { contains: q, mode: "insensitive" } },
@@ -51,8 +56,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -105,5 +111,16 @@ export async function POST(req: NextRequest) {
       variants: true,
     },
   });
+
+  await logAdminAction(prisma, {
+    actor,
+    action: "create",
+    entityType: "product",
+    entityId: product.id,
+    entityLabel: product.name,
+    after: sanitizeForAudit(product, ["category", "variants"]),
+    ip: requestIp(req),
+  });
+
   return apiSuccess(product);
 }

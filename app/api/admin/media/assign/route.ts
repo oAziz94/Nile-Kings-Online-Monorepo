@@ -3,17 +3,19 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
-
-/** Same `${colorName ?? ""}|${colorHex ?? ""}` convention as `hooks/use-variant-selection.ts`'s
- * `colorKey()` (a client hook, not importable here) and `VariantImage.colorKey`. */
-function colorKeyOf(v: { colorName: string | null; colorHex: string | null }): string {
-  return `${v.colorName ?? ""}|${v.colorHex ?? ""}`;
-}
+import { colorKeyOf } from "@/lib/admin/variant-images";
 
 /**
  * POST /api/admin/media/assign — backlog 9.8a (e)/(f). Body `{ assetIds, productId,
  * colorKey }`: appends every asset to that colour's gallery as `VariantImage` rows
  * (`assetId` + `url`, next `sortOrder`). Audit-logged once per call (`media_assign`).
+ *
+ * Deliberately does not touch `Variant.imageUrl`/`imageAssetId` (the colour's "representative"
+ * image, per 9.8a's usage model — a distinct concept from the gallery, matching the storefront
+ * card's own priority: `lib/catalog.ts`'s `buildProductListItem` prefers a variant's `imageUrl`
+ * over `Product.imageUrl` when set, so auto-writing it here would silently override "تعيين
+ * كصورة رئيسية" on the storefront card — caught by `admin-v2-media.spec.ts`'s hero test during
+ * 9.8b's own verification, reverted same-day).
  */
 export async function POST(req: NextRequest) {
   let actor;

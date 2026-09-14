@@ -94,7 +94,9 @@ const getProductsPage = unstable_cache(
         take,
         include: {
           category: { select: { slug: true, name: true } },
-          variants: { select: productsListingVariantSelect },
+          // backlog 9.8b — an invisible colour's variants are inactive together; excluding them
+          // here hides that colour from the listing.
+          variants: { where: { active: true }, select: productsListingVariantSelect },
         },
       }),
       wantCount ? prisma.product.count({ where }) : Promise.resolve(null),

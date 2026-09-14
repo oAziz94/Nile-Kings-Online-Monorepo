@@ -32,7 +32,7 @@ const getRelatedCatalog = unstable_cache(
       take: RELATED_LIMIT,
       include: {
         category: { select: { slug: true, name: true } },
-        variants: { select: { id: true, pricePiastres: true, stockAvailable: true } },
+        variants: { where: { active: true }, select: { id: true, pricePiastres: true, stockAvailable: true } },
       },
     });
     return related;

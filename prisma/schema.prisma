@@ -150,6 +150,7 @@ model Category {
   name        String
   slug        String   @unique
   sortOrder   Int      @default(0)
+  imageUrl    String?  // backlog 9.8b — category image, set by picking a MediaAsset from the library (URL copied, no relation column needed since usage.ts doesn't track category usage)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -223,6 +224,7 @@ model Variant {
   imageAssetId        String?  // backlog 9.8a — the MediaAsset behind imageUrl, admin's handle; imageUrl stays what the storefront reads
   basePricePiastres   Int?     // original price; null = use product's
   pricePiastres       Int      // selling/discounted price in piastres
+  active              Boolean  @default(true) // backlog 9.8b — colour visibility ("مرئي في المتجر"): every variant sharing a colour is toggled together; an inactive variant is hidden from the storefront (PDP, listing, cards)
   stockAvailable      Int      @default(0)
   stockReserved       Int      @default(0)
   createdAt      DateTime @default(now())
@@ -241,6 +243,7 @@ model Variant {
   @@index([sku])
   @@index([stockAvailable])
   @@index([imageAssetId])
+  @@index([active])
 }
 
 // Every Cloudinary upload made through the site (backlog 9.8a, `06-admin-v2.md` §3.5): the

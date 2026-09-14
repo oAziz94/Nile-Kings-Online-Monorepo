@@ -28,3 +28,39 @@ export function variantSlug(productSlug: string, size: string, colorHex: string 
   const colorPart = slugColorHexCode(colorHex);
   return `${productSlug}_${sizePart}_${colorPart}`;
 }
+
+/**
+ * Turns a colour name/hex into an ASCII-safe SKU part (handles Arabic etc. via a stable hash
+ * when there's no usable ASCII content). Single source of truth — backlog 9.8b pulled this out
+ * of `app/api/admin/products/[id]/variants/route.ts` and `app/api/admin/variants/[id]/route.ts`
+ * (both had their own byte-identical copy) so the colour-creation route (`/colors`) generates
+ * SKUs the exact same way as adding a size one at a time.
+ */
+export function toSkuSafeColor(color: string): string {
+  const cleaned = color.replace(/\s+/g, "_").toUpperCase().replace(/[^A-Z0-9_]/g, "");
+  if (cleaned.length >= 2) return cleaned;
+  let h = 0;
+  for (let i = 0; i < color.length; i++) h = ((h << 5) - h + color.charCodeAt(i)) | 0;
+  return "C" + Math.abs(h).toString(36).toUpperCase().slice(0, 8);
+}
+
+/**
+ * Build a variant SKU: `${productSlug}-${size}-${colorPart}`, uppercased, non-alphanumeric
+ * collapsed to `_`. Same convention `app/api/admin/products/[id]/variants/route.ts` used
+ * inline before 9.8b's extraction.
+ */
+export function buildVariantSku(
+  productSlug: string,
+  size: string,
+  colorName: string | null | undefined,
+  colorHex: string | null | undefined
+): string {
+  const colorRaw = colorName?.trim() || colorHex?.trim() || "NOC";
+  const colorPart = toSkuSafeColor(colorRaw);
+  const skuBase = `${productSlug}-${size}-${colorPart}`;
+  return skuBase.toUpperCase().replace(/[^A-Z0-9_]/g, "_") || `${productSlug}-V`;
+}
+
+/** The standard size run offered when creating a colour ("لون جديد") or bulk-generating sizes —
+ * same list `app/api/admin/products/[id]/variants/route.ts`'s `generateSizes` used inline. */
+export const STANDARD_SIZE_RUN = ["S", "M", "L", "XL", "XXL"] as const;

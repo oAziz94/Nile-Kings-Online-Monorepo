@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * `/admin/products` — backlog 9.8b: list language (search/category/active/"بلا صور" filters,
+ * الصورة·المنتج·الفئة·الألوان·المقاسات·السعر·نشط·فتح columns) plus a checkbox column and bulk
+ * edit (category, active, tags add/remove, price by amount/percent with a preview + confirm).
+ */
 import * as React from "react";
 import Link from "next/link";
 import { ProductImagePreview } from "@/components/shared/product-image-preview";
@@ -7,6 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useListUrlState } from "@/hooks/use-list-url-state";
 import { useRowScrollRestore } from "@/hooks/use-row-scroll-restore";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -22,6 +30,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
 import { SearchInput } from "@/components/dashboard/search-input";
+import { BulkEditDialog } from "@/components/admin/bulk-edit-dialog";
 import { FileDown, Package, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -36,8 +45,10 @@ type Product = {
   basePricePiastres: number | null;
   discountPricePiastres: number | null;
   category: { id: string; name: string; slug: string };
-  variants: { id: string; name: string; stockAvailable: number }[];
+  variants: { id: string; name: string; colorHex: string | null; colorName: string | null; stockAvailable: number }[];
 };
+
+type Category = { id: string; name: string; slug: string };
 
 export default function AdminProductsPage() {
   return (
@@ -52,15 +63,33 @@ function AdminProductsPageInner() {
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
   const [fetching, setFetching] = React.useState(false);
-  const { search, setSearch, debouncedQ, page, setPage, pageSize, setPageSize } = useListUrlState({});
+  const { search, setSearch, debouncedQ, page, setPage, pageSize, setPageSize, filters, setFilter } = useListUrlState({
+    categoryId: "",
+    active: "",
+    noImage: "",
+  });
+  const [categories, setCategories] = React.useState<Category[]>([]);
   const [exporting, setExporting] = React.useState(false);
   const { toast } = useToast();
   const { rememberRow } = useRowScrollRestore("admin-products-last-row", products);
+  const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = React.useState(false);
+  const [reloadKey, setReloadKey] = React.useState(0);
 
   React.useEffect(() => {
-    if (loading) return; // total isn't known yet on first render — don't clamp against a stale 0
+    fetch("/api/admin/categories", { credentials: "include" })
+      .then((r) => r.json())
+      .then((json: { success?: boolean; data?: Category[] }) => {
+        if (json?.success && Array.isArray(json.data)) setCategories(json.data);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  React.useEffect(() => {
+    if (loading) return;
     const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
     if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, total, pageSize, page]);
 
   React.useEffect(() => {
@@ -71,6 +100,9 @@ function AdminProductsPageInner() {
       offset: String(page * pageSize),
     });
     if (debouncedQ) params.set("q", debouncedQ);
+    if (filters.categoryId) params.set("categoryId", filters.categoryId);
+    if (filters.active) params.set("active", filters.active);
+    if (filters.noImage === "1") params.set("noImage", "1");
     fetch(`/api/admin/products?${params}`, { credentials: "include", signal: ac.signal })
       .then((res) => res.json())
       .then((json: { success?: boolean; data?: { products: Product[]; total: number } }) => {
@@ -78,6 +110,7 @@ function AdminProductsPageInner() {
         if (json?.success && json.data && Array.isArray(json.data.products)) {
           setProducts(json.data.products);
           setTotal(json.data.total);
+          setSelected(new Set());
         }
       })
       .catch(() => {
@@ -90,7 +123,7 @@ function AdminProductsPageInner() {
         }
       });
     return () => ac.abort();
-  }, [debouncedQ, page, pageSize, toast]);
+  }, [debouncedQ, page, pageSize, filters.categoryId, filters.active, filters.noImage, reloadKey, toast]);
 
   if (loading && products.length === 0) {
     return (
@@ -103,6 +136,19 @@ function AdminProductsPageInner() {
 
   const list = products;
   const empty = list.length === 0 && !fetching;
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelected((prev) => (prev.size === list.length ? new Set() : new Set(list.map((p) => p.id))));
+  };
 
   async function handleExportExcel() {
     setExporting(true);
@@ -143,7 +189,7 @@ function AdminProductsPageInner() {
     <div className="space-y-6">
       <PageHeader
         title="المنتجات"
-        description="إدارة الكتالوج، المتغيرات، الأسعار، والتصدير إلى Excel."
+        description="إدارة الكتالوج، الألوان والمقاسات، الأسعار، والتصدير إلى Excel."
         actions={
           <>
             <Button
@@ -170,13 +216,46 @@ function AdminProductsPageInner() {
         title="قائمة المنتجات"
         icon={<Package className="h-5 w-5 text-burgundy" />}
         toolbar={
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="بحث بالاسم أو slug…"
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <SearchInput value={search} onChange={setSearch} placeholder="بحث بالاسم أو slug…" />
+            <Label htmlFor="filter-category" className="sr-only">الفئة</Label>
+            <Select id="filter-category" value={filters.categoryId} onChange={(e) => setFilter("categoryId", e.target.value)} className="h-10 w-auto rounded-full">
+              <option value="">كل الفئات</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </Select>
+            <Label htmlFor="filter-active" className="sr-only">الحالة</Label>
+            <Select id="filter-active" value={filters.active} onChange={(e) => setFilter("active", e.target.value)} className="h-10 w-auto rounded-full">
+              <option value="">كل الحالات</option>
+              <option value="true">نشط</option>
+              <option value="false">معطّل</option>
+            </Select>
+            <button
+              type="button"
+              aria-pressed={filters.noImage === "1"}
+              onClick={() => setFilter("noImage", filters.noImage === "1" ? "" : "1")}
+              className={cn(
+                "flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500",
+                filters.noImage === "1" ? "border-lapis-800 bg-lapis-800 text-white" : "border-stone-200 bg-white text-ink"
+              )}
+            >
+              بلا صور
+            </button>
+          </div>
         }
       >
+          {selected.size > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl bg-lapis-50 px-4 py-2.5">
+              <span className="text-[13px] font-extrabold text-lapis-800">{selected.size} منتج محدد</span>
+              <Button type="button" size="sm" className="rounded-full" onClick={() => setBulkOpen(true)}>
+                تعديل جماعي
+              </Button>
+              <button type="button" className="mr-auto text-xs font-bold text-lapis-800 underline" onClick={() => setSelected(new Set())}>
+                إلغاء التحديد
+              </button>
+            </div>
+          )}
           {fetching && list.length > 0 && (
             <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -194,20 +273,27 @@ function AdminProductsPageInner() {
             <Table className={cn(fetching && "opacity-70")}>
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="w-10">
+                    <Checkbox checked={selected.size > 0 && selected.size === list.length} onCheckedChange={toggleSelectAll} aria-label="تحديد الكل" />
+                  </TableHead>
                   <TableHead>الصورة</TableHead>
-                  <TableHead>الاسم</TableHead>
+                  <TableHead>المنتج</TableHead>
                   <TableHead>الفئة</TableHead>
-                  <TableHead>الوزن (غ)</TableHead>
-                  <TableHead>الأولوية</TableHead>
+                  <TableHead>الألوان</TableHead>
+                  <TableHead>المقاسات</TableHead>
                   <TableHead>السعر</TableHead>
-                  <TableHead>المتغيرات</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead className="text-left">إجراءات</TableHead>
+                  <TableHead>نشط</TableHead>
+                  <TableHead className="text-left">فتح</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {list.map((p) => (
+                {list.map((p) => {
+                  const colorCount = new Set(p.variants.map((v) => `${v.colorName ?? ""}|${v.colorHex ?? ""}`)).size;
+                  return (
                   <TableRow key={p.id} data-row-id={p.id}>
+                    <TableCell>
+                      <Checkbox checked={selected.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} aria-label={`تحديد ${p.name}`} />
+                    </TableCell>
                     <TableCell>
                       {p.imageUrl ? (
                         <ProductImagePreview
@@ -224,8 +310,8 @@ function AdminProductsPageInner() {
                     </TableCell>
                     <TableCell className="font-medium">{p.name}</TableCell>
                     <TableCell>{p.category.name}</TableCell>
-                    <TableCell>{p.weightGrams ?? "—"}</TableCell>
-                    <TableCell>{p.sortOrder}</TableCell>
+                    <TableCell>{colorCount}</TableCell>
+                    <TableCell>{p.variants.length}</TableCell>
                     <TableCell>
                       {p.discountPricePiastres != null
                         ? `${(p.discountPricePiastres / 100).toFixed(0)} ج.م`
@@ -233,7 +319,6 @@ function AdminProductsPageInner() {
                           ? `${(p.basePricePiastres / 100).toFixed(0)} ج.م`
                           : "—"}
                     </TableCell>
-                    <TableCell>{p.variants.length} متغير</TableCell>
                     <TableCell>
                       <Badge variant={p.active ? "success" : "secondary"}>
                         {p.active ? "نشط" : "معطّل"}
@@ -247,7 +332,8 @@ function AdminProductsPageInner() {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
             </div>
@@ -264,6 +350,18 @@ function AdminProductsPageInner() {
             />
           )}
       </PanelCard>
+
+      <BulkEditDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        productIds={Array.from(selected)}
+        categories={categories}
+        onDone={() => {
+          setBulkOpen(false);
+          setSelected(new Set());
+          setReloadKey((k) => k + 1);
+        }}
+      />
     </div>
   );
 }
