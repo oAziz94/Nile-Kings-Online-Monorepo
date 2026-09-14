@@ -67,6 +67,19 @@ export async function listAllCloudinaryResources(prefix: string): Promise<Cloudi
   return all;
 }
 
+/** Read-only single-resource lookup (`GET /resources/image/upload/<publicId>`) — used to
+ * confirm a resource is actually gone before deleting its `MediaAsset` row (never delete a row
+ * on the strength of a guess; list/look first). Returns `false` on a 404, `true` otherwise. */
+export async function cloudinaryResourceExists(publicId: string): Promise<boolean> {
+  const { cloudName, apiKey, apiSecret } = credentials();
+  const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString("base64");
+  const url = `https://api.cloudinary.com/v1_1/${cloudName}/resources/image/upload/${encodeURIComponent(publicId)}`;
+  const res = await fetch(url, { headers: { Authorization: `Basic ${auth}` } });
+  if (res.status === 404) return false;
+  if (!res.ok) throw new Error(`Cloudinary lookup failed: ${res.status}`);
+  return true;
+}
+
 /** Signed `destroy` — only ever called on an asset already confirmed unused by the caller. */
 export async function destroyCloudinaryAsset(publicId: string): Promise<void> {
   const { cloudName, apiKey, apiSecret } = credentials();

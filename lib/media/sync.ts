@@ -41,6 +41,24 @@ export function computeSyncDiff(
   return { toImport, missingPublicIds };
 }
 
+/**
+ * The "missing" half of `computeSyncDiff`, factored out so the resumable route (backlog 9.8a
+ * verifier fix — a listing split across several 45s-budgeted requests, `SiteSetting
+ * .mediaSyncProgress` persisting the running `publicId` set between them) can compute it once,
+ * at the end, from the *union* of every page it has seen across however many requests that
+ * took — never from a single page, which would wrongly flag every not-yet-scanned registered
+ * asset as missing. Equivalent to `computeSyncDiff(allResourcesInOneListing, registered)
+ * .missingPublicIds` when `seenPublicIds` is the full listing's public ids in any order/split
+ * (`sync.test.ts` asserts this equivalence directly).
+ */
+export function missingFromSeen(
+  registered: { publicId: string }[],
+  seenPublicIds: Iterable<string>
+): string[] {
+  const seen = new Set(seenPublicIds);
+  return registered.filter((r) => !seen.has(r.publicId)).map((r) => r.publicId);
+}
+
 export type LegacyUrlRow = { id: string; url: string };
 
 /** One row per legacy `Product`/`Variant`/`VariantImage` whose url matches a registered
