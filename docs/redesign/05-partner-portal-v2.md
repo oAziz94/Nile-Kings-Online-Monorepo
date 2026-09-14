@@ -105,6 +105,18 @@ Not an admin rebuild: (a) record a partner payment; (b) edit `partner_cost_rate`
 ## 5. Schema summary (additive only)
 `SiteSetting partner_cost_rate` · `Partner.{workingDays, dailyOrderCapacity, confirmSlaHours, shipSlaHours, handoverMethod, serviceAreas, alertPrefs}` · `HandoverMethod` enum · `PartnerStockThreshold` · `StockReceiptLine.unitCostPiastres` · `StockReceipt.totalCostPiastres` · `PartnerPayment`. `prisma migrate diff` must be additive; no column is dropped (`RoutedOrder` stays, just unshown).
 
+**Deploy note (backlog 9.9, added 2026-09-14) — the one exception to "additive only" above.**
+`prisma/migrations/20260914120000_drop_variant_legacy_stock` drops `Variant.stockAvailable`/
+`stockReserved` and their index — stock has lived only in `PartnerInventory` since this file's
+§1 decisions, and every remaining reader/writer of the two Variant columns was migrated off them
+in 9.9. On the redesign Neon branch this data is disposable and the migration runs immediately
+(`db:push:redesign`). **For production**: do not run this migration until a reconcile query
+confirms production's `Variant.stockAvailable`/`stockReserved` sums are either zero, or any
+nonzero remainder is already accounted for in the matching partner's receipts/`PartnerInventory`
+row (the same discipline `20260806090000_backfill_routed_order_partners_and_reconcile_gamal_inventory`
+used for the one partner that predated partner-scoped inventory) — otherwise the drop silently
+discards real, unreconciled stock counts with no way to recover them.
+
 ## 6. Rules carried over and added
 Carried: every stock read-modify-write holds `SELECT … FOR UPDATE`; every mutation writes `InventoryLedger` in the same transaction; role gates server-side; dialog focus at the primitive; chrome never prints; skeleton/alert/wrong-role states; RTL, keyboard, real labels; `dev:redesign` only, `db:push:redesign` only, fixtures under the production guard; verify at 1440×900, 1514×681, 1366×768, 1280×720, 1024×768, 768×1024, 390×844 against the **new** artboards.
 Added: (11) the user approves the canvas before implementation tasks are written; (12) every number on a report has a period and a comparison, or it is not a report; (13) thresholds resolve through `resolveThreshold()` — no screen compares against `Partner.lowStockThreshold` directly; (14) cost is never stored on the variant; it is snapshotted on the receipt line at apply time from the rate.
