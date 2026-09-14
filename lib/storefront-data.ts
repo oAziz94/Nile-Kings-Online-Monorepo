@@ -36,7 +36,10 @@ const toListItem = buildProductListItem;
 
 const include = {
   category: { select: { slug: true, name: true } },
+  // backlog 9.8b — an invisible colour's variants are all inactive together; excluding them
+  // here hides that colour from every card/listing/collection rail.
   variants: {
+    where: { active: true },
     select: {
       id: true,
       slug: true,

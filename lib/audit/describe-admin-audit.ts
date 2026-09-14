@@ -19,6 +19,8 @@ const ENTITY_LABEL_AR: Record<string, string> = {
   user: "المستخدم",
   settings: "الإعدادات",
   product: "المنتج",
+  variant: "المتغير",
+  category: "الفئة",
   routing: "التوجيه",
   "partner-inventory": "مخزون الشريك",
   order: "الطلب",
@@ -181,6 +183,41 @@ export function describeAdminAudit(row: AdminAuditRowLike): string {
   }
   if (row.action === "media_replace") {
     return `استبدل الصورة ${label} بصورة جديدة`.trim();
+  }
+
+  // Backlog 9.8b — colour/gallery/bulk-edit writes on the product page.
+  if (row.action === "color_add") {
+    const after = asRecord(row.after);
+    const colorName = String(after.colorName ?? "");
+    const count = Array.isArray(after.sizes) ? after.sizes.length : 0;
+    return `أضاف لون ${colorName} (${count} مقاس) إلى ${label}`.trim();
+  }
+  if (row.action === "color_visibility") {
+    const after = asRecord(row.after);
+    const colorName = String(after.colorName ?? "");
+    return after.active
+      ? `أظهر لون ${colorName} في ${label}`.trim()
+      : `أخفى لون ${colorName} من ${label}`.trim();
+  }
+  if (row.action === "color_rename") {
+    const before = asRecord(row.before);
+    const after = asRecord(row.after);
+    return `عدّل بيانات لون ${label} ${String(before.colorName ?? "—")} → ${String(after.colorName ?? "—")}`.trim();
+  }
+  if (row.action === "gallery_reorder") {
+    return `أعاد ترتيب صور لون في ${label}`.trim();
+  }
+  if (row.action === "gallery_remove") {
+    return `أزال صورة من معرض لون في ${label}`.trim();
+  }
+  if (row.action === "bulk_edit") {
+    const after = asRecord(row.after);
+    const parts: string[] = [];
+    if ("categoryId" in after) parts.push("الفئة");
+    if ("active" in after) parts.push("الحالة");
+    if ("tags" in after) parts.push("الوسوم");
+    if ("priceRule" in after) parts.push("الأسعار");
+    return `تعديل جماعي على ${label}${parts.length ? `: ${parts.join("، ")}` : ""}`.trim();
   }
 
   if (row.action === "create") {

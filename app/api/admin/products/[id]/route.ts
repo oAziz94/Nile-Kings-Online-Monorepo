@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/admin/slug";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound, apiConflict } from "@/lib/api/response";
+import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 
 type Params = Promise<{ id: string }>;
 
@@ -21,15 +22,30 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
     include: {
       category: { select: { id: true, name: true, slug: true } },
       variants: { orderBy: [{ colorHex: "asc" }, { name: "asc" }] },
+      variantImages: { orderBy: { sortOrder: "asc" } },
     },
   });
   if (!product) return apiNotFound("المنتج غير موجود");
-  return apiSuccess(product);
+
+  // "متوفر عند N شركاء" (backlog 9.8b) — how many distinct partners stock each variant, read
+  // from `PartnerInventory` (the only source of truth for stock — 06-admin-v2.md §3.5).
+  const counts = product.variants.length
+    ? await prisma.partnerInventory.groupBy({
+        by: ["variantId"],
+        where: { variantId: { in: product.variants.map((v) => v.id) }, stockAvailable: { gt: 0 } },
+        _count: { partnerId: true },
+      })
+    : [];
+  const countByVariant = new Map(counts.map((c) => [c.variantId, c._count.partnerId]));
+  const variants = product.variants.map((v) => ({ ...v, partnerCount: countByVariant.get(v.id) ?? 0 }));
+
+  return apiSuccess({ ...product, variants });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -91,12 +107,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       variants: { orderBy: [{ colorHex: "asc" }, { name: "asc" }] },
     },
   });
+
+  await logAdminAction(prisma, {
+    actor,
+    action: "update",
+    entityType: "product",
+    entityId: id,
+    entityLabel: product.name,
+    before: sanitizeForAudit(existing),
+    after: sanitizeForAudit(product, ["category", "variants"]),
+    ip: requestIp(req),
+  });
+
   return apiSuccess(product);
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Params }) {
+export async function DELETE(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -108,5 +137,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
   if (!product) return apiNotFound("المنتج غير موجود");
   if (product.variants.some((v) => v.stockReserved > 0)) return apiBadRequest("لا يمكن حذف منتج له كميات محجوزة");
   await prisma.product.delete({ where: { id } });
+  await logAdminAction(prisma, {
+    actor,
+    action: "delete",
+    entityType: "product",
+    entityId: id,
+    entityLabel: product.name,
+    before: sanitizeForAudit(product, ["variants"]),
+    ip: requestIp(req),
+  });
   return apiSuccess({ deleted: true });
 }

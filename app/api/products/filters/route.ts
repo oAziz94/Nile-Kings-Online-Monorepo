@@ -15,6 +15,7 @@ const getFilters = unstable_cache(
       }),
       prisma.variant.findMany({
         where: {
+          active: true,
           product: {
             active: true,
             ...(categorySlug ? { category: { slug: categorySlug } } : {}),

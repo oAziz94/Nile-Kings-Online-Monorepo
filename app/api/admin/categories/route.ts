@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/admin/slug";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiConflict } from "@/lib/api/response";
+import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 
 export async function GET() {
   try {
@@ -22,15 +23,16 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
     if (err.status === 403) return apiForbidden("غير مصرح");
     throw e;
   }
-  let body: { name: string; slug?: string; sortOrder?: number };
+  let body: { name: string; slug?: string; sortOrder?: number; imageUrl?: string | null };
   try {
     body = await req.json();
   } catch {
@@ -46,7 +48,19 @@ export async function POST(req: NextRequest) {
       name: body.name.trim(),
       slug,
       sortOrder: typeof body.sortOrder === "number" ? body.sortOrder : 0,
+      imageUrl: body.imageUrl?.trim() || null,
     },
   });
+
+  await logAdminAction(prisma, {
+    actor,
+    action: "create",
+    entityType: "category",
+    entityId: category.id,
+    entityLabel: category.name,
+    after: sanitizeForAudit(category),
+    ip: requestIp(req),
+  });
+
   return apiSuccess(category);
 }

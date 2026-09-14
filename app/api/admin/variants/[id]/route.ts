@@ -1,23 +1,25 @@
 import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { variantSlug } from "@/lib/admin/slug";
+import { variantSlug, buildVariantSku } from "@/lib/admin/slug";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound, apiConflict } from "@/lib/api/response";
-
-/** Same as in products/[id]/variants/route: ASCII-safe color part for SKU. */
-function toSkuSafeColor(color: string): string {
-  const cleaned = color.replace(/\s+/g, "_").toUpperCase().replace(/[^A-Z0-9_]/g, "");
-  if (cleaned.length >= 2) return cleaned;
-  let h = 0;
-  for (let i = 0; i < color.length; i++) h = ((h << 5) - h + color.charCodeAt(i)) | 0;
-  return "C" + Math.abs(h).toString(36).toUpperCase().slice(0, 8);
-}
+import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 
 type Params = Promise<{ id: string }>;
 
+/**
+ * PATCH /api/admin/variants/[id] — backlog 9.8b: the "مقاسات لون «X»" row save. Accepts
+ * `active` (colour-visibility toggle, per-row too since the colour panel's toggle just calls
+ * this for every variant sharing the colour) in addition to the existing fields.
+ *
+ * Additive stock guard (06-admin-v2.md §3.5, backlog 9.8b): the body's `stockAvailable`/
+ * `stockReserved`, if present, are silently ignored — the type below never destructures them,
+ * so a legacy caller sending them writes nothing. Covered by a dedicated e2e assertion.
+ */
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -35,6 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     imageUrl?: string | null;
     basePricePiastres?: number | null;
     pricePiastres?: number;
+    active?: boolean;
   };
   try {
     body = await req.json();
@@ -48,9 +51,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   let newSlug: string | undefined;
   const sizePart = (name ?? existing.name).trim();
   if (name !== undefined || colorName !== undefined) {
-    const colorRaw = colorName ?? existing.colorName ?? "NOC";
-    const colorPart = toSkuSafeColor(colorRaw);
-    newSku = `${existing.product.slug}-${sizePart}-${colorPart}`.toUpperCase().replace(/[^A-Z0-9_]/g, "_") || `${existing.product.slug}-V`;
+    newSku = buildVariantSku(existing.product.slug, sizePart, colorName ?? existing.colorName, existing.colorHex);
     const conflict = await prisma.variant.findFirst({ where: { sku: newSku, id: { not: id } } });
     if (conflict) return apiConflict("متغير بنفس المقاس واللون موجود مسبقاً");
   }
@@ -71,14 +72,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       ...(newSlug !== undefined && { slug: newSlug }),
       ...(body.basePricePiastres !== undefined && { basePricePiastres: body.basePricePiastres == null || (typeof body.basePricePiastres === "number" && body.basePricePiastres >= 0) ? body.basePricePiastres : undefined }),
       ...(typeof body.pricePiastres === "number" && body.pricePiastres >= 0 && { pricePiastres: body.pricePiastres }),
+      ...(body.active !== undefined && { active: body.active }),
     },
   });
+
+  await logAdminAction(prisma, {
+    actor,
+    action: "update",
+    entityType: "variant",
+    entityId: id,
+    entityLabel: variant.sku,
+    before: sanitizeForAudit(existing, ["product"]),
+    after: sanitizeForAudit(variant),
+    ip: requestIp(req),
+  });
+
   return apiSuccess(variant);
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Params }) {
+export async function DELETE(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -90,5 +105,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
   if (!v) return apiNotFound("المتغير غير موجود");
   if (v.stockReserved > 0) return apiBadRequest("لا يمكن حذف متغير له كمية محجوزة");
   await prisma.variant.delete({ where: { id } });
+  await logAdminAction(prisma, {
+    actor,
+    action: "delete",
+    entityType: "variant",
+    entityId: id,
+    entityLabel: v.sku,
+    before: sanitizeForAudit(v),
+    ip: requestIp(req),
+  });
   return apiSuccess({ deleted: true });
 }

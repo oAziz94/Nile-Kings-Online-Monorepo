@@ -3,12 +3,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
-
-/** Same `${colorName ?? ""}|${colorHex ?? ""}` convention as `hooks/use-variant-selection.ts`'s
- * `colorKey()` (a client hook, not importable here) and `VariantImage.colorKey`. */
-function colorKeyOf(v: { colorName: string | null; colorHex: string | null }): string {
-  return `${v.colorName ?? ""}|${v.colorHex ?? ""}`;
-}
+import { colorKeyOf, syncColorRepresentative } from "@/lib/admin/variant-images";
 
 /**
  * POST /api/admin/media/assign — backlog 9.8a (e)/(f). Body `{ assetIds, productId,
@@ -57,9 +52,9 @@ export async function POST(req: NextRequest) {
   let nextSort = (last?.sortOrder ?? -1) + 1;
 
   const orderedAssets = assetIds.map((id) => assets.find((a) => a.id === id)!);
-  await prisma.$transaction(
-    orderedAssets.map((asset) =>
-      prisma.variantImage.create({
+  await prisma.$transaction(async (tx) => {
+    for (const asset of orderedAssets) {
+      await tx.variantImage.create({
         data: {
           productId,
           colorKey: targetColorKey,
@@ -67,9 +62,10 @@ export async function POST(req: NextRequest) {
           assetId: asset.id,
           sortOrder: nextSort++,
         },
-      })
-    )
-  );
+      });
+    }
+    await syncColorRepresentative(tx, productId, targetColorKey);
+  });
 
   await logAdminAction(prisma, {
     actor,

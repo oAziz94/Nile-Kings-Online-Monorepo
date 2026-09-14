@@ -1,19 +1,9 @@
 import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { variantSlug } from "@/lib/admin/slug";
+import { variantSlug, buildVariantSku, STANDARD_SIZE_RUN } from "@/lib/admin/slug";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound, apiConflict, apiInternal } from "@/lib/api/response";
-
-const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
-
-/** Turns color name/hex into an ASCII-safe part for SKU (handles Arabic etc.). */
-function toSkuSafeColor(color: string): string {
-  const cleaned = color.replace(/\s+/g, "_").toUpperCase().replace(/[^A-Z0-9_]/g, "");
-  if (cleaned.length >= 2) return cleaned;
-  let h = 0;
-  for (let i = 0; i < color.length; i++) h = ((h << 5) - h + color.charCodeAt(i)) | 0;
-  return "C" + Math.abs(h).toString(36).toUpperCase().slice(0, 8);
-}
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 type Params = Promise<{ id: string }>;
 
@@ -37,8 +27,9 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
 }
 
 export async function POST(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -67,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
   if (body.generateSizes === true) {
     const existing = await prisma.variant.findMany({ where: { productId }, select: { name: true } });
     const existingNames = new Set(existing.map((v) => v.name));
-    const toCreate = SIZES.filter((s) => !existingNames.has(s));
+    const toCreate = STANDARD_SIZE_RUN.filter((s) => !existingNames.has(s));
     if (toCreate.length === 0) return apiConflict("جميع المقاسات موجودة مسبقاً");
     const productDiscount = product.discountPricePiastres ?? product.basePricePiastres ?? 0;
     const productBase = product.basePricePiastres ?? null;
@@ -89,15 +80,21 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
         });
       })
     );
+    await logAdminAction(prisma, {
+      actor,
+      action: "create",
+      entityType: "product",
+      entityId: productId,
+      entityLabel: product.name,
+      after: { sizesGenerated: toCreate },
+      ip: requestIp(req),
+    });
     return apiSuccess(created);
   }
 
   if (!body.name?.trim()) return apiBadRequest("المقاس (name) مطلوب");
   const sizePart = body.name.trim();
-  const colorRaw = body.colorName?.trim() || body.colorHex?.trim() || "NOC";
-  const colorPartForSku = toSkuSafeColor(colorRaw);
-  const skuBase = `${product.slug}-${sizePart}-${colorPartForSku}`;
-  const sku = skuBase.toUpperCase().replace(/[^A-Z0-9_]/g, "_") || `${product.slug}-V`;
+  const sku = buildVariantSku(product.slug, sizePart, body.colorName, body.colorHex);
   const slug = variantSlug(product.slug, sizePart, body.colorHex?.trim() || null);
   const existingSku = await prisma.variant.findUnique({ where: { sku } });
   if (existingSku) return apiConflict("متغير بنفس المقاس واللون موجود مسبقاً");
@@ -124,6 +121,15 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
         stockAvailable: 0,
         stockReserved: 0,
       },
+    });
+    await logAdminAction(prisma, {
+      actor,
+      action: "create",
+      entityType: "variant",
+      entityId: variant.id,
+      entityLabel: variant.sku,
+      after: { sku: variant.sku, size: variant.name, colorName: variant.colorName, pricePiastres: variant.pricePiastres },
+      ip: requestIp(req),
     });
     return apiSuccess(variant);
   } catch (err) {

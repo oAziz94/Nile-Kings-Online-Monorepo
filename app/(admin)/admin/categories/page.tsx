@@ -26,9 +26,10 @@ import { Skeleton } from "@/components/shared/skeleton";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
-import { Folder, Plus, Pencil, Trash2 } from "lucide-react";
+import { MediaPickerDialog } from "@/components/admin/media-picker-dialog";
+import { Folder, Plus, Pencil, Trash2, ImageIcon } from "lucide-react";
 
-type Category = { id: string; name: string; slug: string; sortOrder: number; productCount: number };
+type Category = { id: string; name: string; slug: string; sortOrder: number; productCount: number; imageUrl: string | null };
 
 export default function AdminCategoriesPage() {
   const [list, setList] = React.useState<Category[] | null>(null);
@@ -36,11 +37,15 @@ export default function AdminCategoriesPage() {
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [slug, setSlug] = React.useState("");
+  const [imageUrl, setImageUrl] = React.useState<string | null>(null);
+  const [pickerOpenNew, setPickerOpenNew] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [editName, setEditName] = React.useState("");
   const [editSlug, setEditSlug] = React.useState("");
   const [editSortOrder, setEditSortOrder] = React.useState(0);
+  const [editImageUrl, setEditImageUrl] = React.useState<string | null>(null);
+  const [pickerOpenEdit, setPickerOpenEdit] = React.useState(false);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [deleting, setDeleting] = React.useState(false);
   const { toast } = useToast();
@@ -68,13 +73,14 @@ export default function AdminCategoriesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name: name.trim(), slug: slug.trim() || undefined }),
+        body: JSON.stringify({ name: name.trim(), slug: slug.trim() || undefined, imageUrl }),
       });
       const json = await res.json();
       if (res.ok && json?.success) {
         toast({ title: "تم إنشاء الفئة" });
         setName("");
         setSlug("");
+        setImageUrl(null);
         setOpen(false);
         load();
       } else toast({ title: json?.error?.message ?? "فشل", variant: "destructive" });
@@ -90,6 +96,7 @@ export default function AdminCategoriesPage() {
     setEditName(c.name);
     setEditSlug(c.slug);
     setEditSortOrder(c.sortOrder);
+    setEditImageUrl(c.imageUrl);
   };
 
   const closeEdit = () => {
@@ -97,6 +104,7 @@ export default function AdminCategoriesPage() {
     setEditName("");
     setEditSlug("");
     setEditSortOrder(0);
+    setEditImageUrl(null);
   };
 
   const update = async (e: React.FormEvent) => {
@@ -115,6 +123,7 @@ export default function AdminCategoriesPage() {
           name: editName.trim(),
           slug: editSlug.trim() || undefined,
           sortOrder: editSortOrder,
+          imageUrl: editImageUrl,
         }),
       });
       const json = await res.json();
@@ -183,6 +192,20 @@ export default function AdminCategoriesPage() {
                   <Label htmlFor="cat-slug">الرابط (slug)</Label>
                   <Input id="cat-slug" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="اختياري" />
                 </div>
+                <div className="grid gap-2">
+                  <Label>الصورة</Label>
+                  <div className="flex items-center gap-3">
+                    {imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={imageUrl} alt="" className="h-12 w-12 rounded-lg border border-stone-100 object-cover" />
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+                        <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <Button type="button" variant="outline" size="sm" onClick={() => setPickerOpenNew(true)}>من المكتبة</Button>
+                  </div>
+                </div>
               </div>
               <DialogFooter>
                 <DialogClose asChild>
@@ -193,6 +216,7 @@ export default function AdminCategoriesPage() {
             </form>
           </DialogContent>
         </Dialog>
+        <MediaPickerDialog open={pickerOpenNew} onOpenChange={setPickerOpenNew} multiple={false} onPickItems={(items) => setImageUrl(items[0]?.url ?? null)} />
 
         <Dialog open={!!editId} onOpenChange={(open) => !open && closeEdit()}>
           <DialogContent>
@@ -229,6 +253,20 @@ export default function AdminCategoriesPage() {
                     onChange={(e) => setEditSortOrder(Number(e.target.value) || 0)}
                   />
                 </div>
+                <div className="grid gap-2">
+                  <Label>الصورة</Label>
+                  <div className="flex items-center gap-3">
+                    {editImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={editImageUrl} alt="" className="h-12 w-12 rounded-lg border border-stone-100 object-cover" />
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+                        <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <Button type="button" variant="outline" size="sm" onClick={() => setPickerOpenEdit(true)}>من المكتبة</Button>
+                  </div>
+                </div>
               </div>
               <DialogFooter>
                 <DialogClose asChild>
@@ -239,6 +277,7 @@ export default function AdminCategoriesPage() {
             </form>
           </DialogContent>
         </Dialog>
+        <MediaPickerDialog open={pickerOpenEdit} onOpenChange={setPickerOpenEdit} multiple={false} onPickItems={(items) => setEditImageUrl(items[0]?.url ?? null)} />
 
         <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
           <DialogContent>
@@ -282,6 +321,7 @@ export default function AdminCategoriesPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead>الصورة</TableHead>
                   <TableHead>الاسم</TableHead>
                   <TableHead>الرابط</TableHead>
                   <TableHead>ترتيب</TableHead>
@@ -292,6 +332,16 @@ export default function AdminCategoriesPage() {
               <TableBody>
                 {categories.map((c) => (
                   <TableRow key={c.id}>
+                    <TableCell>
+                      {c.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={c.imageUrl} alt="" className="h-10 w-10 rounded-lg border border-stone-100 object-cover" />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                          <Folder className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell>{c.slug}</TableCell>
                     <TableCell>{c.sortOrder}</TableCell>
