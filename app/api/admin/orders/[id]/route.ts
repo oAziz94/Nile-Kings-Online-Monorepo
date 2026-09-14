@@ -510,20 +510,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       const linesAfterEdit = newItemStockLines!;
       const order = await prisma.$transaction(
         async (tx) => {
-          if (!existing.assignedPartnerId) {
-            // Stock lives only in PartnerInventory now (backlog 9.9) — an unassigned order has
-            // no partner pool to reconcile item changes against.
-            throw new AdminOrderStockError("لا يمكن تعديل أصناف طلب غير مُسند لشريك — أسنِد الطلب لشريك أولاً");
+          // Stock lives only in PartnerInventory (backlog 9.9). An order with no assigned partner
+          // has nothing reserved anywhere, so editing its items moves no stock — the admin may
+          // fix the lines before assigning. Only leaving CREATED (confirming) needs a partner,
+          // and `applyLeavingCreatedStock` refuses that below.
+          if (existing.assignedPartnerId) {
+            await reconcilePartnerStockForAdminOrderItemEdit(
+              tx,
+              existing.assignedPartnerId,
+              existing.status,
+              oldItemStockLines,
+              linesAfterEdit,
+              existing.id,
+              "Admin order edit"
+            );
           }
-          await reconcilePartnerStockForAdminOrderItemEdit(
-            tx,
-            existing.assignedPartnerId,
-            existing.status,
-            oldItemStockLines,
-            linesAfterEdit,
-            existing.id,
-            "Admin order edit"
-          );
           if (leavingCreated) {
             await applyLeavingCreatedStock(tx, linesAfterEdit);
           }

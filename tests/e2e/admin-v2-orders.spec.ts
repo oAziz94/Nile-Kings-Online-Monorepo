@@ -348,6 +348,37 @@ test("assigning to a partner with insufficient stock names the SKU in a 409", as
   expect(json.error.message).toContain(variantBSku);
 });
 
+test("an unassigned order's items can be edited with no stock movement, but confirming it needs a partner (9.9)", async ({ page }) => {
+  // Backlog 9.9 PM ruling: stock lives only in PartnerInventory, so an order with no assigned
+  // partner has nothing reserved anywhere — editing its lines is allowed and touches no stock;
+  // leaving CREATED (confirming) is refused until a partner is assigned.
+  await loginAsAdmin(page);
+  const ledgerBefore = await prisma.inventoryLedger.count({ where: { orderId: insufficientOrderId } });
+  const invBefore = await prisma.partnerInventory.findMany({ where: { variantId: variantBId }, orderBy: { partnerId: "asc" } });
+
+  const edit = await page.request.patch(`/api/admin/orders/${insufficientOrderId}`, {
+    data: { items: [{ variantId: variantBId, quantity: 3 }] },
+  });
+  expect(edit.ok()).toBeTruthy();
+  const item = await prisma.orderItem.findFirstOrThrow({ where: { orderId: insufficientOrderId } });
+  expect(item.quantity).toBe(3);
+
+  const ledgerAfter = await prisma.inventoryLedger.count({ where: { orderId: insufficientOrderId } });
+  expect(ledgerAfter).toBe(ledgerBefore);
+  const invAfter = await prisma.partnerInventory.findMany({ where: { variantId: variantBId }, orderBy: { partnerId: "asc" } });
+  expect(invAfter.map((r) => [r.partnerId, r.stockAvailable, r.stockReserved])).toEqual(
+    invBefore.map((r) => [r.partnerId, r.stockAvailable, r.stockReserved])
+  );
+
+  const confirm = await page.request.patch(`/api/admin/orders/${insufficientOrderId}`, {
+    data: { status: "CONFIRMED" },
+  });
+  expect(confirm.status()).toBe(400);
+  expect((await confirm.json()).error.message).toContain("أسنِد الطلب لشريك أولاً");
+  const order = await prisma.order.findUniqueOrThrow({ where: { id: insufficientOrderId } });
+  expect(order.status).toBe("CREATED");
+});
+
 test("cancel with reason releases the reservation and stores the reason", async ({ page }) => {
   await loginAsAdmin(page);
   const res = await page.request.patch(`/api/admin/orders/${unassignedOrderId}`, {
