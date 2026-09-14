@@ -60,6 +60,39 @@ function usageTone(item: MediaItem): "used" | "unused" | "missing" {
   return item.usage.length > 0 ? "used" : "unused";
 }
 
+/** A product's distinct colours (name+hex, keyed the same way `VariantImage.colorKey` is) —
+ * shared by the toolbar's اللون filter and the assign dialog's colour picker, so both read the
+ * product's colours the same way (B3). Empty when no product is selected. */
+function useProductColors(productId: string): ColorOption[] {
+  const [colors, setColors] = React.useState<ColorOption[]>([]);
+  React.useEffect(() => {
+    if (!productId) {
+      setColors([]);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/admin/products/${productId}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return;
+        if (json?.success && json.data) {
+          const variants: { colorName: string | null; colorHex: string | null }[] = json.data.variants ?? [];
+          const seen = new Map<string, ColorOption>();
+          for (const v of variants) {
+            const key = `${v.colorName ?? ""}|${v.colorHex ?? ""}`;
+            if (!seen.has(key)) seen.set(key, { colorKey: key, colorName: v.colorName, colorHex: v.colorHex });
+          }
+          setColors(Array.from(seen.values()));
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
+  return colors;
+}
+
 export default function AdminMediaPage() {
   const { toast } = useToast();
 
@@ -81,6 +114,7 @@ export default function AdminMediaPage() {
 
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [syncing, setSyncing] = React.useState(false);
+  const [syncProgress, setSyncProgress] = React.useState<{ scanned: number; estimatedTotal: number } | null>(null);
   const [uploadStatuses, setUploadStatuses] = React.useState<{ name: string; status: "uploading" | "done" | "error" }[]>([]);
   const [dragOver, setDragOver] = React.useState(false);
 
@@ -92,10 +126,17 @@ export default function AdminMediaPage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const requestSeq = React.useRef(0);
 
+  // A slow, earlier response (e.g. the initial mount's `loadProducts("")`) must never overwrite
+  // a later, more specific one (e.g. typing a product name into the toolbar search) — the same
+  // out-of-order-response hazard as `useListUrlState` consumers (backlog 9.0b iii), guarded here
+  // with a request sequence counter since this fetch isn't going through that hook.
+  const productSearchSeq = React.useRef(0);
   const loadProducts = React.useCallback((query: string) => {
+    const seq = ++productSearchSeq.current;
     fetch(`/api/admin/products?q=${encodeURIComponent(query)}&limit=20`, { credentials: "include" })
       .then((r) => r.json())
       .then((json: { success?: boolean; data?: { products: { id: string; name: string }[] } }) => {
+        if (seq !== productSearchSeq.current) return;
         if (json?.success && json.data) setProducts(json.data.products.map((p) => ({ id: p.id, name: p.name })));
       })
       .catch(() => undefined);
@@ -104,6 +145,8 @@ export default function AdminMediaPage() {
   React.useEffect(() => {
     loadProducts("");
   }, [loadProducts]);
+
+  const toolbarColors = useProductColors(productFilter);
 
   const buildParams = React.useCallback(
     (cursor?: string) => {
@@ -171,22 +214,41 @@ export default function AdminMediaPage() {
     });
   };
 
+  // Verifier fix (9.8a NEEDS REWORK item 5): the route budgets 45s of listing per request and
+  // returns `nextCursor: "continue"` when a large folder isn't fully scanned yet — the button
+  // loops on that until `nextCursor` is null, showing "N/M" (`scannedSoFar` / the larger of the
+  // last-known scanned count and the previous total, since the true total isn't known until the
+  // listing finishes) so a big folder doesn't look hung.
   const runSync = async () => {
     setSyncing(true);
+    setSyncProgress(null);
     try {
-      const res = await fetch("/api/admin/media/sync", { method: "POST", credentials: "include" });
-      const json = await res.json();
-      if (res.ok && json?.success) {
-        toast({
-          title: "تمت المزامنة",
-          description: `${json.data.imported} مستوردة · ${json.data.missing} مفقودة · ${json.data.adopted} مرتبطة (${json.data.total} صورة في ${Math.round(json.data.durationMs / 1000)} ثانية)`,
-        });
-        load();
-      } else {
-        toast({ title: json?.error?.message ?? "فشلت المزامنة", variant: "destructive" });
+      let cursor: string | null = null;
+      let estimatedTotal = 0;
+      for (;;) {
+        const endpoint: string = cursor ? `/api/admin/media/sync?cursor=${encodeURIComponent(cursor)}` : "/api/admin/media/sync";
+        const syncRes = await fetch(endpoint, { method: "POST", credentials: "include" });
+        const json = await syncRes.json();
+        if (!syncRes.ok || !json?.success) {
+          toast({ title: json?.error?.message ?? "فشلت المزامنة", variant: "destructive" });
+          return;
+        }
+        if (json.data.done) {
+          toast({
+            title: "تمت المزامنة",
+            description: `${json.data.imported} مستوردة · ${json.data.missing} مفقودة · ${json.data.adopted} مرتبطة (${json.data.total} صورة في ${Math.round(json.data.durationMs / 1000)} ثانية)`,
+          });
+          load();
+          return;
+        }
+        estimatedTotal = Math.max(estimatedTotal, json.data.scannedSoFar);
+        setSyncProgress({ scanned: json.data.scannedSoFar, estimatedTotal });
+        cursor = json.data.nextCursor;
+        if (!cursor) return; // defensive — done should have been true
       }
     } finally {
       setSyncing(false);
+      setSyncProgress(null);
     }
   };
 
@@ -252,7 +314,11 @@ export default function AdminMediaPage() {
           <>
             <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={runSync} disabled={syncing}>
               <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
-              {syncing ? "جاري المزامنة…" : "مزامنة مع Cloudinary"}
+              {syncing
+                ? syncProgress
+                  ? `جاري المزامنة… ${formatNumberEn(syncProgress.scanned)}/${formatNumberEn(syncProgress.estimatedTotal)}`
+                  : "جاري المزامنة…"
+                : "مزامنة مع Cloudinary"}
             </Button>
             <input
               ref={fileInputRef}
@@ -291,7 +357,12 @@ export default function AdminMediaPage() {
         <div className="flex flex-wrap items-center gap-2.5 px-4 py-3.5 sm:px-[22px]">
           <div className="relative w-full sm:w-64">
             <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="اسم الملف أو المنتج" className="h-10 rounded-lg pr-10" />
+            <Input
+              value={q}
+              onChange={(e) => { setQ(e.target.value); loadProducts(e.target.value); }}
+              placeholder="اسم الملف أو المنتج"
+              className="h-10 rounded-lg pr-10"
+            />
           </div>
 
           <Label htmlFor="media-filter-product" className="sr-only">المنتج</Label>
@@ -304,6 +375,20 @@ export default function AdminMediaPage() {
             <option value="">المنتج</option>
             {products.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </Select>
+
+          <Label htmlFor="media-filter-color" className="sr-only">اللون</Label>
+          <Select
+            id="media-filter-color"
+            value={colorFilter}
+            onChange={(e) => setColorFilter(e.target.value)}
+            disabled={!productFilter}
+            className="h-10 w-auto rounded-full"
+          >
+            <option value="">اللون</option>
+            {toolbarColors.map((c) => (
+              <option key={c.colorKey} value={c.colorKey}>{c.colorName ?? "بلا اسم"}</option>
             ))}
           </Select>
 
@@ -463,26 +548,9 @@ function AssignDialog({
 }) {
   const { toast } = useToast();
   const [productId, setProductId] = React.useState("");
-  const [colors, setColors] = React.useState<ColorOption[]>([]);
+  const colors = useProductColors(productId);
   const [colorKey, setColorKeyState] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!productId) { setColors([]); return; }
-    fetch(`/api/admin/products/${productId}`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((json) => {
-        if (json?.success && json.data) {
-          const variants: { colorName: string | null; colorHex: string | null }[] = json.data.variants ?? [];
-          const seen = new Map<string, ColorOption>();
-          for (const v of variants) {
-            const key = `${v.colorName ?? ""}|${v.colorHex ?? ""}`;
-            if (!seen.has(key)) seen.set(key, { colorKey: key, colorName: v.colorName, colorHex: v.colorHex });
-          }
-          setColors(Array.from(seen.values()));
-        }
-      });
-  }, [productId]);
 
   const submit = async () => {
     if (!productId || !colorKey || assetIds.length === 0) return;
