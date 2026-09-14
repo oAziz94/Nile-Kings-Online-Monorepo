@@ -55,7 +55,6 @@ const getProductRowCatalog = unstable_cache(
                 name: true,
                 basePricePiastres: true,
                 pricePiastres: true,
-                stockAvailable: true,
                 colorHex: true,
                 colorName: true,
                 imageUrl: true,
@@ -85,7 +84,6 @@ const getProductRowCatalog = unstable_cache(
               name: true,
               basePricePiastres: true,
               pricePiastres: true,
-              stockAvailable: true,
               colorHex: true,
               colorName: true,
               imageUrl: true,
@@ -115,7 +113,12 @@ const getProductRow = reactCache(async (slug: string, partnerId: string | null) 
     cached.productRow.variants.map((v) => v.id),
     partnerId
   );
-  const variants = applyPartnerStockOverrides(cached.productRow.variants, overrides);
+  // Placeholder 0, always replaced by the override above — stock lives only in
+  // PartnerInventory now (backlog 9.9); a governorate with no covering partner stays 0.
+  const variants = applyPartnerStockOverrides(
+    cached.productRow.variants.map((v) => ({ ...v, stockAvailable: 0 })),
+    overrides
+  );
   return { productRow: cached.productRow, variants, initialVariantId: cached.initialVariantId };
 });
 
@@ -225,7 +228,6 @@ const getRelatedCatalog = unstable_cache(
           id: true,
           slug: true,
           pricePiastres: true,
-          stockAvailable: true,
           colorHex: true,
           colorName: true,
           imageUrl: true,
@@ -255,7 +257,10 @@ async function getRelated(slug: string, categoryId: string, stockContext: Storef
   const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);
   const stockAdjustedRelated = related.map((product) => ({
     ...product,
-    variants: applyPartnerStockOverrides(product.variants, overrides),
+    variants: applyPartnerStockOverrides(
+      product.variants.map((v) => ({ ...v, stockAvailable: 0 })),
+      overrides
+    ),
   }));
 
   return stockAdjustedRelated.map(buildProductListItem);

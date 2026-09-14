@@ -23,7 +23,6 @@ type RawProduct = {
     id: string;
     slug: string | null;
     pricePiastres: number;
-    stockAvailable: number;
     colorHex: string | null;
     colorName: string | null;
     imageUrl: string | null;
@@ -44,7 +43,6 @@ const include = {
       id: true,
       slug: true,
       pricePiastres: true,
-      stockAvailable: true,
       colorHex: true,
       colorName: true,
       imageUrl: true,
@@ -198,8 +196,18 @@ export async function getHomeData(): Promise<{
       )
     );
     const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);
+    // Stock only exists in PartnerInventory now; the placeholder 0 here is always replaced by
+    // the override lookup above (a governorate with no covering partner shows 0, never a stale
+    // network number) — see `lib/storefront-location.ts`'s rule against falling back to a
+    // variant-level stock figure.
     const withStock = (products: RawProduct[]) =>
-      products.map((p) => ({ ...p, variants: applyPartnerStockOverrides(p.variants, overrides) }));
+      products.map((p) => ({
+        ...p,
+        variants: applyPartnerStockOverrides(
+          p.variants.map((v) => ({ ...v, stockAvailable: 0 })),
+          overrides
+        ),
+      }));
 
     const productMap = new Map(withStock(catalog.relevantProducts).map((p) => [p.id, toListItem(p)]));
 

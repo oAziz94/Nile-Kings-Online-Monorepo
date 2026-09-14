@@ -32,7 +32,7 @@ const getRelatedCatalog = unstable_cache(
       take: RELATED_LIMIT,
       include: {
         category: { select: { slug: true, name: true } },
-        variants: { where: { active: true }, select: { id: true, pricePiastres: true, stockAvailable: true } },
+        variants: { where: { active: true }, select: { id: true, pricePiastres: true } },
       },
     });
     return related;
@@ -94,7 +94,10 @@ export async function GET(
   const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);
   const stockAdjustedRelated = related.map((product) => ({
     ...product,
-    variants: applyPartnerStockOverrides(product.variants, overrides),
+    variants: applyPartnerStockOverrides(
+      product.variants.map((v) => ({ ...v, stockAvailable: 0 })),
+      overrides
+    ),
   }));
 
   return apiSuccess({ products: stockAdjustedRelated.map(toListItem) });

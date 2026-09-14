@@ -30,7 +30,6 @@ const getRecommendationsCatalog = unstable_cache(
           id: true,
           slug: true,
           pricePiastres: true,
-          stockAvailable: true,
           colorHex: true,
           colorName: true,
           imageUrl: true,
@@ -107,9 +106,18 @@ export async function GET(req: NextRequest) {
 
   const allVariantIds = [...relevantProducts, ...newArrivals].flatMap((p) => p.variants.map((v) => v.id));
   const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);
-  const withStock = <T extends { variants: { id: string; pricePiastres: number; stockAvailable: number }[] }>(
+  // Placeholder 0, always replaced by the override above — stock lives only in
+  // PartnerInventory now (backlog 9.9); a governorate with no covering partner stays 0.
+  const withStock = <T extends { variants: { id: string; pricePiastres: number }[] }>(
     products: T[]
-  ) => products.map((p) => ({ ...p, variants: applyPartnerStockOverrides(p.variants, overrides) }));
+  ) =>
+    products.map((p) => ({
+      ...p,
+      variants: applyPartnerStockOverrides(
+        p.variants.map((v) => ({ ...v, stockAvailable: 0 })),
+        overrides
+      ),
+    }));
 
   const stockNewArrivals = withStock(newArrivals);
   const productMap = new Map(
