@@ -41,14 +41,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   });
 
   if (data.isActive !== undefined && data.isActive !== link.isActive) {
+    // Only `after` (no `before`) on purpose: pause/resume is an event, not a field diff, and
+    // `logAdminAction` would otherwise strip `partnerId`/`partnerName` from the stored row
+    // (they don't change) leaving only `isActive` — which `describeAdminAudit` needs the
+    // partner's name for ("أوقف <partner> مؤقتًا في <governorate>").
     await logAdminAction(prisma, {
       actor,
       action: data.isActive ? "resume_partner" : "pause_partner",
       entityType: "routing",
       entityId: link.rule.governorate,
       entityLabel: link.rule.governorate,
-      before: { partnerId: link.partnerId, isActive: link.isActive },
-      after: { partnerId: link.partnerId, isActive: updated.isActive },
+      after: { partnerId: link.partnerId, partnerName: link.partner.name, isActive: updated.isActive },
       ip: requestIp(req),
     });
   }

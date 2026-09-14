@@ -172,6 +172,13 @@ test("add_partner via the API creates the rule on first write and is audit-logge
 
   const auditRows = await prisma.adminAuditLog.findMany({ where: { entityType: "routing", entityId: FIXTURE_GOVERNORATE, action: "add_partner" } });
   expect(auditRows.length).toBe(2);
+
+  // Backlog 9.5 close-out fix — آخر النشاط on /admin renders the real Arabic sentence for
+  // an add_partner row (not the mixed-language generic fallback).
+  await page.goto("/admin");
+  await expect(page.getByTestId("recent-activity")).toContainText(`أضاف ${partnerB.name} إلى دور ${FIXTURE_GOVERNORATE}`, {
+    timeout: 15_000,
+  });
 });
 
 test("round-robin assigns both partners in turn; pausing one leaves only the other", async ({}) => {
@@ -263,9 +270,9 @@ test("screenshots: التوجيه at the four viewports", async ({ page }) => {
     await page.waitForTimeout(300);
     await page.screenshot({ path: `screenshots/admin-v2-routing-${width}x${height}.png`, fullPage: true });
 
-    if (width === 390) {
+    if (width === 1440 || width === 1024 || width === 390) {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1);
-      expect(overflow).toBe(true);
+      expect(overflow, `no horizontal overflow at ${width}x${height}`).toBe(true);
     }
   }
 });

@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
   }
   const stockAvailable = body.stockAvailable;
 
-  const updated = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const existing = await tx.partnerInventory.findUnique({
       where: { partnerId_variantId: { partnerId, variantId } },
     });
@@ -173,19 +173,28 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return row;
+    return { row, previousStockAvailable: existing?.stockAvailable ?? 0 };
   });
 
-  if (!updated) return apiBadRequest("المحجوز لا يمكن أن يكون أكبر من المتاح");
+  if (!result) return apiBadRequest("المحجوز لا يمكن أن يكون أكبر من المتاح");
+  const { row: updated, previousStockAvailable } = result;
 
-  const variant = await prisma.variant.findUnique({ where: { id: variantId }, select: { sku: true } });
+  const [variant, partner] = await Promise.all([
+    prisma.variant.findUnique({ where: { id: variantId }, select: { sku: true } }),
+    prisma.partner.findUnique({ where: { id: partnerId }, select: { name: true } }),
+  ]);
   await logAdminAction(prisma, {
     actor,
     action: "stock_correction",
     entityType: "partner-inventory",
     entityId: updated.id,
     entityLabel: variant?.sku ?? variantId,
-    after: { partnerId, variantId, stockAvailable: updated.stockAvailable, stockReserved: updated.stockReserved },
+    // `partnerName` lives only on `after` (not mirrored on `before`) so `logAdminAction`'s
+    // diff keeps it regardless of value — it never "changes" between before/after, but
+    // `describeAdminAudit` needs it to name the sentence's partner
+    // ("صحّح مخزون <sku> عند <partner> <before> → <after>").
+    before: { stockAvailable: previousStockAvailable },
+    after: { partnerName: partner?.name ?? partnerId, stockAvailable: updated.stockAvailable },
     reason: body.notes?.trim() || null,
     ip: requestIp(req),
   });

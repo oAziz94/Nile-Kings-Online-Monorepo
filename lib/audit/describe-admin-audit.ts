@@ -19,6 +19,8 @@ const ENTITY_LABEL_AR: Record<string, string> = {
   user: "المستخدم",
   settings: "الإعدادات",
   product: "المنتج",
+  routing: "التوجيه",
+  "partner-inventory": "مخزون الشريك",
 };
 
 /** Known diff fields worth naming explicitly, with an Arabic label and an optional
@@ -63,6 +65,45 @@ export function describeAdminAudit(row: AdminAuditRowLike): string {
   }
 
   const entityAr = entityLabelAr(row.entityType);
+
+  // Backlog 9.5 — التوجيه/مخزون الشبكة writes, one Arabic sentence per action (not the
+  // generic "عدّل <entity> <label>" fallback, which mixed English action names with Arabic
+  // when these six actions were added and had no dedicated branch). `label` here is the
+  // governorate for the five routing actions, the SKU for `stock_correction`.
+  if (row.action === "add_partner") {
+    const after = asRecord(row.after);
+    const partnerName = String(after.partnerName ?? "");
+    return `أضاف ${partnerName} إلى دور ${label}`.trim();
+  }
+  if (row.action === "remove_partner") {
+    const before = asRecord(row.before);
+    const partnerName = String(before.partnerName ?? "");
+    return `أزال ${partnerName} من دور ${label}`.trim();
+  }
+  if (row.action === "pause_partner") {
+    const after = asRecord(row.after);
+    const partnerName = String(after.partnerName ?? "");
+    return `أوقف ${partnerName} مؤقتًا في ${label}`.trim();
+  }
+  if (row.action === "resume_partner") {
+    const after = asRecord(row.after);
+    const partnerName = String(after.partnerName ?? "");
+    return `أعاد تفعيل ${partnerName} في ${label}`.trim();
+  }
+  if (row.action === "set_mode") {
+    const after = asRecord(row.after);
+    return after.isActive
+      ? `حوّل ${label} إلى التوجيه التلقائي`
+      : `حوّل ${label} إلى الإسناد اليدوي`;
+  }
+  if (row.action === "stock_correction") {
+    const before = asRecord(row.before);
+    const after = asRecord(row.after);
+    const partnerName = String(after.partnerName ?? "");
+    const from = String(before.stockAvailable ?? "—");
+    const to = String(after.stockAvailable ?? "—");
+    return `صحّح مخزون ${label} عند ${partnerName} ${from} → ${to}`.trim();
+  }
 
   if (row.action === "create") {
     return `أنشأ ${entityAr} ${label}`.trim();
