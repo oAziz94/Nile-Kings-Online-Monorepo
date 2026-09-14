@@ -175,8 +175,8 @@ test.beforeAll(async () => {
       active: true,
       variants: {
         create: [
-          { sku: `MEDIA-${uniqueSuffix}-S`, slug: `${productSlug}_s_${COLOR_HEX.replace("#", "")}`, name: "S", colorName: COLOR_NAME, colorHex: COLOR_HEX, pricePiastres: 10000, stockAvailable: 5 },
-          { sku: `MEDIA-${uniqueSuffix}-M`, slug: `${productSlug}_m_${COLOR_HEX.replace("#", "")}`, name: "M", colorName: COLOR_NAME, colorHex: COLOR_HEX, pricePiastres: 10000, stockAvailable: 5 },
+          { sku: `MEDIA-${uniqueSuffix}-S`, slug: `${productSlug}_s_${COLOR_HEX.replace("#", "")}`, name: "S", colorName: COLOR_NAME, colorHex: COLOR_HEX, pricePiastres: 10000 },
+          { sku: `MEDIA-${uniqueSuffix}-M`, slug: `${productSlug}_m_${COLOR_HEX.replace("#", "")}`, name: "M", colorName: COLOR_NAME, colorHex: COLOR_HEX, pricePiastres: 10000 },
         ],
       },
     },

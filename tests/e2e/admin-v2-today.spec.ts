@@ -141,7 +141,7 @@ test.beforeAll(async () => {
   // against a variant with zero sellable stock for the fixture partner.
   saleVariantId = (
     await prisma.variant.create({
-      data: { productId, sku: `ADM-TODAY-LOW-${uniqueSuffix}`, name: "M", pricePiastres: 10000, stockAvailable: 0, stockReserved: 0 },
+      data: { productId, sku: `ADM-TODAY-LOW-${uniqueSuffix}`, name: "M", pricePiastres: 10000 },
     })
   ).id;
   lowStockVariantId = saleVariantId;

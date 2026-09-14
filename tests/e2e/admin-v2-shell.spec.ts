@@ -78,7 +78,7 @@ test.beforeAll(async () => {
   });
   productId = product.id;
   const variant = await prisma.variant.create({
-    data: { productId, sku: `TEST-ADM-SHL-${uniqueSuffix}`, name: "M", pricePiastres: 5000, stockAvailable: 0, stockReserved: 0 },
+    data: { productId, sku: `TEST-ADM-SHL-${uniqueSuffix}`, name: "M", pricePiastres: 5000 },
   });
   variantId = variant.id;
 

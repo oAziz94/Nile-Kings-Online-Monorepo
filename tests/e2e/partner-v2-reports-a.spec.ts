@@ -84,12 +84,12 @@ test.beforeAll(async () => {
   productId = product.id;
 
   const salesVariant = await prisma.variant.create({
-    data: { productId, sku: `SKU-SALES-${RUN_TAG}`, name: "M", pricePiastres: 10000, stockAvailable: 0, stockReserved: 0 },
+    data: { productId, sku: `SKU-SALES-${RUN_TAG}`, name: "M", pricePiastres: 10000 },
   });
   salesVariantId = salesVariant.id;
 
   const invVariant = await prisma.variant.create({
-    data: { productId, sku: `SKU-INV-${RUN_TAG}`, name: "L", pricePiastres: 10000, stockAvailable: 0, stockReserved: 0 },
+    data: { productId, sku: `SKU-INV-${RUN_TAG}`, name: "L", pricePiastres: 10000 },
   });
   invVariantId = invVariant.id;
 

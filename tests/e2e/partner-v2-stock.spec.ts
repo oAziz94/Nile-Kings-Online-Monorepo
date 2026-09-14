@@ -97,7 +97,7 @@ test.describe("stock index: search, thresholds, quick adjust, cover", () => {
     });
     healthyProductId = healthyProduct.id;
     const healthyVariant = await prisma.variant.create({
-      data: { productId: healthyProduct.id, sku: `SKU-HEALTHY-${RUN_TAG}`, name: "M", pricePiastres: 50000, stockAvailable: 0, stockReserved: 0 },
+      data: { productId: healthyProduct.id, sku: `SKU-HEALTHY-${RUN_TAG}`, name: "M", pricePiastres: 50000 },
     });
     healthyVariantId = healthyVariant.id;
     await prisma.partnerInventory.create({
@@ -109,7 +109,7 @@ test.describe("stock index: search, thresholds, quick adjust, cover", () => {
     });
     lowProductId = lowProduct.id;
     const lowVariant = await prisma.variant.create({
-      data: { productId: lowProductId, sku: `SKU-LOW-${RUN_TAG}`, name: "M", pricePiastres: 50000, stockAvailable: 0, stockReserved: 0 },
+      data: { productId: lowProductId, sku: `SKU-LOW-${RUN_TAG}`, name: "M", pricePiastres: 50000 },
     });
     await prisma.partnerInventory.create({
       data: { partnerId: pair.agent.partnerId, variantId: lowVariant.id, stockAvailable: 3, stockReserved: 0 },
@@ -120,7 +120,7 @@ test.describe("stock index: search, thresholds, quick adjust, cover", () => {
     });
     reservedProductId = reservedProduct.id;
     const reservedVariant = await prisma.variant.create({
-      data: { productId: reservedProductId, sku: `SKU-RESERVED-${RUN_TAG}`, name: "M", pricePiastres: 50000, stockAvailable: 0, stockReserved: 0 },
+      data: { productId: reservedProductId, sku: `SKU-RESERVED-${RUN_TAG}`, name: "M", pricePiastres: 50000 },
     });
     reservedVariantId = reservedVariant.id;
     await prisma.partnerInventory.create({
@@ -134,7 +134,7 @@ test.describe("stock index: search, thresholds, quick adjust, cover", () => {
     });
     coverProductId = coverProduct.id;
     const coverVariant = await prisma.variant.create({
-      data: { productId: coverProductId, sku: `SKU-COVER-${RUN_TAG}`, name: "M", pricePiastres: 50000, stockAvailable: 0, stockReserved: 0 },
+      data: { productId: coverProductId, sku: `SKU-COVER-${RUN_TAG}`, name: "M", pricePiastres: 50000 },
     });
     coverVariantId = coverVariant.id;
     await prisma.partnerInventory.create({
@@ -313,25 +313,25 @@ test.describe("intake and counts (moved receipts screens)", () => {
     productId = product.id;
 
     const factoryVariant = await prisma.variant.create({
-      data: { productId, sku: factorySku, name: "M", pricePiastres: 50000, stockAvailable: 0, stockReserved: 0 },
+      data: { productId, sku: factorySku, name: "M", pricePiastres: 50000 },
     });
     factoryVariantId = factoryVariant.id;
     await prisma.partnerInventory.create({ data: { partnerId: pair.agent.partnerId, variantId: factoryVariant.id, stockAvailable: 20, stockReserved: 0 } });
 
     const countValidVariant = await prisma.variant.create({
-      data: { productId, sku: countValidSku, name: "L", pricePiastres: 50000, stockAvailable: 0, stockReserved: 0 },
+      data: { productId, sku: countValidSku, name: "L", pricePiastres: 50000 },
     });
     countValidVariantId = countValidVariant.id;
     await prisma.partnerInventory.create({ data: { partnerId: pair.agent.partnerId, variantId: countValidVariant.id, stockAvailable: 10, stockReserved: 2 } });
 
     const countReservedVariant = await prisma.variant.create({
-      data: { productId, sku: countReservedSku, name: "XL", pricePiastres: 50000, stockAvailable: 0, stockReserved: 0 },
+      data: { productId, sku: countReservedSku, name: "XL", pricePiastres: 50000 },
     });
     countReservedVariantId = countReservedVariant.id;
     await prisma.partnerInventory.create({ data: { partnerId: pair.agent.partnerId, variantId: countReservedVariant.id, stockAvailable: 10, stockReserved: 8 } });
 
     const parallelVariant = await prisma.variant.create({
-      data: { productId, sku: `SKU-PARALLEL-${RUN_TAG}`, name: "XXL", pricePiastres: 50000, stockAvailable: 0, stockReserved: 0 },
+      data: { productId, sku: `SKU-PARALLEL-${RUN_TAG}`, name: "XXL", pricePiastres: 50000 },
     });
     parallelVariantId = parallelVariant.id;
     await prisma.partnerInventory.create({ data: { partnerId: pair.agent.partnerId, variantId: parallelVariant.id, stockAvailable: 0, stockReserved: 0 } });
@@ -492,7 +492,7 @@ test.describe("movements tab", () => {
     const product = await prisma.product.create({ data: { categoryId, name: `منتج حركات ${RUN_TAG}`, slug: `mv-${RUN_TAG}`, active: true } });
     productId = product.id;
     const variant = await prisma.variant.create({
-      data: { productId, sku: `SKU-MV-${RUN_TAG}`, name: "M", pricePiastres: 10000, stockAvailable: 0, stockReserved: 0 },
+      data: { productId, sku: `SKU-MV-${RUN_TAG}`, name: "M", pricePiastres: 10000 },
     });
     variantId = variant.id;
     await prisma.partnerInventory.create({ data: { partnerId: pair.agent.partnerId, variantId, stockAvailable: 10, stockReserved: 0 } });
@@ -569,7 +569,7 @@ test.describe("requests tab (restock transfer)", () => {
         name: productName,
         slug: `restock-test-${unique}`,
         active: true,
-        variants: { create: [{ sku: `RESTOCK-TEST-${unique}`, name: "M", pricePiastres: 10000, stockAvailable: 0, stockReserved: 0 }] },
+        variants: { create: [{ sku: `RESTOCK-TEST-${unique}`, name: "M", pricePiastres: 10000 }] },
       },
       include: { variants: true },
     });
