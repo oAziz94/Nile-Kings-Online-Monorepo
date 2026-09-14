@@ -6,6 +6,7 @@ import { PanelCard } from "@/components/dashboard/panel-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { formatNumberEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
@@ -53,12 +54,16 @@ function OwnerPill({ owner }: { owner: "admin" | "partner" }) {
 }
 
 function KnobRow({
+  id,
   label,
   hint,
   owner,
   defaultValue,
   children,
 }: {
+  /** Matches the input's own `id` — the label/input pairing every finance dialog already
+   * uses (backlog 9.4a verifier fix: a plain `<p>` label has no accessible name binding). */
+  id: string;
   label: string;
   hint?: string;
   owner: "admin" | "partner";
@@ -69,7 +74,7 @@ function KnobRow({
     <div className="grid gap-2 border-b border-stone-100 py-3 last:border-0 sm:grid-cols-[1fr_auto] sm:items-center">
       <div>
         <div className="flex items-center gap-2">
-          <p className="text-sm font-bold text-ink">{label}</p>
+          <Label htmlFor={id} className="text-sm font-bold text-ink">{label}</Label>
           <OwnerPill owner={owner} />
         </div>
         {hint && <p className="mt-0.5 text-xs text-ink-soft">{hint}</p>}
@@ -172,29 +177,29 @@ export function PartnerSettingsTab({ partnerId }: { partnerId: string }) {
   return (
     <div className="space-y-6">
       <PanelCard title="المهل" description="مواعيد الوعد للعميل — لا تتغير من الشريك.">
-        <KnobRow label="مهلة التأكيد (ساعة)" owner="admin" defaultValue={`${formatNumberEn(PARTNER_NETWORK_DEFAULTS.confirmSlaHours)} ساعة`}>
-          <Input type="number" dir="ltr" min={1} value={confirmSlaHours} onChange={(e) => setConfirmSlaHours(e.target.value)} />
+        <KnobRow id="knob-confirm-sla" label="مهلة التأكيد (ساعة)" owner="admin" defaultValue={`${formatNumberEn(PARTNER_NETWORK_DEFAULTS.confirmSlaHours)} ساعة`}>
+          <Input id="knob-confirm-sla" type="number" dir="ltr" min={1} value={confirmSlaHours} onChange={(e) => setConfirmSlaHours(e.target.value)} />
         </KnobRow>
-        <KnobRow label="مهلة الشحن بعد التأكيد (ساعة)" owner="admin" defaultValue={`${formatNumberEn(PARTNER_NETWORK_DEFAULTS.shipSlaHours)} ساعة`}>
-          <Input type="number" dir="ltr" min={1} value={shipSlaHours} onChange={(e) => setShipSlaHours(e.target.value)} />
+        <KnobRow id="knob-ship-sla" label="مهلة الشحن بعد التأكيد (ساعة)" owner="admin" defaultValue={`${formatNumberEn(PARTNER_NETWORK_DEFAULTS.shipSlaHours)} ساعة`}>
+          <Input id="knob-ship-sla" type="number" dir="ltr" min={1} value={shipSlaHours} onChange={(e) => setShipSlaHours(e.target.value)} />
         </KnobRow>
       </PanelCard>
 
       <PanelCard title="المال" description="نسبة الشراء من سعر البيع.">
-        <KnobRow label="نسبة الشراء (%)" owner="admin" defaultValue={`${formatNumberEn(Math.round(PARTNER_NETWORK_DEFAULTS.costRateBps / 100))}%`}>
-          <Input type="number" dir="ltr" min={0} max={100} value={costRatePct} onChange={(e) => setCostRatePct(e.target.value)} />
+        <KnobRow id="knob-cost-rate" label="نسبة الشراء (%)" owner="admin" defaultValue={`${formatNumberEn(Math.round(PARTNER_NETWORK_DEFAULTS.costRateBps / 100))}%`}>
+          <Input id="knob-cost-rate" type="number" dir="ltr" min={0} max={100} value={costRatePct} onChange={(e) => setCostRatePct(e.target.value)} />
         </KnobRow>
       </PanelCard>
 
       <PanelCard title="المخزون" description="تنبيهات الشريك — قابلة للتعديل هنا كتجاوز.">
-        <KnobRow label="الحد الأدنى للمخزون" owner="partner" defaultValue="5 قطع">
-          <Input type="number" dir="ltr" min={0} value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} />
+        <KnobRow id="knob-low-stock" label="الحد الأدنى للمخزون" owner="partner" defaultValue="5 قطع">
+          <Input id="knob-low-stock" type="number" dir="ltr" min={0} value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} />
         </KnobRow>
-        <KnobRow label="أيام الركود" owner="partner" defaultValue="60 يوم">
-          <Input type="number" dir="ltr" min={1} value={deadStockDays} onChange={(e) => setDeadStockDays(e.target.value)} />
+        <KnobRow id="knob-dead-stock" label="أيام الركود" owner="partner" defaultValue="60 يوم">
+          <Input id="knob-dead-stock" type="number" dir="ltr" min={1} value={deadStockDays} onChange={(e) => setDeadStockDays(e.target.value)} />
         </KnobRow>
-        <KnobRow label="هدف أيام التغطية" owner="partner" defaultValue="21 يوم">
-          <Input type="number" dir="ltr" min={1} value={targetCoverDays} onChange={(e) => setTargetCoverDays(e.target.value)} />
+        <KnobRow id="knob-target-cover" label="هدف أيام التغطية" owner="partner" defaultValue="21 يوم">
+          <Input id="knob-target-cover" type="number" dir="ltr" min={1} value={targetCoverDays} onChange={(e) => setTargetCoverDays(e.target.value)} />
         </KnobRow>
       </PanelCard>
 
@@ -224,8 +229,8 @@ export function PartnerSettingsTab({ partnerId }: { partnerId: string }) {
             })}
           </div>
         </div>
-        <KnobRow label="الطاقة اليومية (طلب)" owner="partner" defaultValue="بلا حد">
-          <Input type="number" dir="ltr" min={0} placeholder="بلا حد" value={dailyOrderCapacity} onChange={(e) => setDailyOrderCapacity(e.target.value)} />
+        <KnobRow id="knob-daily-capacity" label="الطاقة اليومية (طلب)" owner="partner" defaultValue="بلا حد">
+          <Input id="knob-daily-capacity" type="number" dir="ltr" min={0} placeholder="بلا حد" value={dailyOrderCapacity} onChange={(e) => setDailyOrderCapacity(e.target.value)} />
         </KnobRow>
         <div className="grid gap-1 py-3">
           <div className="flex items-center gap-2">

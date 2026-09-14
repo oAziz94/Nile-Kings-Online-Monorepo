@@ -238,6 +238,7 @@ export function PartnerStockTab({ partnerId }: { partnerId: string }) {
                       <TableCell>
                         <Input
                           inputMode="numeric"
+                          aria-label={`المخزون المتاح — ${variant.sku}`}
                           value={draft}
                           onChange={(e) => setDrafts((current) => ({ ...current, [variant.id]: e.target.value }))}
                           className={cn("h-9 w-24 rounded-md", dirty && "border-gold/50 bg-gold/10")}

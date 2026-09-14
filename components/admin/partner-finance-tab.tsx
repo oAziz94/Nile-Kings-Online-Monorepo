@@ -228,7 +228,8 @@ export function PartnerFinanceTab({ partnerId }: { partnerId: string }) {
       <PanelCard title="نسبة الشراء من سعر البيع" icon={<TrendingUp className="h-5 w-5 text-lapis-800" />}>
         <p className="mb-3 text-xs text-ink-soft">تُطبَّق على الاستلامات القادمة فقط — لا تُعيد كتابة إيصالات سابقة.</p>
         <div className="flex items-center gap-2">
-          <Input type="number" inputMode="numeric" dir="ltr" min={0} max={100} value={rateDraft} onChange={(e) => setRateDraft(e.target.value)} className="w-28" />
+          <Label htmlFor="finance-cost-rate" className="sr-only">نسبة الشراء من سعر البيع (%)</Label>
+          <Input id="finance-cost-rate" type="number" inputMode="numeric" dir="ltr" min={0} max={100} value={rateDraft} onChange={(e) => setRateDraft(e.target.value)} className="w-28" />
           <span className="text-sm text-ink-soft">%</span>
           <Button type="button" size="sm" onClick={saveRate} disabled={savingRate}>
             {savingRate ? <Loader2 className="h-4 w-4 animate-spin" /> : "حفظ"}
