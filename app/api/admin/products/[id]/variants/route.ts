@@ -74,8 +74,6 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
             name,
             basePricePiastres: productBase,
             pricePiastres: productDiscount || 0,
-            stockAvailable: 0,
-            stockReserved: 0,
           },
         });
       })
@@ -118,8 +116,6 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
         imageUrl: body.imageUrl?.trim() || null,
         basePricePiastres: variantBase,
         pricePiastres: variantPrice,
-        stockAvailable: 0,
-        stockReserved: 0,
       },
     });
     await logAdminAction(prisma, {

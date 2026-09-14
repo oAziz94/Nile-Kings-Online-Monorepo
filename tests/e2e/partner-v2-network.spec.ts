@@ -45,7 +45,7 @@ async function seedVariant(label: string): Promise<{ id: string; sku: string }> 
       slug: `network-test-${unique}`,
       active: true,
       variants: {
-        create: [{ sku: `NETWORK-TEST-${unique}`, name: "M", pricePiastres: 10000, stockAvailable: 0, stockReserved: 0 }],
+        create: [{ sku: `NETWORK-TEST-${unique}`, name: "M", pricePiastres: 10000 }],
       },
     },
     include: { variants: true },

@@ -104,7 +104,7 @@ test.beforeAll(async () => {
   productId = product.id;
   sku = `NET-STOCK-${uniqueSuffix}`;
   const variant = await prisma.variant.create({
-    data: { productId, sku, name: "M", colorName: "أحمر", pricePiastres: 10000, stockAvailable: 0, stockReserved: 0 },
+    data: { productId, sku, name: "M", colorName: "أحمر", pricePiastres: 10000 },
   });
   variantId = variant.id;
 
@@ -122,7 +122,7 @@ test.beforeAll(async () => {
   // test above does to `variantId`.
   searchSku = `NET-STOCK-SEARCH-${uniqueSuffix}`;
   const searchVariant = await prisma.variant.create({
-    data: { productId, sku: searchSku, name: "L", colorName: "أزرق", pricePiastres: 10000, stockAvailable: 0, stockReserved: 0 },
+    data: { productId, sku: searchSku, name: "L", colorName: "أزرق", pricePiastres: 10000 },
   });
   searchVariantId = searchVariant.id;
   await prisma.partnerInventory.create({
@@ -131,7 +131,7 @@ test.beforeAll(async () => {
 
   outSku = `NET-STOCK-OUT-${uniqueSuffix}`;
   const outVariant = await prisma.variant.create({
-    data: { productId, sku: outSku, name: "S", colorName: "أخضر", pricePiastres: 10000, stockAvailable: 0, stockReserved: 0 },
+    data: { productId, sku: outSku, name: "S", colorName: "أخضر", pricePiastres: 10000 },
   });
   outVariantId = outVariant.id;
   await prisma.partnerInventory.create({
@@ -150,8 +150,6 @@ test.beforeAll(async () => {
         sku: `NET-STOCK-PG-${uniqueSuffix}-${i}`,
         name: "PG",
         pricePiastres: 10000,
-        stockAvailable: 0,
-        stockReserved: 0,
       },
     });
     paginationVariantIds.push(pgVariant.id);

@@ -18,9 +18,22 @@ const getCategoryFilters = unstable_cache(
     // the storefront reads variants).
     const variants = await prisma.variant.findMany({
       where: { active: true, product: { categoryId: category.id, active: true } },
-      select: { name: true, pricePiastres: true, stockAvailable: true },
+      select: { id: true, name: true, pricePiastres: true },
     });
-    return variants;
+    // Stock lives only in PartnerInventory now (backlog 9.9) — one grouped, network-wide check
+    // for whether any of this category's variants has sellable stock with any partner, never a
+    // per-variant read and never a governorate-scoped figure (this facet is category-wide, not
+    // per-visitor).
+    const hasInStock = variants.length
+      ? (
+          await prisma.partnerInventory.groupBy({
+            by: ["variantId"],
+            where: { variantId: { in: variants.map((v) => v.id) } },
+            _sum: { stockAvailable: true, stockReserved: true },
+          })
+        ).some((g) => (g._sum.stockAvailable ?? 0) - (g._sum.stockReserved ?? 0) > 0)
+      : false;
+    return { variants, hasInStock };
   },
   ["category-filters"],
   { revalidate: 300 }
@@ -32,8 +45,9 @@ export async function GET(
 ) {
   const { slug } = await params;
 
-  const variants = await getCategoryFilters(slug);
-  if (!variants) return apiNotFound("التصنيف غير موجود");
+  const result = await getCategoryFilters(slug);
+  if (!result) return apiNotFound("التصنيف غير موجود");
+  const { variants, hasInStock } = result;
 
   const sizes = [...new Set(variants.map((v) => v.name))].sort();
   const prices = variants.map((v) => piastresToEgp(v.pricePiastres));
@@ -44,6 +58,6 @@ export async function GET(
     sizes,
     minPrice,
     maxPrice,
-    hasInStock: variants.some((v) => v.stockAvailable > 0),
+    hasInStock,
   });
 }

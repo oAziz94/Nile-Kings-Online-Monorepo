@@ -12,9 +12,10 @@ type Params = Promise<{ id: string }>;
  * `active` (colour-visibility toggle, per-row too since the colour panel's toggle just calls
  * this for every variant sharing the colour) in addition to the existing fields.
  *
- * Additive stock guard (06-admin-v2.md §3.5, backlog 9.8b): the body's `stockAvailable`/
- * `stockReserved`, if present, are silently ignored — the type below never destructures them,
- * so a legacy caller sending them writes nothing. Covered by a dedicated e2e assertion.
+ * Stock guard (06-admin-v2.md §3.5, backlog 9.8b/9.9): a body's `stockAvailable`/
+ * `stockReserved`, if present, are silently ignored — the type below never destructures them
+ * (and the columns no longer exist on `Variant` at all), so a legacy caller sending them
+ * writes nothing. Covered by a dedicated e2e assertion.
  */
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   let actor;
@@ -103,7 +104,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Params }) {
   const { id } = await params;
   const v = await prisma.variant.findUnique({ where: { id } });
   if (!v) return apiNotFound("المتغير غير موجود");
-  if (v.stockReserved > 0) return apiBadRequest("لا يمكن حذف متغير له كمية محجوزة");
+  // Stock (including reservations) lives only in PartnerInventory now — check across every
+  // partner's row for this variant, never a variant-level field.
+  const hasReservedStock = await prisma.partnerInventory.findFirst({
+    where: { variantId: id, stockReserved: { gt: 0 } },
+    select: { id: true },
+  });
+  if (hasReservedStock) return apiBadRequest("لا يمكن حذف متغير له كمية محجوزة");
   await prisma.variant.delete({ where: { id } });
   await logAdminAction(prisma, {
     actor,

@@ -225,8 +225,6 @@ model Variant {
   basePricePiastres   Int?     // original price; null = use product's
   pricePiastres       Int      // selling/discounted price in piastres
   active              Boolean  @default(true) // backlog 9.8b — colour visibility ("مرئي في المتجر"): every variant sharing a colour is toggled together; an inactive variant is hidden from the storefront (PDP, listing, cards)
-  stockAvailable      Int      @default(0)
-  stockReserved       Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -241,7 +239,6 @@ model Variant {
 
   @@index([productId])
   @@index([sku])
-  @@index([stockAvailable])
   @@index([imageAssetId])
   @@index([active])
 }

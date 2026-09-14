@@ -53,7 +53,7 @@ test.beforeAll(async () => {
   productId = product.id;
 
   const variant = await prisma.variant.create({
-    data: { productId, sku: `TODAY-A-${uniqueSuffix}`, name: "M", pricePiastres: 10000, stockAvailable: 0, stockReserved: 0 },
+    data: { productId, sku: `TODAY-A-${uniqueSuffix}`, name: "M", pricePiastres: 10000 },
   });
   variantId = variant.id;
   // The CREATED order transitions through the real confirm path (backlog 5.2's "row actions
@@ -64,7 +64,7 @@ test.beforeAll(async () => {
   });
 
   const lowStockVariant = await prisma.variant.create({
-    data: { productId, sku: `TODAY-B-${uniqueSuffix}`, name: "L", pricePiastres: 10000, stockAvailable: 2, stockReserved: 0 },
+    data: { productId, sku: `TODAY-B-${uniqueSuffix}`, name: "L", pricePiastres: 10000 },
   });
   lowStockVariantId = lowStockVariant.id;
   await prisma.partnerInventory.create({

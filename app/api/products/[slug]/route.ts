@@ -111,7 +111,6 @@ export async function GET(
           name: true,
           basePricePiastres: true,
           pricePiastres: true,
-          stockAvailable: true,
           colorHex: true,
           colorName: true,
           imageUrl: true,
@@ -125,7 +124,12 @@ export async function GET(
 
   const adjustedProduct = {
     ...product,
-    variants: await applyStorefrontPartnerStock(product.variants, stockContext.partnerId),
+    // Placeholder 0, always replaced by applyStorefrontPartnerStock — stock lives only in
+    // PartnerInventory now (backlog 9.9).
+    variants: await applyStorefrontPartnerStock(
+      product.variants.map((v) => ({ ...v, stockAvailable: 0 })),
+      stockContext.partnerId
+    ),
   };
 
   return apiSuccess(toDetail(adjustedProduct));

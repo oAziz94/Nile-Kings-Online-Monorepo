@@ -361,17 +361,16 @@ test("category filter facets exclude a hidden colour's sizes and prices", async 
   expect(facets.minPrice).toBe(88);
 });
 
-test("the variant PATCH with stockAvailable in the body leaves the column untouched", async ({ page }) => {
+test("the variant PATCH with stockAvailable/stockReserved in the body is a 200 with no error (backlog 9.9 — the columns no longer exist on Variant)", async ({ page }) => {
   await apiLoginAsAdmin(page);
   const variant = await prisma.variant.findFirstOrThrow({ where: { productId, colorName: "أسود", name: "M" } });
-  const before = await prisma.variant.findUniqueOrThrow({ where: { id: variant.id } });
   const res = await page.request.patch(`/api/admin/variants/${variant.id}`, {
     data: { pricePiastres: 9000, stockAvailable: 99999, stockReserved: 55555 },
   });
   expect(res.ok()).toBeTruthy();
+  const json = await res.json();
+  expect(json.error).toBeUndefined();
   const after = await prisma.variant.findUniqueOrThrow({ where: { id: variant.id } });
-  expect(after.stockAvailable).toBe(before.stockAvailable);
-  expect(after.stockReserved).toBe(before.stockReserved);
   expect(after.pricePiastres).toBe(9000);
 });
 

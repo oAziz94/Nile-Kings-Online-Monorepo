@@ -1,6 +1,7 @@
 /**
  * Cart: get/create by userId or guestToken.
- * Stock: validate qty <= stockAvailable - stockReserved.
+ * Stock: validate qty <= the customer's governorate partner's sellable PartnerInventory row
+ * (stockAvailable - stockReserved) — never a variant-level figure (backlog 9.9).
  * Merge: combine guest cart into user cart on login (sum by variantId).
  */
 
@@ -49,17 +50,11 @@ export type CartPayload = {
 async function getSellableQuantitiesByVariant(variantIds: string[]): Promise<Map<string, number>> {
   if (variantIds.length === 0) return new Map();
   const context = await getCurrentStorefrontStockContext();
+  // No partner covers the customer's chosen governorate (or none is chosen yet): nothing is
+  // orderable from here — never fall back to a variant-level figure (that column no longer
+  // exists; stock lives only in PartnerInventory, per `lib/storefront-location.ts`).
   if (!context.partnerId) {
-    const variants = await prisma.variant.findMany({
-      where: { id: { in: variantIds } },
-      select: { id: true, stockAvailable: true, stockReserved: true },
-    });
-    return new Map(
-      variants.map((variant) => [
-        variant.id,
-        Math.max(0, variant.stockAvailable - variant.stockReserved),
-      ])
-    );
+    return new Map(variantIds.map((id) => [id, 0]));
   }
   const rows = await prisma.partnerInventory.findMany({
     where: {

@@ -8,19 +8,11 @@ import { getCodFeePercent } from "@/lib/settings";
 import { computeCodFeePiastres } from "@/lib/checkout/cod-fee";
 import { computePricing } from "@/lib/services/pricing";
 import { isSeniorPromoEnabled } from "@/lib/settings";
-import {
-  releaseReservation,
-  restoreCommittedStock,
-  commitReservation,
-  reconcileStockForAdminOrderItemEdit,
-  stockLinesEquivalent,
-  orderUsesReservationOnly,
-  InsufficientStockError,
-  type StockLine,
-} from "@/lib/services/stock";
+import { stockLinesEquivalent, type StockLine } from "@/lib/services/stock";
 import {
   commitPartnerReservation,
   InsufficientPartnerStockError,
+  orderUsesPartnerReservationOnly,
   reconcilePartnerStockForAdminOrderItemEdit,
   releasePartnerReservation,
   restorePartnerCommittedStock,
@@ -79,6 +71,11 @@ function mapOrderDetailApiRow(order: OrderDetailRow) {
 
 type Params = Promise<{ id: string }>;
 const INT32_MAX = 2_147_483_647;
+
+/** Thrown when a stock-affecting edit is attempted on an order with no assigned partner —
+ * stock lives only in PartnerInventory (backlog 9.9), so there is nothing to reserve/commit
+ * against until an admin assigns one. Maps to a 400. */
+class AdminOrderStockError extends Error {}
 
 type IncomingItem = { variantId: string; quantity: number };
 
@@ -459,11 +456,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   const isInstaPayPrepaid = existing.paymentMethod === "INSTAPAY_PREPAID";
 
   async function applyLeavingCreatedStock(tx: OrderTx, lines: StockLine[]) {
-    if (existingOrder.assignedPartnerId) {
-      await commitPartnerReservation(tx, existingOrder.assignedPartnerId, lines, id, "Admin order edit");
-    } else {
-      await commitReservation(tx, lines);
+    if (!existingOrder.assignedPartnerId) {
+      // Stock lives only in PartnerInventory now (backlog 9.9) — an order with no assigned
+      // partner never had anything reserved anywhere, so there is nothing to commit. Assign a
+      // partner first (`POST /api/admin/orders/[id]/assign`).
+      throw new AdminOrderStockError("لا يمكن تأكيد طلب غير مُسند لشريك — أسنِد الطلب لشريك أولاً");
     }
+    await commitPartnerReservation(tx, existingOrder.assignedPartnerId, lines, id, "Admin order edit");
     data.reservationExpiresAt = null;
     if (nextStatus === "CONFIRMED") {
       await logOrderConfirmed(tx, id);
@@ -484,14 +483,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       typeof data.cancellationReason === "string" ? data.cancellationReason : "admin";
     const order = await prisma.$transaction(
       async (tx) => {
-        if (existing.assignedPartnerId && orderUsesReservationOnly(existing.status)) {
-          await releasePartnerReservation(tx, existing.assignedPartnerId, stockLines, existing.id, "Admin order cancellation");
-        } else if (existing.assignedPartnerId) {
-          await restorePartnerCommittedStock(tx, existing.assignedPartnerId, stockLines, existing.id, "Admin order cancellation");
-        } else if (orderUsesReservationOnly(existing.status)) {
-          await releaseReservation(tx, stockLines);
-        } else {
-          await restoreCommittedStock(tx, stockLines);
+        // An order with no assigned partner never had any stock reserved anywhere (stock
+        // lives only in PartnerInventory, backlog 9.9) — nothing to release or restore.
+        if (existing.assignedPartnerId) {
+          if (orderUsesPartnerReservationOnly(existing.status)) {
+            await releasePartnerReservation(tx, existing.assignedPartnerId, stockLines, existing.id, "Admin order cancellation");
+          } else {
+            await restorePartnerCommittedStock(tx, existing.assignedPartnerId, stockLines, existing.id, "Admin order cancellation");
+          }
         }
         await logOrderCancelled(tx, existing.id, cancellationAuditReason, existing.status);
         return tx.order.update({
@@ -511,6 +510,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       const linesAfterEdit = newItemStockLines!;
       const order = await prisma.$transaction(
         async (tx) => {
+          // Stock lives only in PartnerInventory (backlog 9.9). An order with no assigned partner
+          // has nothing reserved anywhere, so editing its items moves no stock — the admin may
+          // fix the lines before assigning. Only leaving CREATED (confirming) needs a partner,
+          // and `applyLeavingCreatedStock` refuses that below.
           if (existing.assignedPartnerId) {
             await reconcilePartnerStockForAdminOrderItemEdit(
               tx,
@@ -520,13 +523,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
               linesAfterEdit,
               existing.id,
               "Admin order edit"
-            );
-          } else {
-            await reconcileStockForAdminOrderItemEdit(
-              tx,
-              existing.status,
-              oldItemStockLines,
-              linesAfterEdit
             );
           }
           if (leavingCreated) {
@@ -543,8 +539,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       await auditOrderWrite("items_edit", order);
       return apiSuccess(mapOrderDetailApiRow(order));
     } catch (e) {
-      if (e instanceof InsufficientStockError || e instanceof InsufficientPartnerStockError) {
+      if (e instanceof InsufficientPartnerStockError) {
         return apiBadRequest("كمية غير متوفرة في المخزون لتعديل الطلب بهذه الأصناف");
+      }
+      if (e instanceof AdminOrderStockError) {
+        return apiBadRequest(e.message);
       }
       throw e;
     }
@@ -566,8 +565,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       await auditOrderWrite("status_change", order);
       return apiSuccess(mapOrderDetailApiRow(order));
     } catch (e) {
-      if (e instanceof InsufficientStockError || e instanceof InsufficientPartnerStockError) {
+      if (e instanceof InsufficientPartnerStockError) {
         return apiBadRequest("كمية غير متوفرة في المخزون لتأكيد الطلب");
+      }
+      if (e instanceof AdminOrderStockError) {
+        return apiBadRequest(e.message);
       }
       throw e;
     }

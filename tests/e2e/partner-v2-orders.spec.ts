@@ -49,7 +49,7 @@ test.beforeAll(async () => {
   productId = product.id;
 
   const variant = await prisma.variant.create({
-    data: { productId, sku: `TEST-5-3-${uniqueSuffix}`, name: "M", pricePiastres: 10000, stockAvailable: 0, stockReserved: 0 },
+    data: { productId, sku: `TEST-5-3-${uniqueSuffix}`, name: "M", pricePiastres: 10000 },
   });
   variantId = variant.id;
 

@@ -40,6 +40,8 @@ function parseQuery(req: NextRequest): ProductsQuery {
   };
 }
 
+/** The post-override shape (`stockAvailable` is added by `applyPartnerStockOverrides`, never
+ *  read straight off the DB row — see `productsListingVariantSelect` below). */
 type VariantRow = {
   id: string;
   slug: string | null;
@@ -54,13 +56,18 @@ type VariantRow = {
   createdAt: Date | string;
 };
 
+// backlog 9.9: NOT a `Prisma.VariantSelectScalar` (or otherwise annotated) on purpose in the
+// original code — that let a legacy `stockAvailable: true` sit here compiling cleanly (`select`
+// passed by identifier, not object literal, is only checked for assignability, not excess
+// properties) while failing at runtime the moment the column was dropped. Caught by the
+// warm-server curl proof, not `tsc`; keep this select minimal and let `VariantRow` (checked
+// structurally against real usage below) be the type-level guard instead.
 const productsListingVariantSelect = {
   id: true,
   slug: true,
   name: true,
   basePricePiastres: true,
   pricePiastres: true,
-  stockAvailable: true,
   colorHex: true,
   colorName: true,
   imageUrl: true,
@@ -133,11 +140,13 @@ export async function GET(req: NextRequest) {
     where.tags = { has: q.section };
   }
 
-  if (q.inStockOnly || q.sizes?.length) {
+  // Stock lives only in PartnerInventory now (backlog 9.9) — no DB-level in-stock pre-filter
+  // here any more (the legacy `stockAvailable` column this used to check is gone); `inStockOnly`
+  // is enforced below, after the governorate's partner stock is applied per variant.
+  if (q.sizes?.length) {
     where.variants = {
       some: {
-        ...(q.inStockOnly && !stockContext.partnerId && { stockAvailable: { gt: 0 } }),
-        ...(q.sizes?.length ? { name: { in: q.sizes } } : {}),
+        name: { in: q.sizes },
       },
     };
   }
@@ -170,9 +179,14 @@ export async function GET(req: NextRequest) {
 
   const allVariantIds = products.flatMap((p) => (p.variants as VariantRow[]).map((v) => v.id));
   const overrides = await getPartnerStockOverrides(allVariantIds, stockContext.partnerId);
+  // Placeholder 0, always replaced by the override above — stock lives only in
+  // PartnerInventory now (backlog 9.9); a governorate with no covering partner stays 0.
   let stockAdjustedProducts = products.map((product) => ({
     ...product,
-    variants: applyPartnerStockOverrides(product.variants as VariantRow[], overrides),
+    variants: applyPartnerStockOverrides(
+      (product.variants as VariantRow[]).map((v) => ({ ...v, stockAvailable: 0 })),
+      overrides
+    ),
   }));
 
   // "Best sales" is a per-product metric (summed across all of a product's variants), so it's

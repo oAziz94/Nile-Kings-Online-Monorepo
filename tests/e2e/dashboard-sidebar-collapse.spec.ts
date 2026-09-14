@@ -176,7 +176,7 @@ test.describe("admin sidebar collapse", () => {
     });
     productId = product.id;
     const variant = await prisma.variant.create({
-      data: { productId, sku: `TEST-SDBR-${uniqueSuffix}`, name: "M", pricePiastres: 6000, stockAvailable: 0, stockReserved: 0 },
+      data: { productId, sku: `TEST-SDBR-${uniqueSuffix}`, name: "M", pricePiastres: 6000 },
     });
     variantId = variant.id;
 

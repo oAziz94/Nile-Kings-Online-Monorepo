@@ -52,7 +52,7 @@ test.beforeAll(async () => {
   const product = await prisma.product.create({ data: { categoryId, name: `منتج 5.6b ${RUN_TAG}`, slug: `p-5-6b-${RUN_TAG}`, active: true } });
   productId = product.id;
   const variant = await prisma.variant.create({
-    data: { productId, sku: `SKU-5-6B-${RUN_TAG}`, name: "M", pricePiastres: 10000, stockAvailable: 0, stockReserved: 0 },
+    data: { productId, sku: `SKU-5-6B-${RUN_TAG}`, name: "M", pricePiastres: 10000 },
   });
   variantId = variant.id;
 

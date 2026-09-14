@@ -62,8 +62,6 @@ test.beforeAll(async () => {
       sku: `SKU-5-1-${RUN_TAG}`,
       name: "M",
       pricePiastres: 10000, // 100 EGP -> at 7200 bps, unit cost = 7200 piastres
-      stockAvailable: 0,
-      stockReserved: 0,
     },
   });
   factoryVariantId = variant.id;

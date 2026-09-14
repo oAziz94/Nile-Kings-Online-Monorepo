@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       skip: offset,
       include: {
         category: { select: { id: true, name: true, slug: true } },
-        variants: { select: { id: true, sku: true, name: true, pricePiastres: true, stockAvailable: true, stockReserved: true, colorHex: true, colorName: true } },
+        variants: { select: { id: true, sku: true, name: true, pricePiastres: true, colorHex: true, colorName: true } },
       },
     }),
     prisma.product.count({ where }),

@@ -66,8 +66,6 @@ async function main() {
     colorName: string | null;
     basePricePiastres: number | null;
     pricePiastres: number;
-    stockAvailable: number;
-    stockReserved: number;
   };
 
   const toCreate: ToCreate[] = [];
@@ -113,8 +111,6 @@ async function main() {
           colorName: sample.colorName,
           basePricePiastres: sample.basePricePiastres,
           pricePiastres: sample.pricePiastres,
-          stockAvailable: 0,
-          stockReserved: 0,
         });
       }
     }

@@ -56,8 +56,6 @@ async function main() {
           sku,
           name,
           pricePiastres: p.priceBase,
-          stockAvailable: 50,
-          stockReserved: 0,
         },
         update: {},
       });
