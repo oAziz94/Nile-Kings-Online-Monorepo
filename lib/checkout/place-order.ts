@@ -1,10 +1,11 @@
 /**
- * Place order: transaction-safe reserve (stockReserved += qty), create Order CREATED, then commit for COD/Paymob.
+ * Place order: transaction-safe reserve against the resolved partner's PartnerInventory row
+ * (stockReserved += qty; stock lives only in PartnerInventory, backlog 9.9), create Order
+ * CREATED, then commit for COD/Paymob.
  */
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { InsufficientStockError } from "@/lib/services/stock";
 import {
   commitPartnerReservation,
   findFulfillablePartnerForGovernorate,
@@ -361,7 +362,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       status: result.status as "CREATED" | "CONFIRMED",
     };
   } catch (e) {
-    if (e instanceof InsufficientStockError || e instanceof InsufficientPartnerStockError) {
+    if (e instanceof InsufficientPartnerStockError) {
       return {
         success: false,
         error: `Insufficient stock for item`,
