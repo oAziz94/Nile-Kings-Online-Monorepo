@@ -34,8 +34,13 @@ export function OrderHeaderActions({
   updating,
 }: OrderHeaderActionsProps) {
   const canCancel = status !== "CANCELLED" && status !== "DELIVERED";
+  // No wrapping element here — the partner page's original markup had exactly one
+  // "flex flex-wrap items-center gap-2" div holding the back link AND these buttons as
+  // flat siblings; the caller supplies that div (it also holds the back link, which this
+  // component doesn't know about), so this returns a fragment to keep that DOM identical
+  // instead of nesting a second div inside it.
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <>
       <Button
         type="button"
         variant="outline"
@@ -56,7 +61,7 @@ export function OrderHeaderActions({
           {updating ? "جاري…" : next.label}
         </Button>
       )}
-    </div>
+    </>
   );
 }
 
