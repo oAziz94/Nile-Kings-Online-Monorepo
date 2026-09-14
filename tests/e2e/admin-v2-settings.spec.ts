@@ -34,6 +34,9 @@ const ADMIN_PASSWORD = "AdminSettingsTest123!";
 const uniqueSuffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
 test.describe.configure({ mode: "serial" });
+// Backlog 9.0d: a cold Turbopack server's first compile can push a save/PATCH well past
+// Playwright's 30s default; 60s is this suite's floor.
+test.setTimeout(60_000);
 
 let adminUserId: string;
 let fixturePartnerId: string;

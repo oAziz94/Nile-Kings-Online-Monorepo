@@ -15,6 +15,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: [["html", { open: "never" }]],
+  // Backlog 9.0d — warms the admin/partner/storefront entry routes once, right after the dev
+  // server comes up, so the first real spec to hit each of them isn't the one that pays for
+  // its cold Turbopack compile. See tests/e2e/global-setup.ts.
+  globalSetup: "./tests/e2e/global-setup.ts",
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "on-first-retry",
