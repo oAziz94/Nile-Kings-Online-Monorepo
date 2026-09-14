@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiUnauthorized, apiForbidden } from "@/lib/api/response";
 import { getAssetUsage, summarizeUsage, type AssetUsageEntry } from "@/lib/media/usage";
+import { getMediaCounts } from "@/lib/media/counts";
 import { getSiteSetting } from "@/lib/settings";
 
 /**
@@ -129,8 +130,9 @@ export async function GET(req: NextRequest) {
   }
 
   const lastSyncAt = await getSiteSetting("mediaLastSyncAt");
-  const missingCount = await prisma.mediaAsset.count({ where: { ...where, deletedAt: { not: null } } });
-  const unusedCount = await countUnused(where);
+  // Backlog 9.10 — 60s in-memory cache (see lib/media/counts.ts); the same scan this route
+  // used to run inline on every request.
+  const { missing: missingCount, unused: unusedCount } = await getMediaCounts(where);
 
   return apiSuccess({
     counts: { missing: missingCount, unused: unusedCount },
@@ -153,29 +155,6 @@ export async function GET(req: NextRequest) {
     nextCursor: exhausted ? null : cursorId,
     lastSyncAt,
   });
-}
-
-/** Bounded scan for the "غير مستخدمة (N)" filter chip count — same MAX_SCAN cap as the page
- * read above; at catalog scale (a few hundred assets) this covers the whole table. */
-async function countUnused(where: Prisma.MediaAssetWhereInput): Promise<number> {
-  let unused = 0;
-  let cursorId: string | undefined;
-  let scanned = 0;
-  while (scanned < MAX_SCAN) {
-    const batch: AssetRow[] = await prisma.mediaAsset.findMany({
-      where: { ...where, deletedAt: null },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: SCAN_BATCH,
-      ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
-    });
-    if (batch.length === 0) break;
-    scanned += batch.length;
-    cursorId = batch[batch.length - 1].id;
-    const usageMap = await getAssetUsage(batch.map((a) => ({ id: a.id, url: a.url, publicId: a.publicId })));
-    unused += batch.filter((a) => (usageMap.get(a.id) ?? []).length === 0).length;
-    if (batch.length < SCAN_BATCH) break;
-  }
-  return unused;
 }
 
 /** Cloudinary transformation for the grid thumbnail (spec: `c_fill,w_320,h_300,q_auto,f_auto`). */
