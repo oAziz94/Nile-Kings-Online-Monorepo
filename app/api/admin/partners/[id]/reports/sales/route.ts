@@ -24,5 +24,5 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
   const partner = await prisma.partner.findUnique({ where: { id }, select: { id: true } });
   if (!partner) return apiNotFound("الشريك غير موجود");
 
-  return handleSalesReport(req, id);
+  return handleSalesReport(req, { partnerId: id });
 }

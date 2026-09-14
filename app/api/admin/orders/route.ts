@@ -5,7 +5,6 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/api/response";
 import { placeOrder } from "@/lib/checkout/place-order";
 import { assignOrderToGovernorate } from "@/lib/rerouting/assign";
-import { invalidateAnalyticsCache } from "@/lib/cache/analytics";
 import {
   parseOrderLineItems,
   parsePaymentMethod,
@@ -215,8 +214,6 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error("[admin/orders] Governorate rerouting failed:", e);
   }
-
-  await invalidateAnalyticsCache();
 
   return apiSuccess(
     { orderId: result.orderId, status: result.status },

@@ -20,6 +20,7 @@ import {
   attachPreviousAndDelta,
   computeDelta,
   formatComparisonLabel,
+  isNetworkScope,
   periodToDateRange,
   resolvePeriod,
   type Delta,
@@ -28,6 +29,7 @@ import {
   type ReportAction,
   type ReportBreakdownPage,
   type ReportHeadline,
+  type ReportScope,
 } from "./partner-reports";
 import { formatDateEn } from "@/lib/format-en-numbers";
 
@@ -78,7 +80,20 @@ export type CollectedByMethodRow = {
 };
 export type CollectedByWeekPoint = { weekStart: string; amountPiastres: number };
 
+/** Backlog 9.6 (a) — network scope's first breakdown key: one row per partner, each computed
+ * by calling this exact module's own partner-scoped `getPartnerMoneyReport` (B3: no separate
+ * balance/margin arithmetic) so "owed per partner" is guaranteed to equal that partner's own
+ * money report balance tile. `null` for the partner-scoped form. */
+export type MoneyPartnerBreakdownRow = {
+  key: string;
+  label: string;
+  owedPiastres: number;
+  paidAllTimePiastres: number;
+  receivedAllTimePiastres: number;
+};
+
 export type MoneyReportBreakdowns = {
+  byPartner: ReportBreakdownPage<MoneyPartnerBreakdownRow> | null;
   receipts: ReportBreakdownPage<ReceiptRow>;
   payments: ReportBreakdownPage<PaymentRow>;
   collectedByMethod: ReportBreakdownPage<CollectedByMethodRow>;
@@ -183,6 +198,101 @@ export async function getPartnerStatementRows(
 }
 
 export async function getPartnerMoneyReport(
+  scope: ReportScope,
+  input: { preset: MoneyReportPreset; from?: string; to?: string; page?: number }
+): Promise<MoneyReportResponse> {
+  if (isNetworkScope(scope)) {
+    return getNetworkMoneyReport(input);
+  }
+  return getPartnerMoneyReportForOne(scope.partnerId, input);
+}
+
+/**
+ * Backlog 9.6 (a) — every active partner's own money report, summed for the headline and
+ * used verbatim as the `byPartner` breakdown's rows (B3: no separate balance arithmetic —
+ * `computeBalance` is only ever called inside `getPartnerMoneyReportForOne`). The full
+ * receipts/payments/collectedByMethod ledgers and the weekly chart stay partner-scoped
+ * concepts (per-partner statement export already covers the audit trail) — this task's
+ * explicit acceptance is the headline sums and the per-partner owed/paid/received rows.
+ */
+async function getNetworkMoneyReport(
+  input: { preset: MoneyReportPreset; from?: string; to?: string; page?: number }
+): Promise<MoneyReportResponse> {
+  const period = resolvePeriod(input);
+  const partners = await prisma.partner.findMany({ where: { isActive: true }, select: { id: true, name: true } });
+  const perPartnerReports = await Promise.all(
+    partners.map(async (p) => ({ partner: p, report: await getPartnerMoneyReportForOne(p.id, input) }))
+  );
+
+  const byKey = (report: MoneyReportResponse) => Object.fromEntries(report.headline.map((h) => [h.key, h]));
+  const sums = {
+    receivedAllTime: 0,
+    paidAllTime: 0,
+    balance: 0,
+    receivedInPeriod: 0,
+    previousReceivedInPeriod: 0,
+    collectedInPeriod: 0,
+    previousCollectedInPeriod: 0,
+    codPendingNow: 0,
+    marginEstimate: 0,
+  };
+  for (const { report } of perPartnerReports) {
+    const h = byKey(report);
+    sums.receivedAllTime += h.receivedAllTime.value;
+    sums.paidAllTime += h.paidAllTime.value;
+    sums.balance += h.balance.value;
+    sums.receivedInPeriod += h.receivedInPeriod.value;
+    sums.previousReceivedInPeriod += h.receivedInPeriod.previous;
+    sums.collectedInPeriod += h.collectedInPeriod.value;
+    sums.previousCollectedInPeriod += h.collectedInPeriod.previous;
+    sums.codPendingNow += h.codPendingNow.value;
+    sums.marginEstimate += h.marginEstimate.value;
+  }
+
+  const headline: ReportHeadline[] = [
+    { key: "receivedAllTime", label: "قيمة البضاعة المستلمة", value: sums.receivedAllTime, previous: sums.receivedAllTime, delta: computeDelta(sums.receivedAllTime, sums.receivedAllTime), unit: "piastres", hint: "منذ البداية — رصيد تراكمي لكل الشبكة", noComparison: true },
+    { key: "paidAllTime", label: "دفعات الشبكة وأقساطها", value: sums.paidAllTime, previous: sums.paidAllTime, delta: computeDelta(sums.paidAllTime, sums.paidAllTime), unit: "piastres", hint: "منذ البداية — رصيد تراكمي لكل الشبكة", noComparison: true },
+    { key: "balance", label: "المتبقي على الشبكة", value: sums.balance, previous: sums.balance, delta: computeDelta(sums.balance, sums.balance), unit: "piastres", hint: "مجموع رصيد كل شريك — رصيد تراكمي بلا مقارنة", noComparison: true },
+    { key: "receivedInPeriod", label: "مستلم خلال الفترة", value: sums.receivedInPeriod, previous: sums.previousReceivedInPeriod, delta: computeDelta(sums.receivedInPeriod, sums.previousReceivedInPeriod), unit: "piastres", hint: "من إيصالات المصنع لكل الشبكة" },
+    { key: "collectedInPeriod", label: "محصّل خلال الفترة", value: sums.collectedInPeriod, previous: sums.previousCollectedInPeriod, delta: computeDelta(sums.collectedInPeriod, sums.previousCollectedInPeriod), unit: "piastres", hint: "طلبات تم تسليمها فقط" },
+    { key: "codPendingNow", label: "بانتظار التحصيل", value: sums.codPendingNow, previous: sums.codPendingNow, delta: computeDelta(sums.codPendingNow, sums.codPendingNow), unit: "piastres", hint: "دفع عند الاستلام، مشحون ولم يُسلَّم بعد — رصيد لحظي", noComparison: true },
+    { key: "marginEstimate", label: "الهامش التقديري", value: sums.marginEstimate, previous: sums.marginEstimate, delta: computeDelta(sums.marginEstimate, sums.marginEstimate), unit: "piastres", hint: "مجموع هامش كل شريك خلال الفترة", noComparison: true },
+  ];
+
+  const byPartner: MoneyPartnerBreakdownRow[] = perPartnerReports
+    .map(({ partner, report }) => {
+      const h = byKey(report);
+      return {
+        key: partner.id,
+        label: partner.name,
+        owedPiastres: h.balance.value,
+        paidAllTimePiastres: h.paidAllTime.value,
+        receivedAllTimePiastres: h.receivedAllTime.value,
+      };
+    })
+    .sort((a, b) => b.owedPiastres - a.owedPiastres);
+
+  const emptyPage = <T,>(): ReportBreakdownPage<T> => ({ rows: [], page: 1, pageSize: PAGE_SIZE, total: 0 });
+
+  return {
+    period,
+    comparisonLabel: formatComparisonLabel(period, (iso) => formatDateEn(iso)),
+    headline,
+    series: [],
+    breakdowns: {
+      byPartner: { rows: byPartner, page: 1, pageSize: byPartner.length || 1, total: byPartner.length },
+      receipts: emptyPage(),
+      payments: emptyPage(),
+      collectedByMethod: emptyPage(),
+    },
+    actions: [],
+    costRatePct: 0,
+    nextInstallment: null,
+    collectedByWeek: [],
+  };
+}
+
+async function getPartnerMoneyReportForOne(
   partnerId: string,
   input: { preset: MoneyReportPreset; from?: string; to?: string; page?: number }
 ): Promise<MoneyReportResponse> {
@@ -386,6 +496,7 @@ export async function getPartnerMoneyReport(
     headline,
     series: [],
     breakdowns: {
+      byPartner: null,
       receipts: paginate(receiptRows),
       payments: paginate(paymentRows),
       collectedByMethod: paginate(methodRows),

@@ -15,6 +15,7 @@ import {
   attachPreviousAndDelta,
   computeDelta,
   formatComparisonLabel,
+  isNetworkScope,
   median,
   periodToDateRange,
   resolvePeriod,
@@ -23,6 +24,7 @@ import {
   type ReportAction,
   type ReportBreakdownPage,
   type ReportHeadline,
+  type ReportScope,
   type SalesReportPreset,
 } from "./partner-reports";
 import { formatDateEn } from "@/lib/format-en-numbers";
@@ -33,6 +35,11 @@ export type FulfilmentOrderInput = {
   updatedAt: Date;
   status: string;
   cancellationReason: string | null;
+};
+
+type FulfilmentOrderRow = FulfilmentOrderInput & {
+  assignedPartnerId: string | null;
+  assignedPartner: { confirmSlaHours: number; shipSlaHours: number } | null;
 };
 
 export type FulfilmentAuditRow = { orderId: string; statusTo: string | null; createdAt: Date };
@@ -104,10 +111,10 @@ export type SlaHours = { confirmSlaHours: number; shipSlaHours: number };
  * `sla` is either one partner's hours (the partner report) or a resolver from order to that
  * order's partner's hours (the network-wide on-time rate, 9.2) — one loop for both scopes (B3).
  */
-export function computeFulfilmentStats(
-  orders: FulfilmentOrderInput[],
+export function computeFulfilmentStats<T extends FulfilmentOrderInput>(
+  orders: T[],
   timings: OrderTiming[],
-  sla: SlaHours | ((order: FulfilmentOrderInput) => SlaHours),
+  sla: SlaHours | ((order: T) => SlaHours),
   now: Date
 ): FulfilmentStats {
   const slaFor = typeof sla === "function" ? sla : () => sla;
@@ -157,7 +164,19 @@ export type CancellationReasonRow = {
   countDelta: Delta;
 };
 
+/** Backlog 9.6 (a) — network scope's first breakdown key: one row per partner. `null` for
+ * the partner-scoped form. */
+export type FulfilmentPartnerBreakdownRow = {
+  key: string;
+  label: string;
+  totalOrders: number;
+  overdueRatePct: number;
+  cancellationRatePct: number;
+  deliveredRatePct: number;
+};
+
 export type FulfilmentReportBreakdowns = {
+  byPartner: ReportBreakdownPage<FulfilmentPartnerBreakdownRow> | null;
   slowest: ReportBreakdownPage<SlowestOrderRow>;
   cancellationReason: ReportBreakdownPage<CancellationReasonRow>;
 };
@@ -168,10 +187,21 @@ export type FulfilmentReportResponse = PartnerReportResponse<FulfilmentReportBre
 
 const PAGE_SIZE = 25;
 
-async function loadOrders(partnerId: string, range: { from: Date; to: Date }): Promise<FulfilmentOrderInput[]> {
+async function loadOrders(scope: ReportScope, range: { from: Date; to: Date }): Promise<FulfilmentOrderRow[]> {
+  const where = isNetworkScope(scope)
+    ? { assignedPartnerId: { not: null } }
+    : { assignedPartnerId: scope.partnerId };
   return prisma.order.findMany({
-    where: { assignedPartnerId: partnerId, createdAt: { gte: range.from, lte: range.to } },
-    select: { id: true, createdAt: true, updatedAt: true, status: true, cancellationReason: true },
+    where: { ...where, createdAt: { gte: range.from, lte: range.to } },
+    select: {
+      id: true,
+      createdAt: true,
+      updatedAt: true,
+      status: true,
+      cancellationReason: true,
+      assignedPartnerId: true,
+      assignedPartner: { select: { confirmSlaHours: true, shipSlaHours: true } },
+    },
   });
 }
 
@@ -219,17 +249,20 @@ async function loadAuditRows(orderIds: string[]): Promise<FulfilmentAuditRow[]> 
 }
 
 export async function getPartnerFulfilmentReport(
-  partnerId: string,
+  scope: ReportScope,
   input: { preset: SalesReportPreset; from?: string; to?: string; page?: number }
 ): Promise<FulfilmentReportResponse> {
   const period = resolvePeriod(input);
   const page = Math.max(1, input.page ?? 1);
   const now = new Date();
 
+  const network = isNetworkScope(scope);
   const [partner, currentOrders, previousOrders] = await Promise.all([
-    prisma.partner.findUniqueOrThrow({ where: { id: partnerId }, select: { confirmSlaHours: true, shipSlaHours: true } }),
-    loadOrders(partnerId, periodToDateRange(period.current)),
-    loadOrders(partnerId, periodToDateRange(period.previous)),
+    network
+      ? Promise.resolve(null)
+      : prisma.partner.findUniqueOrThrow({ where: { id: scope.partnerId }, select: { confirmSlaHours: true, shipSlaHours: true } }),
+    loadOrders(scope, periodToDateRange(period.current)),
+    loadOrders(scope, periodToDateRange(period.previous)),
   ]);
 
   const [currentAuditRows, previousAuditRows] = await Promise.all([
@@ -239,7 +272,11 @@ export async function getPartnerFulfilmentReport(
 
   const currentTimings = computeOrderTimings(currentOrders, currentAuditRows);
   const previousTimings = computeOrderTimings(previousOrders, previousAuditRows);
-  const sla = { confirmSlaHours: partner.confirmSlaHours, shipSlaHours: partner.shipSlaHours };
+  // Network scope: each order is judged against its own assigned partner's SLA (the same
+  // per-order resolver `getNetworkOnTimeRate` uses, B3); partner scope keeps one fixed SLA.
+  const sla: SlaHours | ((o: FulfilmentOrderRow) => SlaHours) = partner
+    ? { confirmSlaHours: partner.confirmSlaHours, shipSlaHours: partner.shipSlaHours }
+    : (o) => ({ confirmSlaHours: o.assignedPartner!.confirmSlaHours, shipSlaHours: o.assignedPartner!.shipSlaHours });
   const current = computeFulfilmentStats(currentOrders, currentTimings, sla, now);
   const previous = computeFulfilmentStats(previousOrders, previousTimings, sla, now);
 
@@ -340,7 +377,39 @@ export async function getPartnerFulfilmentReport(
 
   const actions: ReportAction[] = [];
   if (current.overdueRate > 0) {
-    actions.push({ label: `${Math.round(current.overdueRate)}% من الطلبات المفتوحة متأخرة عن SLA`, href: "/partner/orders?overdue=1" });
+    actions.push({
+      label: `${Math.round(current.overdueRate)}% من الطلبات المفتوحة متأخرة عن SLA`,
+      href: network ? "/admin/orders?overdue=1" : "/partner/orders?overdue=1",
+    });
+  }
+
+  // --- byPartner (backlog 9.6 (a)) — network scope only, one row per partner using the same
+  // `computeFulfilmentStats` slice-per-partner (B3: no separate stats function). ---
+  let byPartner: FulfilmentPartnerBreakdownRow[] | null = null;
+  if (network) {
+    const partnerIds = Array.from(new Set(currentOrders.map((o) => o.assignedPartnerId).filter((id): id is string => id !== null)));
+    const partners = partnerIds.length
+      ? await prisma.partner.findMany({ where: { id: { in: partnerIds } }, select: { id: true, name: true } })
+      : [];
+    const nameById = new Map(partners.map((p) => [p.id, p.name]));
+    byPartner = partnerIds
+      .map((partnerId) => {
+        const ordersForPartner = currentOrders.filter((o) => o.assignedPartnerId === partnerId);
+        const timingsForPartner = currentTimings.filter((t) =>
+          ordersForPartner.some((o) => o.id === t.orderId)
+        );
+        const slaForPartner = { confirmSlaHours: ordersForPartner[0].assignedPartner!.confirmSlaHours, shipSlaHours: ordersForPartner[0].assignedPartner!.shipSlaHours };
+        const stats = computeFulfilmentStats(ordersForPartner, timingsForPartner, slaForPartner, now);
+        return {
+          key: partnerId,
+          label: nameById.get(partnerId) ?? partnerId,
+          totalOrders: stats.totalOrders,
+          overdueRatePct: stats.overdueRate,
+          cancellationRatePct: stats.cancellationRate,
+          deliveredRatePct: stats.deliveredRate,
+        };
+      })
+      .sort((a, b) => b.totalOrders - a.totalOrders);
   }
 
   return {
@@ -348,7 +417,7 @@ export async function getPartnerFulfilmentReport(
     comparisonLabel: formatComparisonLabel(period, (iso) => formatDateEn(iso)),
     headline,
     series: [],
-    breakdowns: { slowest: paginate(slowestAll), cancellationReason: paginate(reasonRows) },
+    breakdowns: { byPartner: byPartner ? paginate(byPartner) : null, slowest: paginate(slowestAll), cancellationReason: paginate(reasonRows) },
     actions,
     noAuditFootnote:
       current.noAuditCount > 0 ? `${current.noAuditCount} طلبًا بلا سجل تدقيق — مستثناة من حساب الوقت` : null,

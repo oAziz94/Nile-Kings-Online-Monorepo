@@ -36,6 +36,7 @@ const PRESETS: { id: SalesReportPreset; label: string }[] = [
 ];
 
 const BREAKDOWN_TABS: { id: keyof SalesReportResponse["breakdowns"]; label: string }[] = [
+  { id: "byPartner", label: "حسب الشريك" },
   { id: "product", label: "حسب المنتج" },
   { id: "category", label: "حسب الفئة" },
   { id: "governorate", label: "حسب المحافظة" },
@@ -60,12 +61,21 @@ async function fetchSalesReport(apiBase: string, params: URLSearchParams): Promi
 export function SalesReportView({
   apiBase = "/api/partner/reports",
   switcher,
+  initialPreset = "30d",
+  initialFrom = "",
+  initialTo = "",
 }: {
   apiBase?: string;
   switcher?: React.ReactNode;
+  /** Backlog 9.6 (d) — `/admin/analytics`'s redirect maps its old `?from&to` into these, so
+   * an old bookmarked date range still lands on the same period. Defaults preserve the
+   * pre-9.6 behaviour for every other caller. */
+  initialPreset?: SalesReportPreset;
+  initialFrom?: string;
+  initialTo?: string;
 }) {
-  const [preset, setPreset] = React.useState<SalesReportPreset>("30d");
-  const [customRange, setCustomRange] = React.useState({ from: "", to: "" });
+  const [preset, setPreset] = React.useState<SalesReportPreset>(initialPreset);
+  const [customRange, setCustomRange] = React.useState({ from: initialFrom, to: initialTo });
   const [activeTab, setActiveTab] = React.useState<keyof SalesReportResponse["breakdowns"]>("product");
   const [page, setPage] = React.useState(1);
 
@@ -150,7 +160,7 @@ export function SalesReportView({
 
             <PanelCard title="التفصيل" noPadding>
               <div className="flex gap-1 overflow-x-auto border-b border-stone-200 px-4 sm:px-5">
-                {BREAKDOWN_TABS.map((t) => (
+                {BREAKDOWN_TABS.filter((t) => t.id !== "byPartner" || data.breakdowns.byPartner).map((t) => (
                   <button
                     key={t.id}
                     type="button"
@@ -168,6 +178,23 @@ export function SalesReportView({
                 ))}
               </div>
               <div className={isFetching ? "opacity-70" : undefined}>
+                {activeTab === "byPartner" && data.breakdowns.byPartner && (
+                  <BreakdownTable
+                    page={data.breakdowns.byPartner}
+                    columns={["الشريك", "الإيراد", "مقارنة بالفترة السابقة", "الطلبات", "نسبة الإلغاء"]}
+                    rowKey={(r) => r.key}
+                    onPageChange={setPage}
+                    renderRow={(r) => (
+                      <>
+                        <TableCell className="font-semibold text-ink">{r.label}</TableCell>
+                        <TableCell dir="ltr" className="font-bold text-ink">{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
+                        <TableCell><DeltaCell current={r.revenuePiastres} previous={r.previousRevenuePiastres} /></TableCell>
+                        <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.orderCount)}</TableCell>
+                        <TableCell dir="ltr" className="text-ink-soft">{r.cancellationRatePct.toFixed(1)}%</TableCell>
+                      </>
+                    )}
+                  />
+                )}
                 {activeTab === "product" && (
                   <BreakdownTable
                     page={data.breakdowns.product}

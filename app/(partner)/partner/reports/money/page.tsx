@@ -209,6 +209,25 @@ export function MoneyReportView({
                   </div>
                 </div>
 
+                {data.breakdowns.byPartner && (
+                  <PanelCard title="حسب الشريك" noPadding>
+                    <BreakdownTable
+                      page={data.breakdowns.byPartner}
+                      columns={["الشريك", "المتبقي عليه", "دفعاته وأقساطه", "المستلم منذ البداية"]}
+                      rowKey={(r) => r.key}
+                      onPageChange={() => {}}
+                      renderRow={(r) => (
+                        <>
+                          <TableCell className="font-semibold text-ink">{r.label}</TableCell>
+                          <TableCell dir="ltr" className="font-bold text-danger-text">{egp(r.owedPiastres)}</TableCell>
+                          <TableCell dir="ltr" className="text-ink-soft">{egp(r.paidAllTimePiastres)}</TableCell>
+                          <TableCell dir="ltr" className="text-ink-soft">{egp(r.receivedAllTimePiastres)}</TableCell>
+                        </>
+                      )}
+                    />
+                  </PanelCard>
+                )}
+
                 <div className="grid gap-4 lg:grid-cols-2">
                   <PanelCard title="استلامات المصنع" noPadding>
                     <BreakdownTable

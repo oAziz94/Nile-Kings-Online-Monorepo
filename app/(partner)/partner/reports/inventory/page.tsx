@@ -142,6 +142,26 @@ export function InventoryReportView({
               higherIsBetter={{ deadStockCount: false, stockOutSkus: false, stockOutDays: false }}
             />
 
+            {data.breakdowns.byPartner && (
+              <PanelCard title="حسب الشريك" noPadding>
+                <BreakdownTable
+                  page={data.breakdowns.byPartner}
+                  columns={["الشريك", "متوسط التغطية (يوم)", "راكدة", "نافدة", "قابل للبيع"]}
+                  rowKey={(r) => r.key}
+                  onPageChange={() => {}}
+                  renderRow={(r) => (
+                    <>
+                      <TableCell className="font-semibold text-ink">{r.label}</TableCell>
+                      <TableCell dir="ltr" className="text-ink">{r.medianCoverDays === null ? "∞" : formatNumberEn(Math.round(r.medianCoverDays))}</TableCell>
+                      <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.deadStockSkus)}</TableCell>
+                      <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.outOfStockSkus)}</TableCell>
+                      <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.sellableUnits)}</TableCell>
+                    </>
+                  )}
+                />
+              </PanelCard>
+            )}
+
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
               <PanelCard title="حسب الصنف" description="مرتب حسب الأقرب للنفاد" noPadding>
                 <div className="flex flex-wrap gap-1.5 border-b border-stone-200 px-4 py-2.5 sm:px-5">
@@ -168,11 +188,16 @@ export function InventoryReportView({
                 <div className={isFetching ? "opacity-70" : undefined}>
                   <BreakdownTable
                     page={data.breakdowns.sku}
-                    columns={["المنتج", "المقاس · اللون", "قابل للبيع", "يبيع/أسبوع", "تغطية (يوم)", "الحالة", "مقترح الطلب"]}
-                    rowKey={(r) => r.variantId}
+                    columns={
+                      data.breakdowns.byPartner
+                        ? ["الشريك", "المنتج", "المقاس · اللون", "قابل للبيع", "يبيع/أسبوع", "تغطية (يوم)", "الحالة", "مقترح الطلب"]
+                        : ["المنتج", "المقاس · اللون", "قابل للبيع", "يبيع/أسبوع", "تغطية (يوم)", "الحالة", "مقترح الطلب"]
+                    }
+                    rowKey={(r) => (r.partnerId ? `${r.partnerId}:${r.variantId}` : r.variantId)}
                     onPageChange={setPage}
                     renderRow={(r) => (
                       <>
+                        {data.breakdowns.byPartner && <TableCell className="text-ink-soft">{r.partnerName}</TableCell>}
                         <TableCell className="font-semibold text-ink">
                           {r.productName}
                           <p className="font-mono text-[11px] font-normal text-ink-soft" dir="ltr">{r.sku}</p>

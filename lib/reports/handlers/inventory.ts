@@ -7,17 +7,19 @@ import {
   getPartnerReorderRows,
   type InventoryReportFilter,
 } from "@/lib/analytics/partner-inventory-report";
-import type { InventoryReportPreset } from "@/lib/analytics/partner-reports";
+import { isNetworkScope, type ReportScope, type InventoryReportPreset } from "@/lib/analytics/partner-reports";
 
 /**
- * Shared body of `GET /api/partner/reports/inventory` and
- * `GET /api/admin/partners/[id]/reports/inventory` (backlog 9.4b (a), B3). `?export=reorder`
- * streams the reorder list as a CSV in the factory intake format instead of the JSON report.
+ * Shared body of `GET /api/partner/reports/inventory`, `GET /api/admin/partners/[id]/reports/inventory`
+ * and `GET /api/admin/reports/inventory` (backlog 9.4b (a), 9.6 (a)/(b), B3). `?export=reorder`
+ * streams the reorder list as a CSV in the factory intake format instead of the JSON report —
+ * partner-scoped only (a network-wide reorder list spans partners with different lowStockThreshold
+ * settings and factory relationships, out of this task's scope; the network route answers 400).
  */
 const PRESETS: InventoryReportPreset[] = ["7d", "30d", "90d", "custom"];
 const FILTERS: InventoryReportFilter[] = ["needsReorder", "dead", "all"];
 
-export async function handleInventoryReport(req: NextRequest, partnerId: string): Promise<Response> {
+export async function handleInventoryReport(req: NextRequest, scope: ReportScope): Promise<Response> {
   const { searchParams } = new URL(req.url);
   const presetParam = searchParams.get("preset") ?? "30d";
   if (!PRESETS.includes(presetParam as InventoryReportPreset)) {
@@ -34,9 +36,12 @@ export async function handleInventoryReport(req: NextRequest, partnerId: string)
   const filter = filterParam as InventoryReportFilter;
 
   if (searchParams.get("export") === "reorder") {
+    if (isNetworkScope(scope)) {
+      return apiBadRequest("تصدير إعادة الطلب غير متاح على مستوى الشبكة — افتح ملف الشريك");
+    }
     const [allRows, partner] = await Promise.all([
-      getPartnerReorderRows(partnerId, { preset, from, to }),
-      prisma.partner.findUniqueOrThrow({ where: { id: partnerId }, select: { lowStockThreshold: true } }),
+      getPartnerReorderRows(scope.partnerId, { preset, from, to }),
+      prisma.partner.findUniqueOrThrow({ where: { id: scope.partnerId }, select: { lowStockThreshold: true } }),
     ]);
     const csv = buildReorderCsv(allRows, partner.lowStockThreshold);
     const stamp = new Date().toISOString().slice(0, 10);
@@ -49,6 +54,6 @@ export async function handleInventoryReport(req: NextRequest, partnerId: string)
     });
   }
 
-  const report = await getPartnerInventoryReport(partnerId, { preset, from, to, page, filter });
+  const report = await getPartnerInventoryReport(scope, { preset, from, to, page, filter });
   return apiSuccess(report);
 }

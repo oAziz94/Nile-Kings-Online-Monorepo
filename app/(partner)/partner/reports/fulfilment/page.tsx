@@ -33,6 +33,7 @@ const PRESETS: { id: SalesReportPreset; label: string }[] = [
 ];
 
 const BREAKDOWN_TABS: { id: keyof FulfilmentReportResponse["breakdowns"]; label: string }[] = [
+  { id: "byPartner", label: "حسب الشريك" },
   { id: "slowest", label: "أبطأ الطلبات" },
   { id: "cancellationReason", label: "أسباب الإلغاء" },
 ];
@@ -164,7 +165,7 @@ export function FulfilmentReportView({
 
             <PanelCard title="التفصيل" noPadding>
               <div className="flex gap-1 overflow-x-auto border-b border-stone-200 px-4 sm:px-5">
-                {BREAKDOWN_TABS.map((t) => (
+                {BREAKDOWN_TABS.filter((t) => t.id !== "byPartner" || data.breakdowns.byPartner).map((t) => (
                   <button
                     key={t.id}
                     type="button"
@@ -182,6 +183,23 @@ export function FulfilmentReportView({
                 ))}
               </div>
               <div className={isFetching ? "opacity-70" : undefined}>
+                {activeTab === "byPartner" && data.breakdowns.byPartner && (
+                  <BreakdownTable
+                    page={data.breakdowns.byPartner}
+                    columns={["الشريك", "الطلبات", "نسبة المتأخر", "نسبة الإلغاء", "نسبة التسليم"]}
+                    rowKey={(r) => r.key}
+                    onPageChange={setPage}
+                    renderRow={(r) => (
+                      <>
+                        <TableCell className="font-semibold text-ink">{r.label}</TableCell>
+                        <TableCell dir="ltr" className="text-ink">{formatNumberEn(r.totalOrders)}</TableCell>
+                        <TableCell dir="ltr" className="text-ink-soft">{r.overdueRatePct.toFixed(1)}%</TableCell>
+                        <TableCell dir="ltr" className="text-ink-soft">{r.cancellationRatePct.toFixed(1)}%</TableCell>
+                        <TableCell dir="ltr" className="text-ink-soft">{r.deliveredRatePct.toFixed(1)}%</TableCell>
+                      </>
+                    )}
+                  />
+                )}
                 {activeTab === "slowest" && (
                   <BreakdownTable
                     page={data.breakdowns.slowest}

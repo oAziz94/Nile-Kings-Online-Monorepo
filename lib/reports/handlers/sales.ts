@@ -1,17 +1,18 @@
 import { NextRequest } from "next/server";
 import { apiBadRequest, apiSuccess } from "@/lib/api/response";
 import { getPartnerSalesFullBreakdown, getPartnerSalesReport } from "@/lib/analytics/partner-sales-report";
-import type { SalesReportPreset } from "@/lib/analytics/partner-reports";
+import type { ReportScope, SalesReportPreset } from "@/lib/analytics/partner-reports";
 
 /**
  * Shared body of `GET /api/partner/reports/sales` and `GET /api/admin/partners/[id]/reports/sales`
- * (backlog 9.4b (a), B3) — the two routes differ only in how `partnerId` is resolved
- * (`requirePartner()` vs `requireAdmin()` + the `[id]` param), never in this logic. Lifted
- * verbatim from the pre-9.4b `app/api/partner/reports/sales/route.ts` body.
+ * / `GET /api/admin/reports/sales` (backlog 9.4b (a), 9.6 (a)/(b), B3) — the routes differ only
+ * in how the `ReportScope` is resolved (`requirePartner()` vs `requireAdmin()` + the `[id]`
+ * param vs `requireAdmin()` + `{ network: true }`), never in this logic. Lifted verbatim from
+ * the pre-9.4b `app/api/partner/reports/sales/route.ts` body.
  */
 
 const PRESETS: SalesReportPreset[] = ["today", "7d", "30d", "month", "lastMonth", "custom"];
-const BREAKDOWN_KEYS = ["product", "category", "governorate", "payment", "day"] as const;
+const BREAKDOWN_KEYS = ["byPartner", "product", "category", "governorate", "payment", "day"] as const;
 
 function escapeCsv(s: string | number): string {
   const str = String(s);
@@ -19,6 +20,15 @@ function escapeCsv(s: string | number): string {
 }
 
 function rowsToCsv(key: string, rows: unknown[]): string {
+  if (key === "byPartner") {
+    const lines = ["Partner,Revenue (piastres),Previous Revenue (piastres),Orders,Cancellation Rate %"];
+    for (const r of rows as { label: string; revenuePiastres: number; previousRevenuePiastres: number; orderCount: number; cancellationRatePct: number }[]) {
+      lines.push(
+        [r.label, r.revenuePiastres, r.previousRevenuePiastres, r.orderCount, r.cancellationRatePct.toFixed(1)].map(escapeCsv).join(",")
+      );
+    }
+    return lines.join("\n");
+  }
   if (key === "product") {
     const lines = ["Product,Units,Revenue (piastres),Previous Revenue (piastres),Revenue Share %"];
     for (const r of rows as { productName: string; units: number; revenuePiastres: number; previousRevenuePiastres: number; revenueSharePct: number }[]) {
@@ -50,7 +60,7 @@ function rowsToCsv(key: string, rows: unknown[]): string {
   return lines.join("\n");
 }
 
-export async function handleSalesReport(req: NextRequest, partnerId: string): Promise<Response> {
+export async function handleSalesReport(req: NextRequest, scope: ReportScope): Promise<Response> {
   const { searchParams } = new URL(req.url);
   const presetParam = searchParams.get("preset") ?? "30d";
   if (!PRESETS.includes(presetParam as SalesReportPreset)) {
@@ -67,7 +77,7 @@ export async function handleSalesReport(req: NextRequest, partnerId: string): Pr
     if (!breakdown || !BREAKDOWN_KEYS.includes(breakdown as (typeof BREAKDOWN_KEYS)[number])) {
       return apiBadRequest(`breakdown يجب أن يكون أحد: ${BREAKDOWN_KEYS.join(", ")}`);
     }
-    const rows = await getPartnerSalesFullBreakdown(partnerId, { preset, from, to }, breakdown as (typeof BREAKDOWN_KEYS)[number]);
+    const rows = await getPartnerSalesFullBreakdown(scope, { preset, from, to }, breakdown as (typeof BREAKDOWN_KEYS)[number]);
     const csv = rowsToCsv(breakdown, rows);
     const stamp = new Date().toISOString().slice(0, 10);
     return new Response(`﻿${csv}`, {
@@ -79,6 +89,6 @@ export async function handleSalesReport(req: NextRequest, partnerId: string): Pr
     });
   }
 
-  const report = await getPartnerSalesReport(partnerId, { preset, from, to, page });
+  const report = await getPartnerSalesReport(scope, { preset, from, to, page });
   return apiSuccess(report);
 }

@@ -11,7 +11,7 @@ import { handleFulfilmentReport } from "@/lib/reports/handlers/fulfilment";
 export async function GET(req: NextRequest) {
   try {
     const user = await requirePartner();
-    return await handleFulfilmentReport(req, user.partnerId);
+    return await handleFulfilmentReport(req, { partnerId: user.partnerId });
   } catch (error: unknown) {
     const err = error as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
