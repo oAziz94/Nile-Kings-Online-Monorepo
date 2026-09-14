@@ -176,6 +176,15 @@ test("desktop nav shows the canvas's sections/order/hrefs, and the ticket badge 
   await expect(storeLink).toBeVisible();
   await expect(storeLink).toHaveAttribute("href", "/");
   await expect(storeLink).toHaveAttribute("aria-label", "المتجر");
+  // …and it keeps that name once the sidebar collapses to icons (9.10 verifier's required fix).
+  await page.getByRole("button", { name: "طيّ القائمة" }).click();
+  const expandButton = page.getByRole("button", { name: "فتح القائمة" });
+  await expect(expandButton).toBeVisible();
+  const collapsedStoreLink = nav.getByRole("link", { name: "المتجر" });
+  await expect(collapsedStoreLink).toBeVisible();
+  await expect(collapsedStoreLink).toHaveAttribute("href", "/");
+  await expandButton.click();
+  await expect(page.getByRole("button", { name: "طيّ القائمة" })).toBeVisible();
   await expect(nav.getByRole("button", { name: "تسجيل الخروج" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "الإعدادات", exact: true })).toHaveCount(1);
 

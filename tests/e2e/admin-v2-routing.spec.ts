@@ -183,7 +183,9 @@ test("mode select creates the rule on first change (backlog 9.0c, a real 'no rul
   const created = await res.json();
   wadiRuleId = created.data.id;
 
-  await expect(page.getByText("تم تحديث وضع التوجيه")).toBeVisible({ timeout: 10_000 });
+  // The toast text also lands in the toaster's aria-live announcer, so strict mode sees two
+  // matches — the visible toast is the first.
+  await expect(page.getByText("تم تحديث وضع التوجيه").first()).toBeVisible({ timeout: 10_000 });
 
   const rule = await prisma.reroutingRule.findUnique({ where: { governorate: ROUTING_TEST_GOVERNORATE } });
   expect(rule).toBeTruthy();
