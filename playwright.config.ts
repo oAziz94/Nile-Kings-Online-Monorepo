@@ -27,5 +27,11 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // Backlog 9.8a verifier fix: `POST /api/admin/upload`'s `nile-kings/products/e2e-*` folder
+    // override (used only by `admin-v2-media.spec.ts` to scope/clean up its own Cloudinary
+    // uploads) is refused everywhere unless BOTH this flag and non-production NODE_ENV are
+    // set — never set in `.env`/`.env.redesign`, only here, so the override is unreachable
+    // outside a Playwright-started dev server.
+    env: { ALLOW_TEST_UPLOAD_FOLDER: "1" },
   },
 });

@@ -46,6 +46,12 @@ export function loadRedesignTestEnv(root: string = path.resolve(__dirname, "../.
         `Check that .env.redesign exists and defines the redesign branch's DATABASE_URL.`
     );
   }
+
+  // Backlog 9.8a — the same flag `playwright.config.ts`'s `webServer.env` sets for the dev
+  // server process; setting it here too covers this (the test) process for any helper that
+  // reads it directly (e.g. `lib/media/test-upload-folder.ts`'s guard used in a unit test).
+  // Never set in `.env`/`.env.redesign` themselves.
+  process.env.ALLOW_TEST_UPLOAD_FOLDER = "1";
 }
 
 /** Production Neon endpoint id (hostname prefix; the `-pooler` and direct hosts both start with it). */

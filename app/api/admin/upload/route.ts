@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiInternal } from "@/lib/api/response";
+import { isE2eUploadFolder, testUploadFolderAllowed } from "@/lib/media/test-upload-folder";
 
 /**
  * POST /api/admin/upload
@@ -50,7 +51,10 @@ export async function POST(req: NextRequest) {
     imageData = body.image.replace(/^data:image\/\w+;base64,/, "");
     if (body.contentType) contentType = body.contentType;
     if (body.folder === "proofs" || body.folder === "routed-proofs") folderOverride = "nile-kings/routed-proofs";
-    else if (typeof body.folder === "string" && /^nile-kings\/products\/e2e-[\w-]+$/.test(body.folder)) folderOverride = body.folder;
+    else if (typeof body.folder === "string" && isE2eUploadFolder(body.folder)) {
+      if (!testUploadFolderAllowed()) return apiBadRequest("المجلد غير مسموح");
+      folderOverride = body.folder;
+    }
   } else if (contentTypeHeader.includes("multipart/form-data")) {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -60,7 +64,10 @@ export async function POST(req: NextRequest) {
     if (file.type) contentType = file.type;
     const f = formData.get("folder");
     if (f === "proofs" || f === "routed-proofs") folderOverride = "nile-kings/routed-proofs";
-    else if (typeof f === "string" && /^nile-kings\/products\/e2e-[\w-]+$/.test(f)) folderOverride = f;
+    else if (typeof f === "string" && isE2eUploadFolder(f)) {
+      if (!testUploadFolderAllowed()) return apiBadRequest("المجلد غير مسموح");
+      folderOverride = f;
+    }
   } else {
     return apiBadRequest("Content-Type: application/json أو multipart/form-data");
   }
