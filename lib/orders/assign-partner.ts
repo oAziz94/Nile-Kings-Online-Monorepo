@@ -12,7 +12,9 @@
 import type { Prisma } from "@prisma/client";
 import type { SessionUser } from "@/lib/auth/session";
 import {
+  commitPartnerReservation,
   InsufficientPartnerStockError,
+  orderUsesPartnerReservationOnly,
   reassignReservedPartnerStock,
   reservePartnerStockForOrder,
   type PrismaTx,
@@ -122,6 +124,14 @@ export async function assignOrderToPartner(
       routedOrderId = order.routedOrder.id;
     } else {
       await reservePartnerStockForOrder(tx as unknown as PrismaTx, partnerId, lines, orderId, notes ?? "Admin assignment");
+      // A first-time assign onto an order that has already left CREATED (e.g. CONFIRMED)
+      // must commit the reservation immediately, exactly like `reassignReservedPartnerStock`
+      // decides for its own new-partner side via the same `orderUsesPartnerReservationOnly`
+      // check — a CONFIRMED order sitting at "reserved only" would double-count against the
+      // partner's sellable stock and never settle to "committed" on its own.
+      if (!orderUsesPartnerReservationOnly(order.status)) {
+        await commitPartnerReservation(tx as unknown as PrismaTx, partnerId, lines, orderId, notes ?? "Admin assignment");
+      }
       const created = await tx.routedOrder.create({
         data: {
           orderId,

@@ -48,12 +48,14 @@ let productId: string;
 let variantAId: string; // both partners stock this
 let variantBId: string; // only the agent stocks this
 let variantBSku: string;
+let variantCId: string; // both partners stock this — used by the CONFIRMED assign/reassign case
 
 let unassignedOrderId: string; // assigned → reassigned → cancelled across tests C/D/E/F
 let filterOrderId: string; // pre-assigned to the agent, used for the partner filter/proof/ticket
 let insufficientOrderId: string; // unassigned, variantB — the distributor can't cover it
 let bulkOrderId1: string;
 let bulkOrderId2: string;
+let confirmedUnassignedOrderId: string; // CONFIRMED, no partner — the reservation-vs-commit regression case
 let ticketId: string;
 let routedOrderIdForRedirect: string;
 
@@ -102,6 +104,10 @@ test.beforeAll(async () => {
   });
   variantBId = variantB.id;
   variantBSku = variantB.sku;
+  const variantC = await prisma.variant.create({
+    data: { productId, sku: `AO-C-${uniqueSuffix}`, name: "S", colorName: "أحمر", pricePiastres: 15000 },
+  });
+  variantCId = variantC.id;
 
   await prisma.partnerInventory.createMany({
     data: [
@@ -109,17 +115,25 @@ test.beforeAll(async () => {
       { partnerId: pair.distributor.partnerId, variantId: variantAId, stockAvailable: 10, stockReserved: 0 },
       { partnerId: pair.agent.partnerId, variantId: variantBId, stockAvailable: 10, stockReserved: 0 },
       { partnerId: pair.distributor.partnerId, variantId: variantBId, stockAvailable: 0, stockReserved: 0 },
+      { partnerId: pair.agent.partnerId, variantId: variantCId, stockAvailable: 50, stockReserved: 0 },
+      { partnerId: pair.distributor.partnerId, variantId: variantCId, stockAvailable: 50, stockReserved: 0 },
     ],
   });
 
   const shippingAddress = { governorate: "القاهرة", city: "القاهرة", area: "مدينة نصر", street: "شارع الاختبار" };
 
-  async function createOrder(opts: { variantId: string; sku: string; quantity: number; assignedPartnerId?: string }) {
+  async function createOrder(opts: {
+    variantId: string;
+    sku: string;
+    quantity: number;
+    assignedPartnerId?: string;
+    status?: "CREATED" | "CONFIRMED";
+  }) {
     const unitPrice = 20000;
     const order = await prisma.order.create({
       data: {
         userId: customerUserId,
-        status: "CREATED",
+        status: opts.status ?? "CREATED",
         assignedPartnerId: opts.assignedPartnerId ?? null,
         subtotalPiastres: unitPrice * opts.quantity,
         totalPiastres: unitPrice * opts.quantity,
@@ -149,6 +163,7 @@ test.beforeAll(async () => {
   insufficientOrderId = await createOrder({ variantId: variantBId, sku: variantB.sku, quantity: 5 });
   bulkOrderId1 = await createOrder({ variantId: variantAId, sku: variantA.sku, quantity: 1 });
   bulkOrderId2 = await createOrder({ variantId: variantAId, sku: variantA.sku, quantity: 1 });
+  confirmedUnassignedOrderId = await createOrder({ variantId: variantCId, sku: variantC.sku, quantity: 1, status: "CONFIRMED" });
 
   filterOrderId = await createOrder({ variantId: variantAId, sku: variantA.sku, quantity: 1, assignedPartnerId: pair.agent.partnerId });
   const filterRouted = await prisma.routedOrder.create({
@@ -176,7 +191,7 @@ test.afterAll(async () => {
   await prisma.orderItem.deleteMany({ where: { orderId: { in: allOrderIds } } });
   await prisma.order.deleteMany({ where: { id: { in: allOrderIds } } });
   await cleanupPartnerPair(prisma, pair);
-  await prisma.variant.deleteMany({ where: { id: { in: [variantAId, variantBId] } } });
+  await prisma.variant.deleteMany({ where: { id: { in: [variantAId, variantBId, variantCId] } } });
   await prisma.product.deleteMany({ where: { id: productId } });
   await prisma.category.deleteMany({ where: { id: categoryId } });
   await prisma.user.deleteMany({ where: { id: { in: [adminUserId, customerUserId] } } });
@@ -272,6 +287,57 @@ test("reassign to the second partner moves the reservation", async ({ page }) =>
   expect(audit).toBeTruthy();
 });
 
+/**
+ * Regression for 9.3 rework #1 (verifier-found, CRITICAL): a CONFIRMED order is past the
+ * reservation-only stage (`orderUsesPartnerReservationOnly("CONFIRMED") === false`) — its
+ * first-time assign must COMMIT the reservation immediately, not just reserve it, exactly
+ * like a reassign's new-partner side already does. Before the fix, a fresh assign of this
+ * order left the agent at 49 available / 1 reserved (still "held", never settled); after the
+ * fix it lands at 49 available / 0 reserved. Reassigning away must then fully restore the
+ * agent (50/0) and land the distributor at the same committed state (49/0) — never leave a
+ * phantom reservation behind on either partner.
+ */
+test("a CONFIRMED unassigned order commits stock on first assign, and reassign settles both partners exactly", async ({ page }) => {
+  await loginAsAdmin(page);
+
+  const agentBefore = await prisma.partnerInventory.findUniqueOrThrow({
+    where: { partnerId_variantId: { partnerId: pair.agent.partnerId, variantId: variantCId } },
+  });
+  expect(agentBefore.stockAvailable).toBe(50);
+  expect(agentBefore.stockReserved).toBe(0);
+
+  const assignRes = await page.request.post(`/api/admin/orders/${confirmedUnassignedOrderId}/assign`, {
+    data: { partnerId: pair.agent.partnerId },
+  });
+  expect(assignRes.ok()).toBeTruthy();
+
+  const agentAfterAssign = await prisma.partnerInventory.findUniqueOrThrow({
+    where: { partnerId_variantId: { partnerId: pair.agent.partnerId, variantId: variantCId } },
+  });
+  // Expected (committed, per the fix): available 49, reserved 0.
+  // Actual before the fix (bug): available 50, reserved 1.
+  expect(agentAfterAssign.stockAvailable).toBe(49);
+  expect(agentAfterAssign.stockReserved).toBe(0);
+
+  const reassignRes = await page.request.post(`/api/admin/orders/${confirmedUnassignedOrderId}/assign`, {
+    data: { partnerId: pair.distributor.partnerId },
+  });
+  expect(reassignRes.ok()).toBeTruthy();
+
+  const agentAfterReassign = await prisma.partnerInventory.findUniqueOrThrow({
+    where: { partnerId_variantId: { partnerId: pair.agent.partnerId, variantId: variantCId } },
+  });
+  // The agent must be fully restored — no leaked reservation.
+  expect(agentAfterReassign.stockAvailable).toBe(50);
+  expect(agentAfterReassign.stockReserved).toBe(0);
+
+  const distAfterReassign = await prisma.partnerInventory.findUniqueOrThrow({
+    where: { partnerId_variantId: { partnerId: pair.distributor.partnerId, variantId: variantCId } },
+  });
+  expect(distAfterReassign.stockAvailable).toBe(49);
+  expect(distAfterReassign.stockReserved).toBe(0);
+});
+
 test("assigning to a partner with insufficient stock names the SKU in a 409", async ({ page }) => {
   await loginAsAdmin(page);
   const res = await page.request.post(`/api/admin/orders/${insufficientOrderId}/assign`, {
@@ -328,6 +394,21 @@ test("a ticket reply from the detail is visible in the tickets inbox thread", as
 
   await page.goto(`/admin/order-tickets/${ticketId}`);
   await expect(page.getByText(replyText)).toBeVisible({ timeout: 20_000 });
+
+  // 9.3 rework #2 — the reply is also an admin write on the order (rule B1).
+  const replyAudit = await prisma.adminAuditLog.findFirst({
+    where: { entityId: filterOrderId, action: "ticket_reply" },
+    orderBy: { createdAt: "desc" },
+  });
+  expect(replyAudit).toBeTruthy();
+
+  await page.getByRole("button", { name: "إغلاق السؤال" }).click();
+  await expect(page.getByText("مغلقة")).toBeVisible({ timeout: 20_000 });
+  const closeAudit = await prisma.adminAuditLog.findFirst({
+    where: { entityId: filterOrderId, action: "ticket_close" },
+    orderBy: { createdAt: "desc" },
+  });
+  expect(closeAudit).toBeTruthy();
 });
 
 const SCREENSHOT_VIEWPORTS = [
