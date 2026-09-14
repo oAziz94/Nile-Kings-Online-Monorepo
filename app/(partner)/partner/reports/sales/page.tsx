@@ -64,6 +64,7 @@ export function SalesReportView({
   initialPreset = "30d",
   initialFrom = "",
   initialTo = "",
+  initialBreakdownTab = "product",
 }: {
   apiBase?: string;
   switcher?: React.ReactNode;
@@ -73,10 +74,14 @@ export function SalesReportView({
   initialPreset?: SalesReportPreset;
   initialFrom?: string;
   initialTo?: string;
+  /** PM ruling (9.6 fix (d)) — "حسب الشريك first" on the admin network pages means first in
+   * order *and* selected by default; the partner pages keep "product". Defaults to "product",
+   * so every other caller's rendered DOM is unchanged. */
+  initialBreakdownTab?: keyof SalesReportResponse["breakdowns"];
 }) {
   const [preset, setPreset] = React.useState<SalesReportPreset>(initialPreset);
   const [customRange, setCustomRange] = React.useState({ from: initialFrom, to: initialTo });
-  const [activeTab, setActiveTab] = React.useState<keyof SalesReportResponse["breakdowns"]>("product");
+  const [activeTab, setActiveTab] = React.useState<keyof SalesReportResponse["breakdowns"]>(initialBreakdownTab);
   const [page, setPage] = React.useState(1);
 
   const params = new URLSearchParams({ preset, page: String(page) });

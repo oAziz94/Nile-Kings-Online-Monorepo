@@ -9,6 +9,7 @@ export default function AdminFulfilmentReportPage() {
     <FulfilmentReportView
       apiBase="/api/admin/reports"
       switcher={<ReportTabs basePath="/admin/reports" families={["sales", "fulfilment", "inventory", "money"]} />}
+      initialBreakdownTab="byPartner"
     />
   );
 }

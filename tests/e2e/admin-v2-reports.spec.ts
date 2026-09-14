@@ -4,7 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
-import { seedPartnerPair, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+import { seedPartnerPair, cleanupPartnerPair, loginAs, type PartnerFixturePair } from "./partner-fixtures";
 
 /**
  * Backlog 9.6 (التقارير network-wide) coverage. Serial mode, one shared fixture set: admin +
@@ -46,6 +46,8 @@ let pair: PartnerFixturePair;
 let categoryId: string;
 let productId: string;
 let variantId: string;
+let receiptId: string;
+const RECEIPT_REFERENCE = `RCPT-${uniqueSuffix}`;
 const allOrderIds: string[] = [];
 const ORDER_UNIT_PIASTRES = 20000;
 
@@ -115,9 +117,17 @@ test.beforeAll(async () => {
     });
     allOrderIds.push(order.id);
   }
+
+  // A FACTORY receipt for the agent, for fix (c)'s "the network receipts table shows the
+  // fixture receipt with its partner name" assertion.
+  const receipt = await prisma.stockReceipt.create({
+    data: { partnerId: pair.agent.partnerId, kind: "FACTORY", reference: RECEIPT_REFERENCE, totalCostPiastres: 15000 },
+  });
+  receiptId = receipt.id;
 });
 
 test.afterAll(async () => {
+  await prisma.stockReceipt.delete({ where: { id: receiptId } });
   await prisma.orderAuditLog.deleteMany({ where: { orderId: { in: allOrderIds } } });
   await prisma.order.deleteMany({ where: { id: { in: allOrderIds } } });
   await prisma.variant.deleteMany({ where: { id: variantId } });
@@ -208,7 +218,7 @@ test("inventory: network report shows rows from both partners with a resolved co
   void partnerIds;
 });
 
-test("money: owed per partner equals each profile's own balance tile", async ({ page }) => {
+test("money: owed per partner equals each profile's own balance tile, and the network receipts table shows the fixture receipt with its partner name", async ({ page }) => {
   await loginAsAdmin(page);
   const networkRes = await page.request.get("/api/admin/reports/money?preset=month");
   expect(networkRes.ok()).toBeTruthy();
@@ -222,6 +232,85 @@ test("money: owed per partner equals each profile's own balance tile", async ({ 
     (r) => r.key === pair.agent.partnerId
   );
   expect(row?.owedPiastres).toBe(agentBalance);
+
+  // Fix (c) — "populate, don't hide": the network receipts table is a real union of every
+  // active partner's own statement rows, tagged with partnerName.
+  const receiptRows = networkJson.data.breakdowns.receipts.rows as { reference: string | null; partnerName?: string }[];
+  const fixtureReceipt = receiptRows.find((r) => r.reference === RECEIPT_REFERENCE);
+  expect(fixtureReceipt?.partnerName).toBe(pair.agent.name);
+
+  // The partner-scoped route never carries partnerName (byte-identical DOM for the partner).
+  const agentReceiptRows = agentJson.data.breakdowns.receipts.rows as { reference: string | null; partnerName?: string }[];
+  expect(agentReceiptRows.some((r) => "partnerName" in r)).toBe(false);
+});
+
+// Network scope aggregates every active partner sequentially per report, so each admin
+// network page load is noticeably slower than a partner-scoped one — these two fix (b)/(d)
+// checks are split admin/partner per report family (rather than one long test walking all
+// four pages back-to-back) so a slow network aggregation on one page never starves the time
+// budget for an unrelated assertion later in the same test; the two admin-only ones get a
+// longer per-test timeout for the same reason.
+
+test("fix (b): the كشف حساب / reorder-CSV export buttons are hidden at network scope", async ({ page }) => {
+  test.setTimeout(180_000);
+  await loginAsAdmin(page);
+
+  await page.goto("/admin/reports/money");
+  await expect(page.getByRole("heading", { name: "المال" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".nk-shimmer").first()).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.getByRole("button", { name: "كشف حساب" })).toHaveCount(0);
+
+  await page.goto("/admin/reports/inventory");
+  await expect(page.getByRole("heading", { name: "تقرير المخزون" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".nk-shimmer").first()).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.getByRole("button", { name: "CSV" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "تصدير للمصنع" })).toHaveCount(0);
+});
+
+test("fix (b): the same export buttons are still present on the partner pages", async ({ page }) => {
+  await loginAs(page, pair, "AGENT");
+
+  await page.goto("/partner/reports/money");
+  await expect(page.getByRole("heading", { name: "المال" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "كشف حساب" })).toBeVisible();
+
+  await page.goto("/partner/reports/inventory");
+  await expect(page.getByRole("heading", { name: "تقرير المخزون" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "CSV" })).toBeVisible();
+});
+
+test("fix (d): حسب الشريك is selected by default on the admin sales/fulfilment pages", async ({ page }) => {
+  test.setTimeout(180_000);
+  await loginAsAdmin(page);
+
+  await page.goto("/admin/reports/sales");
+  await expect(page.locator(".nk-shimmer").first()).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.getByRole("columnheader", { name: "الشريك" })).toBeVisible();
+
+  await page.goto("/admin/reports/fulfilment");
+  await expect(page.locator(".nk-shimmer").first()).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.getByRole("columnheader", { name: "الشريك" })).toBeVisible();
+
+  // Inventory/money render حسب الشريك as an always-visible panel (no tab to switch away
+  // from), so "selected by default" is trivially true there — checked via the same panel
+  // assertions already covered by the sales/inventory/money tests above.
+});
+
+test("fix (d): partner pages keep their own default tab and have no حسب الشريك tab", async ({ page }) => {
+  await loginAs(page, pair, "AGENT");
+
+  await page.goto("/partner/reports/sales");
+  await expect(page.getByRole("heading", { name: "تقرير المبيعات" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "حسب الشريك" })).toHaveCount(0);
+  // "حسب المنتج" (the partner default) is still the first, active tab — a fresh fixture
+  // partner may have zero rows in any given breakdown, so assert the tab exists rather than
+  // its (possibly empty) table content.
+  await expect(page.getByRole("button", { name: "حسب المنتج" })).toBeVisible();
+
+  await page.goto("/partner/reports/fulfilment");
+  await expect(page.getByRole("heading", { name: "تقرير التجهيز" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "حسب الشريك" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "أبطأ الطلبات" })).toBeVisible();
 });
 
 test("/admin/analytics redirects to /admin/reports/sales, mapping ?from&to to preset=custom", async ({ page }) => {

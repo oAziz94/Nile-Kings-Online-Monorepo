@@ -11,6 +11,7 @@ export default function AdminInventoryReportPage() {
       apiBase="/api/admin/reports"
       switcher={<ReportTabs basePath="/admin/reports" families={["sales", "fulfilment", "inventory", "money"]} />}
       settingsHref="/admin/partners"
+      isNetworkScope
     />
   );
 }

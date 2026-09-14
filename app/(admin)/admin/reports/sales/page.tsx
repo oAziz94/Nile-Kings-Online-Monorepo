@@ -23,6 +23,7 @@ export default function AdminSalesReportPage() {
     <SalesReportView
       apiBase="/api/admin/reports"
       switcher={<ReportTabs basePath="/admin/reports" families={["sales", "fulfilment", "inventory", "money"]} />}
+      initialBreakdownTab="byPartner"
       {...(seedCustom ? { initialPreset: "custom" as const, initialFrom: from, initialTo: to } : {})}
     />
   );

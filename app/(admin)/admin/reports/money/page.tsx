@@ -9,6 +9,7 @@ export default function AdminMoneyReportPage() {
     <MoneyReportView
       apiBase="/api/admin/reports"
       switcher={<ReportTabs basePath="/admin/reports" families={["sales", "fulfilment", "inventory", "money"]} />}
+      isNetworkScope
     />
   );
 }

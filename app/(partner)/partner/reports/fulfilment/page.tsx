@@ -55,17 +55,20 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "ملغي",
 };
 
-/** Backlog 9.4b (a): see `SalesReportView`'s doc comment for `apiBase`/`switcher`. */
+/** Backlog 9.4b (a): see `SalesReportView`'s doc comment for `apiBase`/`switcher`. Backlog
+ * 9.6 fix (d): `initialBreakdownTab` — see `SalesReportView`'s doc comment. */
 export function FulfilmentReportView({
   apiBase = "/api/partner/reports",
   switcher,
+  initialBreakdownTab = "slowest",
 }: {
   apiBase?: string;
   switcher?: React.ReactNode;
+  initialBreakdownTab?: keyof FulfilmentReportResponse["breakdowns"];
 }) {
   const [preset, setPreset] = React.useState<SalesReportPreset>("30d");
   const [customRange, setCustomRange] = React.useState({ from: "", to: "" });
-  const [activeTab, setActiveTab] = React.useState<keyof FulfilmentReportResponse["breakdowns"]>("slowest");
+  const [activeTab, setActiveTab] = React.useState<keyof FulfilmentReportResponse["breakdowns"]>(initialBreakdownTab);
   const [page, setPage] = React.useState(1);
 
   const params = new URLSearchParams({ preset, page: String(page) });
