@@ -3,16 +3,15 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
-import { syncColorRepresentative } from "@/lib/admin/variant-images";
 
 type Params = Promise<{ id: string }>;
 
 /**
  * PATCH /api/admin/products/[id]/gallery/reorder — backlog 9.8b: "معرض هذا اللون"'s drag
  * reorder. Body `{ colorKey, orderedImageIds }` — every id must be a `VariantImage` row
- * belonging to this product+colour; `sortOrder` is rewritten to array position, then the
- * colour's representative image (`Variant.imageUrl`/`imageAssetId`) is resynced to the new
- * first photo (position 0 gets the gold-ring "representative" treatment in the UI).
+ * belonging to this product+colour; `sortOrder` is rewritten to array position (position 0 gets
+ * the gold-ring "representative" treatment in the admin UI — display-only, read straight off
+ * this array; does not write `Variant.imageUrl`, see `media/assign/route.ts`'s doc comment).
  */
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   let actor;
@@ -42,12 +41,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     return apiBadRequest("قائمة الصور لا تطابق معرض هذا اللون");
   }
 
-  await prisma.$transaction(async (tx) => {
-    for (let i = 0; i < orderedImageIds.length; i++) {
-      await tx.variantImage.update({ where: { id: orderedImageIds[i] as string }, data: { sortOrder: i } });
-    }
-    await syncColorRepresentative(tx, productId, colorKey);
-  });
+  await prisma.$transaction(
+    orderedImageIds.map((imageId, i) => prisma.variantImage.update({ where: { id: imageId as string }, data: { sortOrder: i } }))
+  );
 
   await logAdminAction(prisma, {
     actor,

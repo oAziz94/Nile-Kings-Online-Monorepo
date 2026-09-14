@@ -3,15 +3,13 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
-import { syncColorRepresentative } from "@/lib/admin/variant-images";
 
 type Params = Promise<{ imageId: string }>;
 
 /**
  * DELETE /api/admin/variant-images/[imageId] — backlog 9.8b: "معرض هذا اللون"'s remove. Does
  * not touch Cloudinary/the `MediaAsset` row (the asset may still be used elsewhere, or kept for
- * later reuse via "من المكتبة") — only the gallery membership. Re-syncs the colour's
- * representative image afterward (position 0 may have changed).
+ * later reuse via "من المكتبة") — only the gallery membership.
  */
 export async function DELETE(req: NextRequest, { params }: { params: Params }) {
   let actor;
@@ -40,7 +38,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Params }) {
     for (let i = 0; i < remaining.length; i++) {
       if (remaining[i].sortOrder !== i) await tx.variantImage.update({ where: { id: remaining[i].id }, data: { sortOrder: i } });
     }
-    await syncColorRepresentative(tx, image.productId, image.colorKey);
   });
 
   await logAdminAction(prisma, {
