@@ -12,7 +12,7 @@ import { handleMoneyReport } from "@/lib/reports/handlers/money";
 export async function GET(req: NextRequest) {
   try {
     const user = await requirePartner();
-    return await handleMoneyReport(req, user.partnerId);
+    return await handleMoneyReport(req, { partnerId: user.partnerId });
   } catch (error: unknown) {
     const err = error as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");

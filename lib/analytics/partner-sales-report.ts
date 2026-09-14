@@ -16,6 +16,7 @@ import {
   attachPreviousAndDelta,
   computeDelta,
   formatComparisonLabel,
+  isNetworkScope,
   periodToDateRange,
   resolvePeriod,
   type Delta,
@@ -23,6 +24,7 @@ import {
   type ReportAction,
   type ReportBreakdownPage,
   type ReportHeadline,
+  type ReportScope,
   type ReportSeries,
   type ResolvedPeriod,
   type SalesReportPreset,
@@ -36,6 +38,7 @@ type OrderForSales = {
   paymentMethod: string;
   createdAt: Date;
   shippingAddress: unknown;
+  assignedPartnerId: string | null;
 };
 
 type OrderItemForSales = {
@@ -45,11 +48,16 @@ type OrderItemForSales = {
   totalPiastres: number;
   productName: string;
   variantName: string;
+  assignedPartnerId: string | null;
 };
 
-async function loadOrders(partnerId: string, range: { from: Date; to: Date }): Promise<OrderForSales[]> {
+function scopeWhere(scope: ReportScope) {
+  return isNetworkScope(scope) ? { assignedPartnerId: { not: null } } : { assignedPartnerId: scope.partnerId };
+}
+
+async function loadOrders(scope: ReportScope, range: { from: Date; to: Date }): Promise<OrderForSales[]> {
   return prisma.order.findMany({
-    where: { assignedPartnerId: partnerId, createdAt: { gte: range.from, lte: range.to } },
+    where: { ...scopeWhere(scope), createdAt: { gte: range.from, lte: range.to } },
     select: {
       id: true,
       status: true,
@@ -57,6 +65,7 @@ async function loadOrders(partnerId: string, range: { from: Date; to: Date }): P
       paymentMethod: true,
       createdAt: true,
       shippingAddress: true,
+      assignedPartnerId: true,
     },
   });
 }
@@ -86,7 +95,12 @@ export type SimpleBreakdownRow = {
   revenueDelta: Delta;
 };
 
+/** Backlog 9.6 (a) — network scope's first breakdown key: one row per partner. `null` for
+ * the partner-scoped form (nothing to break down by). */
+export type PartnerBreakdownRow = SimpleBreakdownRow & { cancellationRatePct: number };
+
 export type SalesReportBreakdowns = {
+  byPartner: ReportBreakdownPage<PartnerBreakdownRow> | null;
   product: ReportBreakdownPage<ProductBreakdownRow>;
   category: ReportBreakdownPage<SimpleBreakdownRow>;
   governorate: ReportBreakdownPage<SimpleBreakdownRow & { cancellationRatePct: number }>;
@@ -103,19 +117,19 @@ const PAGE_SIZE = 25;
  * "streams the whole set" regardless of the table's own page size (backlog 5.6a).
  */
 export async function getPartnerSalesFullBreakdown(
-  partnerId: string,
+  scope: ReportScope,
   input: { preset: SalesReportPreset; from?: string; to?: string },
   key: keyof SalesReportBreakdowns
 ): Promise<unknown[]> {
   const period = resolvePeriod(input);
   const [currentOrders, previousOrders, currentItems, previousItems] = await Promise.all([
-    loadOrders(partnerId, periodToDateRange(period.current)),
-    loadOrders(partnerId, periodToDateRange(period.previous)),
-    loadOrderItems(partnerId, periodToDateRange(period.current)),
-    loadOrderItems(partnerId, periodToDateRange(period.previous)),
+    loadOrders(scope, periodToDateRange(period.current)),
+    loadOrders(scope, periodToDateRange(period.previous)),
+    loadOrderItems(scope, periodToDateRange(period.current)),
+    loadOrderItems(scope, periodToDateRange(period.previous)),
   ]);
-  const full = await buildFullBreakdowns(currentOrders, previousOrders, currentItems, previousItems);
-  return full[key];
+  const full = await buildFullBreakdowns(scope, currentOrders, previousOrders, currentItems, previousItems);
+  return full[key] ?? [];
 }
 
 function paginate<T>(rows: T[], page: number): ReportBreakdownPage<T> {
@@ -124,30 +138,31 @@ function paginate<T>(rows: T[], page: number): ReportBreakdownPage<T> {
 }
 
 export async function getPartnerSalesReport(
-  partnerId: string,
+  scope: ReportScope,
   input: { preset: SalesReportPreset; from?: string; to?: string; page?: number }
 ): Promise<SalesReportResponse> {
   const period = resolvePeriod(input);
   const page = Math.max(1, input.page ?? 1);
 
   const [currentOrders, previousOrders, currentItems, previousItems] = await Promise.all([
-    loadOrders(partnerId, periodToDateRange(period.current)),
-    loadOrders(partnerId, periodToDateRange(period.previous)),
-    loadOrderItems(partnerId, periodToDateRange(period.current)),
-    loadOrderItems(partnerId, periodToDateRange(period.previous)),
+    loadOrders(scope, periodToDateRange(period.current)),
+    loadOrders(scope, periodToDateRange(period.previous)),
+    loadOrderItems(scope, periodToDateRange(period.current)),
+    loadOrderItems(scope, periodToDateRange(period.previous)),
   ]);
 
   const headline = buildHeadline(currentOrders, previousOrders, currentItems, previousItems);
   const series = buildSeries(currentOrders, previousOrders, period);
-  const full = await buildFullBreakdowns(currentOrders, previousOrders, currentItems, previousItems);
+  const full = await buildFullBreakdowns(scope, currentOrders, previousOrders, currentItems, previousItems);
   const breakdowns: SalesReportBreakdowns = {
+    byPartner: full.byPartner ? paginate(full.byPartner, page) : null,
     product: paginate(full.product, page),
     category: paginate(full.category, page),
     governorate: paginate(full.governorate, page),
     payment: paginate(full.payment, page),
     day: paginate(full.day, page),
   };
-  const actions = await buildActions(partnerId, currentOrders, full);
+  const actions = isNetworkScope(scope) ? [] : await buildActions(scope.partnerId, currentOrders, full);
 
   return {
     period,
@@ -159,10 +174,10 @@ export async function getPartnerSalesReport(
   };
 }
 
-async function loadOrderItems(partnerId: string, range: { from: Date; to: Date }): Promise<OrderItemForSales[]> {
+async function loadOrderItems(scope: ReportScope, range: { from: Date; to: Date }): Promise<OrderItemForSales[]> {
   const items = await prisma.orderItem.findMany({
     where: {
-      order: { assignedPartnerId: partnerId, status: "DELIVERED", createdAt: { gte: range.from, lte: range.to } },
+      order: { ...scopeWhere(scope), status: "DELIVERED", createdAt: { gte: range.from, lte: range.to } },
     },
     select: {
       orderId: true,
@@ -171,9 +186,10 @@ async function loadOrderItems(partnerId: string, range: { from: Date; to: Date }
       totalPiastres: true,
       productName: true,
       variantName: true,
+      order: { select: { assignedPartnerId: true } },
     },
   });
-  return items;
+  return items.map((it) => ({ ...it, assignedPartnerId: it.order.assignedPartnerId }));
 }
 
 function buildHeadline(
@@ -246,6 +262,7 @@ function addDaysToIso(iso: string, days: number): string {
 }
 
 type FullBreakdowns = {
+  byPartner: PartnerBreakdownRow[] | null;
   product: ProductBreakdownRow[];
   category: SimpleBreakdownRow[];
   governorate: (SimpleBreakdownRow & { cancellationRatePct: number })[];
@@ -270,6 +287,7 @@ export function attachRevenueDelta(rows: BaseSimpleRow[], previousRevenueByKey: 
 }
 
 async function buildFullBreakdowns(
+  scope: ReportScope,
   currentOrders: OrderForSales[],
   previousOrders: OrderForSales[],
   currentItems: OrderItemForSales[],
@@ -406,7 +424,47 @@ async function buildFullBreakdowns(
     .map(([date, row]) => ({ date, revenuePiastres: row.revenue, orderCount: row.orders }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  // --- byPartner (backlog 9.6 (a)) — network scope only; one row per partner that owns at
+  // least one order in the current period, same shape as the other simple breakdowns. ---
+  let byPartner: PartnerBreakdownRow[] | null = null;
+  if (isNetworkScope(scope)) {
+    const partnerMap = new Map<string, { revenue: number; orders: number; cancelled: number; total: number }>();
+    for (const o of currentOrders) {
+      const key = o.assignedPartnerId ?? "unassigned";
+      const row = partnerMap.get(key) ?? { revenue: 0, orders: 0, cancelled: 0, total: 0 };
+      row.total += 1;
+      if (o.status === "CANCELLED") row.cancelled += 1;
+      if (o.status === "DELIVERED") {
+        row.revenue += o.totalPiastres;
+        row.orders += 1;
+      }
+      partnerMap.set(key, row);
+    }
+    const prevPartnerRevenue = new Map<string, number>();
+    for (const o of prevDeliveredOrders) {
+      const key = o.assignedPartnerId ?? "unassigned";
+      prevPartnerRevenue.set(key, (prevPartnerRevenue.get(key) ?? 0) + o.totalPiastres);
+    }
+    const partnerIds = Array.from(partnerMap.keys()).filter((k) => k !== "unassigned");
+    const partners = partnerIds.length
+      ? await prisma.partner.findMany({ where: { id: { in: partnerIds } }, select: { id: true, name: true } })
+      : [];
+    const nameById = new Map(partners.map((p) => [p.id, p.name]));
+    const baseRows = Array.from(partnerMap.entries())
+      .map(([key, row]) => ({
+        key,
+        label: key === "unassigned" ? "بلا شريك" : (nameById.get(key) ?? key),
+        units: 0,
+        revenuePiastres: row.revenue,
+        orderCount: row.orders,
+        cancellationRatePct: row.total > 0 ? (row.cancelled / row.total) * 100 : 0,
+      }))
+      .sort((a, b) => b.revenuePiastres - a.revenuePiastres);
+    byPartner = attachRevenueDelta(baseRows, prevPartnerRevenue) as PartnerBreakdownRow[];
+  }
+
   return {
+    byPartner,
     product: productRows,
     category: categoryRows,
     governorate: governorateRows,

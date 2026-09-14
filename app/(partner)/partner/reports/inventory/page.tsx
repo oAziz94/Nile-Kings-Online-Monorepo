@@ -46,15 +46,21 @@ async function fetchInventoryReport(apiBase: string, params: URLSearchParams): P
  * Backlog 9.4b (a): see `SalesReportView`'s doc comment for `apiBase`/`switcher`. The
  * "تعديل الأهداف" link to `/partner/settings` is a partner-only concept — `settingsHref`
  * lets the admin's الأداء tab point it at this partner's الإعدادات tab instead, or omit it.
+ * Backlog 9.6 fix (b): `isNetworkScope` hides both reorder-CSV entry points (the topbar "CSV"
+ * button and the sidebar "تصدير للمصنع" button) — `?export=reorder` has no single partner's
+ * `lowStockThreshold` to build the factory-intake file against at network scope and answers
+ * 400 — same special-casing pattern as `settingsHref`. Defaults to `false`.
  */
 export function InventoryReportView({
   apiBase = "/api/partner/reports",
   switcher,
   settingsHref = "/partner/settings",
+  isNetworkScope = false,
 }: {
   apiBase?: string;
   switcher?: React.ReactNode;
   settingsHref?: string;
+  isNetworkScope?: boolean;
 }) {
   const [preset, setPreset] = React.useState<InventoryReportPreset>("30d");
   const [customRange, setCustomRange] = React.useState({ from: "", to: "" });
@@ -114,10 +120,12 @@ export function InventoryReportView({
                   تعديل الأهداف
                 </Link>
               </Button>
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={exportReorderCsv}>
-                <Download className="h-3.5 w-3.5" />
-                CSV
-              </Button>
+              {!isNetworkScope && (
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={exportReorderCsv}>
+                  <Download className="h-3.5 w-3.5" />
+                  CSV
+                </Button>
+              )}
             </>
           }
         />
@@ -141,6 +149,26 @@ export function InventoryReportView({
               headline={data.headline}
               higherIsBetter={{ deadStockCount: false, stockOutSkus: false, stockOutDays: false }}
             />
+
+            {data.breakdowns.byPartner && (
+              <PanelCard title="حسب الشريك" noPadding>
+                <BreakdownTable
+                  page={data.breakdowns.byPartner}
+                  columns={["الشريك", "متوسط التغطية (يوم)", "راكدة", "نافدة", "قابل للبيع"]}
+                  rowKey={(r) => r.key}
+                  onPageChange={() => {}}
+                  renderRow={(r) => (
+                    <>
+                      <TableCell className="font-semibold text-ink">{r.label}</TableCell>
+                      <TableCell dir="ltr" className="text-ink">{r.medianCoverDays === null ? "∞" : formatNumberEn(Math.round(r.medianCoverDays))}</TableCell>
+                      <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.deadStockSkus)}</TableCell>
+                      <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.outOfStockSkus)}</TableCell>
+                      <TableCell dir="ltr" className="text-ink-soft">{formatNumberEn(r.sellableUnits)}</TableCell>
+                    </>
+                  )}
+                />
+              </PanelCard>
+            )}
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
               <PanelCard title="حسب الصنف" description="مرتب حسب الأقرب للنفاد" noPadding>
@@ -168,11 +196,16 @@ export function InventoryReportView({
                 <div className={isFetching ? "opacity-70" : undefined}>
                   <BreakdownTable
                     page={data.breakdowns.sku}
-                    columns={["المنتج", "المقاس · اللون", "قابل للبيع", "يبيع/أسبوع", "تغطية (يوم)", "الحالة", "مقترح الطلب"]}
-                    rowKey={(r) => r.variantId}
+                    columns={
+                      data.breakdowns.byPartner
+                        ? ["الشريك", "المنتج", "المقاس · اللون", "قابل للبيع", "يبيع/أسبوع", "تغطية (يوم)", "الحالة", "مقترح الطلب"]
+                        : ["المنتج", "المقاس · اللون", "قابل للبيع", "يبيع/أسبوع", "تغطية (يوم)", "الحالة", "مقترح الطلب"]
+                    }
+                    rowKey={(r) => (r.partnerId ? `${r.partnerId}:${r.variantId}` : r.variantId)}
                     onPageChange={setPage}
                     renderRow={(r) => (
                       <>
+                        {data.breakdowns.byPartner && <TableCell className="text-ink-soft">{r.partnerName}</TableCell>}
                         <TableCell className="font-semibold text-ink">
                           {r.productName}
                           <p className="font-mono text-[11px] font-normal text-ink-soft" dir="ltr">{r.sku}</p>
@@ -218,15 +251,17 @@ export function InventoryReportView({
                     <span className="text-white/70">التكلفة التقديرية</span>
                     <span dir="ltr" className="font-extrabold">{formatNumberEn(piastresToEgp(data.reorderList.estimatedCostPiastres))} ج.م</span>
                   </div>
-                  <Button
-                    type="button"
-                    className="mt-1 gap-2 rounded-full bg-gold-500 text-[#12162b] hover:bg-gold-500/90"
-                    onClick={exportReorderCsv}
-                    disabled={data.reorderList.itemCount === 0}
-                  >
-                    <Download className="h-4 w-4" />
-                    تصدير للمصنع
-                  </Button>
+                  {!isNetworkScope && (
+                    <Button
+                      type="button"
+                      className="mt-1 gap-2 rounded-full bg-gold-500 text-[#12162b] hover:bg-gold-500/90"
+                      onClick={exportReorderCsv}
+                      disabled={data.reorderList.itemCount === 0}
+                    >
+                      <Download className="h-4 w-4" />
+                      تصدير للمصنع
+                    </Button>
+                  )}
                 </div>
                 <PanelCard title="الراكد">
                   <p className="text-xs leading-relaxed text-ink-soft">

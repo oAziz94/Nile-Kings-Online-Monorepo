@@ -12,7 +12,7 @@ import { handleInventoryReport } from "@/lib/reports/handlers/inventory";
 export async function GET(req: NextRequest) {
   try {
     const user = await requirePartner();
-    return await handleInventoryReport(req, user.partnerId);
+    return await handleInventoryReport(req, { partnerId: user.partnerId });
   } catch (error: unknown) {
     const err = error as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");

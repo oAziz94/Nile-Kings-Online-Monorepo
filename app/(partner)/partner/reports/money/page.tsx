@@ -75,13 +75,19 @@ function WeeklyBarChart({ points }: { points: { weekStart: string; amountPiastre
   );
 }
 
-/** Backlog 9.4b (a): see `SalesReportView`'s doc comment for `apiBase`/`switcher`. */
+/** Backlog 9.4b (a): see `SalesReportView`'s doc comment for `apiBase`/`switcher`. Backlog 9.6
+ * fix (b): `isNetworkScope` hides "كشف حساب" — `?export=statement` has no single partner to
+ * build a ledger for at network scope and answers 400 — same special-casing pattern as
+ * `InventoryReportView`'s `settingsHref`. Defaults to `false`, so every existing caller's
+ * rendered DOM is unchanged. */
 export function MoneyReportView({
   apiBase = "/api/partner/reports",
   switcher,
+  isNetworkScope = false,
 }: {
   apiBase?: string;
   switcher?: React.ReactNode;
+  isNetworkScope?: boolean;
 }) {
   const [preset, setPresetState] = React.useState<MoneyReportPreset>("month");
   const [customRange, setCustomRangeState] = React.useState({ from: "", to: "" });
@@ -129,10 +135,12 @@ export function MoneyReportView({
           onCustomRangeChange={setCustomRange}
           comparisonLabel={data?.comparisonLabel}
           toolbar={
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={exportStatement}>
-              <Download className="h-3.5 w-3.5" />
-              كشف حساب
-            </Button>
+            isNetworkScope ? undefined : (
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={exportStatement}>
+                <Download className="h-3.5 w-3.5" />
+                كشف حساب
+              </Button>
+            )
           }
         />
 
@@ -209,15 +217,39 @@ export function MoneyReportView({
                   </div>
                 </div>
 
+                {data.breakdowns.byPartner && (
+                  <PanelCard title="حسب الشريك" noPadding>
+                    <BreakdownTable
+                      page={data.breakdowns.byPartner}
+                      columns={["الشريك", "المتبقي عليه", "دفعاته وأقساطه", "المستلم منذ البداية"]}
+                      rowKey={(r) => r.key}
+                      onPageChange={() => {}}
+                      renderRow={(r) => (
+                        <>
+                          <TableCell className="font-semibold text-ink">{r.label}</TableCell>
+                          <TableCell dir="ltr" className="font-bold text-danger-text">{egp(r.owedPiastres)}</TableCell>
+                          <TableCell dir="ltr" className="text-ink-soft">{egp(r.paidAllTimePiastres)}</TableCell>
+                          <TableCell dir="ltr" className="text-ink-soft">{egp(r.receivedAllTimePiastres)}</TableCell>
+                        </>
+                      )}
+                    />
+                  </PanelCard>
+                )}
+
                 <div className="grid gap-4 lg:grid-cols-2">
                   <PanelCard title="استلامات المصنع" noPadding>
                     <BreakdownTable
                       page={data.breakdowns.receipts}
-                      columns={["المرجع", "التاريخ", "القطع", "القيمة بنسبتك"]}
+                      columns={
+                        data.breakdowns.receipts.rows.some((r) => r.partnerName)
+                          ? ["الشريك", "المرجع", "التاريخ", "القطع", "القيمة بنسبتك"]
+                          : ["المرجع", "التاريخ", "القطع", "القيمة بنسبتك"]
+                      }
                       rowKey={(r) => r.id}
                       onPageChange={setPage}
                       renderRow={(r) => (
                         <>
+                          {r.partnerName && <TableCell className="text-ink-soft">{r.partnerName}</TableCell>}
                           <TableCell className="font-semibold text-ink">{r.reference ?? "—"}</TableCell>
                           <TableCell dir="ltr" className="text-ink-soft">{formatDateEn(r.createdAt.slice(0, 10))}</TableCell>
                           <TableCell dir="ltr" className="text-ink">{formatNumberEn(r.units)}</TableCell>
@@ -231,11 +263,16 @@ export function MoneyReportView({
                     <PanelCard title="الدفعات المقدمة والأقساط" noPadding>
                       <BreakdownTable
                         page={data.breakdowns.payments}
-                        columns={["التاريخ", "المبلغ", "المرجع"]}
+                        columns={
+                          data.breakdowns.payments.rows.some((r) => r.partnerName)
+                            ? ["الشريك", "التاريخ", "المبلغ", "المرجع"]
+                            : ["التاريخ", "المبلغ", "المرجع"]
+                        }
                         rowKey={(r) => r.id}
                         onPageChange={setPage}
                         renderRow={(r) => (
                           <>
+                            {r.partnerName && <TableCell className="text-ink-soft">{r.partnerName}</TableCell>}
                             <TableCell dir="ltr" className="text-ink-soft">{formatDateEn(r.paidAt.slice(0, 10))}</TableCell>
                             <TableCell dir="ltr" className="font-bold text-ink">{formatNumberEn(piastresToEgp(r.amountPiastres))}</TableCell>
                             <TableCell className="text-ink-soft">

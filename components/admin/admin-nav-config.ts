@@ -65,7 +65,7 @@ export const ADMIN_NAV_SECTIONS: readonly ShellNavSection[] = [
     id: "follow-up",
     label: "المتابعة",
     items: [
-      { href: "/admin/analytics", label: "التقارير", icon: BarChart3 },
+      { href: "/admin/reports/sales", label: "التقارير", icon: BarChart3 },
       { href: "/admin/settings", label: "الإعدادات", icon: Settings },
     ],
   },

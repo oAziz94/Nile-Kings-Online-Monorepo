@@ -20,6 +20,7 @@ import {
   attachPreviousAndDelta,
   computeDelta,
   formatComparisonLabel,
+  isNetworkScope,
   periodToDateRange,
   resolvePeriod,
   type Delta,
@@ -28,6 +29,7 @@ import {
   type ReportAction,
   type ReportBreakdownPage,
   type ReportHeadline,
+  type ReportScope,
 } from "./partner-reports";
 import { formatDateEn } from "@/lib/format-en-numbers";
 
@@ -52,6 +54,9 @@ export type ReceiptRow = {
   /** The cost rate (basis points) snapshotted on this receipt's lines at apply time; null
    * for COUNT receipts (no cost snapshot) or a receipt with no priced lines. */
   rateBps: number | null;
+  /** Backlog 9.6 fix (c) — network scope only; `undefined` for the partner-scoped form, so
+   * the partner's own money page renders byte-identically (no "الشريك" column). */
+  partnerName?: string;
 };
 
 export type PaymentRow = {
@@ -65,6 +70,8 @@ export type PaymentRow = {
   reference: string | null;
   stockReceiptId: string | null;
   stockReceiptReference: string | null;
+  /** Backlog 9.6 fix (c) — see `ReceiptRow.partnerName`. */
+  partnerName?: string;
 };
 
 export type CollectedByMethodRow = {
@@ -78,7 +85,20 @@ export type CollectedByMethodRow = {
 };
 export type CollectedByWeekPoint = { weekStart: string; amountPiastres: number };
 
+/** Backlog 9.6 (a) — network scope's first breakdown key: one row per partner, each computed
+ * by calling this exact module's own partner-scoped `getPartnerMoneyReport` (B3: no separate
+ * balance/margin arithmetic) so "owed per partner" is guaranteed to equal that partner's own
+ * money report balance tile. `null` for the partner-scoped form. */
+export type MoneyPartnerBreakdownRow = {
+  key: string;
+  label: string;
+  owedPiastres: number;
+  paidAllTimePiastres: number;
+  receivedAllTimePiastres: number;
+};
+
 export type MoneyReportBreakdowns = {
+  byPartner: ReportBreakdownPage<MoneyPartnerBreakdownRow> | null;
   receipts: ReportBreakdownPage<ReceiptRow>;
   payments: ReportBreakdownPage<PaymentRow>;
   collectedByMethod: ReportBreakdownPage<CollectedByMethodRow>;
@@ -183,6 +203,148 @@ export async function getPartnerStatementRows(
 }
 
 export async function getPartnerMoneyReport(
+  scope: ReportScope,
+  input: { preset: MoneyReportPreset; from?: string; to?: string; page?: number }
+): Promise<MoneyReportResponse> {
+  if (isNetworkScope(scope)) {
+    return getNetworkMoneyReport(input);
+  }
+  return getPartnerMoneyReportForOne(scope.partnerId, input);
+}
+
+/**
+ * Backlog 9.6 (a), fix (c) — every active partner's own money report, summed for the
+ * headline and used verbatim as the `byPartner` breakdown's rows (B3: no separate balance
+ * arithmetic — `computeBalance` is only ever called inside `getPartnerMoneyReportForOne`).
+ * PM ruling (fix (c)): "populate, don't hide" — `receipts`/`payments` union every active
+ * partner's own (unpaginated) statement rows via `getPartnerStatementRows` (B3: the same
+ * function the "كشف حساب" export already uses), each tagged with `partnerName`, sorted
+ * newest first, then paginated over the merged set; `collectedByMethod`/`collectedByWeek`
+ * sum each partner's own report rows by key/week. `nextInstallment` stays `null` — "next
+ * across the whole network" has no single honest due date to show as one tile.
+ */
+async function getNetworkMoneyReport(
+  input: { preset: MoneyReportPreset; from?: string; to?: string; page?: number }
+): Promise<MoneyReportResponse> {
+  const period = resolvePeriod(input);
+  const page = Math.max(1, input.page ?? 1);
+  const partners = await prisma.partner.findMany({ where: { isActive: true }, select: { id: true, name: true } });
+  const perPartnerReports = await Promise.all(
+    partners.map(async (p) => ({
+      partner: p,
+      report: await getPartnerMoneyReportForOne(p.id, input),
+      statement: await getPartnerStatementRows(p.id),
+    }))
+  );
+
+  const byKey = (report: MoneyReportResponse) => Object.fromEntries(report.headline.map((h) => [h.key, h]));
+  const sums = {
+    receivedAllTime: 0,
+    paidAllTime: 0,
+    balance: 0,
+    receivedInPeriod: 0,
+    previousReceivedInPeriod: 0,
+    collectedInPeriod: 0,
+    previousCollectedInPeriod: 0,
+    codPendingNow: 0,
+    marginEstimate: 0,
+  };
+  for (const { report } of perPartnerReports) {
+    const h = byKey(report);
+    sums.receivedAllTime += h.receivedAllTime.value;
+    sums.paidAllTime += h.paidAllTime.value;
+    sums.balance += h.balance.value;
+    sums.receivedInPeriod += h.receivedInPeriod.value;
+    sums.previousReceivedInPeriod += h.receivedInPeriod.previous;
+    sums.collectedInPeriod += h.collectedInPeriod.value;
+    sums.previousCollectedInPeriod += h.collectedInPeriod.previous;
+    sums.codPendingNow += h.codPendingNow.value;
+    sums.marginEstimate += h.marginEstimate.value;
+  }
+
+  const headline: ReportHeadline[] = [
+    { key: "receivedAllTime", label: "قيمة البضاعة المستلمة", value: sums.receivedAllTime, previous: sums.receivedAllTime, delta: computeDelta(sums.receivedAllTime, sums.receivedAllTime), unit: "piastres", hint: "منذ البداية — رصيد تراكمي لكل الشبكة", noComparison: true },
+    { key: "paidAllTime", label: "دفعات الشبكة وأقساطها", value: sums.paidAllTime, previous: sums.paidAllTime, delta: computeDelta(sums.paidAllTime, sums.paidAllTime), unit: "piastres", hint: "منذ البداية — رصيد تراكمي لكل الشبكة", noComparison: true },
+    { key: "balance", label: "المتبقي على الشبكة", value: sums.balance, previous: sums.balance, delta: computeDelta(sums.balance, sums.balance), unit: "piastres", hint: "مجموع رصيد كل شريك — رصيد تراكمي بلا مقارنة", noComparison: true },
+    { key: "receivedInPeriod", label: "مستلم خلال الفترة", value: sums.receivedInPeriod, previous: sums.previousReceivedInPeriod, delta: computeDelta(sums.receivedInPeriod, sums.previousReceivedInPeriod), unit: "piastres", hint: "من إيصالات المصنع لكل الشبكة" },
+    { key: "collectedInPeriod", label: "محصّل خلال الفترة", value: sums.collectedInPeriod, previous: sums.previousCollectedInPeriod, delta: computeDelta(sums.collectedInPeriod, sums.previousCollectedInPeriod), unit: "piastres", hint: "طلبات تم تسليمها فقط" },
+    { key: "codPendingNow", label: "بانتظار التحصيل", value: sums.codPendingNow, previous: sums.codPendingNow, delta: computeDelta(sums.codPendingNow, sums.codPendingNow), unit: "piastres", hint: "دفع عند الاستلام، مشحون ولم يُسلَّم بعد — رصيد لحظي", noComparison: true },
+    { key: "marginEstimate", label: "الهامش التقديري", value: sums.marginEstimate, previous: sums.marginEstimate, delta: computeDelta(sums.marginEstimate, sums.marginEstimate), unit: "piastres", hint: "مجموع هامش كل شريك خلال الفترة", noComparison: true },
+  ];
+
+  const byPartner: MoneyPartnerBreakdownRow[] = perPartnerReports
+    .map(({ partner, report }) => {
+      const h = byKey(report);
+      return {
+        key: partner.id,
+        label: partner.name,
+        owedPiastres: h.balance.value,
+        paidAllTimePiastres: h.paidAllTime.value,
+        receivedAllTimePiastres: h.receivedAllTime.value,
+      };
+    })
+    .sort((a, b) => b.owedPiastres - a.owedPiastres);
+
+  // --- receipts/payments: union every partner's own statement rows, tagged, newest first ---
+  const allReceiptRows: ReceiptRow[] = perPartnerReports
+    .flatMap(({ partner, statement }) => statement.receipts.map((r) => ({ ...r, partnerName: partner.name })))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const allPaymentRows: PaymentRow[] = perPartnerReports
+    .flatMap(({ partner, statement }) => statement.payments.map((p) => ({ ...p, partnerName: partner.name })))
+    .sort((a, b) => b.paidAt.localeCompare(a.paidAt));
+
+  // --- collectedByMethod: sum each partner's own rows by method key ---
+  const methodMap = new Map<string, { key: string; label: string; amountPiastres: number; orderCount: number; previousPiastres: number }>();
+  for (const { report } of perPartnerReports) {
+    for (const r of report.breakdowns.collectedByMethod.rows) {
+      const existing = methodMap.get(r.key) ?? { key: r.key, label: r.label, amountPiastres: 0, orderCount: 0, previousPiastres: 0 };
+      existing.amountPiastres += r.amountPiastres;
+      existing.orderCount += r.orderCount;
+      existing.previousPiastres += r.previousPiastres;
+      methodMap.set(r.key, existing);
+    }
+  }
+  const collectedByMethod: CollectedByMethodRow[] = Array.from(methodMap.values())
+    .map((r) => ({ ...r, delta: computeDelta(r.amountPiastres, r.previousPiastres) }))
+    .sort((a, b) => b.amountPiastres - a.amountPiastres);
+
+  // --- collectedByWeek: sum each partner's own weekly points by week ---
+  const weekMap = new Map<string, number>();
+  for (const { report } of perPartnerReports) {
+    for (const w of report.collectedByWeek) {
+      weekMap.set(w.weekStart, (weekMap.get(w.weekStart) ?? 0) + w.amountPiastres);
+    }
+  }
+  const collectedByWeek: CollectedByWeekPoint[] = Array.from(weekMap.entries())
+    .map(([weekStart, amountPiastres]) => ({ weekStart, amountPiastres }))
+    .sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+
+  const paginate = <T,>(rows: T[]): ReportBreakdownPage<T> => ({
+    rows: rows.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE),
+    page,
+    pageSize: PAGE_SIZE,
+    total: rows.length,
+  });
+
+  return {
+    period,
+    comparisonLabel: formatComparisonLabel(period, (iso) => formatDateEn(iso)),
+    headline,
+    series: [],
+    breakdowns: {
+      byPartner: { rows: byPartner, page: 1, pageSize: byPartner.length || 1, total: byPartner.length },
+      receipts: paginate(allReceiptRows),
+      payments: paginate(allPaymentRows),
+      collectedByMethod: { rows: collectedByMethod, page: 1, pageSize: collectedByMethod.length || 1, total: collectedByMethod.length },
+    },
+    actions: [],
+    costRatePct: 0,
+    nextInstallment: null,
+    collectedByWeek,
+  };
+}
+
+async function getPartnerMoneyReportForOne(
   partnerId: string,
   input: { preset: MoneyReportPreset; from?: string; to?: string; page?: number }
 ): Promise<MoneyReportResponse> {
@@ -386,6 +548,7 @@ export async function getPartnerMoneyReport(
     headline,
     series: [],
     breakdowns: {
+      byPartner: null,
       receipts: paginate(receiptRows),
       payments: paginate(paymentRows),
       collectedByMethod: paginate(methodRows),

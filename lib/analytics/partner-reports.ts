@@ -18,6 +18,21 @@
 import { prisma } from "@/lib/db";
 
 // ---------------------------------------------------------------------------
+// Scope (backlog 9.6 (a), B3): the four report entry points (`getPartnerSalesReport`,
+// `getPartnerFulfilmentReport`, `getPartnerInventoryReport`, `getPartnerMoneyReport`) accept
+// this instead of a bare `partnerId` string. The `{ partnerId }` form is byte-for-byte the
+// pre-9.6 behaviour (existing unit tests on the pure helpers are untouched — none of them
+// call these entry points directly). The `{ network: true }` form drops the partner filter
+// and adds a `byPartner` breakdown as the first key of the response.
+// ---------------------------------------------------------------------------
+
+export type ReportScope = { partnerId: string } | { network: true };
+
+export function isNetworkScope(scope: ReportScope): scope is { network: true } {
+  return "network" in scope && scope.network === true;
+}
+
+// ---------------------------------------------------------------------------
 // Period resolution
 // ---------------------------------------------------------------------------
 

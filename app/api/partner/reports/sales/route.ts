@@ -11,7 +11,7 @@ import { handleSalesReport } from "@/lib/reports/handlers/sales";
 export async function GET(req: NextRequest) {
   try {
     const user = await requirePartner();
-    return await handleSalesReport(req, user.partnerId);
+    return await handleSalesReport(req, { partnerId: user.partnerId });
   } catch (error: unknown) {
     const err = error as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");

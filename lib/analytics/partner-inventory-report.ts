@@ -11,6 +11,7 @@ import {
   daysOfCoverForVelocity,
   formatComparisonLabel,
   getSkuVelocityForPeriod,
+  isNetworkScope,
   periodToDateRange,
   resolvePeriod,
   suggestedReorderQty,
@@ -19,6 +20,7 @@ import {
   type ReportAction,
   type ReportBreakdownPage,
   type ReportHeadline,
+  type ReportScope,
   type ResolvedPeriod,
 } from "./partner-reports";
 import { computePartnerStockTotals, findNearestStockSnapshot, type NearestSnapshotRow, type PartnerStockTotals } from "./partner-stock-totals";
@@ -41,9 +43,24 @@ export type InventorySkuRow = {
   isOut: boolean;
   suggestedReorder: number;
   pricePiastres: number;
+  /** Backlog 9.6 (a) — network scope only; `undefined` for the partner-scoped form. */
+  partnerId?: string;
+  partnerName?: string;
+};
+
+/** Backlog 9.6 (a) — network scope's first breakdown key: one row per partner. `null` for
+ * the partner-scoped form. */
+export type InventoryPartnerBreakdownRow = {
+  key: string;
+  label: string;
+  medianCoverDays: number | null;
+  deadStockSkus: number;
+  outOfStockSkus: number;
+  sellableUnits: number;
 };
 
 export type InventoryReportBreakdowns = {
+  byPartner: ReportBreakdownPage<InventoryPartnerBreakdownRow> | null;
   sku: ReportBreakdownPage<InventorySkuRow>;
 };
 
@@ -144,15 +161,133 @@ export async function getPartnerReorderRows(
   return rows.filter((r) => r.suggestedReorder > 0);
 }
 
+/**
+ * Backlog 9.6 (a) — every active partner's own inventory rows (via `computeInventoryRows`,
+ * B3: no fresh stock query), tagged with `partnerId`/`partnerName`, plus each partner's own
+ * cost rate/settings kept alongside for the aggregate math below. Same pattern as 9.5b's
+ * `getNetworkStockRows`, parameterised by the report's own period instead of a fixed 30d.
+ */
+async function computeNetworkInventoryRows(period: ReturnType<typeof resolvePeriod>): Promise<{
+  perPartner: { partnerId: string; partnerName: string; rows: InventorySkuRow[]; costRateBps: number; deadStockDays: number; targetCoverDays: number }[];
+  rows: InventorySkuRow[];
+}> {
+  const partners = await prisma.partner.findMany({ where: { isActive: true }, select: { id: true, name: true } });
+  const perPartner = await Promise.all(
+    partners.map(async (partner) => {
+      const { rows, partner: settings, costRateBps } = await computeInventoryRows(partner.id, period);
+      return {
+        partnerId: partner.id,
+        partnerName: partner.name,
+        rows,
+        costRateBps,
+        deadStockDays: settings.deadStockDays,
+        targetCoverDays: settings.targetCoverDays,
+      };
+    })
+  );
+  const rows: InventorySkuRow[] = perPartner.flatMap((p) =>
+    p.rows.map((r) => ({ ...r, partnerId: p.partnerId, partnerName: p.partnerName }))
+  );
+  return { perPartner, rows };
+}
+
 export async function getPartnerInventoryReport(
-  partnerId: string,
+  scope: ReportScope,
   input: { preset: InventoryReportPreset; from?: string; to?: string; page?: number; filter?: InventoryReportFilter }
 ): Promise<InventoryReportResponse> {
   const period = resolvePeriod(input);
   const page = Math.max(1, input.page ?? 1);
   const filter = input.filter ?? "all";
+  const network = isNetworkScope(scope);
 
-  const { rows, partner, costRateBps } = await computeInventoryRows(partnerId, period);
+  let rows: InventorySkuRow[];
+  let costRateOf: (row: InventorySkuRow) => number;
+  let totals: PartnerStockTotals;
+  let stockOut: { current: number; previous: number };
+  let snapshot: NearestSnapshotRow | null;
+  let deadStockDaysForHint: number;
+  let byPartner: InventoryPartnerBreakdownRow[] | null = null;
+  let settings: { deadStockDays: number; targetCoverDays: number };
+
+  if (!network) {
+    const { rows: partnerRows, partner, costRateBps } = await computeInventoryRows(scope.partnerId, period);
+    rows = partnerRows;
+    costRateOf = () => costRateBps;
+    deadStockDaysForHint = partner.deadStockDays;
+    settings = { deadStockDays: partner.deadStockDays, targetCoverDays: partner.targetCoverDays };
+    [totals, stockOut, snapshot] = await Promise.all([
+      computePartnerStockTotals(scope.partnerId),
+      computeStockOutHeadline(scope.partnerId, rows, period),
+      findNearestStockSnapshot(scope.partnerId, period.previous.to),
+    ]);
+  } else {
+    const { perPartner, rows: networkRows } = await computeNetworkInventoryRows(period);
+    rows = networkRows;
+    const rateByPartner = new Map(perPartner.map((p) => [p.partnerId, p.costRateBps]));
+    costRateOf = (row) => rateByPartner.get(row.partnerId!) ?? 0;
+    // Approximation, documented: the hint text needs one number; per-partner dead-stock
+    // windows already drive each row's own `isDead` via `computeInventoryRows` above, so this
+    // only affects the headline tile's caption, not the math.
+    deadStockDaysForHint = perPartner[0]?.deadStockDays ?? 60;
+    settings = {
+      deadStockDays: perPartner[0]?.deadStockDays ?? 60,
+      targetCoverDays: perPartner[0]?.targetCoverDays ?? 21,
+    };
+
+    const [totalsList, stockOutList, snapshotList] = await Promise.all([
+      Promise.all(perPartner.map((p) => computePartnerStockTotals(p.partnerId))),
+      Promise.all(perPartner.map((p) => computeStockOutHeadline(p.partnerId, p.rows, period))),
+      Promise.all(perPartner.map((p) => findNearestStockSnapshot(p.partnerId, period.previous.to))),
+    ]);
+
+    totals = totalsList.reduce<PartnerStockTotals>(
+      (acc, t) => ({
+        sellableUnits: acc.sellableUnits + t.sellableUnits,
+        reservedUnits: acc.reservedUnits + t.reservedUnits,
+        valuationCostPiastres: acc.valuationCostPiastres + t.valuationCostPiastres,
+        valuationPricePiastres: acc.valuationPricePiastres + t.valuationPricePiastres,
+        coverDays: null,
+        deadStockSkus: acc.deadStockSkus + t.deadStockSkus,
+        outOfStockSkus: acc.outOfStockSkus + t.outOfStockSkus,
+      }),
+      { sellableUnits: 0, reservedUnits: 0, valuationCostPiastres: 0, valuationPricePiastres: 0, coverDays: null, deadStockSkus: 0, outOfStockSkus: 0 }
+    );
+
+    stockOut = stockOutList.reduce((acc, s) => ({ current: acc.current + s.current, previous: acc.previous + s.previous }), { current: 0, previous: 0 });
+
+    // 9.6 (a) — "sums the per-partner snapshots of the same day": whichever partners have a
+    // qualifying `PartnerStockSnapshot` row are summed; `null` when none do (same rule-12
+    // exception as the partner-scoped form, just at network scale).
+    const validSnapshots = snapshotList.filter((s): s is NearestSnapshotRow => s !== null);
+    snapshot =
+      validSnapshots.length === 0
+        ? null
+        : {
+            day: validSnapshots.reduce((max, s) => (s.day > max ? s.day : max), validSnapshots[0].day),
+            sellableUnits: validSnapshots.reduce((s, v) => s + v.sellableUnits, 0),
+            valuationPiastres: validSnapshots.reduce((s, v) => s + v.valuationPiastres, BigInt(0)),
+            valuationPricePiastres: validSnapshots.every((v) => v.valuationPricePiastres === null)
+              ? null
+              : validSnapshots.reduce((s, v) => s + (v.valuationPricePiastres ?? BigInt(0)), BigInt(0)),
+            coverDays: null,
+            deadStockSkus: validSnapshots.reduce((s, v) => s + v.deadStockSkus, 0),
+            outOfStockSkus: validSnapshots.reduce((s, v) => s + v.outOfStockSkus, 0),
+          };
+
+    byPartner = perPartner
+      .map((p, i) => {
+        const coverValues = p.rows.map((r) => r.daysOfCover).filter((v): v is number => v !== null);
+        return {
+          key: p.partnerId,
+          label: p.partnerName,
+          medianCoverDays: median(coverValues),
+          deadStockSkus: p.rows.filter((r) => r.isDead).length,
+          outOfStockSkus: p.rows.filter((r) => r.isOut).length,
+          sellableUnits: totalsList[i].sellableUnits,
+        };
+      })
+      .sort((a, b) => (a.medianCoverDays ?? Infinity) - (b.medianCoverDays ?? Infinity));
+  }
 
   const filtered =
     filter === "needsReorder"
@@ -161,16 +296,16 @@ export async function getPartnerInventoryReport(
         ? rows.filter((r) => r.isDead)
         : rows;
 
-  // Backlog 7.5 — the six point-in-time totals (shared with the daily snapshot cron via
-  // `computePartnerStockTotals`), the ledger-accurate stock-out-days headline, and the
-  // nearest-snapshot lookup for a real previous-period comparison, all in parallel.
-  const [totals, stockOut, snapshot] = await Promise.all([
-    computePartnerStockTotals(partnerId),
-    computeStockOutHeadline(partnerId, rows, period),
-    findNearestStockSnapshot(partnerId, period.previous.to),
-  ]);
-
-  const headline = buildHeadline(rows, totals, costRateBps, period.days, partner.deadStockDays, stockOut, snapshot);
+  // Network scope: a single representative rate for the headline's caption only — every
+  // aggregate number above was already computed with each partner's *own* rate
+  // (`computePartnerStockTotals` calls `getPartnerCostRate` per partner); this weighted
+  // average (cost / sale-price value across the whole network) never feeds back into the math.
+  const headlineCostRateBps = network
+    ? totals.valuationPricePiastres > 0
+      ? Math.round((totals.valuationCostPiastres / totals.valuationPricePiastres) * 10_000)
+      : 0
+    : costRateOf(rows[0] ?? ({} as InventorySkuRow));
+  const headline = buildHeadline(rows, totals, headlineCostRateBps, period.days, deadStockDaysForHint, stockOut, snapshot, network);
   const start = (page - 1) * PAGE_SIZE;
   const skuPage: ReportBreakdownPage<InventorySkuRow> = {
     rows: filtered.slice(start, start + PAGE_SIZE),
@@ -183,14 +318,14 @@ export async function getPartnerInventoryReport(
   const reorderList = {
     totalUnits: reorderRows.reduce((s, r) => s + r.suggestedReorder, 0),
     estimatedCostPiastres: reorderRows.reduce(
-      (s, r) => s + r.suggestedReorder * Math.round((r.pricePiastres * costRateBps) / 10_000),
+      (s, r) => s + r.suggestedReorder * Math.round((r.pricePiastres * costRateOf(r)) / 10_000),
       0
     ),
     itemCount: reorderRows.length,
   };
   const deadStockValuePiastres = rows
     .filter((r) => r.isDead)
-    .reduce((s, r) => s + r.sellable * Math.round((r.pricePiastres * costRateBps) / 10_000), 0);
+    .reduce((s, r) => s + r.sellable * Math.round((r.pricePiastres * costRateOf(r)) / 10_000), 0);
 
   const actions: ReportAction[] = [];
   if (reorderRows.length > 0) {
@@ -206,11 +341,11 @@ export async function getPartnerInventoryReport(
     comparisonLabel: formatComparisonLabel(period, (iso) => formatDateEn(iso)),
     headline,
     series: [],
-    breakdowns: { sku: skuPage },
+    breakdowns: { byPartner: byPartner ? { rows: byPartner, page: 1, pageSize: byPartner.length, total: byPartner.length } : null, sku: skuPage },
     actions,
     reorderList,
     deadStockValuePiastres,
-    settings: { deadStockDays: partner.deadStockDays, targetCoverDays: partner.targetCoverDays },
+    settings,
   };
 }
 
@@ -277,7 +412,8 @@ function buildHeadline(
   days: number,
   deadStockDays: number,
   stockOut: { current: number; previous: number },
-  snapshot: NearestSnapshotRow | null
+  snapshot: NearestSnapshotRow | null,
+  network = false
 ): ReportHeadline[] {
   const coverValues = rows.map((r) => r.daysOfCover).filter((v): v is number => v !== null);
   const medianCover = median(coverValues);
@@ -291,6 +427,8 @@ function buildHeadline(
   const snapshotHint = "رصيد لحظي — بلا مقارنة";
   const periodHint = `على آخر ${days} يومًا`;
   const costRatePct = Math.round(costRateBps / 100);
+  const rateLabel = network ? `بمتوسط نسبة الشبكة ${costRatePct}%` : `بنسبتك ${costRatePct}%`;
+  const deadStockLabel = network ? "بلا بيع — حسب حد كل شريك" : `بلا بيع منذ ${deadStockDays} يومًا`;
   const snapshotDateLabel = snapshot ? `مقارنةً بلقطة ${formatDateEn(snapshot.day)}` : null;
 
   const point = (h: Omit<ReportHeadline, "previous" | "delta" | "noComparison">): ReportHeadline => ({
@@ -332,10 +470,10 @@ function buildHeadline(
         label: "القيمة بالتكلفة",
         value: totals.valuationCostPiastres,
         unit: "piastres",
-        hint: `بنسبتك ${costRatePct}% · ${snapshotHint}`,
+        hint: `${rateLabel} · ${snapshotHint}`,
       },
       snapshot ? Number(snapshot.valuationPiastres) : undefined,
-      snapshot ? `بنسبتك ${costRatePct}% · ${snapshotDateLabel}` : undefined
+      snapshot ? `${rateLabel} · ${snapshotDateLabel}` : undefined
     ),
     withSnapshot(
       { key: "valuationPrice", label: "القيمة بسعر البيع", value: totals.valuationPricePiastres, unit: "piastres", hint: snapshotHint },
@@ -348,9 +486,9 @@ function buildHeadline(
       snapshot ? `سرعة البيع ${periodHint} · ${snapshotDateLabel}` : undefined
     ),
     withSnapshot(
-      { key: "deadStockCount", label: "أصناف راكدة", value: totals.deadStockSkus, unit: "count", hint: `بلا بيع منذ ${deadStockDays} يومًا` },
+      { key: "deadStockCount", label: "أصناف راكدة", value: totals.deadStockSkus, unit: "count", hint: deadStockLabel },
       snapshot?.deadStockSkus,
-      snapshot ? `بلا بيع منذ ${deadStockDays} يومًا · ${snapshotDateLabel}` : undefined
+      snapshot ? `${deadStockLabel} · ${snapshotDateLabel}` : undefined
     ),
     withSnapshot(
       { key: "stockOutSkus", label: "أصناف نافدة", value: totals.outOfStockSkus, unit: "count", hint: "قابل للبيع صفر أو أقل" },
