@@ -9,6 +9,7 @@ import {
   apiNotFound,
 } from "@/lib/api/response";
 import { close } from "@/lib/tickets/order-ticket";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 /**
  * GET /api/admin/order-tickets/[id] — the thread plus the order summary the thread page needs
@@ -73,8 +74,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
  * path does.
  */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  let admin;
   try {
-    await requireAdmin();
+    admin = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -83,7 +85,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const { id } = await params;
-  const ticket = await prisma.orderTicket.findUnique({ where: { id }, select: { id: true } });
+  const ticket = await prisma.orderTicket.findUnique({ where: { id }, select: { id: true, orderId: true } });
   if (!ticket) return apiNotFound("السؤال غير موجود");
 
   let payload: Record<string, unknown>;
@@ -109,6 +111,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       user: { select: { name: true, phone: true } },
       messages: { orderBy: { createdAt: "asc" } },
     },
+  });
+
+  // backlog 9.3 c fix / rule B1 — closing or reopening a customer's question is an admin
+  // write on the order, audited alongside the status/items/cancel/notes writes.
+  await logAdminAction(prisma, {
+    actor: admin,
+    action: payload.status === "CLOSED" ? "ticket_close" : "ticket_reopen",
+    entityType: "order",
+    entityId: ticket.orderId,
+    entityLabel: `#${ticket.orderId.slice(-8)}`,
+    reason: null,
+    ip: requestIp(req),
   });
 
   const { user, ...rest } = updated;
