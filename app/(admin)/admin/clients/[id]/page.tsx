@@ -175,7 +175,7 @@ export default function AdminClientProfilePage() {
           });
           setGrantAdminOpen(false);
           if (!json.data?.alreadyAdmin) {
-            window.location.href = "/admin/admins";
+            window.location.href = "/admin/clients?tab=admins";
           }
         } else {
           toast({ title: json?.error?.message ?? "فشلت العملية", variant: "destructive" });
@@ -188,7 +188,7 @@ export default function AdminClientProfilePage() {
   if (loading || !client) return <Skeleton className="h-96 w-full rounded-2xl" />;
 
   const displayName = client.name?.trim() || client.phone || "مستخدم";
-  const listHref = client.role === "ADMIN" ? "/admin/admins" : "/admin/clients";
+  const listHref = client.role === "ADMIN" ? "/admin/clients?tab=admins" : "/admin/clients";
   const profileTitle = client.role === "ADMIN" ? "ملف المسؤول" : "ملف العميل";
 
   return (

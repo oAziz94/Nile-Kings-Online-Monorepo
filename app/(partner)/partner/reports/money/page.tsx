@@ -35,8 +35,8 @@ const PRESETS: { id: MoneyReportPreset; label: string }[] = [
   { id: "custom", label: "مخصص" },
 ];
 
-async function fetchMoneyReport(params: URLSearchParams): Promise<MoneyReportResponse> {
-  const res = await fetch(`/api/partner/reports/money?${params}`, { credentials: "include" });
+async function fetchMoneyReport(apiBase: string, params: URLSearchParams): Promise<MoneyReportResponse> {
+  const res = await fetch(`${apiBase}/money?${params}`, { credentials: "include" });
   const json = await res.json().catch(() => null);
   if (!res.ok || !json?.data) throw new Error(json?.error?.message ?? "تعذر تحميل التقرير");
   return json.data;
@@ -75,7 +75,14 @@ function WeeklyBarChart({ points }: { points: { weekStart: string; amountPiastre
   );
 }
 
-export default function PartnerMoneyReportPage() {
+/** Backlog 9.4b (a): see `SalesReportView`'s doc comment for `apiBase`/`switcher`. */
+export function MoneyReportView({
+  apiBase = "/api/partner/reports",
+  switcher,
+}: {
+  apiBase?: string;
+  switcher?: React.ReactNode;
+}) {
   const [preset, setPresetState] = React.useState<MoneyReportPreset>("month");
   const [customRange, setCustomRangeState] = React.useState({ from: "", to: "" });
   const [page, setPage] = React.useState(1);
@@ -95,19 +102,19 @@ export default function PartnerMoneyReportPage() {
   }
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["partner-reports-money", preset, customRange.from, customRange.to, page],
-    queryFn: () => fetchMoneyReport(params),
+    queryKey: ["partner-reports-money", apiBase, preset, customRange.from, customRange.to, page],
+    queryFn: () => fetchMoneyReport(apiBase, params),
     enabled: preset !== "custom" || Boolean(customRange.from && customRange.to),
   });
 
   const exportStatement = () => {
-    window.open("/api/partner/reports/money?export=statement", "_blank");
+    window.open(`${apiBase}/money?export=statement`, "_blank");
   };
 
   return (
     <div>
       <PartnerTopbarSlot>
-        <ReportTabs />
+        {switcher ?? <ReportTabs />}
       </PartnerTopbarSlot>
 
       <PageHeader title="المال" description="التقارير · المال" />
@@ -269,4 +276,8 @@ export default function PartnerMoneyReportPage() {
       </div>
     </div>
   );
+}
+
+export default function PartnerMoneyReportPage() {
+  return <MoneyReportView />;
 }

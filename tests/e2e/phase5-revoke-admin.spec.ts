@@ -113,7 +113,7 @@ test("self-demote is refused with 400", async ({ page }) => {
 
 test("the admins page disables the caller's own revoke button with a tooltip", async ({ page }) => {
   await loginAsAdminA(page);
-  await page.goto("/admin/admins");
+  await page.goto("/admin/clients?tab=admins");
   const rowA = page.getByRole("row").filter({ hasText: ADMIN_A_PHONE });
   await expect(rowA).toBeVisible();
   const revokeButtonA = rowA.getByRole("button", { name: "إزالة الصلاحية" });
@@ -122,7 +122,7 @@ test("the admins page disables the caller's own revoke button with a tooltip", a
 
 test("demoting another admin returns 200, the row leaves the list, and /api/auth/me reflects CUSTOMER for them", async ({ page, browser }) => {
   await loginAsAdminA(page);
-  await page.goto("/admin/admins");
+  await page.goto("/admin/clients?tab=admins");
 
   const rowB = page.getByRole("row").filter({ hasText: ADMIN_B_PHONE });
   await expect(rowB).toBeVisible();

@@ -13,12 +13,13 @@ import { PartnerOrdersTab } from "@/components/admin/partner-orders-tab";
 import { PartnerStockTab } from "@/components/admin/partner-stock-tab";
 import { PartnerFinanceTab } from "@/components/admin/partner-finance-tab";
 import { PartnerSettingsTab } from "@/components/admin/partner-settings-tab";
+import { PartnerPerformanceTab } from "@/components/admin/partner-performance-tab";
 
 /**
- * `/admin/partners/[id]` (backlog 9.4a (e)) — the partner profile. Header (back link,
- * identity, "اتصال") + five tabs via `?tab=` (default الملف): الملف · الطلبات · المخزون ·
- * الحساب المالي · الإعدادات. الأداء and this page's use as a tab of العملاء's admins are
- * 9.4b — out of this task's scope.
+ * `/admin/partners/[id]` (backlog 9.4a (e), 9.4b) — the partner profile. Header (back link,
+ * identity, "اتصال") + six tabs via `?tab=` (default الملف): الملف · الأداء · الطلبات ·
+ * المخزون · الحساب المالي · الإعدادات. This page's use as a tab of العملاء's admins is a
+ * different page (`/admin/clients`) — see `components/admin/admins-tab.tsx`.
  *
  * Deviation from the task text's literal header list ("... 'تعطيل الحساب…'/'تفعيل الحساب'
  * (confirm dialog; the 8.2 PATCH)"): that control is not duplicated in the header — the 8.2
@@ -43,6 +44,7 @@ type PartnerDetail = {
 
 const TABS = [
   { id: "profile", label: "الملف" },
+  { id: "performance", label: "الأداء" },
   { id: "orders", label: "الطلبات" },
   { id: "stock", label: "المخزون" },
   { id: "finance", label: "الحساب المالي" },
@@ -171,6 +173,7 @@ function AdminPartnerProfilePageInner() {
           />
         </div>
       )}
+      {tab === "performance" && <PartnerPerformanceTab partnerId={id} partnerType={partner.partnerType} />}
       {tab === "orders" && <PartnerOrdersTab partnerId={id} />}
       {tab === "stock" && <PartnerStockTab partnerId={id} />}
       {tab === "finance" && <PartnerFinanceTab partnerId={id} />}

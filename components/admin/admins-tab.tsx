@@ -1,0 +1,272 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/shared/skeleton";
+import { PaginationBar } from "@/components/dashboard/pagination";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { SearchInput } from "@/components/dashboard/search-input";
+import { Loader2, ShieldCheck, ShieldX } from "lucide-react";
+import { formatDateEn } from "@/lib/format-en-numbers";
+import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+/**
+ * المسؤولون tab on `/admin/clients` (backlog 9.4b, `06-admin-v2.md` §3.8) — the 8.3 admins
+ * table (`app/(admin)/admin/admins/page.tsx`) moved here verbatim, in the same list language,
+ * as a tab rather than a nav item (grant stays on the customer profile). Only the wrapper
+ * changed (`PageHeader` dropped — the clients page's own header covers both tabs).
+ */
+
+type AdminUser = {
+  id: string;
+  phone: string;
+  name: string | null;
+  email: string | null;
+  role: "CUSTOMER" | "ADMIN";
+  seniorVerified: boolean;
+  createdAt: string;
+  _count: { orders: number; savedAddresses: number };
+};
+
+export function AdminsTab() {
+  const [admins, setAdmins] = React.useState<AdminUser[]>([]);
+  const [total, setTotal] = React.useState(0);
+  const [loading, setLoading] = React.useState(true);
+  const [fetching, setFetching] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [debouncedQ, setDebouncedQ] = React.useState("");
+  const [page, setPage] = React.useState(0);
+  const [pageSize, setPageSize] = React.useState(20);
+  const [currentUserId, setCurrentUserId] = React.useState<string | null>(null);
+  const [revokeTarget, setRevokeTarget] = React.useState<AdminUser | null>(null);
+  const [revoking, setRevoking] = React.useState(false);
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((r) => r.json())
+      .then((json: { success?: boolean; data?: { userId: string } }) => {
+        if (json?.success && json.data) setCurrentUserId(json.data.userId);
+      })
+      .catch(() => {});
+  }, []);
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedQ]);
+
+  React.useEffect(() => {
+    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [total, pageSize, page]);
+
+  React.useEffect(() => {
+    const ac = new AbortController();
+    setFetching(true);
+    const params = new URLSearchParams({
+      role: "ADMIN",
+      limit: String(pageSize),
+      offset: String(page * pageSize),
+    });
+    if (debouncedQ) params.set("q", debouncedQ);
+    fetch(`/api/admin/clients?${params}`, { credentials: "include", signal: ac.signal })
+      .then((r) => r.json())
+      .then((json: { success?: boolean; data?: { clients: AdminUser[]; total: number } }) => {
+        if (ac.signal.aborted) return;
+        if (json?.success && json.data) {
+          setAdmins(json.data.clients);
+          setTotal(json.data.total);
+        }
+      })
+      .catch(() => {
+        if (!ac.signal.aborted) toast({ title: "فشل تحميل المسؤولين", variant: "destructive" });
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) {
+          setLoading(false);
+          setFetching(false);
+        }
+      });
+    return () => ac.abort();
+  }, [debouncedQ, page, pageSize, toast]);
+
+  const revokeAdmin = () => {
+    if (!revokeTarget) return;
+    setRevoking(true);
+    fetch(`/api/admin/clients/${revokeTarget.id}/revoke-admin`, {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((r) => r.json())
+      .then((json: { success?: boolean; data?: { alreadyCustomer: boolean }; error?: { message?: string } }) => {
+        if (json?.success) {
+          toast({ title: "تمت إزالة صلاحية المسؤول" });
+          setRevokeTarget(null);
+          setAdmins((prev) => prev.filter((a) => a.id !== revokeTarget.id));
+          setTotal((prev) => Math.max(0, prev - 1));
+        } else {
+          toast({ title: json?.error?.message ?? "فشلت العملية", variant: "destructive" });
+        }
+      })
+      .catch(() => toast({ title: "فشلت العملية", variant: "destructive" }))
+      .finally(() => setRevoking(false));
+  };
+
+  if (loading && admins.length === 0) return <Skeleton className="h-64 w-full rounded-lg" />;
+
+  return (
+    <div className="space-y-6">
+      <PanelCard
+        title="قائمة المسؤولين"
+        icon={<ShieldCheck className="h-5 w-5 text-burgundy" />}
+        toolbar={
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="بحث بالهاتف أو الاسم…"
+            className="w-64"
+          />
+        }
+      >
+        {fetching && admins.length > 0 && (
+          <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            جاري التحديث…
+          </div>
+        )}
+        {admins.length === 0 && !fetching ? (
+          <EmptyState
+            icon={<ShieldCheck className="h-12 w-12" />}
+            title={debouncedQ ? "لا توجد نتائج للبحث" : "لا يوجد مسؤولون"}
+          />
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <Table className={cn(fetching && "opacity-70")}>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead>الهاتف</TableHead>
+                  <TableHead>الاسم</TableHead>
+                  <TableHead>الصلاحية</TableHead>
+                  <TableHead>البريد</TableHead>
+                  <TableHead>الطلبات كعميل</TableHead>
+                  <TableHead>تاريخ الإنشاء</TableHead>
+                  <TableHead className="text-left">ملف التعريف</TableHead>
+                  <TableHead className="text-left">إجراءات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {admins.map((admin) => {
+                  const isSelf = currentUserId === admin.id;
+                  const revokeButton = (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      disabled={isSelf}
+                      aria-describedby={isSelf ? `revoke-self-${admin.id}` : undefined}
+                      onClick={() => setRevokeTarget(admin)}
+                    >
+                      <ShieldX className="ml-1 h-4 w-4" />
+                      إزالة الصلاحية
+                    </Button>
+                  );
+                  return (
+                    <TableRow key={admin.id}>
+                      <TableCell className="font-mono">{admin.phone}</TableCell>
+                      <TableCell>{admin.name?.trim() || "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant="default">مسؤول</Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{admin.email ?? "—"}</TableCell>
+                      <TableCell>{admin._count.orders}</TableCell>
+                      <TableCell>{formatDateEn(admin.createdAt)}</TableCell>
+                      <TableCell className="text-left">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/admin/clients/${admin.id}`}>عرض الملف</Link>
+                        </Button>
+                      </TableCell>
+                      <TableCell className="text-left">
+                        {isSelf ? (
+                          // An always-visible caption instead of a hover/focus tooltip: a disabled
+                          // button is not focusable, and the tooltip closed on a spurious scroll
+                          // event at 1024/390 before anyone could read it (verifier, 8.3).
+                          <div className="flex flex-col items-start gap-0.5">
+                            {revokeButton}
+                            <span id={`revoke-self-${admin.id}`} className="text-[11px] text-muted-foreground">
+                              لا يمكنك إزالة صلاحيتك الخاصة
+                            </span>
+                          </div>
+                        ) : (
+                          revokeButton
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+        {total > 0 && (
+          <PaginationBar
+            className="mt-6"
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            disabled={fetching}
+          />
+        )}
+      </PanelCard>
+
+      <Dialog open={!!revokeTarget} onOpenChange={(open) => !open && !revoking && setRevokeTarget(null)}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>إزالة صلاحية المسؤول</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            هل تريد إزالة صلاحية المسؤول عن{" "}
+            <span className="font-semibold text-foreground">
+              {revokeTarget?.name?.trim() || revokeTarget?.phone}
+            </span>
+            ؟ سيصبح حسابه عميلًا عاديًا ولن يتمكن من الدخول إلى لوحة التحكم.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevokeTarget(null)} disabled={revoking}>
+              إلغاء
+            </Button>
+            <Button variant="destructive" onClick={revokeAdmin} disabled={revoking}>
+              {revoking ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : null}
+              تأكيد الإزالة
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

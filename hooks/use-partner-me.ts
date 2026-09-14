@@ -44,11 +44,18 @@ async function fetchPartnerMe(): Promise<PartnerMe> {
   return partner;
 }
 
-export function usePartnerMe() {
+/**
+ * `enabled` (default true, backlog 9.4b) — the admin's الأداء tab reuses report view
+ * components that call this hook (e.g. `NetworkReportView`) from an admin session with no
+ * `/api/partner/me` to resolve; those callers already know the partner's type from the
+ * profile they're viewing and pass `enabled: false` so this never fires a doomed fetch.
+ */
+export function usePartnerMe(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["partner-me"],
     queryFn: fetchPartnerMe,
     staleTime: 5 * 60_000,
     retry: 1,
+    enabled: options?.enabled ?? true,
   });
 }
