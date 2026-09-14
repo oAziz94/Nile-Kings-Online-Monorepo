@@ -56,3 +56,22 @@ export function loadRedesignTestEnv(root: string = path.resolve(__dirname, "../.
 
 /** Production Neon endpoint id (hostname prefix; the `-pooler` and direct hosts both start with it). */
 const PRODUCTION_DB_HOST_PREFIX = "ep-hidden-butterfly-agp3sg0e";
+
+/**
+ * Backlog 9.0c — the routing e2e's "no rule yet" path (a governorate whose mode select has
+ * never been touched, so choosing a mode creates the row for the first time) needs a real
+ * `GOVERNORATE_OPTIONS` row (`lib/services/shipping.ts`) with no `ReroutingRule`. By the time
+ * 9.0c ran, all 27 governorates already had one, seeded 2026-04-02 with one partner each and
+ * zero `RoutedOrder`s ever assigned through them (verified via a guarded one-off before
+ * deleting anything) — i.e. setup data, not live routing state.
+ *
+ * "الوادي الجديد" (New Valley — Egypt's lowest-population governorate, so the least likely
+ * to ever carry real routed-order traffic) is reserved for this purpose: its `ReroutingRule`
+ * was deleted by a guarded one-off (`node --env-file=.env.redesign`, host-asserted, not
+ * committed) as part of 9.0c, and this is the ONE sanctioned exception to "never delete a
+ * ReroutingRule" (04-decisions.md / 03-backlog.md 9.5a's standing rule) — every other
+ * governorate's rule is still off-limits. `admin-v2-routing.spec.ts`'s
+ * "mode select creates the rule on first change" test runs against this real row and its own
+ * `afterAll` deletes whatever rule it creates, restoring the "no rule" state for the next run.
+ */
+export const ROUTING_TEST_GOVERNORATE = "الوادي الجديد";
