@@ -37,8 +37,8 @@ const BREAKDOWN_TABS: { id: keyof FulfilmentReportResponse["breakdowns"]; label:
   { id: "cancellationReason", label: "أسباب الإلغاء" },
 ];
 
-async function fetchFulfilmentReport(params: URLSearchParams): Promise<FulfilmentReportResponse> {
-  const res = await fetch(`/api/partner/reports/fulfilment?${params}`, { credentials: "include" });
+async function fetchFulfilmentReport(apiBase: string, params: URLSearchParams): Promise<FulfilmentReportResponse> {
+  const res = await fetch(`${apiBase}/fulfilment?${params}`, { credentials: "include" });
   const json = await res.json().catch(() => null);
   if (!res.ok || !json?.data) throw new Error(json?.error?.message ?? "تعذر تحميل التقرير");
   return json.data;
@@ -54,7 +54,14 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "ملغي",
 };
 
-export default function PartnerFulfilmentReportPage() {
+/** Backlog 9.4b (a): see `SalesReportView`'s doc comment for `apiBase`/`switcher`. */
+export function FulfilmentReportView({
+  apiBase = "/api/partner/reports",
+  switcher,
+}: {
+  apiBase?: string;
+  switcher?: React.ReactNode;
+}) {
   const [preset, setPreset] = React.useState<SalesReportPreset>("30d");
   const [customRange, setCustomRange] = React.useState({ from: "", to: "" });
   const [activeTab, setActiveTab] = React.useState<keyof FulfilmentReportResponse["breakdowns"]>("slowest");
@@ -67,15 +74,15 @@ export default function PartnerFulfilmentReportPage() {
   }
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ["partner-reports-fulfilment", preset, customRange.from, customRange.to, page],
-    queryFn: () => fetchFulfilmentReport(params),
+    queryKey: ["partner-reports-fulfilment", apiBase, preset, customRange.from, customRange.to, page],
+    queryFn: () => fetchFulfilmentReport(apiBase, params),
     enabled: preset !== "custom" || Boolean(customRange.from && customRange.to),
   });
 
   return (
     <div>
       <PartnerTopbarSlot>
-        <ReportTabs />
+        {switcher ?? <ReportTabs />}
       </PartnerTopbarSlot>
 
       <PageHeader title="تقرير التجهيز" description="التقارير · التجهيز" />
@@ -218,4 +225,8 @@ export default function PartnerFulfilmentReportPage() {
       </div>
     </div>
   );
+}
+
+export default function PartnerFulfilmentReportPage() {
+  return <FulfilmentReportView />;
 }

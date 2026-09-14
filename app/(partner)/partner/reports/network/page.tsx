@@ -37,16 +37,31 @@ const PRESETS: { id: SalesReportPreset; label: string }[] = [
   { id: "custom", label: "مخصص" },
 ];
 
-async function fetchNetworkReport(params: URLSearchParams): Promise<NetworkReportResponse> {
-  const res = await fetch(`/api/partner/reports/network?${params}`, { credentials: "include" });
+async function fetchNetworkReport(apiBase: string, params: URLSearchParams): Promise<NetworkReportResponse> {
+  const res = await fetch(`${apiBase}/network?${params}`, { credentials: "include" });
   const json = await res.json().catch(() => null);
   if (!res.ok || !json?.data) throw new Error(json?.error?.message ?? "تعذر تحميل التقرير");
   return json.data;
 }
 
-export default function PartnerNetworkReportPage() {
-  const { data: me, isLoading: meLoading } = usePartnerMe();
-  const isAgent = me?.partnerType === "AGENT";
+/**
+ * Backlog 9.4b (a): see `SalesReportView`'s doc comment for `apiBase`/`switcher`. The admin's
+ * الأداء tab already knows the viewed partner's type from the profile it's rendering, so it
+ * passes `isAgentOverride` and this view skips its own `usePartnerMe()` role check (which
+ * would otherwise fire a doomed `/api/partner/me` fetch against an admin session).
+ */
+export function NetworkReportView({
+  apiBase = "/api/partner/reports",
+  switcher,
+  isAgentOverride,
+}: {
+  apiBase?: string;
+  switcher?: React.ReactNode;
+  isAgentOverride?: boolean;
+}) {
+  const { data: me, isLoading: meLoadingRaw } = usePartnerMe({ enabled: isAgentOverride === undefined });
+  const isAgent = isAgentOverride ?? me?.partnerType === "AGENT";
+  const meLoading = isAgentOverride === undefined && meLoadingRaw;
 
   const [preset, setPreset] = React.useState<SalesReportPreset>("30d");
   const [customRange, setCustomRange] = React.useState({ from: "", to: "" });
@@ -59,15 +74,15 @@ export default function PartnerNetworkReportPage() {
   }
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["partner-reports-network", preset, customRange.from, customRange.to, page],
-    queryFn: () => fetchNetworkReport(params),
+    queryKey: ["partner-reports-network", apiBase, preset, customRange.from, customRange.to, page],
+    queryFn: () => fetchNetworkReport(apiBase, params),
     enabled: isAgent && (preset !== "custom" || Boolean(customRange.from && customRange.to)),
   });
 
   return (
     <div>
       <PartnerTopbarSlot>
-        <ReportTabs />
+        {switcher ?? <ReportTabs />}
       </PartnerTopbarSlot>
 
       <PageHeader title="تقرير الشبكة" description="التقارير · الشبكة" />
@@ -122,9 +137,13 @@ export default function PartnerNetworkReportPage() {
                     <>
                       <TableCell className="font-semibold text-ink">
                         <div className="flex items-center gap-2">
-                          <Link href="/partner/network" className="hover:underline">
-                            {r.name}
-                          </Link>
+                          {apiBase === "/api/partner/reports" ? (
+                            <Link href="/partner/network" className="hover:underline">
+                              {r.name}
+                            </Link>
+                          ) : (
+                            <span>{r.name}</span>
+                          )}
                           {!r.isActive && <Badge variant="secondary">غير نشط</Badge>}
                         </div>
                       </TableCell>
@@ -144,4 +163,8 @@ export default function PartnerNetworkReportPage() {
       )}
     </div>
   );
+}
+
+export default function PartnerNetworkReportPage() {
+  return <NetworkReportView />;
 }

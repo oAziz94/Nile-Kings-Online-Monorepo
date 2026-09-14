@@ -35,14 +35,27 @@ const FILTERS: { id: InventoryReportFilter; label: string }[] = [
   { id: "all", label: "الكل" },
 ];
 
-async function fetchInventoryReport(params: URLSearchParams): Promise<InventoryReportResponse> {
-  const res = await fetch(`/api/partner/reports/inventory?${params}`, { credentials: "include" });
+async function fetchInventoryReport(apiBase: string, params: URLSearchParams): Promise<InventoryReportResponse> {
+  const res = await fetch(`${apiBase}/inventory?${params}`, { credentials: "include" });
   const json = await res.json().catch(() => null);
   if (!res.ok || !json?.data) throw new Error(json?.error?.message ?? "تعذر تحميل التقرير");
   return json.data;
 }
 
-export default function PartnerInventoryReportPage() {
+/**
+ * Backlog 9.4b (a): see `SalesReportView`'s doc comment for `apiBase`/`switcher`. The
+ * "تعديل الأهداف" link to `/partner/settings` is a partner-only concept — `settingsHref`
+ * lets the admin's الأداء tab point it at this partner's الإعدادات tab instead, or omit it.
+ */
+export function InventoryReportView({
+  apiBase = "/api/partner/reports",
+  switcher,
+  settingsHref = "/partner/settings",
+}: {
+  apiBase?: string;
+  switcher?: React.ReactNode;
+  settingsHref?: string;
+}) {
   const [preset, setPreset] = React.useState<InventoryReportPreset>("30d");
   const [customRange, setCustomRange] = React.useState({ from: "", to: "" });
   const [filter, setFilter] = React.useState<InventoryReportFilter>("needsReorder");
@@ -55,8 +68,8 @@ export default function PartnerInventoryReportPage() {
   }
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ["partner-reports-inventory", preset, customRange.from, customRange.to, filter, page],
-    queryFn: () => fetchInventoryReport(params),
+    queryKey: ["partner-reports-inventory", apiBase, preset, customRange.from, customRange.to, filter, page],
+    queryFn: () => fetchInventoryReport(apiBase, params),
     enabled: preset !== "custom" || Boolean(customRange.from && customRange.to),
   });
 
@@ -66,13 +79,13 @@ export default function PartnerInventoryReportPage() {
       p.set("from", customRange.from);
       p.set("to", customRange.to);
     }
-    window.open(`/api/partner/reports/inventory?${p}`, "_blank");
+    window.open(`${apiBase}/inventory?${p}`, "_blank");
   };
 
   return (
     <div>
       <PartnerTopbarSlot>
-        <ReportTabs />
+        {switcher ?? <ReportTabs />}
       </PartnerTopbarSlot>
 
       <PageHeader title="تقرير المخزون" description="التقارير · المخزون" />
@@ -96,7 +109,7 @@ export default function PartnerInventoryReportPage() {
           toolbar={
             <>
               <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs">
-                <Link href="/partner/settings">
+                <Link href={settingsHref}>
                   <Settings2 className="h-3.5 w-3.5" />
                   تعديل الأهداف
                 </Link>
@@ -240,4 +253,8 @@ export default function PartnerInventoryReportPage() {
       </div>
     </div>
   );
+}
+
+export default function PartnerInventoryReportPage() {
+  return <InventoryReportView />;
 }

@@ -43,14 +43,27 @@ const BREAKDOWN_TABS: { id: keyof SalesReportResponse["breakdowns"]; label: stri
   { id: "day", label: "حسب اليوم" },
 ];
 
-async function fetchSalesReport(params: URLSearchParams): Promise<SalesReportResponse> {
-  const res = await fetch(`/api/partner/reports/sales?${params}`, { credentials: "include" });
+async function fetchSalesReport(apiBase: string, params: URLSearchParams): Promise<SalesReportResponse> {
+  const res = await fetch(`${apiBase}/sales?${params}`, { credentials: "include" });
   const json = await res.json().catch(() => null);
   if (!res.ok || !json?.data) throw new Error(json?.error?.message ?? "تعذر تحميل التقرير");
   return json.data;
 }
 
-export default function PartnerSalesReportPage() {
+/**
+ * Backlog 9.4b (a): `apiBase` (default `/api/partner/reports`) and `switcher` (default the
+ * partner's own `<ReportTabs/>`) let the admin's الأداء tab render this exact component
+ * against `/api/admin/partners/<id>/reports` with an embedded, non-navigating switcher —
+ * nothing here is copied. Neither prop is passed by `PartnerSalesReportPage`, so its
+ * rendered DOM is unchanged.
+ */
+export function SalesReportView({
+  apiBase = "/api/partner/reports",
+  switcher,
+}: {
+  apiBase?: string;
+  switcher?: React.ReactNode;
+}) {
   const [preset, setPreset] = React.useState<SalesReportPreset>("30d");
   const [customRange, setCustomRange] = React.useState({ from: "", to: "" });
   const [activeTab, setActiveTab] = React.useState<keyof SalesReportResponse["breakdowns"]>("product");
@@ -63,8 +76,8 @@ export default function PartnerSalesReportPage() {
   }
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ["partner-reports-sales", preset, customRange.from, customRange.to, page],
-    queryFn: () => fetchSalesReport(params),
+    queryKey: ["partner-reports-sales", apiBase, preset, customRange.from, customRange.to, page],
+    queryFn: () => fetchSalesReport(apiBase, params),
     enabled: preset !== "custom" || Boolean(customRange.from && customRange.to),
   });
 
@@ -74,13 +87,13 @@ export default function PartnerSalesReportPage() {
       p.set("from", customRange.from);
       p.set("to", customRange.to);
     }
-    window.open(`/api/partner/reports/sales?${p}`, "_blank");
+    window.open(`${apiBase}/sales?${p}`, "_blank");
   };
 
   return (
     <div>
       <PartnerTopbarSlot>
-        <ReportTabs />
+        {switcher ?? <ReportTabs />}
       </PartnerTopbarSlot>
 
       <PageHeader title="تقرير المبيعات" description="التقارير · المبيعات" />
@@ -244,4 +257,8 @@ export default function PartnerSalesReportPage() {
       </div>
     </div>
   );
+}
+
+export default function PartnerSalesReportPage() {
+  return <SalesReportView />;
 }

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,9 +20,79 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
 import { SearchInput } from "@/components/dashboard/search-input";
-import { Users, Loader2, UserPlus } from "lucide-react";
+import { Users, Loader2, UserPlus, ShieldCheck } from "lucide-react";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
+import { AdminsTab } from "@/components/admin/admins-tab";
+
+const TABS = [
+  { id: "clients", label: "العملاء" },
+  { id: "admins", label: "المسؤولون" },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
+
+export default function AdminClientsPageWrapper() {
+  return (
+    <React.Suspense fallback={<Skeleton className="h-64 w-full rounded-lg" />}>
+      <AdminClientsTabs />
+    </React.Suspense>
+  );
+}
+
+function AdminClientsTabs() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab") as TabId | null;
+  const tab: TabId = TABS.some((t) => t.id === tabParam) ? (tabParam as TabId) : "clients";
+
+  const setTab = (next: TabId) => {
+    router.replace(next === "clients" ? "/admin/clients" : `/admin/clients?tab=${next}`, { scroll: false });
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={tab === "admins" ? "المسؤولون" : "العملاء"}
+        description={
+          tab === "admins"
+            ? "حسابات الفريق التي لديها صلاحية دخول لوحة الإدارة."
+            : "حسابات العملاء فقط، مع العناوين والطلبات المرتبطة بكل عميل."
+        }
+        actions={
+          tab === "clients" ? (
+            <Button asChild className="rounded-md">
+              <Link href="/admin/clients/new">
+                <UserPlus className="h-4 w-4" />
+                عميل جديد
+              </Link>
+            </Button>
+          ) : undefined
+        }
+      />
+
+      <div role="tablist" aria-label="أقسام صفحة العملاء" className="flex flex-wrap gap-1 rounded-2xl bg-white p-1.5 shadow-soft">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "rounded-xl px-3.5 py-2 text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500",
+              tab === t.id ? "bg-lapis-800 text-white" : "text-ink-soft hover:bg-stone-50"
+            )}
+          >
+            {t.id === "admins" && <ShieldCheck className="ml-1 inline h-3.5 w-3.5" />}
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "admins" ? <AdminsTab /> : <AdminClientsList />}
+    </div>
+  );
+}
 
 type Client = {
   id: string;
@@ -34,7 +105,7 @@ type Client = {
   _count: { orders: number; savedAddresses: number };
 };
 
-export default function AdminClientsPage() {
+function AdminClientsList() {
   const [clients, setClients] = React.useState<Client[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
@@ -92,19 +163,7 @@ export default function AdminClientsPage() {
   if (loading && clients.length === 0) return <Skeleton className="h-64 w-full rounded-lg" />;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="العملاء"
-        description="حسابات العملاء فقط، مع العناوين والطلبات المرتبطة بكل عميل."
-        actions={
-          <Button asChild className="rounded-md">
-            <Link href="/admin/clients/new">
-              <UserPlus className="h-4 w-4" />
-              عميل جديد
-            </Link>
-          </Button>
-        }
-      />
+    <>
       <PanelCard
         title="قائمة العملاء"
         icon={<Users className="h-5 w-5 text-burgundy" />}
@@ -181,6 +240,6 @@ export default function AdminClientsPage() {
             />
           )}
       </PanelCard>
-    </div>
+    </>
   );
 }
