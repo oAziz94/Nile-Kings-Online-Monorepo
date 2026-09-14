@@ -168,7 +168,11 @@ test("desktop nav shows the canvas's sections/order/hrefs, and the ticket badge 
   }
 
   // Account block: المتجر + تسجيل الخروج, no duplicate settings link.
-  await expect(nav.getByRole("link", { name: "المتجر" })).toBeVisible();
+  // Backlog 9.0b (i): المتجر is a real `Link` to "/" with an accessible name (not a bare span).
+  const storeLink = nav.getByRole("link", { name: "المتجر" });
+  await expect(storeLink).toBeVisible();
+  await expect(storeLink).toHaveAttribute("href", "/");
+  await expect(storeLink).toHaveAttribute("aria-label", "المتجر");
   await expect(nav.getByRole("button", { name: "تسجيل الخروج" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "الإعدادات", exact: true })).toHaveCount(1);
 

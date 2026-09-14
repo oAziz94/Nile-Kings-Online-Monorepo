@@ -253,7 +253,15 @@ function NavSections({
           </SidebarCollapseTooltip>
         )}
         <SidebarCollapseTooltip active={collapsed} label={accountNav.storeLabel}>
-          <Link href={accountNav.storeHref} onClick={onNavigate} className={cn(NAV_ITEM_BASE, NAV_ITEM_INACTIVE, itemClassName)}>
+          {/* Backlog 9.0b (i): the "المتجر" chip must be a real link with an accessible name —
+              already a `Link` here, but the collapsed (icon-only) state hid its visible text,
+              so the `aria-label` makes the name explicit in every collapse state. */}
+          <Link
+            href={accountNav.storeHref}
+            onClick={onNavigate}
+            aria-label={accountNav.storeLabel}
+            className={cn(NAV_ITEM_BASE, NAV_ITEM_INACTIVE, itemClassName)}
+          >
             <Store className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
             <span className={labelClassName}>{accountNav.storeLabel}</span>
           </Link>
