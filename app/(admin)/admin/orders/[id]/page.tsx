@@ -38,8 +38,10 @@ import { computeOrderSla, type OrderSlaResult } from "@/lib/orders/order-sla";
 import {
   OrderItemsTable,
   type EditableOrderItem,
+  type OrderItemRow,
   type OrderVariantOption,
 } from "@/components/orders/order-items-table";
+import { getDisplaySizeLabel, isKidsCategory } from "@/lib/size-display";
 import { OrderCustomerCard } from "@/components/orders/order-customer-card";
 import { OrderTimeline, type OrderAuditLogEntry } from "@/components/orders/order-timeline";
 import { OrderHeaderActions, ManualStatusMenu } from "@/components/orders/order-status-actions";
@@ -158,6 +160,34 @@ const NEXT_STATUS: Record<string, string | undefined> = {
   DELIVERED: undefined,
   CANCELLED: undefined,
 };
+
+/** The admin's own size/colour parsing (v1 feature parity, `docs/redesign/00-feature-inventory/
+ * admin/orders.md`): same dash/Arabic-character heuristic as the shared component's default,
+ * but relabelled through `getDisplaySizeLabel`/`isKidsCategory` using each item's own
+ * `categorySlug` — the partner page never has a category to relabel against, so it keeps the
+ * shared component's plain default instead of this override. */
+function adminGetSize(item: OrderItemRow): string {
+  const variantName = item.variantName;
+  const parts = variantName.split("-");
+  const rawSize = (() => {
+    if (parts.length < 2) return variantName;
+    const lastPart = parts[parts.length - 1];
+    const secondLastPart = parts[parts.length - 2];
+    const sizePattern = /^(S|M|L|XL|XXL|XXXL|XS|[0-9]+[a-zA-Z]*|[0-9]+[Xx][0-9]+|[0-9]+\/[0-9]+|one\s*size|free\s*size)$/i;
+    const hasArabic = /[؀-ۿ]/.test(lastPart);
+    if (hasArabic && secondLastPart) return secondLastPart;
+    if (sizePattern.test(lastPart)) return lastPart;
+    if (secondLastPart && sizePattern.test(secondLastPart)) return secondLastPart;
+    return lastPart;
+  })();
+  return getDisplaySizeLabel(rawSize.trim(), isKidsCategory(item.categorySlug));
+}
+
+function adminGetColor(item: OrderItemRow): string {
+  const parts = item.variantName.split("-");
+  const arabicPart = parts.find((part) => /[؀-ۿ]/.test(part));
+  return arabicPart || "—";
+}
 
 export default function AdminOrderDetailPage() {
   const params = useParams<{ id: string }>();
@@ -719,6 +749,8 @@ export default function AdminOrderDetailPage() {
         <div className="space-y-4">
           <OrderItemsTable
             items={order.items}
+            getSize={adminGetSize}
+            getColor={adminGetColor}
             money={{
               subtotalPiastres: order.subtotalPiastres,
               discountPiastres: order.discountPiastres,
@@ -809,8 +841,9 @@ export default function AdminOrderDetailPage() {
           <PanelCard title="ربط الطلب بحساب عميل" description="يمكنك تغيير الحساب المرتبط بالطلب ثم اختيار عنوان من عناوين هذا الحساب." icon={<Link2 className="h-5 w-5 text-lapis-800" />}>
             <div className="space-y-4">
               <div className="grid gap-2">
-                <Label>بحث عن عميل</Label>
+                <Label htmlFor="relink-client-search">بحث عن عميل</Label>
                 <input
+                  id="relink-client-search"
                   className="flex h-10 w-full rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
                   placeholder="ابحث بالهاتف أو الاسم"
                   value={clientSearch}
@@ -818,8 +851,8 @@ export default function AdminOrderDetailPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label>الحساب</Label>
-                <Select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)} className="w-full rounded-lg">
+                <Label htmlFor="relink-client-select">الحساب</Label>
+                <Select id="relink-client-select" value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)} className="w-full rounded-lg">
                   {!selectedClientId && <option value="">اختر حسابًا</option>}
                   {clientOptions.map((c) => (
                     <option key={c.id} value={c.id}>{c.phone} {c.name ? `(${c.name})` : ""}</option>
@@ -828,8 +861,9 @@ export default function AdminOrderDetailPage() {
                 {loadingClients && <p className="text-xs text-ink-soft">جاري تحميل العملاء…</p>}
               </div>
               <div className="grid gap-2">
-                <Label>عنوان الحساب</Label>
+                <Label htmlFor="relink-address-select">عنوان الحساب</Label>
                 <Select
+                  id="relink-address-select"
                   value={selectedAddressId}
                   onChange={(e) => setSelectedAddressId(e.target.value)}
                   disabled={loadingSelectedClient || !selectedClient || selectedClient.savedAddresses.length === 0}

@@ -34,6 +34,9 @@ export type OrderItemRow = {
   quantity: number;
   unitPricePiastres: number;
   totalPiastres: number;
+  /** Present on the admin detail only — lets `getSize` apply the kids size relabelling
+   * (`getDisplaySizeLabel`/`isKidsCategory`); the partner page never sets this. */
+  categorySlug?: string;
 };
 
 export type EditableOrderItem = {
@@ -51,8 +54,11 @@ export type OrderVariantOption = {
   pricePiastres: number;
 };
 
-/** Default size/colour parsing — the partner page's own heuristic on `variantName`. */
-function defaultGetSize(variantName: string): string {
+/** Default size/colour parsing — the partner page's own heuristic on `variantName`
+ * (no `categorySlug`-aware kids relabelling; the admin detail passes its own `getSize`
+ * for that). */
+function defaultGetSize(item: { variantName: string }): string {
+  const variantName = item.variantName;
   const parts = variantName.split("-");
   if (parts.length < 2) return variantName;
   const lastPart = parts[parts.length - 1];
@@ -65,8 +71,8 @@ function defaultGetSize(variantName: string): string {
   return lastPart;
 }
 
-function defaultGetColor(variantName: string): string {
-  const parts = variantName.split("-");
+function defaultGetColor(item: { variantName: string }): string {
+  const parts = item.variantName.split("-");
   const arabicPart = parts.find((part) => /[؀-ۿ]/.test(part));
   return arabicPart || "—";
 }
@@ -87,8 +93,8 @@ export type OrderItemsTableProps = {
   onAddSelectedVariant: () => void;
   onSaveItems: () => void;
   savingItems: boolean;
-  getSize?: (variantName: string) => string;
-  getColor?: (variantName: string) => string;
+  getSize?: (item: OrderItemRow) => string;
+  getColor?: (item: OrderItemRow) => string;
   belowSaveButton?: React.ReactNode;
 };
 
@@ -132,7 +138,7 @@ export function OrderItemsTable({
                 <TableRow key={item.id}>
                   <TableCell className="font-bold">{item.productName}</TableCell>
                   <TableCell className="text-ink-soft">
-                    {getSize(item.variantName)} · {getColor(item.variantName)}
+                    {getSize(item)} · {getColor(item)}
                   </TableCell>
                   <TableCell dir="ltr" className="text-xs text-ink-soft">{item.sku}</TableCell>
                   <TableCell dir="ltr">{item.quantity}</TableCell>
