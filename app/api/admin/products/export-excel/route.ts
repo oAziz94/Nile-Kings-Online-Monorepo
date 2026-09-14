@@ -23,17 +23,30 @@ export async function GET(req: NextRequest) {
     include: {
       variants: {
         select: {
+          id: true,
           sku: true,
           name: true,
           colorName: true,
           colorHex: true,
           pricePiastres: true,
-          stockAvailable: true,
           imageUrl: true,
         },
       },
     },
   });
+
+  // Stock lives only in PartnerInventory now — one grouped query across every partner gives
+  // the network-wide sellable quantity per variant for the feed, instead of a per-variant read.
+  const stockGroups = await prisma.partnerInventory.groupBy({
+    by: ["variantId"],
+    _sum: { stockAvailable: true, stockReserved: true },
+  });
+  const sellableByVariant = new Map(
+    stockGroups.map((g) => [
+      g.variantId,
+      Math.max(0, (g._sum.stockAvailable ?? 0) - (g._sum.stockReserved ?? 0)),
+    ])
+  );
 
   const forExport: CatalogExportProduct[] = products.map((p) => ({
     id: p.id,
@@ -47,7 +60,7 @@ export async function GET(req: NextRequest) {
       colorName: v.colorName,
       colorHex: v.colorHex,
       pricePiastres: v.pricePiastres,
-      stockAvailable: v.stockAvailable,
+      stockAvailable: sellableByVariant.get(v.id) ?? 0,
       imageUrl: v.imageUrl,
     })),
   }));

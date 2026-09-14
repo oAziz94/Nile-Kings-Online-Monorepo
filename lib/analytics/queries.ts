@@ -174,10 +174,6 @@ export async function getProductVariantReport(
       where: { product: { active: true } },
       include: {
         product: { select: { id: true, name: true } },
-        partnerInventories: {
-          where: { partnerId: scope.partnerId ?? "__no_partner_scope__" },
-          select: { stockAvailable: true, stockReserved: true },
-        },
       },
       orderBy: [{ product: { name: "asc" } }, { sku: "asc" }],
     }),
@@ -187,6 +183,29 @@ export async function getProductVariantReport(
       _sum: { quantity: true, totalPiastres: true },
     }),
   ]);
+
+  const variantIds = variants.map((v) => v.id);
+  // Stock lives only in PartnerInventory now: a scoped caller (partner report reused with an
+  // admin's partner id) reads that one partner's row per variant, same as before; the network
+  // caller (no scope.partnerId) sums every partner's row per variant with one grouped query —
+  // never a per-variant read, and never a fallback to the (now-removed) Variant columns.
+  const stockRows = scope.partnerId
+    ? await prisma.partnerInventory.findMany({
+        where: { partnerId: scope.partnerId, variantId: { in: variantIds } },
+        select: { variantId: true, stockAvailable: true, stockReserved: true },
+      })
+    : (
+        await prisma.partnerInventory.groupBy({
+          by: ["variantId"],
+          where: { variantId: { in: variantIds } },
+          _sum: { stockAvailable: true, stockReserved: true },
+        })
+      ).map((g) => ({
+        variantId: g.variantId,
+        stockAvailable: g._sum.stockAvailable ?? 0,
+        stockReserved: g._sum.stockReserved ?? 0,
+      }));
+  const stockByVariant = new Map(stockRows.map((r) => [r.variantId, r]));
 
   const soldMap = new Map(
     salesGroups.map((g) => [
@@ -200,7 +219,7 @@ export async function getProductVariantReport(
 
   return variants.map((v) => {
     const sold = soldMap.get(v.id);
-    const partnerInventory = v.partnerInventories[0] ?? null;
+    const stock = stockByVariant.get(v.id);
     return {
       productId: v.product.id,
       productName: v.product.name,
@@ -209,8 +228,8 @@ export async function getProductVariantReport(
       colorName: v.colorName,
       sku: v.sku,
       pricePiastres: v.pricePiastres,
-      stockAvailable: partnerInventory?.stockAvailable ?? v.stockAvailable,
-      stockReserved: partnerInventory?.stockReserved ?? v.stockReserved,
+      stockAvailable: stock?.stockAvailable ?? 0,
+      stockReserved: stock?.stockReserved ?? 0,
       quantitySold: sold?.quantitySold ?? 0,
       lineRevenuePiastres: sold?.lineRevenuePiastres ?? 0,
     };
@@ -322,9 +341,12 @@ export async function getStockReport(partnerId: string): Promise<StockReportRow[
   const soldMap = new Map(salesGroups.map((g) => [g.variantId, g._sum.quantity ?? 0]));
 
   return variants.map((v) => {
+    // The query above scoped variants to `partnerInventories: { some: { partnerId } } }`, so
+    // this partner always has a row here — stock lives only in PartnerInventory now, no
+    // fallback to the (removed) Variant columns.
     const inv = v.partnerInventories[0] ?? null;
-    const stockAvailable = inv?.stockAvailable ?? v.stockAvailable;
-    const stockReserved = inv?.stockReserved ?? v.stockReserved;
+    const stockAvailable = inv?.stockAvailable ?? 0;
+    const stockReserved = inv?.stockReserved ?? 0;
     const unitsSold30d = soldMap.get(v.id) ?? 0;
     const metrics = computeStockRowMetrics({ stockAvailable, stockReserved, unitsSold30d, threshold });
     return {

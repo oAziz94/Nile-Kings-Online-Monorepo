@@ -135,7 +135,15 @@ export async function DELETE(req: NextRequest, { params }: { params: Params }) {
   const { id } = await params;
   const product = await prisma.product.findUnique({ where: { id }, include: { variants: true } });
   if (!product) return apiNotFound("المنتج غير موجود");
-  if (product.variants.some((v) => v.stockReserved > 0)) return apiBadRequest("لا يمكن حذف منتج له كميات محجوزة");
+  // Stock (including reservations) lives only in PartnerInventory now — one existence check
+  // across every partner's rows for this product's variants, never a per-variant read.
+  const hasReservedStock = product.variants.length
+    ? await prisma.partnerInventory.findFirst({
+        where: { variantId: { in: product.variants.map((v) => v.id) }, stockReserved: { gt: 0 } },
+        select: { id: true },
+      })
+    : null;
+  if (hasReservedStock) return apiBadRequest("لا يمكن حذف منتج له كميات محجوزة");
   await prisma.product.delete({ where: { id } });
   await logAdminAction(prisma, {
     actor,
