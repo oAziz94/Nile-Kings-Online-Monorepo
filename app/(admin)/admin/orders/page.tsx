@@ -2,95 +2,131 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowLeftRight, Eye, FileDown, Plus, Printer, RefreshCw, ShoppingBag } from "lucide-react";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { PaginationBar } from "@/components/dashboard/pagination";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { SearchInput } from "@/components/dashboard/search-input";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DataTable, type ColumnDef } from "@/components/ui/data-table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useListUrlState } from "@/hooks/use-list-url-state";
 import { useRowScrollRestore } from "@/hooks/use-row-scroll-restore";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/shared/skeleton";
-import { Select } from "@/components/ui/select";
-import { PaginationBar } from "@/components/dashboard/pagination";
-import { EmptyState } from "@/components/dashboard/empty-state";
-import { PageHeader } from "@/components/dashboard/page-header";
-import { PanelCard } from "@/components/dashboard/panel-card";
-import { SearchInput } from "@/components/dashboard/search-input";
-import { ShoppingBag, FileDown, FileText, Loader2, ChevronDown, Plus } from "lucide-react";
-import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
 import { piastresToEgp } from "@/lib/catalog";
+import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import {
-  ORDER_STATUS_BADGE_CLASSES as STATUS_BADGE_CLASSES,
   ORDER_STATUS_LABELS as STATUS_LABELS,
+  ORDER_STATUSES,
 } from "@/lib/constants/order-status";
+import { formatNumberEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
 
 const PAYMENT_LABELS: Record<string, string> = {
   COD: "الدفع عند الاستلام",
-  INSTAPAY_PREPAID: "الدفع عبر InstaPay",
+  INSTAPAY_PREPAID: "إنستاباي",
   PAYMOB: "بطاقة",
 };
 
-type Order = {
-  id: string;
-  status: string;
-  subtotalPiastres: number;
-  shippingPiastres: number;
-  codFeePiastres: number;
-  totalPiastres: number;
-  paymentMethod: string;
-  adminNotes: string | null;
-  createdAt: string;
-  user: { phone: string; name: string | null };
-  items: { quantity: number; productName: string }[];
+type PillVariant = NonNullable<BadgeProps["variant"]>;
+
+const ORDER_STATUS_PILL_VARIANT: Record<string, PillVariant> = {
+  CREATED: "info",
+  CONFIRMED: "warning",
+  PROCESSING: "warning",
+  READY_TO_SHIP: "info",
+  SHIPPED: "neutral",
+  DELIVERED: "success",
+  CANCELLED: "danger",
 };
 
-const NOTE_PREVIEW_MAX = 56;
+const PILL_DOT_CLASS: Record<PillVariant, string> = {
+  default: "bg-primary-foreground",
+  secondary: "bg-secondary-foreground",
+  destructive: "bg-destructive-foreground",
+  outline: "bg-foreground",
+  success: "bg-malachite-text",
+  warning: "bg-warn-text",
+  info: "bg-info-text",
+  neutral: "bg-neutral-text",
+  danger: "bg-danger-text",
+};
 
-function ExpandableAdminNotesCell({ notes }: { notes: string | null }) {
-  const [expanded, setExpanded] = React.useState(false);
-  const text = notes?.trim() ?? "";
-  if (!text) {
-    return <span className="text-xs text-muted-foreground">—</span>;
-  }
-  const needsToggle = text.length > NOTE_PREVIEW_MAX || text.includes("\n");
+function StatusPill({ variant, children }: { variant: PillVariant; children: React.ReactNode }) {
   return (
-    <div className="max-w-[11rem] min-w-[4.5rem]">
-      <p
-        className={cn(
-          "text-xs leading-relaxed text-foreground/90 break-words whitespace-pre-wrap",
-          !expanded && needsToggle && "line-clamp-2 whitespace-normal"
-        )}
-      >
-        {text}
-      </p>
-      {needsToggle && (
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-medium text-burgundy hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-          aria-expanded={expanded}
-        >
-          {expanded ? "أقل" : "المزيد"}
-          <ChevronDown
-            className={cn("h-3 w-3 shrink-0 transition-transform duration-200", expanded && "rotate-180")}
-            aria-hidden
-          />
-        </button>
-      )}
-    </div>
+    <Badge variant={variant} className="gap-1.5 rounded-full text-[11px] font-extrabold">
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", PILL_DOT_CLASS[variant])} />
+      {children}
+    </Badge>
   );
 }
+
+const NEXT_STATUS: Record<string, string | undefined> = {
+  CREATED: "CONFIRMED",
+  CONFIRMED: "PROCESSING",
+  PROCESSING: "READY_TO_SHIP",
+  READY_TO_SHIP: "SHIPPED",
+  SHIPPED: undefined,
+  DELIVERED: undefined,
+  CANCELLED: undefined,
+};
+
+/** Tab order per `Orders.dc.html` — "" is "الكل", "UNASSIGNED" is "بلا شريك". */
+const STAGE_TABS: { value: string; label: string }[] = [
+  { value: "", label: "الكل" },
+  { value: "UNASSIGNED", label: "بلا شريك" },
+  { value: "CREATED", label: "بانتظار التأكيد" },
+  { value: "CONFIRMED", label: "مؤكد" },
+  { value: "PROCESSING", label: "قيد التجهيز" },
+  { value: "READY_TO_SHIP", label: "جاهز للتسليم" },
+  { value: "SHIPPED", label: "تم الشحن" },
+  { value: "DELIVERED", label: "تم التسليم" },
+  { value: "CANCELLED", label: "ملغي" },
+];
 
 function egp(piastres: number): string {
   return `${formatNumberEn(piastresToEgp(piastres))} ج.م`;
 }
+
+function relativeSince(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 1) return "الآن";
+  if (minutes < 60) return `${minutes} دقيقة`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} ساعة`;
+  const days = Math.floor(hours / 24);
+  return `${days} يوم`;
+}
+
+type Order = {
+  id: string;
+  status: string;
+  totalPiastres: number;
+  paymentMethod: string;
+  itemCount: number;
+  statusSince: string;
+  overdue: boolean;
+  shippingAddress: { governorate?: string; city?: string | null; area?: string | null };
+  createdAt: string;
+  user: { phone: string; name: string | null };
+  assignedPartner: { id: string; name: string } | null;
+};
+
+type PartnerOption = { id: string; name: string; isActive: boolean };
+
+type BulkResult = { id: string; ok: boolean; message?: string };
 
 export default function AdminOrdersPage() {
   return (
@@ -101,128 +137,112 @@ export default function AdminOrdersPage() {
 }
 
 function AdminOrdersPageInner() {
+  const { toast } = useToast();
+  const router = useRouter();
+
   const [orders, setOrders] = React.useState<Order[]>([]);
+  const [counts, setCounts] = React.useState<Record<string, number>>({});
+  const [allCount, setAllCount] = React.useState(0);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
   const [fetching, setFetching] = React.useState(false);
-  const {
-    search,
-    setSearch,
-    debouncedQ,
-    page,
-    setPage,
-    pageSize,
-    setPageSize,
-    filters,
-    setFilter,
-  } = useListUrlState({ status: "" });
-  const statusFilter = filters.status;
-  const setStatusFilter = React.useCallback(
-    (value: string) => setFilter("status", value),
-    [setFilter]
-  );
-  const [selectedOrderIds, setSelectedOrderIds] = React.useState<string[]>([]);
-  const [exportingCourier, setExportingCourier] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [partners, setPartners] = React.useState<PartnerOption[]>([]);
+
+  const { search, setSearch, debouncedQ, page, setPage, pageSize, setPageSize, filters, setFilter } =
+    useListUrlState(
+      { stage: "", partner: "", governorate: "", payment: "", days: "", overdue: "" },
+      25
+    );
+  const stage = filters.stage;
+  const setStage = React.useCallback((value: string) => setFilter("stage", value), [setFilter]);
+  const partnerFilter = filters.partner;
+  const governorateFilter = filters.governorate;
+  const paymentFilter = filters.payment;
+  const daysFilter = filters.days;
+  const overdueOnly = filters.overdue === "1";
+
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [exportingCsv, setExportingCsv] = React.useState(false);
-  const { toast } = useToast();
+  const [rowUpdating, setRowUpdating] = React.useState<string | null>(null);
+
+  const [assignDialogOpen, setAssignDialogOpen] = React.useState(false);
+  const [assignPartnerId, setAssignPartnerId] = React.useState("");
+  const [assignNotes, setAssignNotes] = React.useState("");
+  const [assignSubmitting, setAssignSubmitting] = React.useState(false);
+
+  const [bulkDialogOpen, setBulkDialogOpen] = React.useState(false);
+  const [bulkTargetStatus, setBulkTargetStatus] = React.useState<string>(ORDER_STATUSES[0]);
+  const [bulkSubmitting, setBulkSubmitting] = React.useState(false);
+
   const { rememberRow } = useRowScrollRestore("admin-orders-last-row", orders);
 
   React.useEffect(() => {
-    setSelectedOrderIds([]);
-  }, [debouncedQ, statusFilter, page, pageSize]);
+    setSelectedIds(new Set());
+  }, [debouncedQ, stage, partnerFilter, governorateFilter, paymentFilter, daysFilter, overdueOnly, page, pageSize]);
 
   React.useEffect(() => {
-    if (loading) return; // total isn't known yet on first render — don't clamp against a stale 0
+    if (loading) return;
     const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
     if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
-  }, [loading, total, pageSize, page]);
+  }, [loading, page, pageSize, total, setPage]);
 
   React.useEffect(() => {
-    const ac = new AbortController();
-    setFetching(true);
-    const params = new URLSearchParams({
-      limit: String(pageSize),
-      offset: String(page * pageSize),
-    });
-    if (debouncedQ) params.set("q", debouncedQ);
-    if (statusFilter) params.set("status", statusFilter);
-    fetch(`/api/admin/orders?${params}`, { credentials: "include", signal: ac.signal })
-      .then((r) => r.json())
-      .then((json: { success?: boolean; data?: { orders: Order[]; total: number } }) => {
-        if (ac.signal.aborted) return;
-        if (json?.success && json.data) {
-          setOrders(json.data.orders);
-          setTotal(json.data.total);
-        }
+    Promise.all([
+      fetch("/api/admin/partners?partnerType=AGENT&limit=200", { credentials: "include" }).then((r) => r.json()),
+      fetch("/api/admin/partners?partnerType=DISTRIBUTOR&limit=200", { credentials: "include" }).then((r) => r.json()),
+    ])
+      .then(([a, b]) => {
+        const list: PartnerOption[] = [...(a?.data?.partners ?? []), ...(b?.data?.partners ?? [])]
+          .filter((p: { isActive?: boolean }) => p.isActive !== false)
+          .map((p: { id: string; name: string; isActive?: boolean }) => ({ id: p.id, name: p.name, isActive: p.isActive ?? true }));
+        setPartners(list);
       })
-      .catch(() => {
-        if (!ac.signal.aborted) toast({ title: "فشل تحميل الطلبات", variant: "destructive" });
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) {
-          setLoading(false);
-          setFetching(false);
-        }
-      });
-    return () => ac.abort();
-  }, [debouncedQ, statusFilter, page, pageSize, toast]);
+      .catch(() => setPartners([]));
+  }, []);
 
-  const handleExportCourier = React.useCallback(async () => {
-    if (selectedOrderIds.length === 0) {
-      toast({
-        title: "اختر طلبات للتصدير",
-        description: "حدد طلبًا واحدًا على الأقل.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setExportingCourier(true);
+  const load = React.useCallback(async () => {
+    setFetching(true);
+    const params = new URLSearchParams({ limit: String(pageSize), offset: String(page * pageSize) });
+    if (debouncedQ) params.set("q", debouncedQ);
+    if (stage) params.set("stage", stage);
+    if (partnerFilter) params.set("partner", partnerFilter);
+    if (governorateFilter) params.set("governorate", governorateFilter);
+    if (paymentFilter) params.set("payment", paymentFilter);
+    if (daysFilter) params.set("days", daysFilter);
+    if (overdueOnly) params.set("overdue", "1");
+
     try {
-      const res = await fetch(`/api/admin/orders/courier-export`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderIds: selectedOrderIds }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        toast({
-          title: "فشل التصدير",
-          description: j?.error?.message ?? res.statusText,
-          variant: "destructive",
-        });
-        return;
+      const res = await fetch(`/api/admin/orders?${params}`, { credentials: "include" });
+      const json = await res.json();
+      if (res.ok && json?.success) {
+        setOrders(json.data.orders ?? []);
+        setTotal(json.data.total ?? 0);
+        setCounts(json.data.counts ?? {});
+        setAllCount(json.data.allCount ?? 0);
+        setLoadError(null);
+      } else {
+        setLoadError(json?.error?.message ?? "فشل تحميل الطلبات");
+        toast({ title: json?.error?.message ?? "فشل تحميل الطلبات", variant: "destructive" });
       }
-      const blob = await res.blob();
-      const filename =
-        res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ??
-        `shipments.xlsx`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast({ title: "تم تصدير ملف الشحن" });
-      setSelectedOrderIds([]);
-    } catch (e) {
-      toast({
-        title: "فشل التصدير",
-        description: e instanceof Error ? e.message : "خطأ غير متوقع",
-        variant: "destructive",
-      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "خطأ غير متوقع";
+      setLoadError("فشل تحميل الطلبات");
+      toast({ title: "فشل تحميل الطلبات", description: message, variant: "destructive" });
     } finally {
-      setExportingCourier(false);
+      setLoading(false);
+      setFetching(false);
     }
-  }, [selectedOrderIds, toast]);
+  }, [debouncedQ, page, pageSize, stage, partnerFilter, governorateFilter, paymentFilter, daysFilter, overdueOnly, toast]);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
 
   const handleExportCsv = React.useCallback(async () => {
-    if (selectedOrderIds.length === 0) {
-      toast({
-        title: "اختر طلبات للتصدير",
-        description: "حدد طلبًا واحدًا على الأقل.",
-        variant: "destructive",
-      });
+    const orderIds = Array.from(selectedIds);
+    if (orderIds.length === 0) {
+      toast({ title: "اختر طلبات للتصدير", description: "حدد طلبًا واحدًا على الأقل.", variant: "destructive" });
       return;
     }
     setExportingCsv(true);
@@ -231,20 +251,15 @@ function AdminOrdersPageInner() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderIds: selectedOrderIds }),
+        body: JSON.stringify({ orderIds }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        toast({
-          title: "فشل تصدير CSV",
-          description: j?.error?.message ?? res.statusText,
-          variant: "destructive",
-        });
+        toast({ title: "فشل تصدير CSV", description: j?.error?.message ?? res.statusText, variant: "destructive" });
         return;
       }
       const blob = await res.blob();
-      const filename =
-        res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ?? `orders-export.csv`;
+      const filename = res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ?? `orders-export.csv`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -252,212 +267,596 @@ function AdminOrdersPageInner() {
       a.click();
       URL.revokeObjectURL(url);
       toast({ title: "تم تصدير CSV" });
-      setSelectedOrderIds([]);
-    } catch (e) {
-      toast({
-        title: "فشل تصدير CSV",
-        description: e instanceof Error ? e.message : "خطأ غير متوقع",
-        variant: "destructive",
-      });
+    } catch (error) {
+      toast({ title: "فشل تصدير CSV", description: error instanceof Error ? error.message : "خطأ غير متوقع", variant: "destructive" });
     } finally {
       setExportingCsv(false);
     }
-  }, [selectedOrderIds, toast]);
+  }, [selectedIds, toast]);
 
-  const selectedSet = React.useMemo(() => new Set(selectedOrderIds), [selectedOrderIds]);
-  const allSelectedOnPage =
-    orders.length > 0 && orders.every((o) => selectedSet.has(o.id));
+  const advanceRowStatus = React.useCallback(
+    async (order: Order) => {
+      const next = NEXT_STATUS[order.status];
+      if (!next) return;
+      setRowUpdating(order.id);
+      try {
+        const res = await fetch(`/api/admin/orders/${order.id}`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: next }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok && json?.success) {
+          toast({ title: `تم تحديث الحالة إلى ${STATUS_LABELS[next] ?? next}` });
+          load();
+        } else {
+          toast({ title: json?.error?.message ?? "فشل تحديث الحالة", variant: "destructive" });
+        }
+      } catch (error) {
+        toast({ title: "فشل تحديث الحالة", description: error instanceof Error ? error.message : "خطأ غير متوقع", variant: "destructive" });
+      } finally {
+        setRowUpdating(null);
+      }
+    },
+    [toast, load]
+  );
 
-  if (loading && orders.length === 0) return <Skeleton className="h-64 w-full rounded-2xl" />;
+  const submitBulkAssign = React.useCallback(async () => {
+    const orderIds = Array.from(selectedIds);
+    if (orderIds.length === 0 || !assignPartnerId) return;
+    setAssignSubmitting(true);
+    try {
+      const results: BulkResult[] = [];
+      for (const id of orderIds) {
+        try {
+          const res = await fetch(`/api/admin/orders/${id}/assign`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ partnerId: assignPartnerId, notes: assignNotes.trim() || undefined }),
+          });
+          const json = await res.json().catch(() => ({}));
+          results.push({ id, ok: res.ok && json?.success, message: json?.error?.message });
+        } catch (error) {
+          results.push({ id, ok: false, message: error instanceof Error ? error.message : "خطأ غير متوقع" });
+        }
+      }
+      const okCount = results.filter((r) => r.ok).length;
+      const failed = results.filter((r) => !r.ok);
+      setSelectedIds(new Set(failed.map((r) => r.id)));
+      setAssignDialogOpen(false);
+      const failedMessages = Array.from(new Set(failed.map((f) => f.message).filter(Boolean)));
+      const title =
+        failed.length > 0
+          ? `أُسند ${okCount}، تعذّر ${failed.length}${failedMessages.length ? `: ${failedMessages.join("، ")}` : ""}`
+          : `أُسند ${okCount} طلبات`;
+      toast({ title, variant: failed.length > 0 ? "destructive" : "default" });
+      load();
+    } finally {
+      setAssignSubmitting(false);
+    }
+  }, [selectedIds, assignPartnerId, assignNotes, toast, load]);
+
+  const submitBulkStatus = React.useCallback(async () => {
+    const orderIds = Array.from(selectedIds);
+    if (orderIds.length === 0) return;
+    setBulkSubmitting(true);
+    try {
+      const results: BulkResult[] = [];
+      for (const id of orderIds) {
+        try {
+          const res = await fetch(`/api/admin/orders/${id}`, {
+            method: "PATCH",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: bulkTargetStatus }),
+          });
+          const json = await res.json().catch(() => ({}));
+          results.push({ id, ok: res.ok && json?.success, message: json?.error?.message });
+        } catch (error) {
+          results.push({ id, ok: false, message: error instanceof Error ? error.message : "خطأ غير متوقع" });
+        }
+      }
+      const okCount = results.filter((r) => r.ok).length;
+      const failed = results.filter((r) => !r.ok);
+      setSelectedIds(new Set(failed.map((r) => r.id)));
+      setBulkDialogOpen(false);
+      const failedMessages = Array.from(new Set(failed.map((f) => f.message).filter(Boolean)));
+      const title =
+        failed.length > 0
+          ? `تم تحديث ${okCount} · فشل ${failed.length}${failedMessages.length ? `: ${failedMessages.join("، ")}` : ""}`
+          : `تم تحديث ${okCount} طلبات`;
+      toast({ title, variant: failed.length > 0 ? "destructive" : "default" });
+      load();
+    } finally {
+      setBulkSubmitting(false);
+    }
+  }, [selectedIds, bulkTargetStatus, toast, load]);
+
+  const openPickList = React.useCallback(() => {
+    const orderIds = Array.from(selectedIds);
+    if (orderIds.length === 0) return;
+    window.open(`/admin/orders/picking?ids=${orderIds.join(",")}`, "_blank", "noopener");
+  }, [selectedIds]);
+
+  const columns = React.useMemo<ColumnDef<Order, unknown>[]>(() => {
+    const base: ColumnDef<Order, unknown>[] = [
+      {
+        id: "id",
+        header: "رقم الطلب",
+        cell: ({ row }) => (
+          <Link
+            href={`/admin/orders/${row.original.id}`}
+            dir="ltr"
+            onClick={(e) => { e.stopPropagation(); rememberRow(row.original.id); }}
+            className="font-mono text-xs text-lapis-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 rounded"
+          >
+            #{row.original.id.slice(0, 8)}
+          </Link>
+        ),
+      },
+      {
+        id: "customer",
+        header: "العميل",
+        cell: ({ row }) => (
+          <span>
+            <span dir="ltr">{row.original.user?.phone ?? "—"}</span>
+            {row.original.user?.name ? ` (${row.original.user.name})` : ""}
+          </span>
+        ),
+      },
+      {
+        id: "governorate",
+        header: "المنطقة",
+        cell: ({ row }) => {
+          const a = row.original.shippingAddress ?? {};
+          return <span className="text-ink-soft">{[a.area, a.governorate].filter(Boolean).join(" · ") || "—"}</span>;
+        },
+      },
+      {
+        id: "partner",
+        header: "الشريك",
+        cell: ({ row }) =>
+          row.original.assignedPartner ? (
+            <span className="font-bold">{row.original.assignedPartner.name}</span>
+          ) : (
+            <StatusPill variant="danger">بلا شريك</StatusPill>
+          ),
+      },
+      {
+        id: "itemCount",
+        header: "القطع",
+        cell: ({ row }) => <span dir="ltr">{row.original.itemCount}</span>,
+      },
+      {
+        id: "total",
+        header: "الإجمالي",
+        cell: ({ row }) => <span className="font-extrabold tabular-nums">{egp(row.original.totalPiastres)}</span>,
+      },
+      {
+        id: "status",
+        header: "الحالة",
+        cell: ({ row }) => {
+          const o = row.original;
+          return (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <StatusPill variant={ORDER_STATUS_PILL_VARIANT[o.status] ?? "neutral"}>
+                {STATUS_LABELS[o.status] ?? o.status}
+              </StatusPill>
+              {o.overdue && <StatusPill variant="danger">متأخرة</StatusPill>}
+            </div>
+          );
+        },
+      },
+      {
+        id: "since",
+        header: "منذ",
+        cell: ({ row }) => <span className="text-ink-soft">{relativeSince(row.original.statusSince)}</span>,
+      },
+    ];
+
+    base.push({
+      id: "action",
+      header: "الإجراء",
+      cell: ({ row }) => {
+        const o = row.original;
+        if (!o.assignedPartner) {
+          return (
+            <Button
+              type="button"
+              size="sm"
+              className="rounded-lg"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedIds(new Set([o.id]));
+                setAssignDialogOpen(true);
+              }}
+            >
+              إسناد
+            </Button>
+          );
+        }
+        const next = NEXT_STATUS[o.status];
+        const open = (
+          <Button asChild type="button" size="sm" variant="outline" className="rounded-lg">
+            <Link href={`/admin/orders/${o.id}`} onClick={(e) => { e.stopPropagation(); rememberRow(o.id); }}>
+              <Eye className="h-3.5 w-3.5" />
+              فتح
+            </Link>
+          </Button>
+        );
+        if (!next) return open;
+        return (
+          <div className="flex items-center gap-1.5">
+            {open}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="rounded-lg"
+              disabled={rowUpdating === o.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                advanceRowStatus(o);
+              }}
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              {rowUpdating === o.id ? "جاري…" : STATUS_LABELS[next] ?? next}
+            </Button>
+          </div>
+        );
+      },
+    });
+
+    return base;
+  }, [rowUpdating, advanceRowStatus, rememberRow]);
+
+  const selectedCount = selectedIds.size;
+  const selectedOrders = React.useMemo(() => orders.filter((o) => selectedIds.has(o.id)), [orders, selectedIds]);
+  const selectionAllUnassigned = selectedCount > 0 && selectedOrders.every((o) => !o.assignedPartner);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="الطلبات"
-        description="عرض الطلبات، التصدير، وتحديث الحالة من صفحة التفاصيل."
+        description="كل الشبكة · مرحلة مرحلة · الشريك عمود لا شاشة."
         actions={
-          <Button asChild className="rounded-xl">
-            <Link href="/admin/orders/new">
-              <Plus className="h-4 w-4" />
-              طلب جديد
-            </Link>
-          </Button>
-        }
-      />
-      <PanelCard
-        title="قائمة الطلبات"
-        description="حدّد الطلبات للتصدير أو ابحث بالعميل والمنتج."
-        icon={<ShoppingBag className="h-5 w-5 text-burgundy" />}
-        toolbar={
-          <div className="flex w-full flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-end">
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="بحث برقم الطلب أو العميل…"
-              className="sm:min-w-[16rem] lg:w-64"
-            />
-            <Select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-10 w-full rounded-xl sm:w-40"
-            >
-              <option value="">كل الحالات</option>
-              {Object.entries(STATUS_LABELS).map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
-                </option>
-              ))}
-            </Select>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-xl"
-                onClick={handleExportCourier}
-                disabled={
-                  exportingCourier || exportingCsv || selectedOrderIds.length === 0
-                }
-              >
-                <FileDown className="ml-2 h-4 w-4" />
-                {exportingCourier
-                  ? "جاري التصدير…"
-                  : `ملف الشحن (${selectedOrderIds.length})`}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-xl border-dashed"
-                onClick={handleExportCsv}
-                disabled={
-                  exportingCourier || exportingCsv || selectedOrderIds.length === 0
-                }
-              >
-                <FileText className="ml-2 h-4 w-4" />
-                {exportingCsv ? "جاري CSV…" : `CSV (${selectedOrderIds.length})`}
-              </Button>
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" className="rounded-full" onClick={load} disabled={fetching}>
+              <RefreshCw className={cn("h-4 w-4", fetching && "animate-spin")} />
+              تحديث
+            </Button>
+            <Button asChild className="rounded-full">
+              <Link href="/admin/orders/new">
+                <Plus className="h-4 w-4" />
+                طلب يدوي
+              </Link>
+            </Button>
           </div>
         }
-      >
-          {fetching && orders.length > 0 && (
-            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              جاري التحديث…
-            </div>
-          )}
-          {orders.length === 0 && !fetching ? (
-            <EmptyState
-              icon={<ShoppingBag className="h-12 w-12" />}
-              title={debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات"}
-            />
-          ) : orders.length > 0 ? (
-            <div className="overflow-x-auto rounded-xl border border-border/60">
-            <Table className={cn(fetching && "opacity-70")}>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40">
-                  <TableHead className="w-12">
-                    <input
-                      type="checkbox"
-                      checked={allSelectedOnPage}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          const merged = new Set(selectedOrderIds);
-                          orders.forEach((o) => merged.add(o.id));
-                          setSelectedOrderIds(Array.from(merged));
-                          return;
-                        }
-                        const pageIds = new Set(orders.map((o) => o.id));
-                        setSelectedOrderIds((prev) => prev.filter((id) => !pageIds.has(id)));
-                      }}
-                      aria-label="تحديد كل الطلبات في هذه الصفحة"
-                      disabled={orders.length === 0}
-                    />
-                  </TableHead>
-                  <TableHead>الرقم</TableHead>
-                  <TableHead>العميل</TableHead>
-                  <TableHead>الإجمالي</TableHead>
-                  <TableHead>طريقة الدفع</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead className="min-w-[5.5rem] max-w-[12rem]">ملاحظات</TableHead>
-                  <TableHead>التاريخ</TableHead>
-                  <TableHead className="text-left">إجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orders.map((o) => (
-                  <TableRow key={o.id} data-row-id={o.id}>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={selectedSet.has(o.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedOrderIds((prev) => (prev.includes(o.id) ? prev : [...prev, o.id]));
-                            return;
-                          }
-                          setSelectedOrderIds((prev) => prev.filter((id) => id !== o.id));
-                        }}
-                        aria-label={`تحديد الطلب ${o.id.slice(0, 8)} للتصدير`}
-                      />
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">{o.id.slice(0, 8)}</TableCell>
-                    <TableCell>{o.user?.phone ?? "—"} {o.user?.name ? `(${o.user.name})` : ""}</TableCell>
-                    <TableCell className="align-top">
-                      <div className="space-y-1 whitespace-nowrap">
-                        <p className="font-semibold tabular-nums">{egp(o.totalPiastres)}</p>
-                        <div className="text-[11px] leading-snug text-muted-foreground tabular-nums">
-                          <p>
-                            <span className="text-foreground/70">المجموع الفرعي:</span>{" "}
-                            {egp(o.subtotalPiastres)}
-                          </p>
-                          <p>
-                            <span className="text-foreground/70">الشحن:</span> {egp(o.shippingPiastres)}
-                          </p>
-                          <p>
-                            <span className="text-foreground/70">رسوم الدفع عند الاستلام:</span>{" "}
-                            {egp(o.codFeePiastres)}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{PAYMENT_LABELS[o.paymentMethod] ?? o.paymentMethod ?? "—"}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={cn(STATUS_BADGE_CLASSES[o.status] ?? "border-muted")}
-                      >
+      />
+
+      <PanelCard title="قائمة الطلبات" icon={<ShoppingBag className="h-5 w-5 text-lapis-800" />} noPadding>
+        <div role="tablist" aria-label="مراحل الطلبات" className="flex gap-1 overflow-x-auto border-b border-stone-200 px-4 pt-2 sm:px-[22px]">
+          {STAGE_TABS.map((tab) => {
+            const active = stage === tab.value;
+            const count = tab.value ? counts[tab.value] ?? 0 : allCount;
+            return (
+              <button
+                key={tab.value || "all"}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                tabIndex={active ? 0 : -1}
+                onClick={() => setStage(tab.value)}
+                onKeyDown={(e) => {
+                  const tabs = Array.from(
+                    e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? []
+                  );
+                  const i = tabs.indexOf(e.currentTarget);
+                  if (i < 0) return;
+                  const next =
+                    e.key === "ArrowLeft" ? i + 1 : e.key === "ArrowRight" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : null;
+                  if (next === null) return;
+                  e.preventDefault();
+                  const target = tabs[(next + tabs.length) % tabs.length];
+                  target.focus();
+                  target.click();
+                }}
+                className={cn(
+                  "flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3.5 py-2.5 text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2",
+                  active ? "border-gold-500 text-lapis-800" : "border-transparent text-ink-soft hover:text-ink"
+                )}
+              >
+                {tab.label}
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0 text-[11px] font-extrabold leading-[18px]",
+                    active ? "bg-lapis-50 text-lapis-800" : "bg-stone-100 text-ink-soft"
+                  )}
+                >
+                  {formatNumberEn(count)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 px-4 py-3.5 sm:px-[22px]">
+          <SearchInput value={search} onChange={setSearch} placeholder="رقم الطلب أو العميل أو الهاتف" className="sm:w-72" />
+          <Select
+            value={partnerFilter}
+            onChange={(e) => setFilter("partner", e.target.value)}
+            className="h-8 w-auto rounded-full border-stone-200 px-3 text-xs"
+            aria-label="الشريك"
+          >
+            <option value="">الشريك</option>
+            <option value="none">بلا شريك</option>
+            {partners.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </Select>
+          <Select
+            value={governorateFilter}
+            onChange={(e) => setFilter("governorate", e.target.value)}
+            className="h-8 w-auto rounded-full border-stone-200 px-3 text-xs"
+            aria-label="المحافظة"
+          >
+            <option value="">المحافظة</option>
+            {GOVERNORATE_OPTIONS.map((g) => (
+              <option key={g.value} value={g.value}>{g.label}</option>
+            ))}
+          </Select>
+          <Select
+            value={paymentFilter}
+            onChange={(e) => setFilter("payment", e.target.value)}
+            className="h-8 w-auto rounded-full border-stone-200 px-3 text-xs"
+            aria-label="طريقة الدفع"
+          >
+            <option value="">طريقة الدفع</option>
+            {Object.entries(PAYMENT_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </Select>
+          <Select
+            value={daysFilter}
+            onChange={(e) => setFilter("days", e.target.value)}
+            className="h-8 w-auto rounded-full border-stone-200 px-3 text-xs"
+            aria-label="الفترة"
+          >
+            <option value="">كل الفترة</option>
+            <option value="7">آخر 7 أيام</option>
+            <option value="30">آخر 30 يومًا</option>
+          </Select>
+          <button
+            type="button"
+            aria-pressed={overdueOnly}
+            onClick={() => setFilter("overdue", overdueOnly ? "" : "1")}
+            className={cn(
+              "flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2",
+              overdueOnly ? "border-lapis-800 bg-lapis-800 text-white" : "border-stone-200 bg-white text-ink"
+            )}
+          >
+            متأخرة فقط
+          </button>
+
+          <div className="mr-auto flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={handleExportCsv}
+              disabled={exportingCsv || selectedCount === 0}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              {exportingCsv ? "جاري التصدير…" : `تصدير (${selectedCount})`}
+            </Button>
+          </div>
+        </div>
+
+        {selectedCount > 0 && (
+          <div className="flex flex-wrap items-center gap-3 mx-4 mb-3 rounded-xl bg-lapis-50 px-4 py-2.5 sm:mx-[22px]">
+            <span className="text-[13px] font-extrabold text-lapis-800">
+              {selectedCount} طلب{selectedCount === 1 ? "" : "ات"} محدد{selectionAllUnassigned ? " · بلا شريك" : ""}
+            </span>
+            <Button type="button" size="sm" className="rounded-full" onClick={() => setAssignDialogOpen(true)}>
+              إسناد إلى شريك
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setBulkDialogOpen(true)}>
+              تغيير الحالة
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={openPickList}>
+              <Printer className="h-3.5 w-3.5" />
+              قائمة التجهيز
+            </Button>
+            <button type="button" className="mr-auto text-xs font-bold text-lapis-800 underline underline-offset-2" onClick={() => setSelectedIds(new Set())}>
+              إلغاء التحديد
+            </button>
+          </div>
+        )}
+
+        {fetching && orders.length > 0 && (
+          <div className="flex items-center gap-2 border-b border-stone-200 px-4 py-2 text-sm text-ink-soft sm:px-[22px]">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            جاري التحديث…
+          </div>
+        )}
+
+        {loadError && orders.length === 0 && !loading ? (
+          <div role="alert" className="m-4 flex flex-col items-start gap-2 rounded-xl border border-danger-text/30 bg-danger-bg p-4 text-sm text-danger-text sm:m-[22px]">
+            <p className="font-bold">{loadError}</p>
+            <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={load}>
+              إعادة المحاولة
+            </Button>
+          </div>
+        ) : (
+          <div className={cn("p-4 sm:p-[22px]", fetching && "opacity-70")}>
+            <div className="space-y-3 sm:hidden">
+              {!loading && orders.length === 0 && (
+                <p className="py-8 text-center text-sm text-ink-soft">
+                  {debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات"}
+                </p>
+              )}
+              {orders.map((o) => {
+                const next = NEXT_STATUS[o.status];
+                return (
+                  <div
+                    key={o.id}
+                    data-row-id={o.id}
+                    className={cn("rounded-2xl border border-stone-200 bg-white p-4", !o.assignedPartner && "bg-carnelian-50/40")}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span dir="ltr" className="font-mono text-xs text-ink-soft">#{o.id.slice(0, 8)}</span>
+                      <StatusPill variant={ORDER_STATUS_PILL_VARIANT[o.status] ?? "neutral"}>
                         {STATUS_LABELS[o.status] ?? o.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="align-top py-3">
-                      <ExpandableAdminNotesCell notes={o.adminNotes} />
-                    </TableCell>
-                    <TableCell>{formatDateEn(o.createdAt)}</TableCell>
-                    <TableCell className="text-left">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/admin/orders/${o.id}`} onClick={() => rememberRow(o.id)}>
-                          تفاصيل
-                        </Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      </StatusPill>
+                    </div>
+                    <p className="mt-2 text-sm font-bold text-ink">{o.user?.name ?? o.user?.phone}</p>
+                    <p className="text-xs text-ink-soft">
+                      {[o.shippingAddress?.area, o.shippingAddress?.governorate].filter(Boolean).join(" · ")}
+                    </p>
+                    <p className="mt-1 text-xs">
+                      {o.assignedPartner ? <span className="font-bold">{o.assignedPartner.name}</span> : <StatusPill variant="danger">بلا شريك</StatusPill>}
+                    </p>
+                    <div className="mt-2 flex items-center justify-between text-sm">
+                      <span className="font-extrabold tabular-nums">{egp(o.totalPiastres)}</span>
+                      <span className="text-ink-soft">{relativeSince(o.statusSince)}</span>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      {!o.assignedPartner ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="flex-1 rounded-lg"
+                          onClick={() => { setSelectedIds(new Set([o.id])); setAssignDialogOpen(true); }}
+                        >
+                          إسناد
+                        </Button>
+                      ) : (
+                        <>
+                          {next && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="flex-1 rounded-lg"
+                              disabled={rowUpdating === o.id}
+                              onClick={() => advanceRowStatus(o)}
+                            >
+                              {rowUpdating === o.id ? "جاري…" : STATUS_LABELS[next] ?? next}
+                            </Button>
+                          )}
+                          <Button asChild type="button" size="sm" variant="outline" className="flex-1 rounded-lg">
+                            <Link href={`/admin/orders/${o.id}`}>فتح</Link>
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ) : null}
-          {total > 0 && (
+            <div className="hidden sm:block">
+              <DataTable
+                columns={columns}
+                data={orders}
+                getRowId={(o) => o.id}
+                selectedIds={selectedIds}
+                onSelectedIdsChange={setSelectedIds}
+                getRowProps={(o) => ({
+                  "data-row-id": o.id,
+                  className: !o.assignedPartner ? "bg-carnelian-50/40" : undefined,
+                } as React.HTMLAttributes<HTMLTableRowElement>)}
+                onRowClick={(o) => { rememberRow(o.id); router.push(`/admin/orders/${o.id}`); }}
+                loading={loading}
+                emptyTitle={debouncedQ ? "لا توجد نتائج للبحث" : "لا توجد طلبات"}
+              />
+            </div>
+          </div>
+        )}
+
+        {total > 0 && (
+          <div className="border-t border-stone-200 px-4 py-4 sm:px-[22px]">
             <PaginationBar
-              className="mt-6"
               page={page}
               pageSize={pageSize}
               total={total}
               onPageChange={setPage}
               onPageSizeChange={setPageSize}
               disabled={fetching}
+              pageSizeOptions={[25, 50, 100]}
             />
-          )}
+          </div>
+        )}
       </PanelCard>
+
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent className="rounded-2xl border-stone-200 bg-white">
+          <DialogHeader>
+            <DialogTitle>إسناد إلى شريك</DialogTitle>
+            <DialogDescription>
+              سيتم إسناد {selectedCount} طلب{selectedCount === 1 ? "" : "ات"} إلى الشريك المختار — يشمل ذلك إعادة إسناد أي طلب مُسند بالفعل.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-2">
+              <Label htmlFor="assign-partner-select">الشريك</Label>
+              <Select id="assign-partner-select" value={assignPartnerId} onChange={(e) => setAssignPartnerId(e.target.value)} className="rounded-lg">
+                <option value="">اختر شريكًا</option>
+                {partners.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="assign-notes">ملاحظة (اختياري)</Label>
+              <input
+                id="assign-notes"
+                value={assignNotes}
+                onChange={(e) => setAssignNotes(e.target.value)}
+                className="flex h-10 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+                placeholder="سبب الإسناد"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" className="rounded-full" onClick={() => setAssignDialogOpen(false)} disabled={assignSubmitting}>
+              إلغاء
+            </Button>
+            <Button type="button" className="rounded-full" onClick={submitBulkAssign} disabled={assignSubmitting || !assignPartnerId}>
+              {assignSubmitting ? "جاري الإسناد…" : "تأكيد الإسناد"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+        <DialogContent className="rounded-2xl border-stone-200 bg-white">
+          <DialogHeader>
+            <DialogTitle>تغيير حالة الطلبات المحددة</DialogTitle>
+            <DialogDescription>
+              سيتم تحديث حالة {selectedCount} طلب{selectedCount === 1 ? "" : "ات"} إلى الحالة المختارة أدناه.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor="bulk-status-select">الحالة الجديدة</Label>
+            <Select id="bulk-status-select" value={bulkTargetStatus} onChange={(e) => setBulkTargetStatus(e.target.value)} className="rounded-lg">
+              {ORDER_STATUSES.map((s) => (
+                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+              ))}
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" className="rounded-full" onClick={() => setBulkDialogOpen(false)} disabled={bulkSubmitting}>
+              إلغاء
+            </Button>
+            <Button type="button" className="rounded-full" onClick={submitBulkStatus} disabled={bulkSubmitting}>
+              {bulkSubmitting ? "جاري التحديث…" : "تأكيد"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

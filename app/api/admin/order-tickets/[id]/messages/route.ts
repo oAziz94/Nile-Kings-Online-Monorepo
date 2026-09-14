@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { nextStatusAfterAdminMessage } from "@/lib/tickets/order-ticket";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 const BODY_MIN = 1;
 const BODY_MAX = 2000;
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const { id } = await params;
-  const ticket = await prisma.orderTicket.findUnique({ where: { id }, select: { id: true, status: true } });
+  const ticket = await prisma.orderTicket.findUnique({ where: { id }, select: { id: true, status: true, orderId: true } });
   if (!ticket) return apiNotFound("السؤال غير موجود");
 
   let payload: Record<string, unknown>;
@@ -59,6 +60,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         messages: { orderBy: { createdAt: "asc" } },
       },
     });
+  });
+
+  // backlog 9.3 c fix / rule B1 — an admin reply is an admin write on the order.
+  await logAdminAction(prisma, {
+    actor: admin,
+    action: "ticket_reply",
+    entityType: "order",
+    entityId: ticket.orderId,
+    entityLabel: `#${ticket.orderId.slice(-8)}`,
+    reason: null,
+    ip: requestIp(req),
   });
 
   const { user, ...rest } = updated;

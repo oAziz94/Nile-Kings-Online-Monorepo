@@ -62,3 +62,19 @@ export async function logOrderStatusChange(
     },
   });
 }
+
+/** backlog 9.3 d — an admin assign/reassign of the order's executing partner. */
+export async function logOrderPartnerAssigned(
+  tx: Tx,
+  orderId: string,
+  oldPartnerId: string | null,
+  newPartnerId: string
+): Promise<void> {
+  await tx.orderAuditLog.create({
+    data: {
+      orderId,
+      event: oldPartnerId ? "reassigned" : "assigned",
+      details: { oldPartnerId, newPartnerId },
+    },
+  });
+}
