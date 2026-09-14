@@ -9,7 +9,8 @@ import { buildVariantSku, variantSlug } from "@/lib/admin/slug";
 /**
  * Backlog 9.8b coverage: the product page rebuilt around colours and sizes (colour creation
  * with generated SKU/slug, second colour, inline gallery add/reorder, hero, size price, colour
- * visibility hides the storefront colour), bulk edit with preview + audit rows, the additive
+ * visibility hides the storefront colour and its facets, the explicit representative image with
+ * its audit rows and keyboard-reachable gallery controls), bulk edit with preview + audit rows, the additive
  * stock guard on the variant PATCH, export-excel, 401/403, and a mobile screenshot.
  *
  * Every row this file creates is fixture data under its own unique suffix, cleaned up in
@@ -235,6 +236,74 @@ test("set hero -> storefront card shows it", async ({ page }) => {
   expect(product.imageUrl).toBe(asset.url);
 });
 
+test("set a colour's representative image from its gallery -> the storefront colour image is it; clear -> falls back to the hero; both audited", async ({ page }) => {
+  // Backlog 9.8b review fix 1 (PM ruling): the representative image is an explicit choice —
+  // the second gallery photo is picked on purpose so gallery order can never explain the result.
+  await apiLoginAsAdmin(page);
+  const colorKey = "أسود|#000000";
+  const images = await prisma.variantImage.findMany({ where: { productId, colorKey }, orderBy: { sortOrder: "asc" } });
+  expect(images).toHaveLength(3);
+  const chosen = images[1];
+
+  const setRes = await page.request.patch(
+    `/api/admin/products/${productId}/colors/${encodeURIComponent(colorKey)}/representative`,
+    { data: { variantImageId: chosen.id } }
+  );
+  expect(setRes.ok()).toBeTruthy();
+
+  const black = await prisma.variant.findMany({ where: { productId, colorName: "أسود" } });
+  expect(black).toHaveLength(3);
+  expect(black.every((v) => v.imageAssetId === chosen.assetId && v.imageUrl === chosen.url)).toBeTruthy();
+  const white = await prisma.variant.findMany({ where: { productId, colorName: "أبيض" } });
+  expect(white.every((v) => v.imageAssetId === null)).toBeTruthy();
+
+  // The storefront reads the colour's image off the variant (`v.imageUrl ?? product.imageUrl`).
+  const pub = await page.request.get(`/api/products/${productSlug}`);
+  expect(pub.ok()).toBeTruthy();
+  const pubBody = (await pub.json()).data as { imageUrl: string | null; variants: { colorName: string | null; imageUrl: string | null }[] };
+  expect(pubBody.variants.filter((v) => v.colorName === "أسود").every((v) => v.imageUrl === chosen.url)).toBeTruthy();
+
+  // A gallery photo that is not this colour's -> 400, nothing written.
+  const badRes = await page.request.patch(
+    `/api/admin/products/${productId}/colors/${encodeURIComponent(colorKey)}/representative`,
+    { data: { variantImageId: "not-a-real-image-id" } }
+  );
+  expect(badRes.status()).toBe(400);
+
+  // The admin page: gold ring on the chosen thumbnail, star states, keyboard reorder buttons.
+  // Already signed in through the API above (the request context shares the page's cookies).
+  await page.goto(`/admin/products/${productId}`);
+  await expect(page.getByRole("heading", { name: productName })).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("button", { name: "أسود", exact: true }).click();
+  await expect(page.getByRole("button", { name: "هذه هي الصورة التمثيلية للون" })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "تعيين كصورة تمثيلية للون" })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "نقل الصورة للأعلى في الترتيب" })).toHaveCount(3);
+  await expect(page.getByRole("button", { name: "نقل الصورة للأسفل في الترتيب" })).toHaveCount(3);
+  await expect(page.getByRole("button", { name: "إزالة الصورة" })).toHaveCount(3);
+  await expect(page.getByRole("listitem", { name: /الصورة التمثيلية الحالية/ })).toHaveCount(1);
+
+  // Clear it from the page -> the caption says the card falls back to the product image.
+  await page.getByRole("button", { name: "إزالة", exact: true }).click();
+  await expect(page.getByText("لا صورة تمثيلية — البطاقة تعرض صورة المنتج")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "هذه هي الصورة التمثيلية للون" })).toHaveCount(0);
+
+  const cleared = await prisma.variant.findMany({ where: { productId, colorName: "أسود" } });
+  expect(cleared.every((v) => v.imageAssetId === null && v.imageUrl === null)).toBeTruthy();
+  const product = await prisma.product.findUniqueOrThrow({ where: { id: productId } });
+  const pub2 = (await (await page.request.get(`/api/products/${productSlug}`)).json()).data as typeof pubBody;
+  expect(pub2.imageUrl).toBe(product.imageUrl); // the hero set in the previous test
+  expect(pub2.variants.filter((v) => v.colorName === "أسود").every((v) => v.imageUrl === null)).toBeTruthy();
+
+  const audits = await prisma.adminAuditLog.findMany({ where: { entityId: productId, action: "color_representative" }, orderBy: { createdAt: "asc" } });
+  expect(audits).toHaveLength(2);
+  const first = audits[0].after as { imageAssetId: string | null; colorName: string };
+  const last = audits[1].after as { imageAssetId: string | null; colorName: string };
+  expect(first.imageAssetId).toBe(chosen.assetId);
+  expect(first.colorName).toBe("أسود");
+  expect(last.imageAssetId).toBeNull();
+  expect(last.colorName).toBe("أسود");
+});
+
 test("edit a size price -> PDP price reflects it", async ({ page }) => {
   await apiLoginAsAdmin(page);
   const variant = await prisma.variant.findFirstOrThrow({ where: { productId, colorName: "أسود", name: "S" } });
@@ -265,6 +334,31 @@ test("toggle the white colour invisible -> its variants are inactive and the PDP
 
   const audit = await prisma.adminAuditLog.findFirst({ where: { entityId: productId, action: "color_visibility" }, orderBy: { createdAt: "desc" } });
   expect(audit).toBeTruthy();
+});
+
+test("category filter facets exclude a hidden colour's sizes and prices", async ({ page }) => {
+  // Backlog 9.8b review fix 4: a third colour with a size and a price nothing else in the
+  // fixture category carries, hidden before the facets are first read (the route caches per
+  // slug for 300 s, and this category's slug is unique to this run).
+  await apiLoginAsAdmin(page);
+  const addRes = await page.request.post(`/api/admin/products/${productId}/colors`, {
+    data: { colorName: "أخضر", colorHex: "#00aa00", sizes: ["XXL"], pricePiastres: 20000 },
+  });
+  expect(addRes.ok()).toBeTruthy();
+  const hideRes = await page.request.patch(
+    `/api/admin/products/${productId}/colors/${encodeURIComponent("أخضر|#00aa00")}`,
+    { data: { active: false } }
+  );
+  expect(hideRes.ok()).toBeTruthy();
+
+  const res = await page.request.get(`/api/categories/catalog-test-cat-${uniqueSuffix}/filters`);
+  expect(res.ok()).toBeTruthy();
+  const facets = (await res.json()).data as { sizes: string[]; minPrice: number; maxPrice: number };
+  expect(facets.sizes).not.toContain("XXL");
+  expect(facets.maxPrice).toBeLessThan(200);
+  // What is visible: black S/M/L (88, 90, 100) and the two bulk fixtures (133, 99).
+  expect(facets.maxPrice).toBe(133);
+  expect(facets.minPrice).toBe(88);
 });
 
 test("the variant PATCH with stockAvailable in the body leaves the column untouched", async ({ page }) => {

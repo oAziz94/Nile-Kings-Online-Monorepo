@@ -42,14 +42,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   if (typeof nextActive === "boolean") {
     const before = variants[0].active;
     await prisma.variant.updateMany({ where: { productId, colorName: currentName, colorHex: currentHex }, data: { active: nextActive } });
+    // `colorName` goes on `after` only (9.5 ruling): `logAdminAction`'s `auditDiff` strips any
+    // key whose value is unchanged between `before`/`after` — putting `colorName` on both sides
+    // would strip it (it never changes here), leaving `describeAdminAudit` with no colour name
+    // to build "أخفى لون <name> من <product>" from. A key present on only one side always
+    // survives the diff, so `after`-only keeps it.
     await logAdminAction(prisma, {
       actor,
       action: "color_visibility",
       entityType: "product",
       entityId: productId,
       entityLabel: product.name,
-      before: { colorName: currentName, active: before },
-      after: { colorName: currentName, active: nextActive },
+      before: { active: before },
+      after: { active: nextActive, colorName: currentName },
       ip: requestIp(req),
     });
   }

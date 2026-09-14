@@ -34,6 +34,7 @@ export const ACTION_LABELS: Record<string, string> = {
   color_add: "إضافة لون",
   color_visibility: "تغيير ظهور لون",
   color_rename: "تعديل بيانات لون",
+  color_representative: "صورة تمثيلية للون",
   gallery_reorder: "إعادة ترتيب معرض لون",
   gallery_remove: "إزالة صورة من معرض لون",
   bulk_edit: "تعديل جماعي",

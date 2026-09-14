@@ -42,7 +42,7 @@ import { Skeleton } from "@/components/shared/skeleton";
 import { sortVariants } from "@/lib/admin/variant-sort";
 import { getDisplaySizeLabel, isKidsCategory } from "@/lib/size-display";
 import { STANDARD_SIZE_RUN } from "@/lib/admin/slug";
-import { Package, Plus, Trash2, Upload, ImageIcon, ExternalLink } from "lucide-react";
+import { Package, Plus, Trash2, Upload, ImageIcon, ExternalLink, ChevronUp, ChevronDown, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Variant = {
@@ -53,6 +53,7 @@ type Variant = {
   colorHex: string | null;
   colorName: string | null;
   imageUrl: string | null;
+  imageAssetId: string | null;
   basePricePiastres: number | null;
   pricePiastres: number;
   active: boolean;
@@ -146,6 +147,7 @@ export default function AdminProductDetailPage() {
   const [addSizeOpen, setAddSizeOpen] = React.useState(false);
   const [galleryPickerOpen, setGalleryPickerOpen] = React.useState(false);
   const [heroPickerOpen, setHeroPickerOpen] = React.useState(false);
+  const [representativePickerOpen, setRepresentativePickerOpen] = React.useState(false);
   const [rowDrafts, setRowDrafts] = React.useState<Record<string, { pricePiastres: string; basePricePiastres: string }>>({});
   const [savingRow, setSavingRow] = React.useState<string | null>(null);
   const galleryUploadRef = React.useRef<HTMLInputElement>(null);
@@ -194,6 +196,16 @@ export default function AdminProductDetailPage() {
   const gallery = React.useMemo(
     () => (product && selectedColorKey ? product.variantImages.filter((vi) => vi.colorKey === selectedColorKey) : []),
     [product, selectedColorKey]
+  );
+
+  // The colour's representative image is an explicit choice (PM ruling, 9.8b review) — never
+  // derived from the gallery's first photo. Every variant sharing a colour is kept in sync by
+  // the representative route, so reading it off any one of them (the first) is enough.
+  const representativeAssetId = selectedColour?.variants[0]?.imageAssetId ?? null;
+  const representativeUrl = selectedColour?.variants[0]?.imageUrl ?? null;
+  const isRepresentativeImage = React.useCallback(
+    (img: VariantImageRow) => (representativeAssetId ? img.assetId === representativeAssetId : representativeUrl != null && img.url === representativeUrl),
+    [representativeAssetId, representativeUrl]
   );
 
   const saveProduct = async (e: React.FormEvent) => {
@@ -352,6 +364,34 @@ export default function AdminProductDetailPage() {
     order.splice(toIdx, 0, dragImageId);
     setDragImageId(null);
     reorderGallery(order);
+  };
+
+  /** Keyboard-reachable alternative to drag reorder — the ▲/▼ buttons on each thumbnail
+   * (backlog 9.8b review fix 5). Swaps the thumbnail at `idx` with its neighbour and calls the
+   * same reorder endpoint drag-and-drop uses. */
+  const moveImage = (idx: number, delta: -1 | 1) => {
+    const order = gallery.map((g) => g.id);
+    const targetIdx = idx + delta;
+    if (targetIdx < 0 || targetIdx >= order.length) return;
+    [order[idx], order[targetIdx]] = [order[targetIdx], order[idx]];
+    reorderGallery(order);
+  };
+
+  const setColorRepresentative = async (body: { assetId: string | null } | { variantImageId: string }) => {
+    if (!selectedColour) return;
+    const res = await fetch(`/api/admin/products/${id}/colors/${encodeURIComponent(selectedColour.colorKey)}/representative`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (res.ok && json?.success) {
+      toast({ title: "assetId" in body && body.assetId === null ? "أُزيلت الصورة التمثيلية" : "عُيّنت الصورة التمثيلية" });
+      load();
+    } else {
+      toast({ title: json?.error?.message ?? "فشل التعيين", variant: "destructive" });
+    }
   };
 
   const setHero = async (assetId: string) => {
@@ -524,35 +564,114 @@ export default function AdminProductDetailPage() {
                 </Button>
 
                 <div>
+                  <h3 className="mb-2 text-sm font-bold text-ink">الصورة التمثيلية</h3>
+                  <p className="mb-2 text-xs text-ink-soft">
+                    الصورة التي تظهر في بطاقة المنتج بالمتجر وفي منتقي اللون بصفحة المنتج — اختيار صريح، لا تُشتق تلقائياً من ترتيب المعرض.
+                  </p>
+                  {representativeUrl ? (
+                    <div className="flex items-center gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={representativeUrl}
+                        alt=""
+                        className="h-24 w-24 rounded-xl border-2 border-gold-500 object-cover"
+                      />
+                      <div className="flex flex-col gap-2">
+                        <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setRepresentativePickerOpen(true)}>
+                          <ImageIcon className="h-3.5 w-3.5" />
+                          من المكتبة
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" className="rounded-full text-danger-text" onClick={() => setColorRepresentative({ assetId: null })}>
+                          إزالة
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-stone-300 bg-stone-50 text-center">
+                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <p className="text-xs text-ink-soft">لا صورة تمثيلية — البطاقة تعرض صورة المنتج</p>
+                        <Button type="button" variant="outline" size="sm" className="w-fit rounded-full" onClick={() => setRepresentativePickerOpen(true)}>
+                          <ImageIcon className="h-3.5 w-3.5" />
+                          من المكتبة
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
                   <h3 className="mb-2 text-sm font-bold text-ink">معرض هذا اللون</h3>
                   {gallery.length === 0 ? (
                     <p className="text-xs text-ink-soft">لا توجد صور بعد لهذا اللون.</p>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {gallery.map((img, idx) => (
+                    <div role="list" aria-label={`معرض لون ${selectedColour.colorName ?? "بلا اسم"}`} className="flex flex-wrap gap-2">
+                      {gallery.map((img, idx) => {
+                        const isRep = isRepresentativeImage(img);
+                        return (
                         <div
                           key={img.id}
+                          role="listitem"
+                          tabIndex={0}
+                          aria-label={`صورة ${idx + 1} من ${gallery.length}${isRep ? " · الصورة التمثيلية الحالية" : ""}`}
                           draggable
                           onDragStart={() => setDragImageId(img.id)}
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={() => onDropThumb(img.id)}
                           className={cn(
-                            "group relative overflow-hidden rounded-xl border-2",
-                            idx === 0 ? "h-28 w-28 border-gold-500" : "h-16 w-16 border-transparent"
+                            "group relative h-20 w-20 overflow-hidden rounded-xl border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500",
+                            isRep ? "border-gold-500" : "border-transparent"
                           )}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={img.url} alt="" className="h-full w-full object-cover" />
+
+                          <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-0.5 bg-black/50 py-0.5">
+                            <button
+                              type="button"
+                              onClick={() => moveImage(idx, -1)}
+                              disabled={idx === 0}
+                              aria-label="نقل الصورة للأعلى في الترتيب"
+                              className="rounded p-0.5 text-white opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 disabled:opacity-30"
+                            >
+                              <ChevronUp className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveImage(idx, 1)}
+                              disabled={idx === gallery.length - 1}
+                              aria-label="نقل الصورة للأسفل في الترتيب"
+                              className="rounded p-0.5 text-white opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 disabled:opacity-30"
+                            >
+                              <ChevronDown className="h-3 w-3" />
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setColorRepresentative({ variantImageId: img.id })}
+                            aria-label={isRep ? "هذه هي الصورة التمثيلية للون" : "تعيين كصورة تمثيلية للون"}
+                            className={cn(
+                              "absolute right-1 top-1 rounded-full bg-white/90 p-1 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100",
+                              isRep ? "text-gold-600" : "text-ink"
+                            )}
+                          >
+                            <Star className="h-3 w-3" fill={isRep ? "currentColor" : "none"} />
+                          </button>
+
                           <button
                             type="button"
                             onClick={() => removeGalleryImage(img.id)}
                             aria-label="إزالة الصورة"
-                            className="absolute left-1 top-1 hidden rounded-full bg-white/90 p-1 text-danger-text group-hover:block"
+                            className="absolute left-1 top-1 rounded-full bg-white/90 p-1 text-danger-text opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
                           >
                             <Trash2 className="h-3 w-3" />
                           </button>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                   <div className="mt-3 flex gap-2">
@@ -612,6 +731,7 @@ export default function AdminProductDetailPage() {
                                   min={0}
                                   step={0.01}
                                   className="h-8 w-24"
+                                  aria-label={`السعر — ${v.sku}`}
                                   value={draft.pricePiastres}
                                   onChange={(e) => setRowDraft(v, { pricePiastres: e.target.value })}
                                 />
@@ -622,6 +742,7 @@ export default function AdminProductDetailPage() {
                                   min={0}
                                   step={0.01}
                                   className="h-8 w-24"
+                                  aria-label={`السعر قبل الخصم — ${v.sku}`}
                                   value={draft.basePricePiastres}
                                   onChange={(e) => setRowDraft(v, { basePricePiastres: e.target.value })}
                                 />
@@ -806,6 +927,12 @@ export default function AdminProductDetailPage() {
       )}
       <MediaPickerDialog open={galleryPickerOpen} onOpenChange={setGalleryPickerOpen} multiple onPick={assignToGallery} />
       <MediaPickerDialog open={heroPickerOpen} onOpenChange={setHeroPickerOpen} multiple={false} onPick={(ids) => setHero(ids[0])} />
+      <MediaPickerDialog
+        open={representativePickerOpen}
+        onOpenChange={setRepresentativePickerOpen}
+        multiple={false}
+        onPick={(ids) => setColorRepresentative({ assetId: ids[0] })}
+      />
     </div>
   );
 }

@@ -204,6 +204,13 @@ export function describeAdminAudit(row: AdminAuditRowLike): string {
     const after = asRecord(row.after);
     return `عدّل بيانات لون ${label} ${String(before.colorName ?? "—")} → ${String(after.colorName ?? "—")}`.trim();
   }
+  if (row.action === "color_representative") {
+    const after = asRecord(row.after);
+    const colorName = String(after.colorName ?? "");
+    return after.imageAssetId
+      ? `عيّن صورة تمثيلية للون ${colorName} في ${label}`.trim()
+      : `أزال الصورة التمثيلية للون ${colorName} من ${label}`.trim();
+  }
   if (row.action === "gallery_reorder") {
     return `أعاد ترتيب صور لون في ${label}`.trim();
   }

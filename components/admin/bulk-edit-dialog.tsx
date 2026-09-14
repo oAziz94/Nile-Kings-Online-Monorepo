@@ -143,8 +143,8 @@ export function BulkEditDialog({
         {step === "form" ? (
           <div className="space-y-4 py-2">
             <div className="grid gap-1.5">
-              <Label>الفئة</Label>
-              <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <Label htmlFor="bulk-category">الفئة</Label>
+              <Select id="bulk-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 <option value="">بدون تغيير</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
@@ -152,8 +152,8 @@ export function BulkEditDialog({
               </Select>
             </div>
             <div className="grid gap-1.5">
-              <Label>الحالة</Label>
-              <Select value={activeMode} onChange={(e) => setActiveMode(e.target.value as typeof activeMode)}>
+              <Label htmlFor="bulk-active">الحالة</Label>
+              <Select id="bulk-active" value={activeMode} onChange={(e) => setActiveMode(e.target.value as typeof activeMode)}>
                 <option value="">بدون تغيير</option>
                 <option value="true">تفعيل</option>
                 <option value="false">تعطيل</option>
@@ -161,39 +161,39 @@ export function BulkEditDialog({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-1.5">
-                <Label>إضافة وسوم</Label>
-                <Input value={tagsAdd} onChange={(e) => setTagsAdd(e.target.value)} placeholder="وسوم مفصولة بشرطة" />
+                <Label htmlFor="bulk-tags-add">إضافة وسوم</Label>
+                <Input id="bulk-tags-add" value={tagsAdd} onChange={(e) => setTagsAdd(e.target.value)} placeholder="وسوم مفصولة بشرطة" />
               </div>
               <div className="grid gap-1.5">
-                <Label>إزالة وسوم</Label>
-                <Input value={tagsRemove} onChange={(e) => setTagsRemove(e.target.value)} placeholder="وسوم مفصولة بشرطة" />
+                <Label htmlFor="bulk-tags-remove">إزالة وسوم</Label>
+                <Input id="bulk-tags-remove" value={tagsRemove} onChange={(e) => setTagsRemove(e.target.value)} placeholder="وسوم مفصولة بشرطة" />
               </div>
             </div>
             <div className="rounded-xl border border-stone-200 p-3">
-              <label className="flex items-center gap-2 text-sm font-bold">
-                <input type="checkbox" checked={priceEnabled} onChange={(e) => setPriceEnabled(e.target.checked)} className="rounded border-input" />
+              <label htmlFor="bulk-price-enabled" className="flex items-center gap-2 text-sm font-bold">
+                <input id="bulk-price-enabled" type="checkbox" checked={priceEnabled} onChange={(e) => setPriceEnabled(e.target.checked)} className="rounded border-input" />
                 تعديل الأسعار
               </label>
               {priceEnabled && (
                 <div className="mt-3 grid grid-cols-3 gap-3">
                   <div className="grid gap-1.5">
-                    <Label>السعر</Label>
-                    <Select value={priceField} onChange={(e) => setPriceField(e.target.value as typeof priceField)}>
+                    <Label htmlFor="bulk-price-field">السعر</Label>
+                    <Select id="bulk-price-field" value={priceField} onChange={(e) => setPriceField(e.target.value as typeof priceField)}>
                       <option value="base">قبل الخصم</option>
                       <option value="selling">البيع</option>
                       <option value="both">كلاهما</option>
                     </Select>
                   </div>
                   <div className="grid gap-1.5">
-                    <Label>الطريقة</Label>
-                    <Select value={priceMode} onChange={(e) => setPriceMode(e.target.value as typeof priceMode)}>
+                    <Label htmlFor="bulk-price-mode">الطريقة</Label>
+                    <Select id="bulk-price-mode" value={priceMode} onChange={(e) => setPriceMode(e.target.value as typeof priceMode)}>
                       <option value="percent">نسبة %</option>
                       <option value="amount">مبلغ (ج.م)</option>
                     </Select>
                   </div>
                   <div className="grid gap-1.5">
-                    <Label>{priceMode === "percent" ? "النسبة %" : "المبلغ (ج.م)"}</Label>
-                    <Input type="number" step={0.01} value={priceValue} onChange={(e) => setPriceValue(e.target.value)} placeholder={priceMode === "percent" ? "مثال: 10 أو -10" : "مثال: 5 أو -5"} />
+                    <Label htmlFor="bulk-price-value">{priceMode === "percent" ? "النسبة %" : "المبلغ (ج.م)"}</Label>
+                    <Input id="bulk-price-value" type="number" step={0.01} value={priceValue} onChange={(e) => setPriceValue(e.target.value)} placeholder={priceMode === "percent" ? "مثال: 10 أو -10" : "مثال: 5 أو -5"} />
                   </div>
                 </div>
               )}

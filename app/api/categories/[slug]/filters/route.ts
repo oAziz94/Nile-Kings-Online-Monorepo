@@ -13,8 +13,11 @@ const getCategoryFilters = unstable_cache(
     });
     if (!category) return null;
 
+    // backlog 9.8b review fix — an invisible colour's sizes/prices must not leak into the
+    // category's filter facets (its variants are inactive together, same as everywhere else
+    // the storefront reads variants).
     const variants = await prisma.variant.findMany({
-      where: { product: { categoryId: category.id, active: true } },
+      where: { active: true, product: { categoryId: category.id, active: true } },
       select: { name: true, pricePiastres: true, stockAvailable: true },
     });
     return variants;
