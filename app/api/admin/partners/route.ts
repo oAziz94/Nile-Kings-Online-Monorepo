@@ -6,6 +6,7 @@ import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/
 import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 import { computePartnersHealth } from "@/lib/admin/partners-list";
+import { getPartnerNetworkDefaults } from "@/lib/settings";
 
 export async function GET(req: NextRequest) {
   try {
@@ -128,6 +129,11 @@ export async function POST(req: NextRequest) {
     linkedAgentId = agent.id;
   }
 
+  // Backlog 9.7 (a) — a new partner inherits the stored network defaults, not the Partner
+  // model's own column defaults, so an admin-changed default takes effect for partners
+  // created afterwards (existing partners are never touched).
+  const networkDefaults = await getPartnerNetworkDefaults();
+
   const partner = await prisma.partner.create({
     data: {
       partnerType: body.partnerType as "AGENT" | "DISTRIBUTOR",
@@ -143,6 +149,12 @@ export async function POST(req: NextRequest) {
       linkedAgentId,
       isActive: body.isActive !== false,
       notes: body.notes?.trim() || null,
+      confirmSlaHours: networkDefaults.confirmSlaHours,
+      shipSlaHours: networkDefaults.shipSlaHours,
+      costRateBps: networkDefaults.costRateBps,
+      lowStockThreshold: networkDefaults.lowStockThreshold,
+      deadStockDays: networkDefaults.deadStockDays,
+      targetCoverDays: networkDefaults.targetCoverDays,
     },
   });
   await logAdminAction(prisma, {

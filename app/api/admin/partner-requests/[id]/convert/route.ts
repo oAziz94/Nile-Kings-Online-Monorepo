@@ -3,12 +3,15 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
+import { getPartnerNetworkDefaults } from "@/lib/settings";
+import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 
 type Params = Promise<{ id: string }>;
 
 export async function POST(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -35,6 +38,9 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
   const normalizedPhone = normalizeEgyptMobilePhone(partnerRequest.phone);
   if (!normalizedPhone) return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
 
+  // Backlog 9.7 (a) — same stored network defaults `POST /api/admin/partners` seeds from.
+  const networkDefaults = await getPartnerNetworkDefaults();
+
   const [partner] = await prisma.$transaction([
     prisma.partner.create({
       data: {
@@ -51,6 +57,12 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
         linkedAgentId: partnerRequest.requestType === "DISTRIBUTOR" ? linkedAgentId : null,
         isActive: true,
         notes: partnerRequest.notes,
+        confirmSlaHours: networkDefaults.confirmSlaHours,
+        shipSlaHours: networkDefaults.shipSlaHours,
+        costRateBps: networkDefaults.costRateBps,
+        lowStockThreshold: networkDefaults.lowStockThreshold,
+        deadStockDays: networkDefaults.deadStockDays,
+        targetCoverDays: networkDefaults.targetCoverDays,
       },
     }),
     prisma.partnerRequest.update({
@@ -58,6 +70,17 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
       data: { status: "APPROVED" },
     }),
   ]);
+
+  await logAdminAction(prisma, {
+    actor,
+    action: "create",
+    entityType: "partner",
+    entityId: partner.id,
+    entityLabel: partner.name,
+    after: sanitizeForAudit(partner),
+    reason: `تحويل من طلب شريك ${id}`,
+    ip: requestIp(req),
+  });
 
   return apiSuccess({ partner, message: "تم التحويل إلى شريك بنجاح" });
 }

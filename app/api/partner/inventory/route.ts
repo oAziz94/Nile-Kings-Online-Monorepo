@@ -6,6 +6,7 @@ import { sortVariants } from "@/lib/admin/variant-sort";
 import { apiBadRequest, apiForbidden, apiSuccess, apiUnauthorized } from "@/lib/api/response";
 import { buildThresholdLookup } from "@/lib/partner/resolve-threshold";
 import { resolveCoverDays } from "@/lib/partner/stock-cover";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 async function requireInventoryPartner() {
   const user = await requirePartner();
@@ -203,7 +204,10 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    let updated: { kind: "missing" } | { kind: "reserved"; stockReserved: number } | { kind: "ok"; row: unknown };
+    let updated:
+      | { kind: "missing" }
+      | { kind: "reserved"; stockReserved: number }
+      | { kind: "ok"; row: unknown; sku: string; previousStockAvailable: number; stockAvailable: number };
     try {
       updated = await prisma.$transaction(async (tx) => {
         const variant = await tx.variant.findUnique({
@@ -249,7 +253,7 @@ export async function PATCH(req: NextRequest) {
         },
       });
 
-        return { kind: "ok" as const, row };
+        return { kind: "ok" as const, row, sku: variant.sku, previousStockAvailable, stockAvailable };
       });
     } catch (error) {
       if (error instanceof ReservedFloorError) {
@@ -262,6 +266,20 @@ export async function PATCH(req: NextRequest) {
     if (updated.kind === "missing") return apiBadRequest("المتغير غير موجود");
     if (updated.kind === "reserved") {
       return apiBadRequest(`لا يمكن أن يكون المخزون أقل من المحجوز (${updated.stockReserved})`);
+    }
+    // Backlog 9.7 (e) — mirror the partner's manual stock adjustment into `AdminAuditLog`
+    // with `actorRole: "PARTNER"`. Skipped when nothing actually changed (a no-op PATCH).
+    if (updated.stockAvailable !== updated.previousStockAvailable) {
+      await logAdminAction(prisma, {
+        actor: user,
+        action: "update",
+        entityType: "partner-inventory",
+        entityId: variantId,
+        entityLabel: updated.sku,
+        before: { stockAvailable: updated.previousStockAvailable },
+        after: { stockAvailable: updated.stockAvailable },
+        ip: requestIp(req),
+      });
     }
     return apiSuccess(updated.row);
   } catch (error: unknown) {

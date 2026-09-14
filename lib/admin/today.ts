@@ -17,6 +17,7 @@ import { getPartnerStatementRows, computeBalance } from "@/lib/analytics/partner
 import { cairoDateIso, cairoStartOfDayUtc, addDaysIsoUtc } from "@/lib/analytics/cairo-day";
 import { getOrderTicketSubjectLabel } from "@/lib/constants/order-ticket";
 import { describeAdminAudit } from "@/lib/audit/describe-admin-audit";
+import { resolveActorNames } from "@/lib/audit/resolve-actor-names";
 
 const TREND_DAYS = 30;
 const ROWS_PER_CARD = 3;
@@ -345,14 +346,10 @@ async function buildRecentActivity(viewerUserId: string, limit = 5): Promise<Adm
     take: limit,
   });
   if (rows.length === 0) return [];
-  const actorIds = Array.from(new Set(rows.map((r) => r.actorUserId)));
-  const actors = await prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, name: true, phone: true } });
-  const actorById = new Map(actors.map((a) => [a.id, a]));
+  const actorNameById = await resolveActorNames(rows.map((r) => r.actorUserId), viewerUserId);
 
   return rows.map((row) => {
-    const actor = actorById.get(row.actorUserId);
-    const actorName =
-      row.actorUserId === viewerUserId ? "أنت" : actor?.name?.trim() || actor?.phone || "مستخدم محذوف";
+    const actorName = actorNameById.get(row.actorUserId) ?? "مستخدم محذوف";
     return {
       id: row.id,
       actorName,

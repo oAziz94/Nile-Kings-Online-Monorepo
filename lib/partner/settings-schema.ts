@@ -22,13 +22,29 @@ export const targetCoverDaysSchema = z.number().int().min(1).max(3650);
  * route already enforced before this task; centralised here so the settings tab can share it. */
 export const costRateBpsSchema = z.number().int().min(0).max(10_000);
 
-/** Network defaults a partner without an override inherits — schema defaults today; a
- * later task may move these into a stored settings table (`06-admin-v2.md` §3.7 "الشركاء").
- * Backlog 9.4a: "if there is no stored network default for SLA hours yet, use the schema
- * defaults 24/48 and say so" — done here, in one place both the profile settings tab and any
- * future settings screen can read. */
+/** Network defaults a partner without an override inherits — the fallback `getPartnerNetworkDefaults()`
+ * (`lib/settings.ts`) returns when no `SiteSetting` row named `partnerDefaults` exists yet
+ * (backlog 9.7 (a); superseded the "schema defaults only" note from 9.4a). Values match the
+ * `Partner` model's own `@default`s so a brand-new install with no settings row behaves exactly
+ * as before. Both the profile settings tab ("الافتراضي N") and `/admin/settings`'s الشركاء
+ * group read through `getPartnerNetworkDefaults()`, never this constant directly, except as
+ * its documented fallback. */
 export const PARTNER_NETWORK_DEFAULTS = {
   confirmSlaHours: 24,
   shipSlaHours: 48,
   costRateBps: 7500,
+  lowStockThreshold: 5,
+  deadStockDays: 60,
+  targetCoverDays: 21,
 } as const;
+
+export const partnerNetworkDefaultsSchema = z.object({
+  confirmSlaHours: confirmSlaHoursSchema,
+  shipSlaHours: shipSlaHoursSchema,
+  costRateBps: costRateBpsSchema,
+  lowStockThreshold: lowStockThresholdSchema,
+  deadStockDays: deadStockDaysSchema,
+  targetCoverDays: targetCoverDaysSchema,
+});
+
+export type PartnerNetworkDefaults = z.infer<typeof partnerNetworkDefaultsSchema>;

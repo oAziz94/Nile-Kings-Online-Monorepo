@@ -4,6 +4,7 @@
 
 import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
+import { PARTNER_NETWORK_DEFAULTS, partnerNetworkDefaultsSchema, type PartnerNetworkDefaults } from "@/lib/partner/settings-schema";
 
 /** Tag for settings read on the checkout hot path, so admin writes invalidate the cache immediately. */
 const CHECKOUT_SETTINGS_TAG = "checkout-settings";
@@ -153,5 +154,35 @@ export async function setOtpRules(rules: Partial<OtpRules>): Promise<OtpRules> {
     setSiteSetting(SITE_SETTING_KEYS.OTP_MAX_VERIFY_ATTEMPTS, String(next.maxVerifyAttempts)),
     setSiteSetting(SITE_SETTING_KEYS.OTP_LOCK_MINUTES, String(next.lockMinutes)),
   ]);
+  return next;
+}
+
+/**
+ * Network defaults for every partner "knob" (backlog 9.7 (a)) — stored as one JSON row under
+ * `SiteSetting.key = "partnerDefaults"`, validated by `partnerNetworkDefaultsSchema` (the same
+ * Zod bounds `lib/partner/settings-schema.ts` gives the partner-owned subset route). Falls back
+ * to `PARTNER_NETWORK_DEFAULTS` — which mirrors the `Partner` model's own column defaults —
+ * when no row exists yet (a fresh install, or before this task's first save). Changing a
+ * default here never touches an existing partner: it only changes what a NEW partner inherits
+ * at creation (`POST /api/admin/partners`, the request-convert route) and what the profile
+ * settings tab shows as "الافتراضي N" / resets to on "استعادة الافتراضي".
+ */
+const PARTNER_DEFAULTS_KEY = "partnerDefaults";
+
+export async function getPartnerNetworkDefaults(): Promise<PartnerNetworkDefaults> {
+  const raw = await getSiteSetting(PARTNER_DEFAULTS_KEY);
+  if (!raw) return PARTNER_NETWORK_DEFAULTS;
+  try {
+    const parsed = partnerNetworkDefaultsSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : PARTNER_NETWORK_DEFAULTS;
+  } catch {
+    return PARTNER_NETWORK_DEFAULTS;
+  }
+}
+
+export async function setPartnerNetworkDefaults(
+  next: PartnerNetworkDefaults
+): Promise<PartnerNetworkDefaults> {
+  await setSiteSetting(PARTNER_DEFAULTS_KEY, JSON.stringify(next));
   return next;
 }

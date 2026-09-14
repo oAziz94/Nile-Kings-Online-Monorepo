@@ -228,6 +228,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   if (transitioningToCancelled && nextItems) {
     return apiBadRequest("لا يمكن تعديل أصناف الطلب مع إلغائه في نفس الطلب");
   }
+  // Backlog 9.7 (g) — server-side floor: a cancellation must carry a reason of at least 3
+  // characters (the 9.3 UI already asks for one; this closes the gap for direct API calls).
+  if (transitioningToCancelled) {
+    const reason = typeof body.cancellationReason === "string" ? body.cancellationReason.trim() : "";
+    if (reason.length < 3) {
+      return apiBadRequest("سبب الإلغاء مطلوب");
+    }
+  }
 
   const oldItemStockLines: StockLine[] = existing.items.map((i) => ({
     variantId: i.variantId,

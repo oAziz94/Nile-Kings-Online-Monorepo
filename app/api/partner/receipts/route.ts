@@ -10,6 +10,7 @@ import {
   mergeReceiptLines,
   parseReceiptLines,
 } from "@/lib/inventory/apply-receipt";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 /**
  * `StockReceipt` create/list — backlog 4.23. AGENT only (the factory ships to agents;
@@ -72,6 +73,23 @@ export async function POST(req: NextRequest) {
           }),
         { timeout: APPLY_RECEIPT_TRANSACTION_TIMEOUT_MS }
       );
+      // Backlog 9.7 (e) — mirror the partner's own money/stock write into `AdminAuditLog`
+      // with `actorRole: "PARTNER"` (the partner's own `SessionUser`, unchanged behaviour —
+      // only the log gains a row). The admin equivalent already logs from its own route.
+      await logAdminAction(prisma, {
+        actor: user,
+        action: "create",
+        entityType: "receipt",
+        entityId: receipt.id,
+        entityLabel: receipt.reference ?? receipt.id,
+        after: {
+          partnerId: user.partnerId,
+          kind: receipt.kind,
+          totalCostPiastres: receipt.totalCostPiastres,
+          lineCount: receipt.lines.length,
+        },
+        ip: requestIp(req),
+      });
       return apiSuccess(receipt, undefined, 201);
     } catch (error) {
       if (error instanceof ApplyReceiptError) {
