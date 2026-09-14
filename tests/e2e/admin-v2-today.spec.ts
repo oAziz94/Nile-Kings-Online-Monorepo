@@ -241,7 +241,11 @@ test.afterAll(async () => {
   }
   await prisma.orderTicketMessage.deleteMany({ where: { ticketId } });
   await prisma.orderTicket.deleteMany({ where: { id: ticketId } });
-  await prisma.partnerRequest.deleteMany({ where: { id: partnerRequestId } });
+  // Backlog 9.0b (ii): guard against an undefined id ever reaching a Prisma `where` — passing
+  // `undefined` for a scalar field is treated as "no filter", which would delete every
+  // PENDING/APPROVED/REJECTED PartnerRequest row in the database if beforeAll ever failed
+  // before assigning this id.
+  if (partnerRequestId) await prisma.partnerRequest.deleteMany({ where: { id: partnerRequestId } });
   await prisma.orderItem.deleteMany({ where: { orderId: { in: allOrderIds } } });
   await prisma.orderAuditLog.deleteMany({ where: { orderId: { in: allOrderIds } } });
   await prisma.order.deleteMany({ where: { id: { in: allOrderIds } } });

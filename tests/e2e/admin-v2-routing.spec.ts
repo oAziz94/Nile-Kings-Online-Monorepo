@@ -6,6 +6,7 @@ import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { assignOrderToGovernorate } from "@/lib/rerouting/assign";
+import { ROUTING_TEST_GOVERNORATE } from "./test-env";
 
 /**
  * Backlog 9.5a (التوجيه tab) coverage.
@@ -61,6 +62,11 @@ const FIXTURE_GOVERNORATE = `محافظة-اختبار-${uniqueSuffix}`;
 let adminUserId: string;
 let customerUserId: string;
 let ruleId: string;
+/** Backlog 9.0c — the rule this suite's own "mode select creates the rule on first change"
+ * test creates for `ROUTING_TEST_GOVERNORATE`; deleted in afterAll so the row is back to "no
+ * rule" for the next run (the one sanctioned exception to "never delete a ReroutingRule",
+ * documented in tests/e2e/test-env.ts). */
+let wadiRuleId: string | undefined;
 
 type FixturePartner = { userId: string; partnerId: string; name: string };
 let partnerA: FixturePartner;
@@ -135,6 +141,11 @@ test.afterAll(async () => {
   }
   await prisma.partner.deleteMany({ where: { id: { in: [partnerA.partnerId, partnerB.partnerId] } } });
   await prisma.user.deleteMany({ where: { id: { in: [adminUserId, customerUserId, partnerA.userId, partnerB.userId] } } });
+  // Backlog 9.0c — restore ROUTING_TEST_GOVERNORATE to "no rule" for the next run.
+  if (wadiRuleId) {
+    await prisma.reroutingRulePartner.deleteMany({ where: { ruleId: wadiRuleId } });
+    await prisma.reroutingRule.deleteMany({ where: { id: wadiRuleId } });
+  }
   await prisma.$disconnect();
 });
 
@@ -146,6 +157,40 @@ test("the التوجيه tab renders a real governorate's row read-only (pill, c
   const row = page.getByTestId(`routing-row-${realGovernorate}`);
   await expect(row).toBeVisible({ timeout: 15_000 });
   await expect(row.getByTestId("routing-mode-pill")).toBeVisible();
+});
+
+test("mode select creates the rule on first change (backlog 9.0c, a real 'no rule yet' row)", async ({ page }) => {
+  await loginAsAdmin(page);
+  // Defensive: ROUTING_TEST_GOVERNORATE should have no rule going in (test-env.ts's own doc)
+  // — clear it first if a previous interrupted run ever left one, so this test's own "first
+  // change" assertion is meaningful.
+  await prisma.reroutingRule.deleteMany({ where: { governorate: ROUTING_TEST_GOVERNORATE } });
+
+  await page.goto(`/admin/partners?tab=routing&q=${encodeURIComponent(ROUTING_TEST_GOVERNORATE)}`);
+  const row = page.getByTestId(`routing-row-${ROUTING_TEST_GOVERNORATE}`);
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await expect(row.getByTestId("routing-mode-pill")).toContainText("الطلبات تنتظر إسنادًا يدويًا");
+
+  const modeSelect = row.getByLabel(`وضع التوجيه — ${ROUTING_TEST_GOVERNORATE}`);
+  await expect(modeSelect).toHaveValue("MANUAL"); // no rule yet -> isActive defaults to false
+
+  const createRes = page.waitForResponse(
+    (r) => r.url().includes("/api/admin/rerouting-rules") && r.request().method() === "POST"
+  );
+  await modeSelect.selectOption("AUTO");
+  const res = await createRes;
+  expect(res.ok()).toBe(true);
+  const created = await res.json();
+  wadiRuleId = created.data.id;
+
+  // The toast text also lands in the toaster's aria-live announcer, so strict mode sees two
+  // matches — the visible toast is the first.
+  await expect(page.getByText("تم تحديث وضع التوجيه").first()).toBeVisible({ timeout: 10_000 });
+
+  const rule = await prisma.reroutingRule.findUnique({ where: { governorate: ROUTING_TEST_GOVERNORATE } });
+  expect(rule).toBeTruthy();
+  expect(rule?.id).toBe(wadiRuleId);
+  expect(rule?.isActive).toBe(true);
 });
 
 test("add_partner via the API creates the rule on first write and is audit-logged", async ({ page }) => {

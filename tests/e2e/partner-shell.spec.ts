@@ -42,6 +42,13 @@ test("agent sees the agent nav set, distributor sees the distributor nav set", a
   await expect(distributorNav.getByRole("link", { name: "المخزون" })).toBeVisible();
   await expect(distributorNav.getByRole("link", { name: "الموزعون" })).toHaveCount(0);
   await expect(distributorNav.getByRole("link", { name: "التقارير" })).toBeVisible();
+
+  // Backlog 9.0b (i): المتجر is a real `Link` to "/" with an accessible name — shared shell,
+  // one change fixes both the admin and partner dashboards (`components/dashboard/dashboard-shell.tsx`).
+  const storeLink = distributorNav.getByRole("link", { name: "المتجر" });
+  await expect(storeLink).toBeVisible();
+  await expect(storeLink).toHaveAttribute("href", "/");
+  await expect(storeLink).toHaveAttribute("aria-label", "المتجر");
 });
 
 test("mobile drawer opens/closes at 390px with focus returning to the trigger, and logout lands on /login", async ({

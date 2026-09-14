@@ -35,6 +35,9 @@ const ADMIN_NAME = "مسؤول اختبار الواجهة";
 const uniqueSuffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
 test.describe.configure({ mode: "serial" });
+// Backlog 9.0d: a cold Turbopack server's first compile can push a save/PATCH well past
+// Playwright's 30s default; 60s is this suite's floor.
+test.setTimeout(60_000);
 
 let adminUserId: string;
 let customerUserId: string;
@@ -168,7 +171,20 @@ test("desktop nav shows the canvas's sections/order/hrefs, and the ticket badge 
   }
 
   // Account block: المتجر + تسجيل الخروج, no duplicate settings link.
-  await expect(nav.getByRole("link", { name: "المتجر" })).toBeVisible();
+  // Backlog 9.0b (i): المتجر is a real `Link` to "/" with an accessible name (not a bare span).
+  const storeLink = nav.getByRole("link", { name: "المتجر" });
+  await expect(storeLink).toBeVisible();
+  await expect(storeLink).toHaveAttribute("href", "/");
+  await expect(storeLink).toHaveAttribute("aria-label", "المتجر");
+  // …and it keeps that name once the sidebar collapses to icons (9.10 verifier's required fix).
+  await page.getByRole("button", { name: "طيّ القائمة" }).click();
+  const expandButton = page.getByRole("button", { name: "فتح القائمة" });
+  await expect(expandButton).toBeVisible();
+  const collapsedStoreLink = nav.getByRole("link", { name: "المتجر" });
+  await expect(collapsedStoreLink).toBeVisible();
+  await expect(collapsedStoreLink).toHaveAttribute("href", "/");
+  await expandButton.click();
+  await expect(page.getByRole("button", { name: "طيّ القائمة" })).toBeVisible();
   await expect(nav.getByRole("button", { name: "تسجيل الخروج" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "الإعدادات", exact: true })).toHaveCount(1);
 

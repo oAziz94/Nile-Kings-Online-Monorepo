@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type ColumnDef } from "@/components/ui/data-table";
 import { useToast } from "@/hooks/use-toast";
 import { usePartnerMe } from "@/hooks/use-partner-me";
-import { useListUrlState } from "@/hooks/use-list-url-state";
+import { useListUrlState, useRequestAbort } from "@/hooks/use-list-url-state";
 import { useRowScrollRestore } from "@/hooks/use-row-scroll-restore";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatNumberEn } from "@/lib/format-en-numbers";
@@ -86,6 +86,7 @@ function PartnerStockIndexPageInner() {
   const { search, setSearch, debouncedQ, page, setPage, pageSize, setPageSize, filters, setFilter } =
     useListUrlState({ lowStock: "", outOfStock: "" });
   const { rememberRow } = useRowScrollRestore("partner-stock-last-row", products);
+  const getAbortSignal = useRequestAbort();
   const lowStockOn = filters.lowStock === "1";
   const outOfStockOn = filters.outOfStock === "1";
 
@@ -105,8 +106,9 @@ function PartnerStockIndexPageInner() {
     if (lowStockOn) params.set("lowStock", "1");
     if (outOfStockOn) params.set("outOfStock", "1");
 
+    const signal = getAbortSignal();
     try {
-      const res = await fetch(`/api/partner/inventory?${params}`, { credentials: "include" });
+      const res = await fetch(`/api/partner/inventory?${params}`, { credentials: "include", signal });
       const json = await res.json();
       if (res.ok && json?.success) {
         setProducts(json.data.products ?? []);
@@ -118,14 +120,17 @@ function PartnerStockIndexPageInner() {
         toast({ title: message, variant: "destructive" });
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       const message = error instanceof Error ? error.message : "خطأ غير متوقع";
       setLoadError("فشل تحميل المخزون");
       toast({ title: "فشل تحميل المخزون", description: message, variant: "destructive" });
     } finally {
-      setLoading(false);
-      setFetching(false);
+      if (!signal.aborted) {
+        setLoading(false);
+        setFetching(false);
+      }
     }
-  }, [debouncedQ, lowStockOn, outOfStockOn, page, pageSize, toast]);
+  }, [debouncedQ, lowStockOn, outOfStockOn, page, pageSize, toast, getAbortSignal]);
 
   React.useEffect(() => {
     load();

@@ -192,7 +192,9 @@ test.afterAll(async () => {
   await prisma.partnerPayment.deleteMany({ where: { id: { in: allPaymentIds } } });
   await prisma.stockReceiptLine.deleteMany({ where: { receiptId: { in: allReceiptIds } } });
   await prisma.stockReceipt.deleteMany({ where: { id: { in: allReceiptIds } } });
-  await prisma.partnerRequest.deleteMany({ where: { id: requestId } });
+  // Backlog 9.0b (ii): guard against an undefined id reaching a Prisma `where` — `undefined`
+  // on a scalar field means "no filter", which would delete every PartnerRequest row.
+  if (requestId) await prisma.partnerRequest.deleteMany({ where: { id: requestId } });
   const converted = await prisma.partner.findFirst({ where: { name: { contains: uniqueSuffix } } });
   if (converted) await prisma.partner.deleteMany({ where: { id: converted.id, phone: { not: pair.agent.phone } } });
   await prisma.partnerInventory.deleteMany({ where: { variantId } });

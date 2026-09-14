@@ -36,7 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useListUrlState } from "@/hooks/use-list-url-state";
+import { useListUrlState, useRequestAbort } from "@/hooks/use-list-url-state";
 import { useRowScrollRestore } from "@/hooks/use-row-scroll-restore";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { piastresToEgp } from "@/lib/catalog";
@@ -179,6 +179,7 @@ function PartnersTab() {
   const [exporting, setExporting] = React.useState(false);
 
   const { rememberRow } = useRowScrollRestore("admin-partners-last-row", rows);
+  const getAbortSignal = useRequestAbort();
 
   const load = React.useCallback(async () => {
     setFetching(true);
@@ -187,8 +188,9 @@ function PartnersTab() {
     if (filters.type) params.set("partnerType", filters.type);
     if (filters.governorate) params.set("governorate", filters.governorate);
     if (filters.attention === "1") params.set("needsAttention", "1");
+    const signal = getAbortSignal();
     try {
-      const res = await fetch(`/api/admin/partners?${params}`, { credentials: "include" });
+      const res = await fetch(`/api/admin/partners?${params}`, { credentials: "include", signal });
       const json = await res.json();
       if (res.ok && json?.success) {
         setRows(json.data.partners ?? []);
@@ -197,12 +199,15 @@ function PartnersTab() {
         toast({ title: json?.error?.message ?? "فشل تحميل الشركاء", variant: "destructive" });
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       toast({ title: "فشل تحميل الشركاء", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
     } finally {
-      setLoading(false);
-      setFetching(false);
+      if (!signal.aborted) {
+        setLoading(false);
+        setFetching(false);
+      }
     }
-  }, [debouncedQ, filters.type, filters.governorate, filters.attention, page, pageSize, toast]);
+  }, [debouncedQ, filters.type, filters.governorate, filters.attention, page, pageSize, toast, getAbortSignal]);
 
   React.useEffect(() => {
     load();

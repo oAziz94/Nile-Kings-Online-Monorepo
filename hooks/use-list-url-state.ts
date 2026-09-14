@@ -4,6 +4,31 @@ import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 /**
+ * Backlog 9.0b (iii): every list that searches on keystroke fires a fresh fetch on every
+ * `debouncedQ`/filter/page change, but network order isn't request order — a slow earlier
+ * response (e.g. the initial empty-query load) can resolve *after* a faster later one (e.g.
+ * the user's first keystroke) and overwrite it with stale data. `getAbortSignal()` aborts
+ * whatever request this consumer last started (if any) and returns a fresh signal to pass to
+ * `fetch`; an aborted fetch rejects with `AbortError` before its `.then`/`await` chain runs,
+ * so the stale response's state update never happens. One controller per hook instance (a
+ * consumer with several independent lists — see `partner-stock-tab.tsx`'s two fetches, or
+ * `admin/media/page.tsx`'s own request-sequence guard for the same hazard without this hook —
+ * should call `useRequestAbort()` once per list, not share one across unrelated lists).
+ */
+export function useRequestAbort(): () => AbortSignal {
+  const controllerRef = React.useRef<AbortController | null>(null);
+  React.useEffect(() => {
+    return () => controllerRef.current?.abort();
+  }, []);
+  return React.useCallback(() => {
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    return controller.signal;
+  }, []);
+}
+
+/**
  * Keeps a list page's search/filters/pagination in the URL so that navigating
  * to a detail page and pressing back restores the exact same list state
  * (search text, active filters, page, page size) instead of resetting it.
