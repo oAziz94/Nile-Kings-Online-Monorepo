@@ -484,7 +484,7 @@ export default function AdminProductDetailPage() {
             </div>
             <div className="flex items-center gap-2">
               <Button type="button" variant="outline" asChild>
-                <Link href={`/admin/partner-inventory?q=${encodeURIComponent(product.slug)}`}>
+                <Link href={`/admin/partners?tab=network&q=${encodeURIComponent(product.slug)}`}>
                   <Package className="h-4 w-4" />
                   إدارة المخزون
                 </Link>

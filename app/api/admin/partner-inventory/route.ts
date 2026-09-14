@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { sortVariants } from "@/lib/admin/variant-sort";
 import { apiBadRequest, apiForbidden, apiSuccess, apiUnauthorized } from "@/lib/api/response";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -104,8 +105,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (error: unknown) {
     const err = error as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -175,5 +177,18 @@ export async function POST(req: NextRequest) {
   });
 
   if (!updated) return apiBadRequest("المحجوز لا يمكن أن يكون أكبر من المتاح");
+
+  const variant = await prisma.variant.findUnique({ where: { id: variantId }, select: { sku: true } });
+  await logAdminAction(prisma, {
+    actor,
+    action: "stock_correction",
+    entityType: "partner-inventory",
+    entityId: updated.id,
+    entityLabel: variant?.sku ?? variantId,
+    after: { partnerId, variantId, stockAvailable: updated.stockAvailable, stockReserved: updated.stockReserved },
+    reason: body.notes?.trim() || null,
+    ip: requestIp(req),
+  });
+
   return apiSuccess(updated);
 }

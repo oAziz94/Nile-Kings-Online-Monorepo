@@ -6,10 +6,12 @@
  * (التقارير · الإعدادات — السجل joins in 9.7).
  *
  * The four screens leaving the nav (`/admin/routed-orders`, `/admin/rerouting-rules`,
- * `/admin/partner-inventory`, `/admin/admins`) stay reachable by URL until 9.3/9.5 absorb the
- * first three with redirects (rule B4) — this config deletes nothing, it just stops linking
- * to them from the rail. `/admin/admins` is absorbed as of 9.4b (a permanent redirect to
- * `/admin/clients?tab=admins`; it never had a nav item to begin with).
+ * `/admin/partner-inventory`, `/admin/admins`) stay reachable by URL, each now a permanent
+ * redirect to its new home rather than a live page: `/admin/routed-orders` (9.3),
+ * `/admin/rerouting-rules*` -> `/admin/partners?tab=routing` and `/admin/partner-inventory`
+ * -> `/admin/partners?tab=network` (both 9.5, rule B4), `/admin/admins` ->
+ * `/admin/clients?tab=admins` (9.4b) — this config deletes nothing, it just stops linking to
+ * them from the rail.
  */
 import {
   BarChart3,

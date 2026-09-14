@@ -2,12 +2,14 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 type Params = Promise<{ id: string; linkId: string }>;
 
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -17,7 +19,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   const { id: ruleId, linkId } = await params;
   const link = await prisma.reroutingRulePartner.findFirst({
     where: { id: linkId, ruleId },
-    include: { partner: { select: { id: true, name: true, phone: true, partnerType: true } } },
+    include: { partner: { select: { id: true, name: true, phone: true, partnerType: true } }, rule: { select: { governorate: true } } },
   });
   if (!link) return apiNotFound("الرابط غير موجود");
 
@@ -37,12 +39,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     data,
     include: { partner: { select: { id: true, name: true, phone: true, partnerType: true, governorate: true } } },
   });
+
+  if (data.isActive !== undefined && data.isActive !== link.isActive) {
+    await logAdminAction(prisma, {
+      actor,
+      action: data.isActive ? "resume_partner" : "pause_partner",
+      entityType: "routing",
+      entityId: link.rule.governorate,
+      entityLabel: link.rule.governorate,
+      before: { partnerId: link.partnerId, isActive: link.isActive },
+      after: { partnerId: link.partnerId, isActive: updated.isActive },
+      ip: requestIp(req),
+    });
+  }
   return apiSuccess(updated);
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Params }) {
+export async function DELETE(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -52,8 +68,18 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
   const { id: ruleId, linkId } = await params;
   const link = await prisma.reroutingRulePartner.findFirst({
     where: { id: linkId, ruleId },
+    include: { partner: { select: { name: true } }, rule: { select: { governorate: true } } },
   });
   if (!link) return apiNotFound("الرابط غير موجود");
   await prisma.reroutingRulePartner.delete({ where: { id: linkId } });
+  await logAdminAction(prisma, {
+    actor,
+    action: "remove_partner",
+    entityType: "routing",
+    entityId: link.rule.governorate,
+    entityLabel: link.rule.governorate,
+    before: { partnerId: link.partnerId, partnerName: link.partner.name },
+    ip: requestIp(req),
+  });
   return apiSuccess({ deleted: true });
 }

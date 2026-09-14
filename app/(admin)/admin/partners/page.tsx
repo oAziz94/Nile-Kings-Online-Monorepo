@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Boxes,
   Check,
@@ -43,15 +43,18 @@ import { piastresToEgp } from "@/lib/catalog";
 import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
 import type { CoverTone } from "@/lib/admin/partners-list";
+import { RoutingTab } from "@/components/admin/routing-tab";
+import { NetworkStockTab } from "@/components/admin/network-stock-tab";
 
 /**
- * `/admin/partners` (backlog 9.4a (d)+(f)) — the الشركاء hub list, in the partner v2 list
- * language (`PanelCard`/`DataTable`/`SearchInput`, matching `app/(admin)/admin/orders/page.tsx`).
- * Tabs: الشركاء (health columns from `GET /api/admin/partners?health=1`) and طلبات الشراكة
- * (the applications table, restyled). التوجيه/مخزون الشبكة are plain links to their
- * *current* homes — `/admin/rerouting-rules` and `/admin/partner-inventory` — until 9.5
- * builds their real tabs (per the task text: "until 9.5 lands they point at [...] — say so
- * in a comment").
+ * `/admin/partners` (backlog 9.4a (d)+(f), 9.5) — the الشركاء hub list, in the partner v2
+ * list language (`PanelCard`/`DataTable`/`SearchInput`, matching
+ * `app/(admin)/admin/orders/page.tsx`). Tabs: الشركاء (health columns from
+ * `GET /api/admin/partners?health=1`), طلبات الشراكة (the applications table, restyled),
+ * التوجيه (`RoutingTab`, backlog 9.5a) and مخزون الشبكة (`NetworkStockTab`, backlog 9.5b).
+ * The active tab is reflected in `?tab=` so `/admin/partners?tab=routing`/`?tab=network`
+ * are real, linkable URLs (per the task's "الحد M" / low-stock 9.2 links and the removed
+ * `/admin/rerouting-rules` and `/admin/partner-inventory` redirects, backlog 9.5c).
  */
 
 function egp(piastres: number): string {
@@ -85,14 +88,33 @@ type PartnerRow = {
 };
 
 const TABS = [
-  { id: "partners", label: "الشركاء" },
-  { id: "requests", label: "طلبات الشراكة" },
+  { id: "partners", label: "الشركاء", icon: Handshake },
+  { id: "requests", label: "طلبات الشراكة", icon: ClipboardList },
+  { id: "routing", label: "التوجيه", icon: RouteIcon },
+  { id: "network", label: "مخزون الشبكة", icon: Boxes },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
+function isTabId(value: string | null): value is TabId {
+  return !!value && TABS.some((t) => t.id === value);
+}
+
 export default function AdminPartnersPage() {
-  const [tab, setTab] = React.useState<TabId>("partners");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const tab: TabId = isTabId(tabParam) ? tabParam : "partners";
   const [pendingCount, setPendingCount] = React.useState(0);
+
+  const setTab = React.useCallback(
+    (next: TabId) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === "partners") params.delete("tab");
+      else params.set("tab", next);
+      router.push(`/admin/partners${params.toString() ? `?${params}` : ""}`);
+    },
+    [router, searchParams]
+  );
 
   React.useEffect(() => {
     fetch("/api/admin/partner-requests?limit=1&status=PENDING", { credentials: "include" })
@@ -110,6 +132,7 @@ export default function AdminPartnersPage() {
       <div role="tablist" aria-label="أقسام الشركاء" className="flex flex-wrap gap-1 rounded-2xl bg-white p-1.5 shadow-soft">
         {TABS.map((t) => {
           const active = tab === t.id;
+          const Icon = t.icon;
           return (
             <button
               key={t.id}
@@ -122,6 +145,7 @@ export default function AdminPartnersPage() {
                 active ? "bg-lapis-800 text-white" : "text-ink-soft hover:bg-stone-50"
               )}
             >
+              <Icon className="h-3.5 w-3.5" />
               {t.label}
               {t.id === "requests" && pendingCount > 0 && (
                 <span className={cn("rounded-full px-1.5 text-[11px] font-extrabold", active ? "bg-white/20" : "bg-carnelian-50 text-danger-text")}>
@@ -131,25 +155,12 @@ export default function AdminPartnersPage() {
             </button>
           );
         })}
-        {/* التوجيه · مخزون الشبكة — 9.5 builds the real matrix/network-stock tabs; until then
-            these are plain links to their current homes. */}
-        <Link
-          href="/admin/rerouting-rules"
-          className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-bold text-ink-soft hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
-        >
-          <RouteIcon className="h-3.5 w-3.5" />
-          التوجيه
-        </Link>
-        <Link
-          href="/admin/partner-inventory"
-          className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-bold text-ink-soft hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
-        >
-          <Boxes className="h-3.5 w-3.5" />
-          مخزون الشبكة
-        </Link>
       </div>
 
-      {tab === "partners" ? <PartnersTab /> : <PartnerRequestsTab onChanged={() => setTab("partners")} />}
+      {tab === "partners" && <PartnersTab />}
+      {tab === "requests" && <PartnerRequestsTab onChanged={() => setTab("partners")} />}
+      {tab === "routing" && <RoutingTab />}
+      {tab === "network" && <NetworkStockTab />}
     </div>
   );
 }

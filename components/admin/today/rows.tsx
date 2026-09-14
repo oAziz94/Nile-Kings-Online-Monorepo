@@ -116,7 +116,7 @@ export function LowStockQueueRowView({ row }: { row: LowStockQueueRow }) {
           <span dir="ltr">{formatNumberEn(row.threshold)}</span>
         </span>
       }
-      action={<ActionButton href={`/admin/partner-inventory?partner=${row.partnerId}`} label="فتح" />}
+      action={<ActionButton href={`/admin/partners?tab=network&partner=${row.partnerId}`} label="فتح" />}
     />
   );
 }

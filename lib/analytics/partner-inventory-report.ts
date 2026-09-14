@@ -28,6 +28,8 @@ import { INVENTORY_EXPORT_HEADERS } from "@/lib/inventory/receipts";
 
 export type InventorySkuRow = {
   variantId: string;
+  productId: string;
+  categoryId: string;
   productName: string;
   variantName: string;
   colorName: string | null;
@@ -57,8 +59,13 @@ export type InventoryReportFilter = "needsReorder" | "dead" | "all";
 
 type PartnerReportSettings = { deadStockDays: number; targetCoverDays: number };
 
-/** Builds every SKU row (unfiltered, sorted by nearest-to-stock-out first) for one period. */
-async function computeInventoryRows(
+/**
+ * Builds every SKU row (unfiltered, sorted by nearest-to-stock-out first) for one period.
+ * Exported (backlog 9.5b, rule B3) so the network stock tab (`lib/analytics/network-stock.ts`)
+ * reuses this exact query per partner instead of writing a fresh one — it never changes
+ * behaviour for the partner-scoped callers above.
+ */
+export async function computeInventoryRows(
   partnerId: string,
   period: ReturnType<typeof resolvePeriod>
 ): Promise<{ rows: InventorySkuRow[]; partner: PartnerReportSettings; costRateBps: number }> {
@@ -84,7 +91,7 @@ async function computeInventoryRows(
           name: true,
           colorName: true,
           pricePiastres: true,
-          product: { select: { name: true } },
+          product: { select: { id: true, name: true, categoryId: true } },
         },
       },
     },
@@ -102,6 +109,8 @@ async function computeInventoryRows(
     const suggestedReorder = suggestedReorderQty(partner.targetCoverDays, velocityPerDay, sellable);
     return {
       variantId: inv.variantId,
+      productId: inv.variant.product.id,
+      categoryId: inv.variant.product.categoryId,
       productName: inv.variant.product.name,
       variantName: inv.variant.name,
       colorName: inv.variant.colorName,

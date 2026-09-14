@@ -26,7 +26,7 @@ const QUEUES: { key: keyof AdminTodayResponse["queues"]; label: string; href: st
   { key: "overdue", label: "متأخرة عند الشريك", href: "/admin/orders?overdue=1" },
   { key: "tickets", label: "أسئلة بانتظار الرد", href: "/admin/order-tickets" },
   { key: "partnerRequests", label: "طلبات شراكة جديدة", href: "/admin/partners" },
-  { key: "lowStock", label: "أصناف نافدة أو قاربت", href: "/admin/partner-inventory" },
+  { key: "lowStock", label: "أصناف نافدة أو قاربت", href: "/admin/partners?tab=network" },
   { key: "duePayments", label: "مستحقات شركاء", href: "/admin/partners" },
 ];
 

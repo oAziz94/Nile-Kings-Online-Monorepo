@@ -180,10 +180,10 @@ async function buildPartnerRequestsQueue(): Promise<AdminTodayGroup<PartnerReque
 /**
  * أصناف نافدة أو قاربت — every active partner's `getPartnerReorderRows` (the inventory
  * report's own "needs reorder" query, B3: no new stock query), lowest sellable first. The
- * per-row threshold ("الحد M") is the partner's own default `lowStockThreshold`
- * (`resolveThreshold(partnerId).defaultThreshold`) — `InventorySkuRow` does not carry the
- * product/category ids `resolveThreshold.forVariant` needs, so the network queue reads the
- * partner-wide default rather than resolving each row's own category override.
+ * per-row threshold ("الحد M") is now the **resolved** threshold
+ * (`resolveThreshold(partnerId).forVariant({productId, categoryId})`, backlog 9.5b) —
+ * `InventorySkuRow` carries `productId`/`categoryId` since 9.5, so the network queue no
+ * longer falls back to the partner-wide default.
  */
 async function buildLowStockQueue(): Promise<AdminTodayGroup<LowStockQueueRow>> {
   const partners = await prisma.partner.findMany({
@@ -212,7 +212,7 @@ async function buildLowStockQueue(): Promise<AdminTodayGroup<LowStockQueueRow>> 
         partnerId: partner.id,
         partnerName: partner.name,
         sellable: r.sellable,
-        threshold: threshold.defaultThreshold,
+        threshold: threshold.forVariant({ productId: r.productId, categoryId: r.categoryId }),
       });
     }
   }
