@@ -117,6 +117,50 @@ row (the same discipline `20260806090000_backfill_routed_order_partners_and_reco
 used for the one partner that predated partner-scoped inventory) — otherwise the drop silently
 discards real, unreconciled stock counts with no way to recover them.
 
+**Deploy note (backlog 9.10, added 2026-09-14) — admin v2 close-out, env additions and migration order.**
+
+Environment variables added since v2.3 (in addition to `CRON_SECRET` above, unchanged):
+- `ALLOW_TEST_UPLOAD_FOLDER` — backlog 9.8a's `POST /api/admin/upload` folder override
+  (`nile-kings/products/e2e-*`), used only by `admin-v2-media.spec.ts` to scope and clean up
+  its own Cloudinary uploads. Set **only** by `playwright.config.ts`'s `webServer.env` and by
+  `loadRedesignTestEnv()` for the test process itself — **never** set this in `.env`,
+  `.env.redesign`, or any production/staging environment; `lib/media/test-upload-folder.ts`'s
+  guard also requires non-production `NODE_ENV`, but the env var is the primary gate.
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` — backlog 9.8a's
+  Cloudinary Admin API credentials (`lib/media/cloudinary-admin.ts`), needed for `POST
+  /api/admin/upload` (unsigned upload signing) and `POST /api/admin/media/sync` (listing
+  `nile-kings/products`/`nile-kings/routed-proofs` to reconcile the `MediaAsset` table). Both
+  routes degrade gracefully (`isCloudinaryConfigured()`) when unset, but the الصور library and
+  every product-image upload are non-functional without them — set all three in production
+  before deploying 9.8a/9.8b.
+
+Prisma migrations, **in this order**, before deploying 9.10 (backlog "Admin v2" chapter) to
+production:
+1. **9.4a's additive stock-receipt/routing schema** — `StockReceipt.recordedBy`/
+   `recordedByUserId` (defaults `PARTNER`, nullable — safe for every existing row) plus that
+   task's other additive fields. These were applied to the `redesign` Neon branch via
+   `db:push:redesign` during development and have **no standalone migration file** under
+   `prisma/migrations/` (this repo's convention: purely additive changes went through `db
+   push`, not `migrate`; only 9.9's destructive drop below got a formal migration). For
+   production, generate/apply this as a migration (`prisma migrate dev --create-only` against
+   the current schema, reviewed, then `migrate deploy`) or an equivalent additive `db push`
+   **before** step 2 — the 9.9 migration does not create these columns, it assumes they
+   already exist.
+2. **9.9's `20260914120000_drop_variant_legacy_stock`** — drops `Variant.stockAvailable`/
+   `stockReserved` and their index. Per this file's own 9.9 deploy note above, **do not run
+   this against production** until a reconcile query confirms production's
+   `Variant.stockAvailable`/`stockReserved` sums are either zero or already accounted for in
+   the matching partner's `PartnerInventory` row — the drop is irreversible.
+
+**One-time media sync after deploy**: once 9.8a is live and the three `CLOUDINARY_*` variables
+are set, `MediaAsset` starts empty in production — every asset already in Cloudinary (every
+product/variant image, every delivery proof) exists on disk but has no registered row, so the
+الصور library shows nothing and every usage/orphan count reads zero. Run the reconcile once,
+either by clicking "مزامنة" on `/admin/products` → `الصور` (`POST /api/admin/media/sync`,
+paginated — the UI re-POSTs with `?cursor=continue` until it reports done) or by calling that
+endpoint directly with an admin session. Safe to re-run; it is the same reconcile the ongoing
+sync uses, incremental and idempotent.
+
 ## 6. Rules carried over and added
 Carried: every stock read-modify-write holds `SELECT … FOR UPDATE`; every mutation writes `InventoryLedger` in the same transaction; role gates server-side; dialog focus at the primitive; chrome never prints; skeleton/alert/wrong-role states; RTL, keyboard, real labels; `dev:redesign` only, `db:push:redesign` only, fixtures under the production guard; verify at 1440×900, 1514×681, 1366×768, 1280×720, 1024×768, 768×1024, 390×844 against the **new** artboards.
 Added: (11) the user approves the canvas before implementation tasks are written; (12) every number on a report has a period and a comparison, or it is not a report; (13) thresholds resolve through `resolveThreshold()` — no screen compares against `Partner.lowStockThreshold` directly; (14) cost is never stored on the variant; it is snapshotted on the receipt line at apply time from the rate.
