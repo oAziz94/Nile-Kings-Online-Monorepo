@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/api/response";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -24,8 +25,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -56,6 +58,15 @@ export async function POST(req: NextRequest) {
       _count: { select: { partners: true } },
       lastAssignedPartner: { select: { id: true, name: true, phone: true, partnerType: true } },
     },
+  });
+  await logAdminAction(prisma, {
+    actor,
+    action: "set_mode",
+    entityType: "routing",
+    entityId: rule.governorate,
+    entityLabel: rule.governorate,
+    after: { isActive: rule.isActive },
+    ip: requestIp(req),
   });
   return apiSuccess(rule);
 }

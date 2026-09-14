@@ -175,7 +175,7 @@ export default function AdminTodayPage() {
               rows={data?.queues.lowStock.rows ?? []}
               rowKey={(r) => r.variantId}
               renderRow={(r) => <LowStockQueueRowView row={r} />}
-              viewAllHref="/admin/partner-inventory"
+              viewAllHref="/admin/partners?tab=network"
               viewAllLabel="مخزون الشبكة"
             />
             <AdminQueueCard

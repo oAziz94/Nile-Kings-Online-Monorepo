@@ -1,14 +1,13 @@
 import { redirect } from "next/navigation";
-import { PartnerInventoryPicker } from "@/components/admin/partner-inventory-picker";
 
 /**
- * `/admin/partner-inventory` (backlog 9.4a (g), B4) — the per-partner grid this page used to
- * render inline has moved to the partner profile's المخزون tab
- * (`components/admin/partner-stock-tab.tsx`). This page stays reachable (the list's "مخزون
- * الشبكة" link still points here until 9.5 builds the real network-stock tab) but now only
- * picks a partner and redirects to their profile: `?partnerId=<id>` → `/admin/partners/<id>?tab=stock`.
+ * `/admin/partner-inventory` → `/admin/partners?tab=network` (backlog 9.5c, rule B4): the
+ * picker this page used to render is superseded by مخزون الشبكة (`NetworkStockTab`), which
+ * shows every partner's stock in one grid instead of asking which partner to view first.
+ * `?partnerId=<id>` keeps redirecting to that partner's profile stock tab (unchanged,
+ * `PartnerStockTab` still lives there and is not part of this task).
  */
-export default async function AdminPartnerInventoryPage({
+export default async function AdminPartnerInventoryRedirectPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -19,5 +18,5 @@ export default async function AdminPartnerInventoryPage({
   if (partnerId) {
     redirect(`/admin/partners/${partnerId}?tab=stock`);
   }
-  return <PartnerInventoryPicker />;
+  redirect("/admin/partners?tab=network");
 }
