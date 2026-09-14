@@ -34,6 +34,7 @@ async function hashPassword(plain: string): Promise<string> {
 
 const ADMIN_PHONE = "+201099966201";
 const ADMIN_PASSWORD = "AdminAuditTest123!";
+const ADMIN_NAME = "مسؤول اختبار السجل";
 const uniqueSuffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
 test.describe.configure({ mode: "serial" });
@@ -58,7 +59,7 @@ async function loginAsAdmin(page: Page) {
 test.beforeAll(async () => {
   const admin = await prisma.user.upsert({
     where: { phone: ADMIN_PHONE },
-    create: { phone: ADMIN_PHONE, role: "ADMIN", passwordHash: await hashPassword(ADMIN_PASSWORD), name: "مسؤول اختبار السجل" },
+    create: { phone: ADMIN_PHONE, role: "ADMIN", passwordHash: await hashPassword(ADMIN_PASSWORD), name: ADMIN_NAME },
     update: { passwordHash: await hashPassword(ADMIN_PASSWORD), role: "ADMIN" },
   });
   adminUserId = admin.id;
@@ -143,6 +144,9 @@ test.afterAll(async () => {
 });
 
 test("seed actions through the APIs, then the list/filters/search/expand/link/CSV/pagination all work", async ({ page }) => {
+  // Verifier fix (9.7 review): this test failed at 28s of 30 on a cold server (first hit of
+  // /admin/audit + its API route pays Turbopack's compile cost) — same headroom 8.1 added.
+  test.setTimeout(60_000);
   await loginAsAdmin(page);
 
   // 1. coupon create
@@ -203,10 +207,19 @@ test("seed actions through the APIs, then the list/filters/search/expand/link/CS
   await expect(page.getByText("أسند الطلب")).toBeVisible({ timeout: 10_000 });
   await page.getByPlaceholder("رقم طلب أو شريك أو SKU أو اسم").fill("");
 
-  // Filter by actor = الشركاء narrows to PARTNER rows only.
-  await page.getByRole("combobox").filter({ hasText: "الفاعل" }).selectOption("PARTNER");
+  // Filter by actor = الشركاء (the group entry) narrows to PARTNER rows only.
+  const actorFilter = page.getByLabel("الفاعل");
+  await actorFilter.selectOption("group:PARTNER");
   await expect(page.getByTestId("audit-rows").getByText("شريك", { exact: true }).first()).toBeVisible({ timeout: 10_000 });
-  await page.getByRole("combobox").filter({ hasText: "الفاعل" }).selectOption("");
+
+  // PM ruling (9.7 review): the actor filter is per-admin, not just a role toggle — selecting
+  // the seeded admin by name narrows to rows actually written by that admin (the coupon
+  // create above), and excludes the PARTNER-mirrored rows this same test just asserted are
+  // visible under the group filter.
+  await actorFilter.selectOption({ label: ADMIN_NAME });
+  await expect(page.getByTestId("audit-rows").getByText("أنشأ الكوبون")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId("audit-rows").getByText("أنشأ الإيصال")).toHaveCount(0);
+  await actorFilter.selectOption("");
 
   // Expand a row -> sentence + before/after; "على" opens the entity. (The audit-rows
   // container's first `> div` is the desktop column-header row, which has no button — this

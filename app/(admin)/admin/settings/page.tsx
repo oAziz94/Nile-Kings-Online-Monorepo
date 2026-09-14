@@ -33,12 +33,26 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { SettingPreviousValue } from "@/components/admin/setting-previous-value";
 
-function Toggle({ on, onToggle, disabled }: { on: boolean; onToggle: () => void; disabled?: boolean }) {
+function Toggle({
+  on,
+  onToggle,
+  disabled,
+  label,
+}: {
+  on: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+  /** Accessible name (verifier fix, 9.7 review): every `role="switch"` needs one — there is
+   * no visible `<label>` element bound to these, only adjacent text, so `aria-label` rather
+   * than `aria-labelledby` (no `id` to point at without adding one purely for this). */
+  label: string;
+}) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
+      aria-label={label}
       disabled={disabled}
       onClick={onToggle}
       className={cn(
@@ -186,12 +200,21 @@ function StoreGroup() {
             />
           </div>
 
-          <div className="flex items-center justify-between border-t border-stone-100 pt-3">
-            <div>
-              <p className="text-[13px] font-extrabold text-ink">خصم كبار السن</p>
-              <p className="text-[11px] text-ink-soft">مفعّل في المتجر · كان مبنيًا ولا يظهر في أي شاشة</p>
+          <div className="border-t border-stone-100 pt-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[13px] font-extrabold text-ink">خصم كبار السن</p>
+                <p className="text-[11px] text-ink-soft">مفعّل في المتجر · كان مبنيًا ولا يظهر في أي شاشة</p>
+              </div>
+              <Toggle label="خصم كبار السن" on={seniorPromoEnabled} onToggle={() => setSeniorPromoEnabled((v) => !v)} />
             </div>
-            <Toggle on={seniorPromoEnabled} onToggle={() => setSeniorPromoEnabled((v) => !v)} />
+            <SettingPreviousValue
+              key={`promo-${historyKey}`}
+              entityType="settings"
+              entityId="senior-promo"
+              field="enabled"
+              format={(v) => (v ? "مفعّل" : "معطّل")}
+            />
           </div>
 
           <div className="flex items-center justify-between border-t border-stone-100 pt-3">
@@ -240,6 +263,7 @@ function NetworkDefaultsGroup() {
   });
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const [historyKey, setHistoryKey] = React.useState(0);
 
   const load = React.useCallback(() => {
     fetch("/api/admin/settings/partner-defaults", { credentials: "include" })
@@ -283,6 +307,7 @@ function NetworkDefaultsGroup() {
       if (json?.success) {
         toast({ title: "تم حفظ افتراضيات الشبكة" });
         load();
+        setHistoryKey((k) => k + 1);
       } else {
         toast({ title: json?.error?.message ?? "فشل الحفظ", variant: "destructive" });
       }
@@ -305,12 +330,30 @@ function NetworkDefaultsGroup() {
       }
     >
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <Field id="net-cost-rate" label="نسبة الشراء" unit="%" value={values.costRatePct} onChange={(v) => setValues((s) => ({ ...s, costRatePct: v }))} min={0} max={100} />
-        <Field id="net-confirm-sla" label="مهلة التأكيد" unit="ساعة" value={values.confirmSlaHours} onChange={(v) => setValues((s) => ({ ...s, confirmSlaHours: v }))} min={1} />
-        <Field id="net-ship-sla" label="مهلة الشحن" unit="ساعة" value={values.shipSlaHours} onChange={(v) => setValues((s) => ({ ...s, shipSlaHours: v }))} min={1} />
-        <Field id="net-low-stock" label="حد المخزون المنخفض" unit="قطعة" value={values.lowStockThreshold} onChange={(v) => setValues((s) => ({ ...s, lowStockThreshold: v }))} min={0} />
-        <Field id="net-dead-stock" label="راكد بعد" unit="يومًا" value={values.deadStockDays} onChange={(v) => setValues((s) => ({ ...s, deadStockDays: v }))} min={1} />
-        <Field id="net-target-cover" label="تغطية مستهدفة" unit="يومًا" value={values.targetCoverDays} onChange={(v) => setValues((s) => ({ ...s, targetCoverDays: v }))} min={1} />
+        <div>
+          <Field id="net-cost-rate" label="نسبة الشراء" unit="%" value={values.costRatePct} onChange={(v) => setValues((s) => ({ ...s, costRatePct: v }))} min={0} max={100} />
+          <SettingPreviousValue key={`cost-rate-${historyKey}`} entityType="settings" entityId="partner-defaults" field="costRateBps" format={(v) => `${Math.round(Number(v) / 100)}%`} />
+        </div>
+        <div>
+          <Field id="net-confirm-sla" label="مهلة التأكيد" unit="ساعة" value={values.confirmSlaHours} onChange={(v) => setValues((s) => ({ ...s, confirmSlaHours: v }))} min={1} />
+          <SettingPreviousValue key={`confirm-sla-${historyKey}`} entityType="settings" entityId="partner-defaults" field="confirmSlaHours" format={(v) => `${v} ساعة`} />
+        </div>
+        <div>
+          <Field id="net-ship-sla" label="مهلة الشحن" unit="ساعة" value={values.shipSlaHours} onChange={(v) => setValues((s) => ({ ...s, shipSlaHours: v }))} min={1} />
+          <SettingPreviousValue key={`ship-sla-${historyKey}`} entityType="settings" entityId="partner-defaults" field="shipSlaHours" format={(v) => `${v} ساعة`} />
+        </div>
+        <div>
+          <Field id="net-low-stock" label="حد المخزون المنخفض" unit="قطعة" value={values.lowStockThreshold} onChange={(v) => setValues((s) => ({ ...s, lowStockThreshold: v }))} min={0} />
+          <SettingPreviousValue key={`low-stock-${historyKey}`} entityType="settings" entityId="partner-defaults" field="lowStockThreshold" format={(v) => `${v} قطعة`} />
+        </div>
+        <div>
+          <Field id="net-dead-stock" label="راكد بعد" unit="يومًا" value={values.deadStockDays} onChange={(v) => setValues((s) => ({ ...s, deadStockDays: v }))} min={1} />
+          <SettingPreviousValue key={`dead-stock-${historyKey}`} entityType="settings" entityId="partner-defaults" field="deadStockDays" format={(v) => `${v} يومًا`} />
+        </div>
+        <div>
+          <Field id="net-target-cover" label="تغطية مستهدفة" unit="يومًا" value={values.targetCoverDays} onChange={(v) => setValues((s) => ({ ...s, targetCoverDays: v }))} min={1} />
+          <SettingPreviousValue key={`target-cover-${historyKey}`} entityType="settings" entityId="partner-defaults" field="targetCoverDays" format={(v) => `${v} يومًا`} />
+        </div>
       </div>
       <p className="mt-3 text-[11px] text-ink-soft">تغيير الافتراضي لا يمس أي شريك قائم — يسري على الشركاء الجدد فقط.</p>
     </PanelCard>
@@ -324,6 +367,7 @@ function SecurityGroup() {
   const [values, setValues] = React.useState({ expiryMinutes: "10", cooldownSeconds: "60", maxVerifyAttempts: "5", lockMinutes: "15" });
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const [historyKey, setHistoryKey] = React.useState(0);
 
   const load = React.useCallback(() => {
     fetch("/api/admin/settings/otp-rules", { credentials: "include" })
@@ -363,6 +407,7 @@ function SecurityGroup() {
       if (json?.success) {
         toast({ title: "تم حفظ قواعد الأمان" });
         load();
+        setHistoryKey((k) => k + 1);
       } else {
         toast({ title: json?.error?.message ?? "فشل الحفظ", variant: "destructive" });
       }
@@ -385,10 +430,22 @@ function SecurityGroup() {
       }
     >
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Field id="otp-expiry" label="صلاحية الرمز" unit="دقائق" value={values.expiryMinutes} onChange={(v) => setValues((s) => ({ ...s, expiryMinutes: v }))} min={1} max={60} />
-        <Field id="otp-cooldown" label="الانتظار بين الإرسالين" unit="ثانية" value={values.cooldownSeconds} onChange={(v) => setValues((s) => ({ ...s, cooldownSeconds: v }))} min={0} max={300} />
-        <Field id="otp-attempts" label="محاولات التحقق" value={values.maxVerifyAttempts} onChange={(v) => setValues((s) => ({ ...s, maxVerifyAttempts: v }))} min={1} max={10} />
-        <Field id="otp-lock" label="مدة القفل" unit="دقيقة" value={values.lockMinutes} onChange={(v) => setValues((s) => ({ ...s, lockMinutes: v }))} min={1} max={60} />
+        <div>
+          <Field id="otp-expiry" label="صلاحية الرمز" unit="دقائق" value={values.expiryMinutes} onChange={(v) => setValues((s) => ({ ...s, expiryMinutes: v }))} min={1} max={60} />
+          <SettingPreviousValue key={`otp-expiry-${historyKey}`} entityType="settings" entityId="otp-rules" field="expiryMinutes" format={(v) => `${v} دقائق`} />
+        </div>
+        <div>
+          <Field id="otp-cooldown" label="الانتظار بين الإرسالين" unit="ثانية" value={values.cooldownSeconds} onChange={(v) => setValues((s) => ({ ...s, cooldownSeconds: v }))} min={0} max={300} />
+          <SettingPreviousValue key={`otp-cooldown-${historyKey}`} entityType="settings" entityId="otp-rules" field="cooldownSeconds" format={(v) => `${v} ثانية`} />
+        </div>
+        <div>
+          <Field id="otp-attempts" label="محاولات التحقق" value={values.maxVerifyAttempts} onChange={(v) => setValues((s) => ({ ...s, maxVerifyAttempts: v }))} min={1} max={10} />
+          <SettingPreviousValue key={`otp-attempts-${historyKey}`} entityType="settings" entityId="otp-rules" field="maxVerifyAttempts" format={(v) => `${v}`} />
+        </div>
+        <div>
+          <Field id="otp-lock" label="مدة القفل" unit="دقيقة" value={values.lockMinutes} onChange={(v) => setValues((s) => ({ ...s, lockMinutes: v }))} min={1} max={60} />
+          <SettingPreviousValue key={`otp-lock-${historyKey}`} entityType="settings" entityId="otp-rules" field="lockMinutes" format={(v) => `${v} دقيقة`} />
+        </div>
       </div>
     </PanelCard>
   );
@@ -409,6 +466,7 @@ function NotificationsGroup() {
   const { toast } = useToast();
   const [prefs, setPrefs] = React.useState<Record<string, boolean> | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [historyKey, setHistoryKey] = React.useState(0);
 
   const load = React.useCallback(() => {
     fetch("/api/admin/settings/alert-prefs", { credentials: "include" })
@@ -436,6 +494,7 @@ function NotificationsGroup() {
       if (json?.success) {
         toast({ title: "تم حفظ الإشعارات" });
         setPrefs(json.data);
+        setHistoryKey((k) => k + 1);
       } else {
         toast({ title: json?.error?.message ?? "فشل الحفظ", variant: "destructive" });
       }
@@ -459,11 +518,21 @@ function NotificationsGroup() {
     >
       <div>
         {ALERT_TOGGLES.map((t) => (
-          <div key={t.key} className="flex items-center justify-between border-t border-stone-100 py-2 first:border-0">
-            <span className="text-[13px] text-ink">{t.label}</span>
-            <Toggle
-              on={prefs[t.key] ?? t.defaultOn}
-              onToggle={() => setPrefs((p) => ({ ...(p ?? {}), [t.key]: !(p?.[t.key] ?? t.defaultOn) }))}
+          <div key={t.key} className="border-t border-stone-100 py-2 first:border-0">
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-ink">{t.label}</span>
+              <Toggle
+                label={t.label}
+                on={prefs[t.key] ?? t.defaultOn}
+                onToggle={() => setPrefs((p) => ({ ...(p ?? {}), [t.key]: !(p?.[t.key] ?? t.defaultOn) }))}
+              />
+            </div>
+            <SettingPreviousValue
+              key={`${t.key}-${historyKey}`}
+              entityType="settings"
+              entityId="alert-prefs"
+              field={t.key}
+              format={(v) => (v ? "مفعّل" : "معطّل")}
             />
           </div>
         ))}

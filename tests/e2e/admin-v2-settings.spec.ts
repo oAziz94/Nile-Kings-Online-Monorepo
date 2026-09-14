@@ -98,6 +98,9 @@ test("المتجر: COD fee change shows a confirm dialog, saves, and shows the 
   const codInput = page.getByLabel("رسوم الدفع عند الاستلام");
   await codInput.fill(String(nextPercent));
 
+  // Verifier fix (9.7 review): every `role="switch"` needs an accessible name.
+  await expect(page.getByRole("switch", { name: "خصم كبار السن" })).toBeVisible();
+
   const storeCard = page.locator("text=المتجر").first().locator("xpath=ancestor::div[contains(@class,'shadow-soft')]").first();
   await storeCard.getByRole("button", { name: "حفظ" }).click();
 
@@ -112,18 +115,26 @@ test("المتجر: COD fee change shows a confirm dialog, saves, and shows the 
   await expect(page.getByText(/السابق .* · .* · أنت/)).toBeVisible({ timeout: 10_000 });
 });
 
-test("الشركاء · افتراضيات الشبكة: saving changes what a NEW partner inherits, never the existing fixture partner", async ({ page }) => {
+test("الشركاء · افتراضيات الشبكة: saving changes what a NEW partner inherits, never the existing fixture partner, and shows the previous-value line", async ({ page }) => {
   await loginAsAdmin(page);
-  await page.goto("/admin/settings");
 
-  await page.getByLabel("نسبة الشراء").fill("70");
+  const before = await (await page.request.get("/api/admin/settings/partner-defaults")).json();
+  const beforeCostRateBps = before.data.costRateBps as number;
+  const nextCostRatePct = beforeCostRateBps === 7000 ? 65 : 70;
+
+  await page.goto("/admin/settings");
+  await page.getByLabel("نسبة الشراء").fill(String(nextCostRatePct));
   const networkCard = page.locator("text=الشركاء · افتراضيات الشبكة").first().locator("xpath=ancestor::div[contains(@class,'shadow-soft')]").first();
   await networkCard.getByRole("button", { name: "حفظ" }).click();
   await expect(page.getByText("تم حفظ افتراضيات الشبكة").first()).toBeVisible({ timeout: 10_000 });
 
   const res = await page.request.get("/api/admin/settings/partner-defaults");
   const json = await res.json();
-  expect(json.data.costRateBps).toBe(7000);
+  expect(json.data.costRateBps).toBe(nextCostRatePct * 100);
+
+  // PM ruling (9.7 review): "السابق … · أنت" under a non-COD field too.
+  await page.reload();
+  await expect(page.getByText(/السابق .* · .* · أنت/).first()).toBeVisible({ timeout: 10_000 });
 
   const createRes = await page.request.post("/api/admin/partners", {
     data: {
@@ -136,7 +147,7 @@ test("الشركاء · افتراضيات الشبكة: saving changes what a N
   expect(createRes.ok()).toBeTruthy();
   const created = await createRes.json();
   createdPartnerIds.push(created.data.id);
-  expect(created.data.costRateBps).toBe(7000);
+  expect(created.data.costRateBps).toBe(nextCostRatePct * 100);
 
   const fixtureStill = await prisma.partner.findUniqueOrThrow({ where: { id: fixturePartnerId } });
   expect(fixtureStill.costRateBps).toBe(7500); // untouched
@@ -167,17 +178,19 @@ test("الإشعارات: alert-prefs toggle persists", async ({ page }) => {
   const expectAfterToggle = wasOn ? "false" : "true";
 
   await page.goto("/admin/settings");
-  const toggle = page.getByText("صنف نافد عند شريك").locator("xpath=following-sibling::button[@role='switch']");
+  // Verifier fix (9.7 review): every `role="switch"` has an accessible name now — target it
+  // by that name instead of an xpath following-sibling walk.
+  const toggle = page.getByRole("switch", { name: "صنف نافد عند شريك" });
   await expect(toggle).toHaveAttribute("aria-checked", String(wasOn));
   await toggle.click();
   const notifCard = page.locator("text=الإشعارات").first().locator("xpath=ancestor::div[contains(@class,'shadow-soft')]").first();
   await notifCard.getByRole("button", { name: "حفظ" }).click();
   await expect(page.getByText("تم حفظ الإشعارات").first()).toBeVisible({ timeout: 10_000 });
   await page.reload();
-  await expect(page.getByText("صنف نافد عند شريك").locator("xpath=following-sibling::button[@role='switch']")).toHaveAttribute(
-    "aria-checked",
-    expectAfterToggle
-  );
+  await expect(page.getByRole("switch", { name: "صنف نافد عند شريك" })).toHaveAttribute("aria-checked", expectAfterToggle);
+
+  // PM ruling (9.7 review): the previous-value line under an alert-prefs field too.
+  await expect(page.getByText(/السابق .* · .* · أنت/).first()).toBeVisible({ timeout: 10_000 });
 });
 
 test("401/403: a signed-out request and a customer session are both rejected", async ({ page, browser }) => {

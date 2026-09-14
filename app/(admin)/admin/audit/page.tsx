@@ -12,9 +12,13 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { formatDateEn } from "@/lib/format-en-numbers";
+import { ACTION_LABELS } from "@/lib/audit/action-labels";
 import { cn } from "@/lib/utils";
+
+type AdminOption = { id: string; name: string | null; phone: string };
 
 type AuditRow = {
   id: string;
@@ -75,7 +79,10 @@ export default function AdminAuditPage() {
   const [q, setQ] = React.useState("");
   const [entityType, setEntityType] = React.useState("");
   const [action, setAction] = React.useState("");
-  const [actorFilter, setActorFilter] = React.useState(""); // "" | "PARTNER" | "ADMIN"
+  // PM ruling (9.7 review): per-admin, not just a role toggle — "" (الكل), `user:<id>`
+  // (one admin, by name) or `group:PARTNER` (الشركاء, every partner-actor row).
+  const [actorSelection, setActorSelection] = React.useState("");
+  const [admins, setAdmins] = React.useState<AdminOption[]>([]);
   const [preset, setPreset] = React.useState<string>("30d");
   const [customFrom, setCustomFrom] = React.useState("");
   const [customTo, setCustomTo] = React.useState("");
@@ -88,6 +95,16 @@ export default function AdminAuditPage() {
   const [entityTypes, setEntityTypes] = React.useState<string[]>([]);
   const [actions, setActions] = React.useState<string[]>([]);
 
+  React.useEffect(() => {
+    // Every admin, for the الفاعل filter — the same `role=ADMIN` list the المسؤولون tab uses.
+    fetch("/api/admin/clients?role=ADMIN&limit=200", { credentials: "include" })
+      .then((r) => r.json())
+      .then((json: { success?: boolean; data?: { clients: AdminOption[] } }) => {
+        if (json?.success && json.data) setAdmins(json.data.clients);
+      })
+      .catch(() => undefined);
+  }, []);
+
   const buildParams = React.useCallback(
     (cursor?: string) => {
       const { from, to } = periodToRange(preset, customFrom, customTo);
@@ -95,14 +112,15 @@ export default function AdminAuditPage() {
       if (q.trim()) params.set("q", q.trim());
       if (entityType) params.set("entityType", entityType);
       if (action) params.set("action", action);
-      if (actorFilter) params.set("actorRole", actorFilter);
+      if (actorSelection.startsWith("user:")) params.set("actorUserId", actorSelection.slice(5));
+      else if (actorSelection.startsWith("group:")) params.set("actorRole", actorSelection.slice(6));
       if (from) params.set("from", from);
       if (to) params.set("to", to);
       params.set("limit", "50");
       if (cursor) params.set("cursor", cursor);
       return params;
     },
-    [q, entityType, action, actorFilter, preset, customFrom, customTo]
+    [q, entityType, action, actorSelection, preset, customFrom, customTo]
   );
 
   const load = React.useCallback(() => {
@@ -157,23 +175,28 @@ export default function AdminAuditPage() {
             />
           </div>
 
-          <Select value={actorFilter} onChange={(e) => setActorFilter(e.target.value)} className="h-10 w-auto rounded-full">
+          <Label htmlFor="audit-filter-actor" className="sr-only">الفاعل</Label>
+          <Select id="audit-filter-actor" value={actorSelection} onChange={(e) => setActorSelection(e.target.value)} className="h-10 w-auto rounded-full">
             <option value="">الفاعل: الكل</option>
-            <option value="ADMIN">المسؤولون</option>
-            <option value="PARTNER">الشركاء</option>
+            <option value="group:PARTNER">الشركاء</option>
+            {admins.map((a) => (
+              <option key={a.id} value={`user:${a.id}`}>{a.name?.trim() || a.phone}</option>
+            ))}
           </Select>
 
-          <Select value={entityType} onChange={(e) => setEntityType(e.target.value)} className="h-10 w-auto rounded-full">
+          <Label htmlFor="audit-filter-type" className="sr-only">النوع</Label>
+          <Select id="audit-filter-type" value={entityType} onChange={(e) => setEntityType(e.target.value)} className="h-10 w-auto rounded-full">
             <option value="">النوع: الكل</option>
             {entityTypes.map((t) => (
               <option key={t} value={t}>{ENTITY_TYPE_LABELS[t] ?? t}</option>
             ))}
           </Select>
 
-          <Select value={action} onChange={(e) => setAction(e.target.value)} className="h-10 w-auto rounded-full">
+          <Label htmlFor="audit-filter-action" className="sr-only">الإجراء</Label>
+          <Select id="audit-filter-action" value={action} onChange={(e) => setAction(e.target.value)} className="h-10 w-auto rounded-full">
             <option value="">الإجراء: الكل</option>
             {actions.map((a) => (
-              <option key={a} value={a}>{a}</option>
+              <option key={a} value={a}>{ACTION_LABELS[a] ?? a}</option>
             ))}
           </Select>
 
@@ -241,7 +264,7 @@ export default function AdminAuditPage() {
                         {row.actorRole === "PARTNER" ? "شريك" : row.actorRole === "ADMIN" ? "مسؤول" : row.actorRole}
                       </Badge>
                     </span>
-                    <span className="text-ink">{row.action}</span>
+                    <span className="text-ink">{ACTION_LABELS[row.action] ?? row.action}</span>
                     <span className="font-bold text-lapis-800">{row.entityLabel ?? row.entityId}</span>
                     <span className="truncate text-ink-soft">{row.sentence}</span>
                     <ChevronDown className={cn("h-4 w-4 text-stone-300 transition-transform", isOpen && "rotate-180")} />
