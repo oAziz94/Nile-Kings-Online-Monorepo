@@ -1,213 +1,496 @@
 "use client";
 
+/**
+ * `/admin/settings` (backlog 9.7 (b)), rebuilt per `Settings.dc.html` (generator block 13):
+ * a two-column grid (one column below `lg`) of four independently-saved groups — المتجر,
+ * الشركاء · افتراضيات الشبكة, الأمان, الإشعارات. A confirm dialog guards anything in المتجر
+ * that changes a customer's price (COD fee, senior promo — both do, so both are guarded).
+ * Every field with audit history shows `SettingPreviousValue`'s "السابق … · … · أنت" line.
+ *
+ * أسعار الشحن: `app/api/admin/shipping-rules` exists but no screen renders a UI against it
+ * yet, so this shows the artboard's own "قريبًا" caption instead of a live editor (task text:
+ * "if `app/api/admin/shipping-rules` already has a UI, else a قريبًا line naming the Phase 5
+ * item" — no numbered Phase 5 backlog item names this specific editor yet; `06-admin-v2.md`
+ * §3.7 only says "when the admin-editable calculator lands (Phase 5)", so that's what this
+ * caption cites).
+ */
 import * as React from "react";
-import { useToast } from "@/hooks/use-toast";
+import { Bell, Percent, Shield, Store, Users } from "lucide-react";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/shared/skeleton";
-import { PageHeader } from "@/components/dashboard/page-header";
-import { Settings } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { SettingPreviousValue } from "@/components/admin/setting-previous-value";
 
-type OtpRules = {
-  expiryMinutes: number;
-  cooldownSeconds: number;
-  maxVerifyAttempts: number;
-  lockMinutes: number;
-};
+function Toggle({ on, onToggle, disabled }: { on: boolean; onToggle: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={disabled}
+      onClick={onToggle}
+      className={cn(
+        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-stone-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 disabled:opacity-50",
+        on ? "bg-lapis-800" : "bg-stone-200"
+      )}
+    >
+      <span
+        className={cn(
+          "pointer-events-none inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow transition",
+          on ? "translate-x-5 rtl:-translate-x-5" : "translate-x-0.5"
+        )}
+      />
+    </button>
+  );
+}
 
-export default function AdminSettingsPage() {
-  const [codFeePercent, setCodFeePercent] = React.useState<number | "">("");
-  const [otpRules, setOtpRules] = React.useState<OtpRules | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [savingCod, setSavingCod] = React.useState(false);
-  const [savingOtp, setSavingOtp] = React.useState(false);
-  const [otpForm, setOtpForm] = React.useState({ expiryMinutes: "", cooldownSeconds: "", maxVerifyAttempts: "", lockMinutes: "" });
+function Field({
+  id,
+  label,
+  unit,
+  value,
+  onChange,
+  width = "w-24",
+  min,
+  max,
+}: {
+  id: string;
+  label: string;
+  unit?: string;
+  value: string;
+  onChange: (v: string) => void;
+  width?: string;
+  min?: number;
+  max?: number;
+}) {
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor={id} className="text-xs font-bold text-ink">{label}</Label>
+      <div className="flex items-center gap-2">
+        <Input
+          id={id}
+          type="number"
+          dir="ltr"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={cn("h-10", width)}
+        />
+        {unit && <span className="text-xs text-ink-soft">{unit}</span>}
+      </div>
+    </div>
+  );
+}
+
+// ---------- المتجر ----------
+
+function StoreGroup() {
   const { toast } = useToast();
+  const [codFeePercent, setCodFeePercent] = React.useState("0");
+  const [seniorPromoEnabled, setSeniorPromoEnabled] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [historyKey, setHistoryKey] = React.useState(0);
 
-  React.useEffect(() => {
+  const load = React.useCallback(() => {
     Promise.all([
       fetch("/api/admin/settings/cod-fee", { credentials: "include" }).then((r) => r.json()),
-      fetch("/api/admin/settings/otp-rules", { credentials: "include" }).then((r) => r.json()),
+      fetch("/api/admin/settings/senior-promo", { credentials: "include" }).then((r) => r.json()),
     ])
-      .then(([codRes, otpRes]) => {
-        if (codRes?.success && codRes.data && typeof codRes.data.codFeePercent === "number") {
-          setCodFeePercent(codRes.data.codFeePercent);
+      .then(([codRes, promoRes]) => {
+        if (codRes?.success) setCodFeePercent(String(codRes.data.codFeePercent ?? 0));
+        if (promoRes?.success) setSeniorPromoEnabled(Boolean(promoRes.data.enabled));
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const percentVal = Math.max(0, Math.min(100, Number(codFeePercent) || 0));
+      const [codRes, promoRes] = await Promise.all([
+        fetch("/api/admin/settings/cod-fee", {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ codFeePiastres: 0, codFeePercent: percentVal }),
+        }).then((r) => r.json()),
+        fetch("/api/admin/settings/senior-promo", {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: seniorPromoEnabled }),
+        }).then((r) => r.json()),
+      ]);
+      if (codRes?.success && promoRes?.success) {
+        toast({ title: "تم حفظ إعدادات المتجر" });
+        setHistoryKey((k) => k + 1);
+      } else {
+        toast({ title: codRes?.error?.message ?? promoRes?.error?.message ?? "فشل الحفظ", variant: "destructive" });
+      }
+    } finally {
+      setSaving(false);
+      setConfirmOpen(false);
+    }
+  };
+
+  if (loading) return <PanelCard title="المتجر" icon={<Store className="h-4 w-4" />}><p className="text-sm text-ink-soft">جاري التحميل…</p></PanelCard>;
+
+  return (
+    <>
+      <PanelCard
+        title="المتجر"
+        description="يغيّر ما يراه العميل — يُطلب تأكيد قبل الحفظ"
+        icon={<Store className="h-4 w-4 text-lapis-800" />}
+        toolbar={
+          <Button type="button" size="sm" className="rounded-full" onClick={() => setConfirmOpen(true)} disabled={saving}>
+            حفظ
+          </Button>
         }
-        if (otpRes?.success && otpRes.data) {
-          setOtpRules(otpRes.data);
-          setOtpForm({
-            expiryMinutes: String(otpRes.data.expiryMinutes),
-            cooldownSeconds: String(otpRes.data.cooldownSeconds),
-            maxVerifyAttempts: String(otpRes.data.maxVerifyAttempts),
-            lockMinutes: String(otpRes.data.lockMinutes),
+      >
+        <div className="space-y-4">
+          <div>
+            <Field
+              id="cod-fee-percent"
+              label="رسوم الدفع عند الاستلام"
+              unit="% من (المنتجات + التوصيل − الخصم)"
+              value={codFeePercent}
+              onChange={setCodFeePercent}
+              min={0}
+              max={100}
+            />
+            <SettingPreviousValue
+              key={`cod-${historyKey}`}
+              entityType="settings"
+              entityId="cod-fee"
+              field="codFeePercent"
+              format={(v) => `${v}%`}
+            />
+          </div>
+
+          <div className="flex items-center justify-between border-t border-stone-100 pt-3">
+            <div>
+              <p className="text-[13px] font-extrabold text-ink">خصم كبار السن</p>
+              <p className="text-[11px] text-ink-soft">مفعّل في المتجر · كان مبنيًا ولا يظهر في أي شاشة</p>
+            </div>
+            <Toggle on={seniorPromoEnabled} onToggle={() => setSeniorPromoEnabled((v) => !v)} />
+          </div>
+
+          <div className="flex items-center justify-between border-t border-stone-100 pt-3">
+            <div>
+              <p className="text-[13px] font-extrabold text-ink">أسعار الشحن</p>
+              <p className="text-[11px] text-ink-soft">مصر للبريد · 6 مناطق × شرائح وزن · تُقرأ من هنا بعد مهمة الشحن (المرحلة 5)</p>
+            </div>
+            <span className="text-xs font-bold text-ink-soft">قريبًا</span>
+          </div>
+        </div>
+      </PanelCard>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>تأكيد تغيير يمس سعر العميل</DialogTitle>
+            <DialogDescription>
+              رسوم الدفع عند الاستلام أو خصم كبار السن يظهران للعميل مباشرة. هل تريد المتابعة؟
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setConfirmOpen(false)} disabled={saving}>
+              إلغاء
+            </Button>
+            <Button type="button" onClick={save} disabled={saving}>
+              {saving ? "جاري الحفظ…" : "تأكيد الحفظ"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// ---------- الشركاء · افتراضيات الشبكة ----------
+
+function NetworkDefaultsGroup() {
+  const { toast } = useToast();
+  const [values, setValues] = React.useState({
+    costRatePct: "75",
+    confirmSlaHours: "24",
+    shipSlaHours: "48",
+    lowStockThreshold: "5",
+    deadStockDays: "60",
+    targetCoverDays: "21",
+  });
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+
+  const load = React.useCallback(() => {
+    fetch("/api/admin/settings/partner-defaults", { credentials: "include" })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.success && json.data) {
+          setValues({
+            costRatePct: String(Math.round(json.data.costRateBps / 100)),
+            confirmSlaHours: String(json.data.confirmSlaHours),
+            shipSlaHours: String(json.data.shipSlaHours),
+            lowStockThreshold: String(json.data.lowStockThreshold),
+            deadStockDays: String(json.data.deadStockDays),
+            targetCoverDays: String(json.data.targetCoverDays),
           });
         }
       })
       .finally(() => setLoading(false));
   }, []);
 
-  const saveCodFee = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const percentVal = codFeePercent === "" ? 0 : Number(codFeePercent);
-    if (percentVal < 0 || percentVal > 100) {
-      toast({ title: "النسبة يجب أن تكون بين 0 و 100", variant: "destructive" });
-      return;
-    }
-    setSavingCod(true);
-    try {
-      const res = await fetch("/api/admin/settings/cod-fee", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ codFeePiastres: 0, codFeePercent: percentVal }),
-      });
-      const json = await res.json();
-      if (res.ok && json?.success) {
-        setCodFeePercent(json.data.codFeePercent);
-        toast({ title: "تم حفظ رسوم الدفع عند الاستلام" });
-      } else toast({ title: json?.error?.message ?? "فشل", variant: "destructive" });
-    } catch {
-      toast({ title: "خطأ في الاتصال", variant: "destructive" });
-    } finally {
-      setSavingCod(false);
-    }
-  };
+  React.useEffect(() => {
+    load();
+  }, [load]);
 
-  const saveOtpRules = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const expiryMinutes = parseInt(otpForm.expiryMinutes, 10);
-    const cooldownSeconds = parseInt(otpForm.cooldownSeconds, 10);
-    const maxVerifyAttempts = parseInt(otpForm.maxVerifyAttempts, 10);
-    const lockMinutes = parseInt(otpForm.lockMinutes, 10);
-    if ([expiryMinutes, cooldownSeconds, maxVerifyAttempts, lockMinutes].some((n) => !Number.isFinite(n) || n < 0)) {
-      toast({ title: "قيم صحيحة مطلوبة", variant: "destructive" });
-      return;
-    }
-    setSavingOtp(true);
+  const save = async () => {
+    setSaving(true);
     try {
-      const res = await fetch("/api/admin/settings/otp-rules", {
+      const res = await fetch("/api/admin/settings/partner-defaults", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          expiryMinutes: Math.min(60, Math.max(1, expiryMinutes)),
-          cooldownSeconds: Math.min(300, Math.max(0, cooldownSeconds)),
-          maxVerifyAttempts: Math.min(10, Math.max(1, maxVerifyAttempts)),
-          lockMinutes: Math.min(60, Math.max(1, lockMinutes)),
+          costRateBps: Math.round(Number(values.costRatePct) * 100),
+          confirmSlaHours: Number(values.confirmSlaHours),
+          shipSlaHours: Number(values.shipSlaHours),
+          lowStockThreshold: Number(values.lowStockThreshold),
+          deadStockDays: Number(values.deadStockDays),
+          targetCoverDays: Number(values.targetCoverDays),
         }),
       });
       const json = await res.json();
-      if (res.ok && json?.success) {
-        setOtpRules(json.data);
-        setOtpForm({
-          expiryMinutes: String(json.data.expiryMinutes),
-          cooldownSeconds: String(json.data.cooldownSeconds),
-          maxVerifyAttempts: String(json.data.maxVerifyAttempts),
-          lockMinutes: String(json.data.lockMinutes),
-        });
-        toast({ title: "تم حفظ إعدادات OTP" });
-      } else toast({ title: json?.error?.message ?? "فشل", variant: "destructive" });
-    } catch {
-      toast({ title: "خطأ في الاتصال", variant: "destructive" });
+      if (json?.success) {
+        toast({ title: "تم حفظ افتراضيات الشبكة" });
+        load();
+      } else {
+        toast({ title: json?.error?.message ?? "فشل الحفظ", variant: "destructive" });
+      }
     } finally {
-      setSavingOtp(false);
+      setSaving(false);
     }
   };
 
-  if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />;
+  if (loading) return <PanelCard title="الشركاء · افتراضيات الشبكة" icon={<Users className="h-4 w-4" />}><p className="text-sm text-ink-soft">جاري التحميل…</p></PanelCard>;
 
+  return (
+    <PanelCard
+      title="الشركاء · افتراضيات الشبكة"
+      description="يرثها كل شريك جديد؛ لا تغيّر شريكًا قائمًا إلا من ملفه"
+      icon={<Users className="h-4 w-4 text-lapis-800" />}
+      toolbar={
+        <Button type="button" size="sm" className="rounded-full" onClick={save} disabled={saving}>
+          حفظ
+        </Button>
+      }
+    >
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <Field id="net-cost-rate" label="نسبة الشراء" unit="%" value={values.costRatePct} onChange={(v) => setValues((s) => ({ ...s, costRatePct: v }))} min={0} max={100} />
+        <Field id="net-confirm-sla" label="مهلة التأكيد" unit="ساعة" value={values.confirmSlaHours} onChange={(v) => setValues((s) => ({ ...s, confirmSlaHours: v }))} min={1} />
+        <Field id="net-ship-sla" label="مهلة الشحن" unit="ساعة" value={values.shipSlaHours} onChange={(v) => setValues((s) => ({ ...s, shipSlaHours: v }))} min={1} />
+        <Field id="net-low-stock" label="حد المخزون المنخفض" unit="قطعة" value={values.lowStockThreshold} onChange={(v) => setValues((s) => ({ ...s, lowStockThreshold: v }))} min={0} />
+        <Field id="net-dead-stock" label="راكد بعد" unit="يومًا" value={values.deadStockDays} onChange={(v) => setValues((s) => ({ ...s, deadStockDays: v }))} min={1} />
+        <Field id="net-target-cover" label="تغطية مستهدفة" unit="يومًا" value={values.targetCoverDays} onChange={(v) => setValues((s) => ({ ...s, targetCoverDays: v }))} min={1} />
+      </div>
+      <p className="mt-3 text-[11px] text-ink-soft">تغيير الافتراضي لا يمس أي شريك قائم — يسري على الشركاء الجدد فقط.</p>
+    </PanelCard>
+  );
+}
+
+// ---------- الأمان ----------
+
+function SecurityGroup() {
+  const { toast } = useToast();
+  const [values, setValues] = React.useState({ expiryMinutes: "10", cooldownSeconds: "60", maxVerifyAttempts: "5", lockMinutes: "15" });
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+
+  const load = React.useCallback(() => {
+    fetch("/api/admin/settings/otp-rules", { credentials: "include" })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.success && json.data) {
+          setValues({
+            expiryMinutes: String(json.data.expiryMinutes),
+            cooldownSeconds: String(json.data.cooldownSeconds),
+            maxVerifyAttempts: String(json.data.maxVerifyAttempts),
+            lockMinutes: String(json.data.lockMinutes),
+          });
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/settings/otp-rules", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          expiryMinutes: Number(values.expiryMinutes),
+          cooldownSeconds: Number(values.cooldownSeconds),
+          maxVerifyAttempts: Number(values.maxVerifyAttempts),
+          lockMinutes: Number(values.lockMinutes),
+        }),
+      });
+      const json = await res.json();
+      if (json?.success) {
+        toast({ title: "تم حفظ قواعد الأمان" });
+        load();
+      } else {
+        toast({ title: json?.error?.message ?? "فشل الحفظ", variant: "destructive" });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <PanelCard title="الأمان" icon={<Shield className="h-4 w-4" />}><p className="text-sm text-ink-soft">جاري التحميل…</p></PanelCard>;
+
+  return (
+    <PanelCard
+      title="الأمان"
+      description="قواعد رمز التحقق — حدود دنيا وعليا مفروضة"
+      icon={<Shield className="h-4 w-4 text-lapis-800" />}
+      toolbar={
+        <Button type="button" size="sm" className="rounded-full" onClick={save} disabled={saving}>
+          حفظ
+        </Button>
+      }
+    >
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Field id="otp-expiry" label="صلاحية الرمز" unit="دقائق" value={values.expiryMinutes} onChange={(v) => setValues((s) => ({ ...s, expiryMinutes: v }))} min={1} max={60} />
+        <Field id="otp-cooldown" label="الانتظار بين الإرسالين" unit="ثانية" value={values.cooldownSeconds} onChange={(v) => setValues((s) => ({ ...s, cooldownSeconds: v }))} min={0} max={300} />
+        <Field id="otp-attempts" label="محاولات التحقق" value={values.maxVerifyAttempts} onChange={(v) => setValues((s) => ({ ...s, maxVerifyAttempts: v }))} min={1} max={10} />
+        <Field id="otp-lock" label="مدة القفل" unit="دقيقة" value={values.lockMinutes} onChange={(v) => setValues((s) => ({ ...s, lockMinutes: v }))} min={1} max={60} />
+      </div>
+    </PanelCard>
+  );
+}
+
+// ---------- الإشعارات ----------
+
+const ALERT_TOGGLES: { key: string; label: string; defaultOn: boolean }[] = [
+  { key: "unassignedOrderOverHour", label: "طلب بلا شريك لأكثر من ساعة", defaultOn: true },
+  { key: "orderOverdueSla", label: "طلب تجاوز مهلة الشريك", defaultOn: true },
+  { key: "newTicket", label: "سؤال عميل جديد", defaultOn: true },
+  { key: "newPartnerRequest", label: "طلب شراكة جديد", defaultOn: true },
+  { key: "partnerInstallmentDue", label: "قسط شريك استحق", defaultOn: true },
+  { key: "partnerOutOfStock", label: "صنف نافد عند شريك", defaultOn: false },
+];
+
+function NotificationsGroup() {
+  const { toast } = useToast();
+  const [prefs, setPrefs] = React.useState<Record<string, boolean> | null>(null);
+  const [saving, setSaving] = React.useState(false);
+
+  const load = React.useCallback(() => {
+    fetch("/api/admin/settings/alert-prefs", { credentials: "include" })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.success && json.data) setPrefs(json.data);
+      });
+  }, []);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  const save = async () => {
+    if (!prefs) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/settings/alert-prefs", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(prefs),
+      });
+      const json = await res.json();
+      if (json?.success) {
+        toast({ title: "تم حفظ الإشعارات" });
+        setPrefs(json.data);
+      } else {
+        toast({ title: json?.error?.message ?? "فشل الحفظ", variant: "destructive" });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!prefs) return <PanelCard title="الإشعارات" icon={<Bell className="h-4 w-4" />}><p className="text-sm text-ink-soft">جاري التحميل…</p></PanelCard>;
+
+  return (
+    <PanelCard
+      title="الإشعارات"
+      description="ما يصلك أنت — لا علاقة له بتنبيهات الشركاء"
+      icon={<Bell className="h-4 w-4 text-lapis-800" />}
+      toolbar={
+        <Button type="button" size="sm" className="rounded-full" onClick={save} disabled={saving}>
+          حفظ
+        </Button>
+      }
+    >
+      <div>
+        {ALERT_TOGGLES.map((t) => (
+          <div key={t.key} className="flex items-center justify-between border-t border-stone-100 py-2 first:border-0">
+            <span className="text-[13px] text-ink">{t.label}</span>
+            <Toggle
+              on={prefs[t.key] ?? t.defaultOn}
+              onToggle={() => setPrefs((p) => ({ ...(p ?? {}), [t.key]: !(p?.[t.key] ?? t.defaultOn) }))}
+            />
+          </div>
+        ))}
+      </div>
+    </PanelCard>
+  );
+}
+
+export default function AdminSettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
         title="الإعدادات"
-        description="رسوم COD وقواعد OTP."
+        description="أربع مجموعات · حفظ لكل مجموعة · كل تغيير في السجل بقيمته السابقة"
         badge={
-          <span className="inline-flex items-center gap-1 rounded-full bg-burgundy/10 px-2.5 py-0.5 text-xs font-medium text-burgundy">
-            <Settings className="h-3 w-3" />
+          <span className="inline-flex items-center gap-1 rounded-full bg-lapis-50 px-2.5 py-0.5 text-xs font-bold text-lapis-800">
+            <Percent className="h-3 w-3" />
             إعدادات النظام
           </span>
         }
       />
-
-      <Card className={cn("rounded-2xl border-border/80 shadow-card")}>
-        <CardHeader>
-          <CardTitle>رسوم الدفع عند الاستلام (COD)</CardTitle>
-          <CardDescription>نسبة مئوية من (مجموع المنتجات + التوصيل − الخصم إن وُجد). مثال: 2 = 2٪ من هذا المجموع.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={saveCodFee} className="flex flex-wrap items-end gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="cod-fee-percent">النسبة (٪)</Label>
-              <Input
-                id="cod-fee-percent"
-                type="number"
-                min={0}
-                max={100}
-                step={0.1}
-                placeholder="0"
-                value={codFeePercent}
-                onChange={(e) => setCodFeePercent(e.target.value === "" ? "" : parseFloat(e.target.value) || 0)}
-              />
-            </div>
-            <Button type="submit" disabled={savingCod}>{savingCod ? "جاري…" : "حفظ"}</Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card className={cn("rounded-2xl border-border/80 shadow-card")}>
-        <CardHeader>
-          <CardTitle>قواعد OTP</CardTitle>
-          <CardDescription>مدة صلاحية الكود، المهلة بين الطلبات، عدد المحاولات، مدة القفل.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={saveOtpRules} className="space-y-4 max-w-md">
-            <div className="grid gap-2">
-              <Label>مدة صلاحية الكود (دقيقة)</Label>
-              <Input
-                type="number"
-                min={1}
-                max={60}
-                value={otpForm.expiryMinutes}
-                onChange={(e) => setOtpForm((f) => ({ ...f, expiryMinutes: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>المهلة بين طلبات الإرسال (ثانية)</Label>
-              <Input
-                type="number"
-                min={0}
-                max={300}
-                value={otpForm.cooldownSeconds}
-                onChange={(e) => setOtpForm((f) => ({ ...f, cooldownSeconds: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>الحد الأقصى لمحاولات التحقق قبل القفل</Label>
-              <Input
-                type="number"
-                min={1}
-                max={10}
-                value={otpForm.maxVerifyAttempts}
-                onChange={(e) => setOtpForm((f) => ({ ...f, maxVerifyAttempts: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>مدة القفل (دقيقة)</Label>
-              <Input
-                type="number"
-                min={1}
-                max={60}
-                value={otpForm.lockMinutes}
-                onChange={(e) => setOtpForm((f) => ({ ...f, lockMinutes: e.target.value }))}
-              />
-            </div>
-            <Button type="submit" disabled={savingOtp}>{savingOtp ? "جاري…" : "حفظ إعدادات OTP"}</Button>
-          </form>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <StoreGroup />
+        <NetworkDefaultsGroup />
+        <SecurityGroup />
+        <NotificationsGroup />
+      </div>
     </div>
   );
 }

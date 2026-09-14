@@ -8,6 +8,7 @@ import {
   rejectRestockRequest,
 } from "@/lib/inventory/restock-requests";
 import { InsufficientPartnerStockError } from "@/lib/inventory/partner-inventory";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -69,7 +70,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return apiSuccess(await rejectRestockRequest({ restockRequestId: id, responseNotes }));
     }
     if (body.action === "fulfill") {
-      return apiSuccess(await fulfillRestockRequest({ restockRequestId: id, responseNotes }));
+      const fulfilled = await fulfillRestockRequest({ restockRequestId: id, responseNotes });
+      // Backlog 9.7 (e) — mirror the source partner's stock transfer into `AdminAuditLog`
+      // with `actorRole: "PARTNER"`. One place: this is the restock-request PATCH route's
+      // only caller of `fulfillRestockRequest`.
+      await logAdminAction(prisma, {
+        actor: user,
+        action: "update",
+        entityType: "restock_request",
+        entityId: id,
+        entityLabel: `#${id.slice(-8)}`,
+        before: { status: request.status },
+        after: { status: "FULFILLED" },
+        reason: responseNotes,
+        ip: requestIp(req),
+      });
+      return apiSuccess(fulfilled);
     }
     return apiBadRequest("action يجب أن يكون approve أو reject أو fulfill");
   } catch (error) {

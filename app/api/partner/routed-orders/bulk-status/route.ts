@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest) {
     const results: { id: string; ok: boolean; message?: string }[] = [];
     for (const orderId of orderIds) {
       try {
-        await transitionPartnerOrderStatus({ partnerId: user.partnerId, orderId, nextStatus: status });
+        await transitionPartnerOrderStatus({ partnerId: user.partnerId, orderId, nextStatus: status, actor: user });
         results.push({ id: orderId, ok: true });
       } catch (error) {
         if (error instanceof PartnerOrderTransitionError) {

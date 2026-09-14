@@ -33,6 +33,8 @@ import {
   restorePartnerCommittedStock,
 } from "@/lib/inventory/partner-inventory";
 import { logOrderCancelled, logOrderConfirmed, logOrderStatusChange } from "@/lib/audit/order-audit";
+import { logAdminAction } from "@/lib/audit/admin-audit";
+import type { SessionUser } from "@/lib/auth/session";
 
 export const ORDER_STATUSES = [
   "CREATED",
@@ -128,8 +130,13 @@ export async function transitionPartnerOrderStatus(params: {
    * original `data.adminNotes = body.adminNotes === "" ? null : String(body.adminNotes).trim()`.
    * The bulk-status endpoint never passes this. */
   adminNotes?: string | null;
+  /** Backlog 9.7 (e) — the partner `SessionUser` making this change, so a real status change
+   * mirrors into `AdminAuditLog` with `actorRole: "PARTNER"`. Both current callers
+   * (`app/api/partner/orders/[id]/route.ts`, `app/api/partner/routed-orders/bulk-status/route.ts`)
+   * always pass this — the single place order status transitions by partners are mirrored from. */
+  actor?: SessionUser;
 }): Promise<PartnerOrderRow> {
-  const { partnerId, orderId, nextStatus, adminNotes } = params;
+  const { partnerId, orderId, nextStatus, adminNotes, actor } = params;
 
   if (nextStatus !== undefined && !ORDER_STATUSES.includes(nextStatus as (typeof ORDER_STATUSES)[number])) {
     throw new PartnerOrderTransitionError("حالة الطلب غير صالحة");
@@ -173,6 +180,18 @@ export async function transitionPartnerOrderStatus(params: {
           "Partner order cancellation"
         );
         await logOrderCancelled(tx, existing.id, "partner_agent", existing.status);
+        if (actor) {
+          await logAdminAction(tx, {
+            actor,
+            action: "status_change",
+            entityType: "order",
+            entityId: existing.id,
+            entityLabel: `#${existing.id.slice(-8)}`,
+            before: { status: existing.status },
+            after: { status: "CANCELLED" },
+            ip: null,
+          });
+        }
         return tx.order.update({ where: { id: orderId }, data, include: orderInclude });
       },
       { maxWait: 15_000, timeout: 60_000 }
@@ -191,6 +210,18 @@ export async function transitionPartnerOrderStatus(params: {
             await logOrderConfirmed(tx, existing.id);
           } else {
             await logOrderStatusChange(tx, existing.id, "CREATED", nextStatus!);
+          }
+          if (actor) {
+            await logAdminAction(tx, {
+              actor,
+              action: "status_change",
+              entityType: "order",
+              entityId: existing.id,
+              entityLabel: `#${existing.id.slice(-8)}`,
+              before: { status: "CREATED" },
+              after: { status: nextStatus },
+              ip: null,
+            });
           }
           if (existing.paymentMethod === "INSTAPAY_PREPAID") {
             await tx.paymentAttempt.updateMany({
@@ -215,6 +246,18 @@ export async function transitionPartnerOrderStatus(params: {
     if (nextStatus && nextStatus !== existing.status) {
       await lockOrderAtStatus(tx, orderId, existing.status);
       await logOrderStatusChange(tx, existing.id, existing.status, nextStatus);
+      if (actor) {
+        await logAdminAction(tx, {
+          actor,
+          action: "status_change",
+          entityType: "order",
+          entityId: existing.id,
+          entityLabel: `#${existing.id.slice(-8)}`,
+          before: { status: existing.status },
+          after: { status: nextStatus },
+          ip: null,
+        });
+      }
     }
     return tx.order.update({ where: { id: orderId }, data, include: orderInclude });
   });

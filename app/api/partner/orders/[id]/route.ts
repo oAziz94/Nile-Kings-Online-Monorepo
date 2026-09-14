@@ -148,6 +148,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           orderId: id,
           nextStatus,
           adminNotes: body.adminNotes,
+          actor: user,
         });
         return apiSuccess(await withOrderExtras(mapPartnerOrder(order), user.partnerId));
       } catch (error) {

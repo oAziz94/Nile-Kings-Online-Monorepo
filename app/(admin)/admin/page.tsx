@@ -13,6 +13,7 @@ import {
   XCircle,
   CheckCircle2,
 } from "lucide-react";
+import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { KpiCard, type KpiDeltaTone } from "@/components/dashboard/kpi-card";
 import { PanelCard } from "@/components/dashboard/panel-card";
@@ -296,9 +297,11 @@ export default function AdminTodayPage() {
             <PanelCard
               title="آخر النشاط"
               description="من السجل · من فعل ماذا ومتى"
-              // TODO(9.7): show a real "السجل كاملًا" link to /admin/audit once that screen
-              // exists — a link to a screen that doesn't exist yet is a dead link, so it's
-              // hidden until 9.7 builds it.
+              toolbar={
+                <Link href="/admin/audit" className="text-xs font-bold text-lapis-800 hover:underline">
+                  السجل كاملًا
+                </Link>
+              }
               noPadding
             >
               {isLoading ? (

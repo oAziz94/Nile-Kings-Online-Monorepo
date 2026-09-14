@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatNumberEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
 import { PARTNER_NETWORK_DEFAULTS } from "@/lib/partner/settings-schema";
+import { PartnerSettingsAuditHistory } from "@/components/admin/partner-settings-audit-history";
 
 /**
  * الإعدادات tab on the partner profile (backlog 9.4a (e)) — every knob partner v2
@@ -18,8 +19,10 @@ import { PARTNER_NETWORK_DEFAULTS } from "@/lib/partner/settings-schema";
  * المهل (admin-owned), المال (admin-owned), المخزون (partner-owned default, admin can
  * override), التشغيل (partner-owned, admin read + override). One save for the whole page;
  * "استعادة الافتراضي" resets the three admin-owned knobs (confirm/ship SLA + cost rate) to
- * the network defaults in `lib/partner/settings-schema.ts` (schema defaults 24/48/75% — no
- * stored network-default settings table exists yet, noted in the task text as acceptable).
+ * the stored network defaults (`GET /api/admin/settings/partner-defaults`, backlog 9.7 (a)) —
+ * `PARTNER_NETWORK_DEFAULTS` is only this component's fallback while that fetch is in flight.
+ * `PartnerSettingsAuditHistory` below the save button is 9.7 (d)'s in-context audit: "من غيّر
+ * إعدادات هذا الشريك ومتى".
  */
 
 const WORKING_DAYS: { code: string; label: string }[] = [
@@ -90,6 +93,19 @@ export function PartnerSettingsTab({ partnerId }: { partnerId: string }) {
   const [data, setData] = React.useState<PartnerSettingsData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  // Backlog 9.7 (a) — the stored network defaults (`SiteSetting` key `partnerDefaults`), not
+  // the schema fallback constant directly; `PARTNER_NETWORK_DEFAULTS` is only this state's
+  // initial value while the fetch below is in flight.
+  const [networkDefaults, setNetworkDefaults] = React.useState<typeof PARTNER_NETWORK_DEFAULTS>(PARTNER_NETWORK_DEFAULTS);
+
+  React.useEffect(() => {
+    fetch("/api/admin/settings/partner-defaults", { credentials: "include" })
+      .then((r) => r.json())
+      .then((json: { success?: boolean; data?: typeof PARTNER_NETWORK_DEFAULTS }) => {
+        if (json?.success && json.data) setNetworkDefaults(json.data);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const [confirmSlaHours, setConfirmSlaHours] = React.useState("");
   const [shipSlaHours, setShipSlaHours] = React.useState("");
@@ -126,9 +142,9 @@ export function PartnerSettingsTab({ partnerId }: { partnerId: string }) {
   }, [load]);
 
   const resetAdminDefaults = () => {
-    setConfirmSlaHours(String(PARTNER_NETWORK_DEFAULTS.confirmSlaHours));
-    setShipSlaHours(String(PARTNER_NETWORK_DEFAULTS.shipSlaHours));
-    setCostRatePct(String(Math.round(PARTNER_NETWORK_DEFAULTS.costRateBps / 100)));
+    setConfirmSlaHours(String(networkDefaults.confirmSlaHours));
+    setShipSlaHours(String(networkDefaults.shipSlaHours));
+    setCostRatePct(String(Math.round(networkDefaults.costRateBps / 100)));
   };
 
   const toggleDay = (code: string) => {
@@ -177,28 +193,28 @@ export function PartnerSettingsTab({ partnerId }: { partnerId: string }) {
   return (
     <div className="space-y-6">
       <PanelCard title="المهل" description="مواعيد الوعد للعميل — لا تتغير من الشريك.">
-        <KnobRow id="knob-confirm-sla" label="مهلة التأكيد (ساعة)" owner="admin" defaultValue={`${formatNumberEn(PARTNER_NETWORK_DEFAULTS.confirmSlaHours)} ساعة`}>
+        <KnobRow id="knob-confirm-sla" label="مهلة التأكيد (ساعة)" owner="admin" defaultValue={`${formatNumberEn(networkDefaults.confirmSlaHours)} ساعة`}>
           <Input id="knob-confirm-sla" type="number" dir="ltr" min={1} value={confirmSlaHours} onChange={(e) => setConfirmSlaHours(e.target.value)} />
         </KnobRow>
-        <KnobRow id="knob-ship-sla" label="مهلة الشحن بعد التأكيد (ساعة)" owner="admin" defaultValue={`${formatNumberEn(PARTNER_NETWORK_DEFAULTS.shipSlaHours)} ساعة`}>
+        <KnobRow id="knob-ship-sla" label="مهلة الشحن بعد التأكيد (ساعة)" owner="admin" defaultValue={`${formatNumberEn(networkDefaults.shipSlaHours)} ساعة`}>
           <Input id="knob-ship-sla" type="number" dir="ltr" min={1} value={shipSlaHours} onChange={(e) => setShipSlaHours(e.target.value)} />
         </KnobRow>
       </PanelCard>
 
       <PanelCard title="المال" description="نسبة الشراء من سعر البيع.">
-        <KnobRow id="knob-cost-rate" label="نسبة الشراء (%)" owner="admin" defaultValue={`${formatNumberEn(Math.round(PARTNER_NETWORK_DEFAULTS.costRateBps / 100))}%`}>
+        <KnobRow id="knob-cost-rate" label="نسبة الشراء (%)" owner="admin" defaultValue={`${formatNumberEn(Math.round(networkDefaults.costRateBps / 100))}%`}>
           <Input id="knob-cost-rate" type="number" dir="ltr" min={0} max={100} value={costRatePct} onChange={(e) => setCostRatePct(e.target.value)} />
         </KnobRow>
       </PanelCard>
 
       <PanelCard title="المخزون" description="تنبيهات الشريك — قابلة للتعديل هنا كتجاوز.">
-        <KnobRow id="knob-low-stock" label="الحد الأدنى للمخزون" owner="partner" defaultValue="5 قطع">
+        <KnobRow id="knob-low-stock" label="الحد الأدنى للمخزون" owner="partner" defaultValue={`${formatNumberEn(networkDefaults.lowStockThreshold)} قطعة`}>
           <Input id="knob-low-stock" type="number" dir="ltr" min={0} value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} />
         </KnobRow>
-        <KnobRow id="knob-dead-stock" label="أيام الركود" owner="partner" defaultValue="60 يوم">
+        <KnobRow id="knob-dead-stock" label="أيام الركود" owner="partner" defaultValue={`${formatNumberEn(networkDefaults.deadStockDays)} يوم`}>
           <Input id="knob-dead-stock" type="number" dir="ltr" min={1} value={deadStockDays} onChange={(e) => setDeadStockDays(e.target.value)} />
         </KnobRow>
-        <KnobRow id="knob-target-cover" label="هدف أيام التغطية" owner="partner" defaultValue="21 يوم">
+        <KnobRow id="knob-target-cover" label="هدف أيام التغطية" owner="partner" defaultValue={`${formatNumberEn(networkDefaults.targetCoverDays)} يوم`}>
           <Input id="knob-target-cover" type="number" dir="ltr" min={1} value={targetCoverDays} onChange={(e) => setTargetCoverDays(e.target.value)} />
         </KnobRow>
       </PanelCard>
@@ -255,6 +271,8 @@ export function PartnerSettingsTab({ partnerId }: { partnerId: string }) {
           استعادة الافتراضي
         </Button>
       </div>
+
+      <PartnerSettingsAuditHistory partnerId={partnerId} />
     </div>
   );
 }

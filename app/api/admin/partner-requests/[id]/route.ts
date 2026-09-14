@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
+import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 type Params = Promise<{ id: string }>;
 
@@ -21,8 +22,9 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch (e: unknown) {
     const err = e as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
@@ -51,6 +53,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       ...(body.status !== undefined && { status: status as "PENDING" | "CONTACTED" | "APPROVED" | "REJECTED" }),
       ...(body.notes !== undefined && { notes: body.notes?.trim() || null }),
     },
+  });
+  // Backlog 9.7 (c) — a partner request's status is a workflow status, in scope of B1
+  // ("every admin write that changes ... status ... appends an AdminAuditLog row").
+  await logAdminAction(prisma, {
+    actor,
+    action: "update",
+    entityType: "partner_request",
+    entityId: id,
+    entityLabel: existing.name,
+    before: { status: existing.status },
+    after: { status: updated.status },
+    ip: requestIp(req),
   });
   return apiSuccess(updated);
 }

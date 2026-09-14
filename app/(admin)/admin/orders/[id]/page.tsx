@@ -43,7 +43,7 @@ import {
 } from "@/components/orders/order-items-table";
 import { getDisplaySizeLabel, isKidsCategory } from "@/lib/size-display";
 import { OrderCustomerCard } from "@/components/orders/order-customer-card";
-import { OrderTimeline, type OrderAuditLogEntry } from "@/components/orders/order-timeline";
+import { OrderTimeline, type OrderAuditLogEntry, type AdminAuditLogEntry } from "@/components/orders/order-timeline";
 import { OrderHeaderActions, ManualStatusMenu } from "@/components/orders/order-status-actions";
 
 type ShippingAddress = {
@@ -196,6 +196,7 @@ export default function AdminOrderDetailPage() {
   const { toast } = useToast();
 
   const [order, setOrder] = React.useState<OrderDetail | null>(null);
+  const [adminAuditLog, setAdminAuditLog] = React.useState<AdminAuditLogEntry[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState("");
@@ -279,6 +280,23 @@ export default function AdminOrderDetailPage() {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  // Backlog 9.7 (d) — in-context audit: merge `AdminAuditLog` rows for this order (assign/
+  // reassign/cancel/items/notes/proof/ticket) into سجل الطلب, via the same `GET
+  // /api/admin/audit?entityType&entityId` the السجل screen reads.
+  React.useEffect(() => {
+    if (!id) return;
+    let alive = true;
+    fetch(`/api/admin/audit?entityType=order&entityId=${id}&limit=50`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((json: { success?: boolean; data?: { items?: AdminAuditLogEntry[] } }) => {
+        if (alive && json?.success) setAdminAuditLog(json.data?.items ?? []);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [id, order?.status]);
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedClientSearch(clientSearch.trim()), 350);
@@ -961,7 +979,7 @@ export default function AdminOrderDetailPage() {
             }
           />
 
-          <OrderTimeline auditLog={order.auditLog} sla={partnerSla} awaitingConfirmLabel={order.status === "CREATED"} />
+          <OrderTimeline auditLog={order.auditLog} adminAuditLog={adminAuditLog} sla={partnerSla} awaitingConfirmLabel={order.status === "CREATED"} />
         </div>
       </div>
 

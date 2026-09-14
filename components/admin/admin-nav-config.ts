@@ -3,7 +3,7 @@
  * `design-canvas/admin-v2/build.mjs`'s `NAV` constant). Sections/order/hrefs match the
  * canvas exactly: التشغيل (اليوم · الطلبات · أسئلة العملاء) · الشبكة (الشركاء) · الكتالوج
  * (المنتجات · الفئات · الكوبونات — الصور joins in 9.8) · الأشخاص (العملاء) · المتابعة
- * (التقارير · الإعدادات — السجل joins in 9.7).
+ * (التقارير · السجل · الإعدادات — السجل added 9.7, between التقارير and الإعدادات).
  *
  * The four screens leaving the nav (`/admin/routed-orders`, `/admin/rerouting-rules`,
  * `/admin/partner-inventory`, `/admin/admins`) stay reachable by URL, each now a permanent
@@ -17,6 +17,7 @@ import {
   BarChart3,
   Folder,
   Handshake,
+  History,
   LayoutDashboard,
   MessageCircleQuestion,
   Settings,
@@ -66,6 +67,7 @@ export const ADMIN_NAV_SECTIONS: readonly ShellNavSection[] = [
     label: "المتابعة",
     items: [
       { href: "/admin/reports/sales", label: "التقارير", icon: BarChart3 },
+      { href: "/admin/audit", label: "السجل", icon: History },
       { href: "/admin/settings", label: "الإعدادات", icon: Settings },
     ],
   },
