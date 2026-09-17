@@ -5,6 +5,7 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { seedPartnerPair, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 9.4a (الشركاء hub: list, profile tabs, applications, the two ownership changes)
@@ -186,7 +187,7 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await prisma.adminAuditLog.deleteMany({ where: { entityId: { in: [pair.agent.partnerId, ...allReceiptIds] } } });
-  await prisma.inventoryLedger.deleteMany({ where: { OR: [{ orderId: { in: allOrderIds } }, { partnerId: pair.agent.partnerId }] } });
+  await prisma.inventoryLedger.deleteMany({ where: { OR: [{ orderId: { in: allOrderIds } }, safeWhere({ partnerId: pair.agent.partnerId })] } });
   await prisma.orderAuditLog.deleteMany({ where: { orderId: { in: allOrderIds } } });
   await prisma.order.deleteMany({ where: { id: { in: allOrderIds } } });
   await prisma.partnerPayment.deleteMany({ where: { id: { in: allPaymentIds } } });
@@ -194,13 +195,13 @@ test.afterAll(async () => {
   await prisma.stockReceipt.deleteMany({ where: { id: { in: allReceiptIds } } });
   // Backlog 9.0b (ii): guard against an undefined id reaching a Prisma `where` — `undefined`
   // on a scalar field means "no filter", which would delete every PartnerRequest row.
-  if (requestId) await prisma.partnerRequest.deleteMany({ where: { id: requestId } });
+  if (requestId) await prisma.partnerRequest.deleteMany({ where: safeWhere({ id: requestId }) });
   const converted = await prisma.partner.findFirst({ where: { name: { contains: uniqueSuffix } } });
-  if (converted) await prisma.partner.deleteMany({ where: { id: converted.id, phone: { not: pair.agent.phone } } });
-  await prisma.partnerInventory.deleteMany({ where: { variantId } });
-  await prisma.variant.deleteMany({ where: { id: variantId } });
-  await prisma.product.deleteMany({ where: { id: productId } });
-  await prisma.category.deleteMany({ where: { id: categoryId } });
+  if (converted) await prisma.partner.deleteMany({ where: safeWhere({ id: converted.id, phone: { not: pair.agent.phone } }) });
+  await prisma.partnerInventory.deleteMany({ where: safeWhere({ variantId }) });
+  await prisma.variant.deleteMany({ where: safeWhere({ id: variantId }) });
+  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
   await cleanupPartnerPair(prisma, pair);
   await prisma.user.deleteMany({ where: { id: { in: [adminUserId, customerUserId] } } });
   await prisma.$disconnect();

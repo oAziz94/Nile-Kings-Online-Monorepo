@@ -5,6 +5,7 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { seedPartnerPair, cleanupPartnerPair, loginAs, type PartnerFixturePair } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 9.6 (التقارير network-wide) coverage. Serial mode, one shared fixture set: admin +
@@ -127,12 +128,12 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await prisma.stockReceipt.delete({ where: { id: receiptId } });
+  await prisma.stockReceipt.delete({ where: safeWhere({ id: receiptId }) });
   await prisma.orderAuditLog.deleteMany({ where: { orderId: { in: allOrderIds } } });
   await prisma.order.deleteMany({ where: { id: { in: allOrderIds } } });
-  await prisma.variant.deleteMany({ where: { id: variantId } });
-  await prisma.product.deleteMany({ where: { id: productId } });
-  await prisma.category.deleteMany({ where: { id: categoryId } });
+  await prisma.variant.deleteMany({ where: safeWhere({ id: variantId }) });
+  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
   await cleanupPartnerPair(prisma, pair);
   await prisma.user.deleteMany({ where: { id: { in: [adminUserId, customerUserId] } } });
   await prisma.$disconnect();

@@ -4,6 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
+import { safeWhere } from "./db-cleanup";
 
 // Backlog 4.13 (Profile: shell, account, addresses, orders, senior) regression coverage.
 // Same seeded-fixture-user + scrypt-hash pattern as tests/e2e/auth-login.spec.ts, run against
@@ -48,7 +49,7 @@ test.afterAll(async () => {
   // Leave no address rows behind for this fixture user.
   const user = await prisma.user.findUnique({ where: { phone: FIXTURE_PHONE } });
   if (user) {
-    await prisma.savedAddress.deleteMany({ where: { userId: user.id } });
+    await prisma.savedAddress.deleteMany({ where: safeWhere({ userId: user.id }) });
   }
   await prisma.$disconnect();
 });

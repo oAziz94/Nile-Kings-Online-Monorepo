@@ -4,6 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 8.1 (coupon validity window). Seeds a single ADMIN fixture (account-v2-admin-tickets
@@ -110,7 +111,7 @@ test.afterAll(async () => {
   await prisma.coupon.deleteMany({
     where: { id: { in: [createdCouponId, expiredCouponId, notStartedCouponId].filter(Boolean) } },
   });
-  await prisma.user.deleteMany({ where: { id: adminUserId } });
+  await prisma.user.deleteMany({ where: safeWhere({ id: adminUserId }) });
   await prisma.$disconnect();
 });
 

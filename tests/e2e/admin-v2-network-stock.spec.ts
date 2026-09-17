@@ -5,6 +5,7 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { seedPartnerPair, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 9.5b (مخزون الشبكة tab) coverage: a fixture partner with one SKU at 2 available /
@@ -160,20 +161,20 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await prisma.adminAuditLog.deleteMany({ where: { entityType: "partner-inventory", entityLabel: sku } });
-  await prisma.partnerStockThreshold.deleteMany({ where: { id: thresholdId } });
-  await prisma.inventoryLedger.deleteMany({ where: { variantId } });
-  await prisma.partnerInventory.deleteMany({ where: { variantId } });
+  await prisma.adminAuditLog.deleteMany({ where: safeWhere({ entityType: "partner-inventory", entityLabel: sku }) });
+  await prisma.partnerStockThreshold.deleteMany({ where: safeWhere({ id: thresholdId }) });
+  await prisma.inventoryLedger.deleteMany({ where: safeWhere({ variantId }) });
+  await prisma.partnerInventory.deleteMany({ where: safeWhere({ variantId }) });
   await prisma.inventoryLedger.deleteMany({ where: { variantId: { in: [searchVariantId, outVariantId, ...paginationVariantIds] } } });
   await prisma.partnerInventory.deleteMany({ where: { variantId: { in: [searchVariantId, outVariantId, ...paginationVariantIds] } } });
   await prisma.variant.deleteMany({ where: { id: { in: [searchVariantId, outVariantId, ...paginationVariantIds] } } });
-  await prisma.partner.deleteMany({ where: { id: paginationPartner.partnerId } });
-  await prisma.user.deleteMany({ where: { id: paginationPartner.userId } });
-  await prisma.variant.deleteMany({ where: { id: variantId } });
-  await prisma.product.deleteMany({ where: { id: productId } });
-  await prisma.category.deleteMany({ where: { id: categoryId } });
+  await prisma.partner.deleteMany({ where: safeWhere({ id: paginationPartner.partnerId }) });
+  await prisma.user.deleteMany({ where: safeWhere({ id: paginationPartner.userId }) });
+  await prisma.variant.deleteMany({ where: safeWhere({ id: variantId }) });
+  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
   await cleanupPartnerPair(prisma, pair);
-  await prisma.user.deleteMany({ where: { id: adminUserId } });
+  await prisma.user.deleteMany({ where: safeWhere({ id: adminUserId }) });
   await prisma.$disconnect();
 });
 

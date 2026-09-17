@@ -4,6 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import { seedPartnerPair, loginAs, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 // Pure, no `@/*` alias and no Prisma import inside `cairo-day.ts` itself — safe to import
 // by relative path from a spec (unlike `lib/analytics/partner-reports.ts`, see the
 // `noonDaysAgo` comment below).
@@ -208,13 +209,13 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } });
   await prisma.order.deleteMany({ where: { id: { in: orderIds } } });
-  await prisma.partnerInventory.deleteMany({ where: { variantId: invVariantId } });
+  await prisma.partnerInventory.deleteMany({ where: safeWhere({ variantId: invVariantId }) });
   await prisma.inventoryLedger.deleteMany({ where: { variantId: { in: [salesVariantId, invVariantId] } } });
   await prisma.partnerStockSnapshot.deleteMany({ where: { partnerId: { in: [pair.agent.partnerId, pair.distributor.partnerId] } } });
-  await prisma.variant.deleteMany({ where: { productId } });
-  await prisma.product.deleteMany({ where: { id: productId } });
-  await prisma.category.delete({ where: { id: categoryId } });
-  await prisma.user.deleteMany({ where: { id: customerUserId } });
+  await prisma.variant.deleteMany({ where: safeWhere({ productId }) });
+  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await prisma.category.delete({ where: safeWhere({ id: categoryId }) });
+  await prisma.user.deleteMany({ where: safeWhere({ id: customerUserId }) });
   await cleanupPartnerPair(prisma, pair);
   await prisma.$disconnect();
 });
@@ -408,7 +409,7 @@ test("cron GET /api/cron/stock-snapshot: 200 with the bearer token, upserts yest
 
   // Cleanup: this cron run wrote real rows for every active partner in the database, not
   // just this fixture — only delete the one row this test is responsible for.
-  await prisma.partnerStockSnapshot.deleteMany({ where: { partnerId: pair.agent.partnerId, day: dayIsoToDate(yesterdayIso) } });
+  await prisma.partnerStockSnapshot.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId, day: dayIsoToDate(yesterdayIso) }) });
 });
 
 test("cron GET /api/cron/stock-snapshot: prunes rows older than 400 days, keeps rows within it", async ({ page }) => {
@@ -436,7 +437,7 @@ test("cron GET /api/cron/stock-snapshot: prunes rows older than 400 days, keeps 
 
   // Cleanup: the kept row, plus yesterday's row this same call also upserted.
   await prisma.partnerStockSnapshot.deleteMany({
-    where: { partnerId: pair.agent.partnerId, day: { in: [dayIsoToDate(keptDayIso), dayIsoToDate(yesterdayIso)] } },
+    where: safeWhere({ partnerId: pair.agent.partnerId, day: { in: [dayIsoToDate(keptDayIso), dayIsoToDate(yesterdayIso)] } }),
   });
 });
 

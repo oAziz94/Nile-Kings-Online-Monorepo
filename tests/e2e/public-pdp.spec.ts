@@ -3,6 +3,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import { test, expect, devices, type Page } from "@playwright/test";
+import { safeWhere } from "./db-cleanup";
 
 // Backlog 4.9 (PDP) regression coverage. Reads a real product from the redesign DB via the
 // public listing API (never invents fixture data), exercises the shared `useVariantSelection`
@@ -644,14 +645,14 @@ test.describe("Public PDP (backlog 4.9)", () => {
       if (partnerInventoryIds.length > 0) {
         await prisma.partnerInventory.deleteMany({ where: { id: { in: partnerInventoryIds } } });
       }
-      if (rulePartnerId) await prisma.reroutingRulePartner.deleteMany({ where: { id: rulePartnerId } });
-      if (ruleId) await prisma.reroutingRule.deleteMany({ where: { id: ruleId } });
-      if (partnerId) await prisma.partner.deleteMany({ where: { id: partnerId } });
+      if (rulePartnerId) await prisma.reroutingRulePartner.deleteMany({ where: safeWhere({ id: rulePartnerId }) });
+      if (ruleId) await prisma.reroutingRule.deleteMany({ where: safeWhere({ id: ruleId }) });
+      if (partnerId) await prisma.partner.deleteMany({ where: safeWhere({ id: partnerId }) });
       if (productId) {
-        await prisma.variant.deleteMany({ where: { productId } });
-        await prisma.product.deleteMany({ where: { id: productId } });
+        await prisma.variant.deleteMany({ where: safeWhere({ productId }) });
+        await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
       }
-      if (categoryId) await prisma.category.deleteMany({ where: { id: categoryId } });
+      if (categoryId) await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
     });
 
     test("hover previews it, click selects it, buttons disabled with the message, sizes struck through, add-to-cart impossible", async ({

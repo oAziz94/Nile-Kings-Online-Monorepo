@@ -5,6 +5,7 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { seedPartnerPair, loginAs, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 7.1 — collapsible dashboard sidebar, partner v2 + admin. Partner half uses the
@@ -226,13 +227,13 @@ test.describe("admin sidebar collapse", () => {
   });
 
   test.afterAll(async () => {
-    await prisma.orderTicketMessage.deleteMany({ where: { ticketId } });
-    await prisma.orderTicket.deleteMany({ where: { id: ticketId } });
-    await prisma.orderItem.deleteMany({ where: { orderId } });
-    await prisma.order.deleteMany({ where: { id: orderId } });
-    await prisma.variant.deleteMany({ where: { id: variantId } });
-    await prisma.product.deleteMany({ where: { id: productId } });
-    await prisma.category.deleteMany({ where: { id: categoryId } });
+    await prisma.orderTicketMessage.deleteMany({ where: safeWhere({ ticketId }) });
+    await prisma.orderTicket.deleteMany({ where: safeWhere({ id: ticketId }) });
+    await prisma.orderItem.deleteMany({ where: safeWhere({ orderId }) });
+    await prisma.order.deleteMany({ where: safeWhere({ id: orderId }) });
+    await prisma.variant.deleteMany({ where: safeWhere({ id: variantId }) });
+    await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+    await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
     await prisma.user.deleteMany({ where: { id: { in: [adminUserId, customerUserId] } } });
     await prisma.$disconnect();
   });

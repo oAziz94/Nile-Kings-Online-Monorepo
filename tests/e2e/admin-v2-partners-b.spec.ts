@@ -5,6 +5,7 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { seedPartnerPair, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 9.4b (الشركاء hub: الأداء tab, المسؤولون as a tab of العملاء, redirects) coverage.
@@ -140,9 +141,9 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   await prisma.orderAuditLog.deleteMany({ where: { orderId: { in: allOrderIds } } });
   await prisma.order.deleteMany({ where: { id: { in: allOrderIds } } });
-  await prisma.variant.deleteMany({ where: { id: variantId } });
-  await prisma.product.deleteMany({ where: { id: productId } });
-  await prisma.category.deleteMany({ where: { id: categoryId } });
+  await prisma.variant.deleteMany({ where: safeWhere({ id: variantId }) });
+  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
   await cleanupPartnerPair(prisma, pair);
   await prisma.user.deleteMany({ where: { id: { in: [adminUserId, customerUserId, seededAdminAId, seededAdminBId] } } });
   await prisma.$disconnect();
