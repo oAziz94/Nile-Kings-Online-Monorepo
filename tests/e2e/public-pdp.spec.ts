@@ -2,7 +2,7 @@ import { loadRedesignTestEnv } from "./test-env";
 loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, devices, type Page } from "@playwright/test";
 
 // Backlog 4.9 (PDP) regression coverage. Reads a real product from the redesign DB via the
 // public listing API (never invents fixture data), exercises the shared `useVariantSelection`
@@ -76,12 +76,13 @@ async function resolveVariant(page: Page) {
   }
 }
 
-// Backlog 10.1/10.2 (owner's manual test findings, v2.4.0). A real product with 6 distinct
-// colours already exists in the redesign DB (nk-7777), but no product in this DB snapshot has
-// a populated per-colour `VariantImage` gallery — needed to prove the thumbnail-strip height cap
-// with more than one thumbnail. This suite seeds exactly 6 `VariantImage` rows for one of
-// nk-7777's real, existing colours (never touching its existing variant/product rows) and
-// deletes precisely those seeded rows afterward (by id) — never a bulk/pattern delete.
+// Backlog 10.1/10.2/10.3 (owner's manual test findings, v2.4.0/v2.4.1). A real product with 6
+// distinct colours already exists in the redesign DB (nk-7777), but no product in this DB
+// snapshot has a populated per-colour `VariantImage` gallery — needed to prove the
+// thumbnail-strip height cap with more than one thumbnail. This suite seeds exactly 6
+// `VariantImage` rows for one of nk-7777's real, existing colours (never touching its existing
+// variant/product rows) and deletes precisely those seeded rows afterward (by id) — never a
+// bulk/pattern delete.
 const GALLERY_PRODUCT_SLUG = "nk-7777";
 const GALLERY_COLOR_KEY = "wisteria|#C9A0DC";
 const GALLERY_PHOTOS = [
@@ -192,8 +193,11 @@ test.describe("Public PDP (backlog 4.9)", () => {
       .poll(async () => (await cartLink.innerText()).trim(), { timeout: 10_000 })
       .not.toBe(beforeText);
 
-    // Lightbox opens/closes with Escape.
-    await page.getByRole("button", { name: "تكبير الصورة" }).click();
+    // Backlog 10.3 — the visible magnifier is gone; the lightbox is reachable via a
+    // visually-hidden control kept for keyboard/screen-reader users on desktop. Opens/closes
+    // with Escape same as before.
+    await page.getByRole("button", { name: "عرض الصورة كاملة" }).focus();
+    await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await page.keyboard.press("Escape");
@@ -268,7 +272,7 @@ test.describe("Public PDP (backlog 4.9)", () => {
     }
   });
 
-  test("backlog 10.1 — main frame + price fit above the fold at 1514×681, gallery proof screenshots", async ({
+  test("backlog 10.3 — 5:4 main frame + price fit above the fold at every viewport, gallery proof screenshots", async ({
     page,
     baseURL,
   }) => {
@@ -284,6 +288,8 @@ test.describe("Public PDP (backlog 4.9)", () => {
     expect(frameBox).not.toBeNull();
     // Whole photo visible: its bottom edge is above the viewport bottom, not clipped/cut off.
     expect(frameBox!.y + frameBox!.height).toBeLessThanOrEqual(681);
+    // 5:4 landscape (supersedes 10.1's 4:5 portrait) at every viewport.
+    expect(Math.abs(frameBox!.width / frameBox!.height - 1.25)).toBeLessThan(0.02);
 
     await expect(page.locator("h1")).toBeVisible();
     const price = page.getByText(/ج\.م/).first();
@@ -297,10 +303,11 @@ test.describe("Public PDP (backlog 4.9)", () => {
     expect(scrollWidth).toBeLessThanOrEqual(1514);
 
     await page.waitForLoadState("networkidle");
-    await page.screenshot({ path: "screenshots/pdp-10.1-1514x681.png" });
+    await page.screenshot({ path: "screenshots/pdp-10.3-1514x681.png" });
 
     // Selecting the seeded 6-photo colour swaps to its gallery: the thumbnail strip now has more
     // thumbnails than fit in the capped height and scrolls vertically instead of growing past it.
+    // The thumbnail strip itself is unchanged by 10.3 (still 4:5, still capped/scrollable).
     const wisteriaSwatch = page.getByRole("radio", { name: "wisteria" });
     await wisteriaSwatch.click();
     const thumbList = page.getByRole("list", { name: "صور المنتج" });
@@ -311,7 +318,7 @@ test.describe("Public PDP (backlog 4.9)", () => {
     expect(thumbBox).not.toBeNull();
     expect(thumbBox!.y + thumbBox!.height).toBeLessThanOrEqual(681);
     await page.waitForLoadState("networkidle");
-    await page.screenshot({ path: "screenshots/pdp-10.1-1514x681-scrollable-thumbnails.png" });
+    await page.screenshot({ path: "screenshots/pdp-10.3-1514x681-scrollable-thumbnails.png" });
 
     for (const vp of GALLERY_VIEWPORTS.slice(1)) {
       await page.setViewportSize(vp);
@@ -321,8 +328,81 @@ test.describe("Public PDP (backlog 4.9)", () => {
       const box = await frame.boundingBox();
       expect(box).not.toBeNull();
       expect(box!.y + box!.height).toBeLessThanOrEqual(vp.height);
+      expect(Math.abs(box!.width / box!.height - 1.25)).toBeLessThan(0.02);
       await expect(page.locator("h1")).toBeVisible();
-      await page.screenshot({ path: `screenshots/pdp-10.1-${vp.width}x${vp.height}.png` });
+      await page.screenshot({ path: `screenshots/pdp-10.3-${vp.width}x${vp.height}.png` });
+    }
+  });
+
+  test("backlog 10.3 — desktop cursor-following 2x zoom, no layout change", async ({ page, baseURL }) => {
+    const base = baseURL ?? "http://localhost:3100";
+    await setStorefrontLocation(page, base);
+
+    await page.setViewportSize({ width: 1514, height: 681 });
+    await page.goto(`/products/${GALLERY_PRODUCT_SLUG}`);
+
+    const frame = page.getByTestId("pdp-main-frame");
+    await expect(frame).toBeVisible();
+    const frameBoxBefore = await frame.boundingBox();
+    expect(frameBoxBefore).not.toBeNull();
+    const scrollWidthBefore = await page.evaluate(() => document.documentElement.scrollWidth);
+
+    const zoomLayer = frame.locator("> div[aria-hidden='true']");
+
+    // Rest — no zoom layer visible.
+    await page.mouse.move(10, 10); // away from the frame first
+    await expect(zoomLayer).toHaveCSS("opacity", "0");
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "screenshots/pdp-10.3-zoom-rest-1514x681.png" });
+
+    const box = frameBoxBefore!;
+
+    // Cursor near the top-left corner of the frame reveals the collar (background-position near 0% 0%).
+    await page.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.1);
+    await expect(zoomLayer).toHaveCSS("opacity", "1");
+    const posTopLeft = await zoomLayer.evaluate((el) => getComputedStyle(el).backgroundPosition);
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "screenshots/pdp-10.3-zoom-top-left-1514x681.png" });
+
+    // Cursor near the bottom-right corner reveals the hem (background-position near 100% 100%).
+    await page.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.9);
+    const posBottomRight = await zoomLayer.evaluate((el) => getComputedStyle(el).backgroundPosition);
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "screenshots/pdp-10.3-zoom-bottom-right-1514x681.png" });
+
+    expect(posBottomRight).not.toBe(posTopLeft);
+
+    // No layout change: the frame's own box and the page's horizontal extent are unaffected.
+    const frameBoxAfter = await frame.boundingBox();
+    expect(frameBoxAfter).toEqual(frameBoxBefore);
+    const scrollWidthAfter = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidthAfter).toBe(scrollWidthBefore);
+
+    // Leaving the frame restores the plain (un-zoomed) crop.
+    await page.mouse.move(10, 10);
+    await expect(zoomLayer).toHaveCSS("opacity", "0");
+  });
+
+  test("backlog 10.3 — touch devices tap the frame to open the lightbox, no zoom", async ({ browser, baseURL }) => {
+    const context = await browser.newContext({ ...devices["iPhone 12"] });
+    const page = await context.newPage();
+    try {
+      await setStorefrontLocation(page, baseURL ?? "http://localhost:3100");
+      await page.goto(`/products/${GALLERY_PRODUCT_SLUG}`);
+
+      const frame = page.getByTestId("pdp-main-frame");
+      await expect(frame).toBeVisible();
+
+      // No zoom layer ever becomes visible on a touch/coarse-pointer device.
+      const zoomLayer = frame.locator("> div[aria-hidden='true']");
+      await expect(zoomLayer).toHaveCSS("opacity", "0");
+
+      await frame.tap();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+      await expect(zoomLayer).toHaveCSS("opacity", "0");
+    } finally {
+      await context.close();
     }
   });
 

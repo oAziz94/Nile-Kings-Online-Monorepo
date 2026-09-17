@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, type MouseEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +16,6 @@ import {
   ShoppingCart,
   Minus,
   Plus,
-  ZoomIn,
   Truck,
   RefreshCw,
   CreditCard,
@@ -209,6 +208,40 @@ export function ProductPageContent({
     return () => cancelAnimationFrame(id);
   }, [mainImageUrl]);
 
+  // Backlog 10.3 — the magnifier and the desktop lightbox are gone; entering the frame with a
+  // mouse/trackpad (`hover: hover` and `pointer: fine`) magnifies the whole photo 2x, panning
+  // with the cursor. Touch devices (`hover: none`) keep tap-to-open the full-screen lightbox
+  // instead — it is their only way to see the whole photo, since there is no hover to zoom with.
+  const [isTouchPointer, setIsTouchPointer] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: none), (pointer: coarse)");
+    const update = () => setIsTouchPointer(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  const [zoomActive, setZoomActive] = useState(false);
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+
+  const handleFrameMouseEnter = useCallback(() => {
+    if (!isTouchPointer) setZoomActive(true);
+  }, [isTouchPointer]);
+  const handleFrameMouseLeave = useCallback(() => setZoomActive(false), []);
+  const handleFrameMouseMove = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      if (isTouchPointer) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      setZoomPos({ x: Math.min(100, Math.max(0, x)), y: Math.min(100, Math.max(0, y)) });
+    },
+    [isTouchPointer]
+  );
+  const handleFrameClick = useCallback(() => {
+    if (isTouchPointer) setLightboxOpen(true);
+  }, [isTouchPointer]);
+
   const handleAdd = async (intent: "cart" | "buy") => {
     const result = validate();
     if (!result.ok) {
@@ -262,17 +295,18 @@ export function ProductPageContent({
     <>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,6fr)_minmax(0,6fr)]">
-        {/* Gallery — backlog 10.1: the main frame keeps the 4:5 ratio but its height is capped so
-            the whole photo fits above the fold. `aspect-ratio` + `max-height` alone collapses the
-            frame to 0×0 here (its width is auto inside a centred flex wrapper, so the browser has
-            two free axes and nothing to derive either from — the frame's only child is a
-            `next/image` `fill` <img>, absolutely positioned, contributing no intrinsic size
-            either). Capping the WIDTH from the height instead gives it exactly one free axis:
-            `max-width: (height cap) * 4/5`, `aspect-ratio: 4/5` derives the height from that
-            width, `w-full` lets it fill up to that cap. Pure CSS, no measurement — this is why it
-            renders correctly on first paint (no SSR-then-hydration jump). The thumbnail strip
-            caps to the same height expression and scrolls vertically once it has more thumbnails
-            than fit. */}
+        {/* Gallery — backlog 10.1/10.3: the main frame's height is capped so the whole photo fits
+            above the fold; the ratio itself is 5:4 landscape as of 10.3 (owner: "I need the width
+            larger than the height", the photo cropped rather than letterboxed — supersedes 10.1's
+            4:5). `aspect-ratio` + `max-height` alone collapses the frame to 0×0 here (its width is
+            auto inside a centred flex wrapper, so the browser has two free axes and nothing to
+            derive either from — the frame's only child is a `next/image` `fill` <img>, absolutely
+            positioned, contributing no intrinsic size either). Capping the WIDTH from the height
+            instead gives it exactly one free axis: `max-width: (height cap) * 5/4`,
+            `aspect-ratio: 5/4` derives the height from that width, `w-full` lets it fill up to
+            that cap. Pure CSS, no measurement — this is why it renders correctly on first paint
+            (no SSR-then-hydration jump). The thumbnail strip is unchanged (still 4:5, still capped
+            to the same height expression, still scrolling vertically past its fit). */}
         <div className="grid grid-cols-[64px_1fr] items-start gap-3 md:grid-cols-[84px_1fr] md:gap-4">
           <div
             role="list"
@@ -302,7 +336,14 @@ export function ProductPageContent({
           <div className="flex min-w-0 justify-center">
           <div
             data-testid="pdp-main-frame"
-            className="relative aspect-[4/5] w-full max-w-[calc(70dvh*0.8)] overflow-hidden bg-[hsl(38_22%_93%)] lg:max-w-[calc((100dvh-116px)*0.8)]"
+            onMouseEnter={handleFrameMouseEnter}
+            onMouseMove={handleFrameMouseMove}
+            onMouseLeave={handleFrameMouseLeave}
+            onClick={handleFrameClick}
+            className={cn(
+              "relative aspect-[5/4] w-full max-w-[calc(70dvh*1.25)] overflow-hidden bg-[hsl(38_22%_93%)] lg:max-w-[calc((100dvh-116px)*1.25)]",
+              isTouchPointer && "cursor-pointer"
+            )}
           >
             <Image
               src={mainImageUrl}
@@ -316,13 +357,32 @@ export function ProductPageContent({
               priority
               unoptimized={mainImageUrl.startsWith("data:")}
             />
+            {/* Backlog 10.3 — desktop-only 2x zoom, the magnified region tracking the cursor. The
+                zoom base is the whole photo (not the 5:4 crop above), so panning toward an edge
+                reveals what the crop hides; leaving the frame restores the plain crop. Pointer-only,
+                never focusable, so nothing keyboard-reachable before is lost — see the hidden
+                "عرض الصورة كاملة" control below for the keyboard/screen-reader path. */}
+            <div
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute inset-0 bg-no-repeat opacity-0 transition-opacity duration-150 motion-reduce:transition-none",
+                zoomActive && !isTouchPointer && "opacity-100"
+              )}
+              style={{
+                backgroundImage: `url(${mainImageUrl})`,
+                backgroundSize: "200%",
+                backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
+              }}
+            />
             <button
               type="button"
-              aria-label="تكبير الصورة"
-              onClick={() => setLightboxOpen(true)}
-              className="absolute bottom-4 start-4 grid h-11 w-11 place-items-center border border-[hsl(228_40%_14%)] bg-papyrus text-[hsl(228_40%_14%)] transition-colors hover:bg-[hsl(228_40%_14%)] hover:text-papyrus"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxOpen(true);
+              }}
+              className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:bottom-4 focus-visible:start-4 focus-visible:z-10 focus-visible:grid focus-visible:h-11 focus-visible:w-11 focus-visible:place-items-center focus-visible:border focus-visible:border-[hsl(228_40%_14%)] focus-visible:bg-papyrus focus-visible:text-[hsl(228_40%_14%)]"
             >
-              <ZoomIn className="h-5 w-5" />
+              عرض الصورة كاملة
             </button>
           </div>
           </div>
