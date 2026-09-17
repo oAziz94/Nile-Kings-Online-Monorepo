@@ -622,7 +622,7 @@ function PartnerOrdersPageInner() {
               {orders.map((o) => {
                 const next = NEXT_STATUS[o.status];
                 return (
-                  <div key={o.id} data-row-id={o.id} className="rounded-2xl border border-stone-200 bg-white p-4">
+                  <div key={o.id} className="rounded-2xl border border-stone-200 bg-white p-4">
                     <div className="flex items-center justify-between gap-2">
                       <span dir="ltr" className="font-mono text-xs text-ink-soft">#{o.id.slice(0, 8)}</span>
                       <StatusPill variant={ORDER_STATUS_PILL_VARIANT[o.status] ?? "neutral"}>

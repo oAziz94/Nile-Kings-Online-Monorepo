@@ -186,3 +186,89 @@ test("browser back restores scroll position to the clicked card", async ({ page,
   const restored = page.locator(`[data-row-id="${targetId}"]`);
   await expect(restored).toBeInViewport({ timeout: 10_000 });
 });
+
+// 10.9 — the price-bounds probe resolving after the first products fetch used to recreate
+// `fetchPage` (it depended on the whole `bounds` object/`boundsReady`), re-firing the
+// `[fetchPage]` effect with `limit=9` and wiping the restored 27 cards back down to 9, which
+// pushed the clicked card out of the DOM/viewport on browser back.
+test("browser back after loading 2+ pages restores the 16th card into view and clears the stash", async ({
+  page,
+  baseURL,
+}) => {
+  await setStorefrontLocation(page, baseURL);
+  await page.goto("/products");
+
+  const cards = page.locator("[data-row-id]");
+  await expect(cards.first()).toBeVisible({ timeout: 15_000 });
+
+  // Scroll until at least 2 pages (>= 18 cards) are loaded.
+  await expect
+    .poll(
+      async () => {
+        await page.mouse.wheel(0, 4000);
+        return cards.count();
+      },
+      { timeout: 20_000 }
+    )
+    .toBeGreaterThanOrEqual(18);
+
+  const target = cards.nth(15); // the 16th card
+  const targetId = await target.getAttribute("data-row-id");
+  await target.locator("a").first().click();
+
+  await page.waitForURL(/\/products\//, { timeout: 10_000 });
+  await page.goBack();
+  await page.waitForURL(/\/products$/, { timeout: 10_000 });
+
+  const restored = page.locator(`[data-row-id="${targetId}"]`);
+  await expect
+    .poll(
+      async () => {
+        const box = await restored.boundingBox();
+        if (!box) return false;
+        const viewport = page.viewportSize();
+        if (!viewport) return false;
+        return (
+          box.y >= 0 &&
+          box.y + box.height <= viewport.height &&
+          box.x >= 0 &&
+          box.x + box.width <= viewport.width
+        );
+      },
+      { timeout: 10_000 }
+    )
+    .toBe(true);
+
+  const stashCleared = await page.evaluate(
+    () => sessionStorage.getItem("storefront-products-scroll") === null
+  );
+  expect(stashCleared).toBe(true);
+});
+
+// 10.9 — a fresh mount must fetch page one exactly once (the bug fetched it twice: once with
+// the restore/default limit, then again with `limit=9` when the price-bounds probe resolved
+// and recreated `fetchPage`). Verified: this project's `next dev` (Turbopack) does not
+// double-invoke client effects the way React 18 Strict Mode does in some setups, so a plain
+// "exactly one offset=0 request" assertion is safe here; if a future change enables an
+// effect-doubling dev mode, prefer the weaker "no limit=9&offset=0 request follows a
+// larger-limit offset=0 request" assertion instead (noted for whoever revisits this).
+test("a fresh /products mount issues exactly one offset=0 products request", async ({ page, baseURL }) => {
+  await setStorefrontLocation(page, baseURL);
+
+  const offsetZeroRequests: string[] = [];
+  page.on("request", (req) => {
+    const url = req.url();
+    if (url.includes("/api/products?") && /[?&]offset=0(&|$)/.test(url)) {
+      offsetZeroRequests.push(url);
+    }
+  });
+
+  await page.goto("/products");
+  await expect(page.locator("[data-row-id]").first()).toBeVisible({ timeout: 15_000 });
+  await page.waitForLoadState("networkidle");
+  // Small settle window for the price-bounds probe (async, resolves after the first fetch) to
+  // finish and, if the bug were present, to trigger a second fetch.
+  await page.waitForTimeout(1_000);
+
+  expect(offsetZeroRequests.length).toBe(1);
+});

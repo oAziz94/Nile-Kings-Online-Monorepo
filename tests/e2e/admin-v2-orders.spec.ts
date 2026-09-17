@@ -209,8 +209,9 @@ test("stage counts and the بلا شريك stage list the unassigned fixture", a
   expect(json.data.counts.UNASSIGNED).toBeGreaterThanOrEqual(2);
 
   await page.goto("/admin/orders?stage=UNASSIGNED");
-  // The desktop `<table>` and the mobile card list both carry `data-row-id` — scope to the
-  // desktop table (this suite runs at the default desktop viewport).
+  // Only the desktop `<table>`'s `<tr>` carries `data-row-id` (10.9 removed it from the mobile
+  // card, which used to duplicate it) — the `table` scope here is now just for clarity, this
+  // suite runs at the default desktop viewport anyway.
   await expect(page.locator(`table [data-row-id="${unassignedOrderId}"]`)).toBeVisible({ timeout: 20_000 });
 });
 
@@ -528,6 +529,31 @@ test("401 signed-out, 403 for a customer on the new routes", async ({ page, brow
   const guestRes = await guestPage.request.post(`/api/admin/orders/${filterOrderId}/assign`, { data: { partnerId: pair.agent.partnerId } });
   expect(guestRes.status()).toBe(401);
   await context.close();
+});
+
+// 10.9 — the phone card (`sm:hidden`) used to carry the same `data-row-id` as the desktop
+// `<tr>`; `useRowScrollRestore`'s `querySelector` found the (invisible-on-desktop) card first
+// and scrolled nothing into view, spending the one-shot restore for no effect.
+test("browser back restores the clicked row into view (10.9)", async ({ page }) => {
+  await loginAsAdmin(page);
+  await page.goto("/admin/orders");
+
+  const rows = page.locator("table tr[data-row-id]");
+  await expect(rows.first()).toBeVisible({ timeout: 20_000 });
+  const count = await rows.count();
+  const targetIndex = count >= 10 ? 9 : count - 1;
+  const target = rows.nth(targetIndex);
+  const targetId = await target.getAttribute("data-row-id");
+  expect(targetId).toBeTruthy();
+
+  await target.scrollIntoViewIfNeeded();
+  await target.click();
+  await page.waitForURL(/\/admin\/orders\/[^?]+$/, { timeout: 20_000 });
+  await page.goBack();
+  await page.waitForURL(/\/admin\/orders$/, { timeout: 20_000 });
+
+  const restored = page.locator(`table [data-row-id="${targetId}"]`);
+  await expect(restored).toBeInViewport({ timeout: 10_000 });
 });
 
 test("at 390×844 the list cards and the single-column detail render with no overflow", async ({ page }) => {

@@ -291,7 +291,13 @@ test("390×844: the pipeline renders card rows, not a table", async ({ page }) =
   await loginAs(page, pair, "AGENT");
   await page.goto(`/partner/orders?q=${uniqueSuffix}&status=CREATED`);
 
-  await expect(page.locator(`div[data-row-id="${orderFreshId}"]`)).toBeVisible({ timeout: 15_000 });
+  // The phone card no longer carries `data-row-id` (10.9: it duplicated the desktop `<tr>`'s,
+  // so `useRowScrollRestore`'s `querySelector` could find the hidden card first and scroll
+  // nothing into view) — identify the card by its visible order-number text instead, scoped to
+  // the mobile card list container (the desktop `<table>` is `hidden` via CSS, not removed from
+  // the DOM, and its own order-number link would otherwise also match the text).
+  const mobileList = page.locator(".space-y-3.sm\\:hidden");
+  await expect(mobileList.getByText(`#${orderFreshId.slice(0, 8)}`)).toBeVisible({ timeout: 15_000 });
   await expect(page.locator("table")).toBeHidden();
 });
 
@@ -313,5 +319,31 @@ test("every active row can open the order detail: فتح, the order number, and 
   await expect(row).toBeVisible({ timeout: 15_000 });
   await row.getByRole("cell").nth(3).click();
   await expect(page).toHaveURL(new RegExp(`/partner/orders/${orderConfirmedId}$`), { timeout: 20_000 });
+});
+
+// 10.9 — the phone card (`sm:hidden`) used to carry the same `data-row-id` as the desktop
+// `<tr>`; `useRowScrollRestore`'s `querySelector` found the (invisible-on-desktop) card first
+// and scrolled nothing into view, spending the one-shot restore for no effect.
+test("browser back restores the clicked row into view (10.9)", async ({ page }) => {
+  await loginAs(page, pair, "AGENT");
+  await page.setViewportSize({ width: 1514, height: 681 });
+  await page.goto("/partner/orders");
+
+  const rows = page.locator("table tr[data-row-id]");
+  await expect(rows.first()).toBeVisible({ timeout: 15_000 });
+  const count = await rows.count();
+  const targetIndex = count >= 10 ? 9 : count - 1;
+  const target = rows.nth(targetIndex);
+  const targetId = await target.getAttribute("data-row-id");
+  expect(targetId).toBeTruthy();
+
+  await target.scrollIntoViewIfNeeded();
+  await target.click();
+  await page.waitForURL(/\/partner\/orders\/[^?]+$/, { timeout: 20_000 });
+  await page.goBack();
+  await page.waitForURL(/\/partner\/orders$/, { timeout: 20_000 });
+
+  const restored = page.locator(`table [data-row-id="${targetId}"]`);
+  await expect(restored).toBeInViewport({ timeout: 10_000 });
 });
 
