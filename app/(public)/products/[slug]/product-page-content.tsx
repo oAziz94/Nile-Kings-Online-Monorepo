@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -162,7 +162,54 @@ export function ProductPageContent({
   }, [activeColorKey]);
 
   const mainImageUrl = gallery[galleryIndex] ?? gallery[0] ?? PLACEHOLDER_IMAGE;
-  const imageKey = `${selectedVariant?.id ?? "product"}-${selectedColorId ?? "none"}-${mainImageUrl}`;
+
+  // Backlog 10.1 — measures the gallery column's real width and the frame's own remaining
+  // distance to the viewport bottom, and picks whichever of (fill the column width) / (fit the
+  // remaining viewport height) is smaller, so the 4:5 frame is always whole on screen. See the
+  // comment above the JSX for why this is JS-measured rather than pure CSS.
+  const galleryColumnRef = useRef<HTMLDivElement>(null);
+  const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
+  useEffect(() => {
+    const el = galleryColumnRef.current;
+    if (!el) return;
+    function recompute() {
+      if (!el) return;
+      const availableWidth = el.clientWidth;
+      if (availableWidth <= 0) return;
+      const top = el.getBoundingClientRect().top;
+      // A little headroom (16px) so the frame's bottom edge never touches the viewport edge
+      // exactly — keeps it comfortably "above the fold", not flush with it.
+      const capHeight = Math.max(200, window.innerHeight - top - 16);
+      const naturalHeight = availableWidth * 1.25; // 4:5 ratio: height = width * 5/4
+      const height = Math.min(naturalHeight, capHeight);
+      const width = height * 0.8;
+      setFrameSize({ width: Math.round(width), height: Math.round(height) });
+    }
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    window.addEventListener("resize", recompute);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", recompute);
+    };
+  }, []);
+
+  // A short crossfade on every main-photo change (gallery nav, colour select, hover/focus
+  // preview) — `motion-reduce:transition-none` above disables the transition itself for
+  // `prefers-reduced-motion`, this just skips the opacity dip so there's no reduced-motion flash.
+  const [imageFading, setImageFading] = useState(false);
+  const prefersReducedMotionRef = useRef(false);
+  useEffect(() => {
+    prefersReducedMotionRef.current =
+      typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
+  useEffect(() => {
+    if (prefersReducedMotionRef.current) return;
+    setImageFading(true);
+    const id = requestAnimationFrame(() => setImageFading(false));
+    return () => cancelAnimationFrame(id);
+  }, [mainImageUrl]);
 
   const handleAdd = async (intent: "cart" | "buy") => {
     const result = validate();
@@ -216,10 +263,27 @@ export function ProductPageContent({
   return (
     <>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-        {/* Gallery */}
-        <div className="grid grid-cols-[64px_1fr] gap-3 md:grid-cols-[84px_1fr] md:gap-4">
-          <div role="list" aria-label="صور المنتج" className="flex flex-col gap-2.5">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,6fr)_minmax(0,6fr)]">
+        {/* Gallery — backlog 10.1: the main frame keeps the 4:5 ratio but its height is capped so
+            the whole photo fits above the fold. A pure-CSS `aspect-ratio` + `max-height` frame
+            (tried first) collapses to 0×0 in Chromium here — the frame's only child is a
+            `next/image` `fill` <img>, which is absolutely positioned and so contributes no
+            intrinsic size, and a grid item with both dimensions "auto" has nothing to derive a
+            size from. Instead, `galleryColumnRef` measures the column's real available width and
+            the frame's own distance from the viewport bottom (`window.innerHeight - top`, which
+            already accounts for the header + page padding above it, however tall they are) and
+            sets an explicit pixel width/height from those two numbers directly — the same 4:5
+            "cap by whichever of width/height is more restrictive" math, just computed in JS
+            instead of relying on the aspect-ratio auto-sizing algorithm. The thumbnail strip caps
+            to the same measured height and scrolls vertically once it has more thumbnails than
+            fit. */}
+        <div className="grid grid-cols-[64px_1fr] items-start gap-3 md:grid-cols-[84px_1fr] md:gap-4">
+          <div
+            role="list"
+            aria-label="صور المنتج"
+            className="flex flex-col gap-2.5 overflow-y-auto"
+            style={{ maxHeight: frameSize?.height ?? "70dvh" }}
+          >
             {gallery.map((url, i) => {
               const active = i === galleryIndex;
               return (
@@ -231,7 +295,7 @@ export function ProductPageContent({
                   aria-current={active || undefined}
                   onClick={() => setGalleryIndex(i)}
                   className={cn(
-                    "relative aspect-[4/5] w-full overflow-hidden border bg-[hsl(38_22%_93%)]",
+                    "relative aspect-[4/5] w-full shrink-0 overflow-hidden border bg-[hsl(38_22%_93%)]",
                     active ? "border-[hsl(228_40%_14%)]" : "border-[hsl(228_16%_84%)]"
                   )}
                 >
@@ -240,14 +304,21 @@ export function ProductPageContent({
               );
             })}
           </div>
-          <div className="relative aspect-[4/5] overflow-hidden bg-[hsl(38_22%_93%)]">
+          <div ref={galleryColumnRef} className="flex min-w-0 justify-center">
+          <div
+            data-testid="pdp-main-frame"
+            className="relative aspect-[4/5] max-h-[70dvh] overflow-hidden bg-[hsl(38_22%_93%)] lg:max-h-[calc(100dvh-116px)]"
+            style={frameSize ? { width: frameSize.width, height: frameSize.height } : undefined}
+          >
             <Image
-              key={imageKey}
               src={mainImageUrl}
               alt={product.name}
               fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 58vw"
+              className={cn(
+                "object-cover transition-opacity duration-150 motion-reduce:transition-none",
+                imageFading ? "opacity-0" : "opacity-100"
+              )}
+              sizes="(max-width: 1024px) 100vw, 50vw"
               priority
               unoptimized={mainImageUrl.startsWith("data:")}
             />
@@ -259,6 +330,7 @@ export function ProductPageContent({
             >
               <ZoomIn className="h-5 w-5" />
             </button>
+          </div>
           </div>
         </div>
 
