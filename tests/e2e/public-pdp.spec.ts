@@ -92,6 +92,10 @@ const GALLERY_PHOTOS = [
   "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773325414/nile-kings/products/ldtrwaucuo1zaooqacur.jpg",
   "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773321245/nile-kings/products/xtznkqr6zj5zi799utum.jpg",
 ];
+// nk-7777's "sky blue" colour already has its own distinct photo (no seeding needed) — used for
+// the 10.2 hover/keyboard preview tests so they're independent of the seeded gallery above.
+const HOVER_COLOR_NAME = "sky blue";
+const HOVER_COLOR_IMAGE_FRAGMENT = "xiwrxjqselhf0oiw5atg";
 
 const GALLERY_VIEWPORTS = [
   { width: 1514, height: 681 },
@@ -321,6 +325,68 @@ test.describe("Public PDP (backlog 4.9)", () => {
       await expect(page.locator("h1")).toBeVisible();
       await page.screenshot({ path: `screenshots/pdp-10.1-${vp.width}x${vp.height}.png` });
     }
+  });
+
+  test("backlog 10.2 — hovering/focusing a colour swatch previews its photo, restores on leave, click keeps it", async ({
+    page,
+    baseURL,
+  }) => {
+    const base = baseURL ?? "http://localhost:3100";
+    await setStorefrontLocation(page, base);
+
+    await page.setViewportSize({ width: 1514, height: 681 });
+    await page.goto(`/products/${GALLERY_PRODUCT_SLUG}`);
+
+    const mainImage = page.getByTestId("pdp-main-frame").locator("img");
+    const restSrc = await mainImage.getAttribute("src");
+    expect(restSrc).not.toContain(HOVER_COLOR_IMAGE_FRAGMENT);
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "screenshots/pdp-10.2-rest-1514x681.png" });
+
+    const swatch = page.getByRole("radio", { name: HOVER_COLOR_NAME });
+    await expect(swatch).toHaveAttribute("aria-checked", "false");
+
+    // Hover — previews, does not select.
+    await swatch.hover();
+    await expect(mainImage).toHaveAttribute("src", new RegExp(HOVER_COLOR_IMAGE_FRAGMENT), { timeout: 5_000 });
+    await expect(swatch).toHaveAttribute("aria-checked", "false");
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "screenshots/pdp-10.2-hover-1514x681.png" });
+
+    // Move away — restores, no sticky state.
+    await page.locator("h1").hover();
+    await expect(mainImage).not.toHaveAttribute("src", new RegExp(HOVER_COLOR_IMAGE_FRAGMENT), { timeout: 5_000 });
+    const restoredSrc = await mainImage.getAttribute("src");
+    expect(restoredSrc).toBe(restSrc);
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "screenshots/pdp-10.2-after-leave-1514x681.png" });
+
+    // Click — selects, and the preview becomes the new selection (stays after the mouse leaves).
+    await swatch.click();
+    await expect(swatch).toHaveAttribute("aria-checked", "true");
+    await expect(mainImage).toHaveAttribute("src", new RegExp(HOVER_COLOR_IMAGE_FRAGMENT));
+    await page.locator("h1").hover();
+    await expect(mainImage).toHaveAttribute("src", new RegExp(HOVER_COLOR_IMAGE_FRAGMENT));
+  });
+
+  test("backlog 10.2 — keyboard: focusing a swatch previews, blurring restores", async ({ page, baseURL }) => {
+    const base = baseURL ?? "http://localhost:3100";
+    await setStorefrontLocation(page, base);
+    await page.setViewportSize({ width: 1514, height: 681 });
+    await page.goto(`/products/${GALLERY_PRODUCT_SLUG}`);
+
+    const mainImage = page.getByTestId("pdp-main-frame").locator("img");
+    const restSrc = await mainImage.getAttribute("src");
+
+    const swatch = page.getByRole("radio", { name: HOVER_COLOR_NAME });
+    await swatch.focus();
+    await expect(mainImage).toHaveAttribute("src", new RegExp(HOVER_COLOR_IMAGE_FRAGMENT), { timeout: 5_000 });
+    await expect(swatch).toHaveAttribute("aria-checked", "false");
+
+    await page.keyboard.press("Tab");
+    await expect(mainImage).not.toHaveAttribute("src", new RegExp(HOVER_COLOR_IMAGE_FRAGMENT), { timeout: 5_000 });
+    const restoredSrc = await mainImage.getAttribute("src");
+    expect(restoredSrc).toBe(restSrc);
   });
 
   test.afterAll(async () => {

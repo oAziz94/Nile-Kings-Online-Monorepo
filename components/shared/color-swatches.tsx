@@ -19,6 +19,12 @@ interface ColorSwatchesProps {
   shape?: "circle" | "square";
   /** Accessible name for the radiogroup — defaults to "اللون". */
   ariaLabel?: string;
+  /** Backlog 10.2 — hover/focus preview (PDP only; optional so `QuickShopModal` is unaffected).
+   *  Fired on `onMouseEnter`/`onFocus`; the caller decides whether that colour has a preview
+   *  image at all. Not a selection — `aria-checked` does not change until `onSelect` fires. */
+  onPreview?: (id: string) => void;
+  /** `onMouseLeave`/`onBlur` — restores whatever was showing before the preview. */
+  onPreviewEnd?: () => void;
 }
 
 const swatchSize = "h-8 w-8";
@@ -31,6 +37,8 @@ export function ColorSwatches({
   className,
   shape = "circle",
   ariaLabel = "اللون",
+  onPreview,
+  onPreviewEnd,
 }: ColorSwatchesProps) {
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
   const firstEnabledId = options.find((o) => !o.disabled)?.id;
@@ -66,6 +74,10 @@ export function ColorSwatches({
             title={opt.name}
             tabIndex={selected || (value == null && opt.id === firstEnabledId) ? 0 : -1}
             onClick={() => !opt.disabled && onSelect?.(opt.id)}
+            onMouseEnter={() => !opt.disabled && onPreview?.(opt.id)}
+            onMouseLeave={() => onPreviewEnd?.()}
+            onFocus={() => !opt.disabled && onPreview?.(opt.id)}
+            onBlur={() => onPreviewEnd?.()}
             onKeyDown={(e) => {
               if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
                 e.preventDefault();

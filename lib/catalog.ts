@@ -57,6 +57,18 @@ export interface ProductListItem {
   tags?: string[];
 }
 
+/**
+ * The photo a colour swatch shows on hover/focus preview — its own representative image, or
+ * `null` when it doesn't have one, so the caller decides whether to fall back to something else
+ * or (PDP, backlog 10.2) preview nothing at all. Shared between the storefront card's colour-dot
+ * hover swap (`product-card.tsx`) and the PDP colour selector's hover/focus preview so the
+ * "does this colour have its own photo" lookup lives in exactly one place, not two copies.
+ */
+export function colorSwatchPreviewImage(imageUrl: string | null | undefined): string | null {
+  const trimmed = imageUrl?.trim();
+  return trimmed ? trimmed : null;
+}
+
 /** The card chip: "الفئة · أول وسم" when the product carries a tag, else the category alone. */
 export function productCardLabel(p: { categoryName: string; tags?: string[] }): string {
   const tag = p.tags?.find((t) => t.trim().length > 0);

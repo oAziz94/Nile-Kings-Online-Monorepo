@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { discountPercentFromPrices, productCardLabel } from "@/lib/catalog";
+import { colorSwatchPreviewImage, discountPercentFromPrices, productCardLabel } from "@/lib/catalog";
 import type { VariantPublic } from "@/lib/catalog";
 import {
   useVariantSelection,
@@ -161,7 +161,37 @@ export function ProductPageContent({
     setGalleryIndex(0);
   }, [activeColorKey]);
 
-  const mainImageUrl = gallery[galleryIndex] ?? gallery[0] ?? PLACEHOLDER_IMAGE;
+  // Backlog 10.2 — hovering/focusing a colour swatch previews that colour's representative photo
+  // in the main frame only (not the thumbnail strip, not the selected size/price), same semantics
+  // as the storefront card's colour-dot hover swap; a colour with no photo of its own (the shared
+  // `colorSwatchPreviewImage` lookup returns null) previews nothing, the frame stays as it is.
+  const colorPreviewImages = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    for (const v of product.variants) {
+      const key = colorKey(v);
+      if (key in map) continue;
+      const galleryFirst = product.variantGalleries?.[key]?.[0];
+      map[key] = colorSwatchPreviewImage(galleryFirst ?? v.imageUrl);
+    }
+    return map;
+  }, [product.variants, product.variantGalleries]);
+
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const previewColor = useCallback(
+    (id: string) => {
+      const img = colorPreviewImages[id];
+      if (img) setPreviewImageUrl(img);
+    },
+    [colorPreviewImages]
+  );
+  const clearColorPreview = useCallback(() => setPreviewImageUrl(null), []);
+  // A real selection (click, or any other reason the active gallery changes) always wins over a
+  // stale hover/focus preview.
+  useEffect(() => {
+    setPreviewImageUrl(null);
+  }, [activeColorKey, galleryIndex]);
+
+  const mainImageUrl = previewImageUrl ?? gallery[galleryIndex] ?? gallery[0] ?? PLACEHOLDER_IMAGE;
 
   // Backlog 10.1 — measures the gallery column's real width and the frame's own remaining
   // distance to the viewport bottom, and picks whichever of (fill the column width) / (fit the
@@ -393,6 +423,8 @@ export function ProductPageContent({
                 options={colorOptions}
                 value={selectedColorId ?? undefined}
                 onSelect={setSelectedColorId}
+                onPreview={previewColor}
+                onPreviewEnd={clearColorPreview}
                 shape="circle"
               />
               {selectedSize !== null && colorOptionsForSelectedSize.length > 1 && !selectedColorId && (

@@ -7,7 +7,7 @@ import { Price } from "./price";
 import { QuickShopModal } from "./quick-shop-modal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { ColorVariantListItem } from "@/lib/catalog";
+import { colorSwatchPreviewImage, type ColorVariantListItem } from "@/lib/catalog";
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&h=400&fit=crop";
@@ -128,7 +128,7 @@ export function ProductCard({
             <div className="flex flex-wrap gap-1.5" role="list" aria-label="ألوان متاحة">
               {colorVariants.map((c) => {
                 const hex = c.colorHex ?? "#e5e7eb";
-                const variantImage = c.imageUrl ?? imageUrl ?? PLACEHOLDER_IMAGE;
+                const variantImage = colorSwatchPreviewImage(c.imageUrl) ?? imageUrl ?? PLACEHOLDER_IMAGE;
                 return (
                   // Hover/focus swaps the card's image to this colour (preserved from v1); there
                   // is no per-colour variant slug on `ColorVariantListItem` (lib/catalog.ts is
