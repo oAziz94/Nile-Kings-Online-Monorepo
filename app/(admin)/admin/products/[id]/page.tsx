@@ -495,7 +495,9 @@ export default function AdminProductDetailPage() {
         description={`الكتالوج · المنتجات · ${product.slug}`}
         actions={
           <>
-            <Button variant="ghost" size="sm" type="button" onClick={() => router.push("/admin/products")}>
+            {/* History back, like every other detail page: keeps the list's page/filters and
+                lets the row scroll-restore land on this product (10.12). */}
+            <Button variant="ghost" size="sm" type="button" onClick={() => router.back()}>
               ← المنتجات
             </Button>
             <Button variant="outline" size="sm" className="rounded-full" asChild>
