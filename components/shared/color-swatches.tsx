@@ -25,6 +25,12 @@ interface ColorSwatchesProps {
   onPreview?: (id: string) => void;
   /** `onMouseLeave`/`onBlur` — restores whatever was showing before the preview. */
   onPreviewEnd?: () => void;
+  /** Backlog 10.4 (PDP only) — an out-of-stock colour stays hoverable/selectable, only buying is
+   *  blocked downstream; `QuickShopModal` does not pass this, so its swatches keep the original
+   *  disabled/inert behaviour. When true: `disabled` options are still clickable and previewable,
+   *  `aria-disabled` is not set (the option is a real, reachable radio), and the accessible name
+   *  gets a "غير متوفر" suffix instead. The visual out-of-stock marker (greyed) still applies. */
+  allowSelectingDisabled?: boolean;
 }
 
 const swatchSize = "h-8 w-8";
@@ -39,9 +45,10 @@ export function ColorSwatches({
   ariaLabel = "اللون",
   onPreview,
   onPreviewEnd,
+  allowSelectingDisabled = false,
 }: ColorSwatchesProps) {
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const firstEnabledId = options.find((o) => !o.disabled)?.id;
+  const firstEnabledId = (allowSelectingDisabled ? options[0] : options.find((o) => !o.disabled))?.id;
 
   function focusByOffset(currentId: string, offset: number) {
     const idx = options.findIndex((o) => o.id === currentId);
@@ -49,7 +56,7 @@ export function ColorSwatches({
     let next = idx;
     for (let i = 0; i < options.length; i++) {
       next = (next + offset + options.length) % options.length;
-      if (!options[next].disabled) break;
+      if (allowSelectingDisabled || !options[next].disabled) break;
     }
     const target = options[next];
     refs.current[target.id]?.focus();
@@ -69,14 +76,15 @@ export function ColorSwatches({
             type="button"
             role="radio"
             aria-checked={selected}
-            aria-disabled={opt.disabled || undefined}
-            aria-label={opt.name}
-            title={opt.name}
+            aria-disabled={!allowSelectingDisabled && opt.disabled ? true : undefined}
+            data-out-of-stock={opt.disabled || undefined}
+            aria-label={opt.disabled ? `${opt.name}، غير متوفر` : opt.name}
+            title={opt.disabled ? `${opt.name} — غير متوفر` : opt.name}
             tabIndex={selected || (value == null && opt.id === firstEnabledId) ? 0 : -1}
-            onClick={() => !opt.disabled && onSelect?.(opt.id)}
-            onMouseEnter={() => !opt.disabled && onPreview?.(opt.id)}
+            onClick={() => (allowSelectingDisabled || !opt.disabled) && onSelect?.(opt.id)}
+            onMouseEnter={() => (allowSelectingDisabled || !opt.disabled) && onPreview?.(opt.id)}
             onMouseLeave={() => onPreviewEnd?.()}
-            onFocus={() => !opt.disabled && onPreview?.(opt.id)}
+            onFocus={() => (allowSelectingDisabled || !opt.disabled) && onPreview?.(opt.id)}
             onBlur={() => onPreviewEnd?.()}
             onKeyDown={(e) => {
               if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
@@ -94,7 +102,7 @@ export function ColorSwatches({
               selected
                 ? "border-[hsl(228_40%_14%)] shadow-[0_0_0_2px_#F7F4EE,0_0_0_3px_hsl(228_40%_14%)]"
                 : "border-[hsl(228_16%_78%)] hover:scale-110",
-              opt.disabled && "cursor-not-allowed opacity-40"
+              opt.disabled && (allowSelectingDisabled ? "opacity-40" : "cursor-not-allowed opacity-40")
             )}
             style={{ backgroundColor: opt.hex }}
           />

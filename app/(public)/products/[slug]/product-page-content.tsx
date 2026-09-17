@@ -90,9 +90,9 @@ export function ProductPageContent({
     selectedColorId,
     setSelectedSize,
     setSelectedColorId,
-    sizeOptions,
     colorOptions,
     colorOptionsForSelectedSize,
+    sizeOptionsForSelectedColor,
     selectedVariant,
     displayVariantForImage,
     validate,
@@ -291,6 +291,14 @@ export function ProductPageContent({
   // is still capped by the variant's sellable stock.
   const stockLine = product.inStock ? "متوفر" : "غير متوفر";
 
+  // Backlog 10.4 — an out-of-stock colour can now be selected (10.2's preview + a real click);
+  // only buying is blocked. Tied to the COLOUR selection itself (not the fully-resolved variant)
+  // so the message/disabling appears the moment the colour is chosen, even before a size is —
+  // matches the owner's framing ("selecting an out-of-stock colour ... disables the buttons").
+  const selectedColorOption = colorOptions.find((c) => c.id === selectedColorId);
+  const selectedColorUnavailable = selectedColorOption?.disabled === true;
+  const colorUnavailableMessageId = "pdp-color-unavailable-message";
+
   return (
     <>
 
@@ -450,6 +458,7 @@ export function ProductPageContent({
                 onPreview={previewColor}
                 onPreviewEnd={clearColorPreview}
                 shape="circle"
+                allowSelectingDisabled
               />
               {selectedSize !== null && colorOptionsForSelectedSize.length > 1 && !selectedColorId && (
                 <p className="text-sm text-destructive">{VARIANT_SELECTION_MESSAGES.selectColor}</p>
@@ -457,56 +466,63 @@ export function ProductPageContent({
             </div>
           )}
 
-          {sizeOptions.length > 0 && (
+          {sizeOptionsForSelectedColor.length > 0 && (
             <div className="flex flex-col gap-2.5">
               <span className="text-[13px] text-[hsl(228_18%_50%)]">
                 المقاس:{" "}
                 <span className="font-archivo text-[hsl(228_40%_14%)]">
-                  {sizeOptions.find((s) => s.id === selectedSize)?.label ?? "—"}
+                  {sizeOptionsForSelectedColor.find((s) => s.id === selectedSize)?.label ?? "—"}
                 </span>
               </span>
-              <SizeChips options={sizeOptions} value={selectedSize ?? undefined} onSelect={setSelectedSize} />
+              <SizeChips
+                options={sizeOptionsForSelectedColor}
+                value={selectedSize ?? undefined}
+                onSelect={setSelectedSize}
+              />
               {selectedSize === null && (
                 <p className="text-sm text-[hsl(228_18%_50%)]">{VARIANT_SELECTION_MESSAGES.selectSize}</p>
               )}
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-5">
-            <div className="inline-flex h-[52px] items-center border border-[hsl(228_40%_14%)]">
-              <button
-                type="button"
-                aria-label="تقليل الكمية"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                disabled={quantity <= 1}
-                className="grid h-full w-12 place-items-center text-[hsl(228_40%_14%)] disabled:opacity-40"
-              >
-                <Minus className="h-4 w-4" />
-              </button>
-              <span
-                aria-live="polite"
-                className="grid h-full w-12 place-items-center border-x border-[hsl(228_40%_14%)] font-archivo text-base"
-              >
-                {quantity}
-              </span>
-              <button
-                type="button"
-                aria-label="زيادة الكمية"
-                onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
-                disabled={quantity >= maxQty}
-                className="grid h-full w-12 place-items-center text-[hsl(228_40%_14%)] disabled:opacity-40"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
+          {!selectedColorUnavailable && (
+            <div className="flex flex-wrap items-center gap-5">
+              <div className="inline-flex h-[52px] items-center border border-[hsl(228_40%_14%)]">
+                <button
+                  type="button"
+                  aria-label="تقليل الكمية"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                  className="grid h-full w-12 place-items-center text-[hsl(228_40%_14%)] disabled:opacity-40"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span
+                  aria-live="polite"
+                  className="grid h-full w-12 place-items-center border-x border-[hsl(228_40%_14%)] font-archivo text-base"
+                >
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  aria-label="زيادة الكمية"
+                  onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
+                  disabled={quantity >= maxQty}
+                  className="grid h-full w-12 place-items-center text-[hsl(228_40%_14%)] disabled:opacity-40"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              <span className="text-sm text-[hsl(228_26%_24%)]">{stockLine}</span>
             </div>
-            <span className="text-sm text-[hsl(228_26%_24%)]">{stockLine}</span>
-          </div>
+          )}
 
           <div className="flex flex-col gap-2.5" data-testid="pdp-actions">
             <Button
               className="h-14 w-full rounded-none bg-[hsl(228_40%_14%)] text-papyrus hover:bg-[hsl(228_40%_20%)]"
               onClick={() => handleAdd("cart")}
-              disabled={!product.inStock || adding}
+              disabled={!product.inStock || adding || selectedColorUnavailable}
+              aria-describedby={selectedColorUnavailable ? colorUnavailableMessageId : undefined}
             >
               <ShoppingCart className="me-2 h-5 w-5" />
               أضف إلى السلة
@@ -515,10 +531,16 @@ export function ProductPageContent({
               variant="outline"
               className="h-14 w-full rounded-none border-[hsl(228_40%_14%)] text-[hsl(228_40%_14%)] hover:bg-[hsl(228_40%_14%)]/5"
               onClick={() => handleAdd("buy")}
-              disabled={!product.inStock || adding}
+              disabled={!product.inStock || adding || selectedColorUnavailable}
+              aria-describedby={selectedColorUnavailable ? colorUnavailableMessageId : undefined}
             >
               اشتر الآن
             </Button>
+            {selectedColorUnavailable && (
+              <p id={colorUnavailableMessageId} className="text-sm text-destructive">
+                هذا اللون غير متوفر حالياً
+              </p>
+            )}
           </div>
 
           {product.tags.length > 0 && (

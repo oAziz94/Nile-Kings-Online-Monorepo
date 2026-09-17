@@ -50,6 +50,10 @@ export interface ColorOption {
 
 export interface VariantSelectionComputed<V extends VariantPublic> {
   sizeOptions: { id: string; label: string; disabled: boolean }[];
+  /** Backlog 10.4 — sizes scoped to the currently selected colour (stock is per-colour, since an
+   *  out-of-stock colour can now be selected). Falls back to `sizeOptions` (the union across every
+   *  colour) when no colour is selected yet, unchanged from before. */
+  sizeOptionsForSelectedColor: { id: string; label: string; disabled: boolean }[];
   colorOptions: ColorOption[];
   /** Colour options that actually apply to the currently selected size (empty until a size is chosen). */
   colorOptionsForSelectedSize: ColorOption[];
@@ -109,7 +113,24 @@ export function computeVariantSelection<V extends VariantPublic>(
   const displayVariantForImage: V | null =
     selectedVariant ?? (selectedColorId ? variants.find((v) => colorKey(v) === selectedColorId) ?? null : null);
 
-  return { sizeOptions, colorOptions, colorOptionsForSelectedSize, selectedVariant, displayVariantForImage };
+  // Backlog 10.4 — stock is per colour (per-governorate partner stock), so an out-of-stock
+  // colour's own sizes must show struck through even when another colour shares the same size
+  // label and has stock. Scoped strictly to the selected colour's own variant rows.
+  const sizeOptionsForSelectedColor = selectedColorId
+    ? getVariantSizeOptions(
+        variants.filter((v) => colorKey(v) === selectedColorId),
+        forKids
+      )
+    : sizeOptions;
+
+  return {
+    sizeOptions,
+    sizeOptionsForSelectedColor,
+    colorOptions,
+    colorOptionsForSelectedSize,
+    selectedVariant,
+    displayVariantForImage,
+  };
 }
 
 export type VariantValidationResult<V> = { ok: true; variant: V } | { ok: false; message: string };

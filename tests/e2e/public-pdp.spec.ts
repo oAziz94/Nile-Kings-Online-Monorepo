@@ -60,14 +60,16 @@ async function resolveVariant(page: Page) {
   }
 
   if ((await colorGroup.count()) > 0) {
-    // Always pick an enabled colour when the group exists: the "choose a colour" toast only
-    // appears AFTER a failed add, so gating on it can never work before the click.
+    // Always pick an in-stock colour when the group exists: the "choose a colour" toast only
+    // appears AFTER a failed add, so gating on it can never work before the click. Backlog 10.4 —
+    // an out-of-stock colour is a real, selectable radio now (`aria-disabled` is not used on it
+    // per the spec), so this helper picks by the `data-out-of-stock` hook instead.
     {
       const colorRadios = colorGroup.getByRole("radio");
       const cCount = await colorRadios.count();
       for (let i = 0; i < cCount; i++) {
         const radio = colorRadios.nth(i);
-        if ((await radio.getAttribute("aria-disabled")) !== "true") {
+        if ((await radio.getAttribute("data-out-of-stock")) !== "true") {
           await radio.click();
           break;
         }
@@ -97,6 +99,16 @@ const GALLERY_PHOTOS = [
 // the 10.2 hover/keyboard preview tests so they're independent of the seeded gallery above.
 const HOVER_COLOR_NAME = "sky blue";
 const HOVER_COLOR_IMAGE_FRAGMENT = "xiwrxjqselhf0oiw5atg";
+
+// Backlog 10.4 — nk-7777's "boysenberry" colour, distinct from the gallery/hover colours above
+// and with its own distinct photo (unlike "اسود", which has none), temporarily zeroed to 0
+// partner stock for the test governorate (القاهرة) through the existing `PartnerInventory` rows
+// (never a production row's stock left mutated — every row this test touches is restored to its
+// original `stockAvailable` in a `finally` block, same pattern already used by
+// `public-checkout.spec.ts`'s COD stock restoration).
+const OUT_OF_STOCK_COLOR_NAME = "boysenberry";
+const OUT_OF_STOCK_COLOR_KEY = "boysenberry|#873260";
+const TEST_GOVERNORATE = "القاهرة";
 
 const GALLERY_VIEWPORTS = [
   { width: 1514, height: 681 },
@@ -156,17 +168,16 @@ test.describe("Public PDP (backlog 4.9)", () => {
       }
       expect(picked).toBe(true);
 
-      // If a colour is now required, pick the first enabled one.
+      // If a colour is now required, pick the first in-stock one (backlog 10.4 — out-of-stock
+      // colours are real, selectable radios, identified by `data-out-of-stock` not `aria-disabled`).
       if ((await colorGroup.count()) > 0) {
         const colorRadios = colorGroup.getByRole("radio");
-        // Always pick an enabled colour when the group exists: the "choose a colour" toast only
-        // appears AFTER a failed add, so gating on it can never work before the click.
         {
           const cCount = await colorRadios.count();
           for (let i = 0; i < cCount; i++) {
             const radio = colorRadios.nth(i);
-            const disabled = await radio.getAttribute("aria-disabled");
-            if (disabled !== "true") {
+            const outOfStock = await radio.getAttribute("data-out-of-stock");
+            if (outOfStock !== "true") {
               await radio.click();
               break;
             }
@@ -466,6 +477,125 @@ test.describe("Public PDP (backlog 4.9)", () => {
     await expect(mainImage).not.toHaveAttribute("src", new RegExp(HOVER_COLOR_IMAGE_FRAGMENT), { timeout: 5_000 });
     const restoredSrc = await mainImage.getAttribute("src");
     expect(restoredSrc).toBe(restSrc);
+  });
+
+  test.describe("backlog 10.4 — an out-of-stock colour can be previewed and selected, only buying is blocked", () => {
+    test("hover previews it, click selects it, buttons disabled with the message, sizes struck through, add-to-cart impossible", async ({
+      page,
+      baseURL,
+    }) => {
+      const base = baseURL ?? "http://localhost:3100";
+
+      const product = await prisma.product.findUnique({
+        where: { slug: GALLERY_PRODUCT_SLUG },
+        include: { variants: true },
+      });
+      if (!product) throw new Error(`Fixture product ${GALLERY_PRODUCT_SLUG} not found.`);
+      const rule = await prisma.reroutingRule.findFirst({
+        where: { governorate: TEST_GOVERNORATE, isActive: true },
+        include: {
+          partners: {
+            where: { isActive: true, partner: { isActive: true } },
+            orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
+            include: { partner: { select: { id: true } } },
+          },
+        },
+      });
+      const partnerId = rule?.partners[0]?.partner.id;
+      if (!partnerId) throw new Error(`No partner covers ${TEST_GOVERNORATE} in the redesign DB.`);
+
+      const colorVariants = product.variants.filter((v) => `${v.colorName}|${v.colorHex}` === OUT_OF_STOCK_COLOR_KEY);
+      const inventoryRows = await prisma.partnerInventory.findMany({
+        where: { partnerId, variantId: { in: colorVariants.map((v) => v.id) } },
+      });
+      const originalStock = inventoryRows.map((row) => ({ id: row.id, stockAvailable: row.stockAvailable }));
+
+      try {
+        // Zero every existing row for this colour/partner — any size with no row at all is
+        // already 0 stock for this governorate (`getPartnerStockOverrides` treats a missing
+        // variantId as 0), so this alone makes the whole colour unavailable here.
+        for (const row of inventoryRows) {
+          await prisma.partnerInventory.update({ where: { id: row.id }, data: { stockAvailable: 0 } });
+        }
+
+        await setStorefrontLocation(page, base);
+        await page.setViewportSize({ width: 1514, height: 681 });
+        await page.goto(`/products/${GALLERY_PRODUCT_SLUG}`);
+
+        const swatch = page.getByRole("radio", { name: new RegExp(`^${OUT_OF_STOCK_COLOR_NAME}`) });
+        await expect(swatch).toBeVisible();
+        // `aria-disabled` is not used on the swatch (backlog 10.4) — it's a real, reachable radio.
+        await expect(swatch).not.toHaveAttribute("aria-disabled", "true");
+        await expect(swatch).toHaveAttribute("data-out-of-stock", "true");
+        // Screen readers hear the colour name plus "غير متوفر".
+        await expect(swatch).toHaveAccessibleName(new RegExp(`${OUT_OF_STOCK_COLOR_NAME}.*غير متوفر`));
+
+        const mainImage = page.getByTestId("pdp-main-frame").locator("img");
+
+        // Establish a known baseline photo first (an in-stock colour distinct from the
+        // out-of-stock one below), so the hover-preview assertion isn't at the mercy of the
+        // out-of-stock colour's photo coincidentally matching the page's initial default photo.
+        const hoverBaselineSwatch = page.getByRole("radio", { name: HOVER_COLOR_NAME });
+        await hoverBaselineSwatch.click();
+        const restSrc = await mainImage.getAttribute("src");
+
+        // Hover previews it (10.2 behaviour extends to an out-of-stock colour).
+        await swatch.hover();
+        await expect(mainImage).not.toHaveAttribute("src", restSrc ?? "", { timeout: 5_000 });
+        await expect(swatch).toHaveAttribute("aria-checked", "false");
+
+        // Move away — restores, no sticky preview.
+        await page.locator("h1").hover();
+        await expect(mainImage).toHaveAttribute("src", restSrc ?? "", { timeout: 5_000 });
+
+        // Click selects it.
+        await swatch.click();
+        await expect(swatch).toHaveAttribute("aria-checked", "true");
+
+        const actions = page.getByTestId("pdp-actions");
+        const addToCartButton = actions.getByRole("button", { name: "أضف إلى السلة" });
+        const buyNowButton = actions.getByRole("button", { name: "اشتر الآن" });
+        const message = page.getByText("هذا اللون غير متوفر حالياً");
+
+        await expect(addToCartButton).toBeDisabled();
+        await expect(buyNowButton).toBeDisabled();
+        await expect(message).toBeVisible();
+        const messageId = await message.getAttribute("id");
+        expect(messageId).toBeTruthy();
+        await expect(addToCartButton).toHaveAttribute("aria-describedby", messageId!);
+        await expect(buyNowButton).toHaveAttribute("aria-describedby", messageId!);
+
+        // Sizes struck through/disabled — stock is per governorate/colour, this colour has zero
+        // stock in every size at the test partner even though other colours share the same
+        // size labels and remain in stock.
+        const sizeGroup = page.getByRole("radiogroup", { name: "المقاس" });
+        const sizeRadios = sizeGroup.getByRole("radio");
+        const sizeCount = await sizeRadios.count();
+        expect(sizeCount).toBeGreaterThan(0);
+        for (let i = 0; i < sizeCount; i++) {
+          await expect(sizeRadios.nth(i)).toHaveAttribute("aria-disabled", "true");
+        }
+
+        // The quantity stepper is hidden or disabled — this PDP hides it entirely.
+        await expect(page.getByRole("button", { name: "تقليل الكمية" })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "زيادة الكمية" })).toHaveCount(0);
+
+        // Add-to-cart via the page is impossible: the button is truly `disabled`, not just styled.
+        await addToCartButton.click({ force: true });
+        await expect(page.getByRole("dialog", { name: "سلة التسوق" })).not.toBeVisible();
+
+        await page.waitForLoadState("networkidle");
+        await page.screenshot({ path: "screenshots/pdp-10.4-1514x681.png" });
+
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.waitForLoadState("networkidle");
+        await page.screenshot({ path: "screenshots/pdp-10.4-390x844.png" });
+      } finally {
+        for (const row of originalStock) {
+          await prisma.partnerInventory.update({ where: { id: row.id }, data: { stockAvailable: row.stockAvailable } });
+        }
+      }
+    });
   });
 
   test.afterAll(async () => {
