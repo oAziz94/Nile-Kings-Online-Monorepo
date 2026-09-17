@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { discountPercentFromPrices, productCardLabel } from "@/lib/catalog";
+import { colorSwatchPreviewImage, discountPercentFromPrices, productCardLabel } from "@/lib/catalog";
 import type { VariantPublic } from "@/lib/catalog";
 import {
   useVariantSelection,
@@ -161,8 +161,53 @@ export function ProductPageContent({
     setGalleryIndex(0);
   }, [activeColorKey]);
 
-  const mainImageUrl = gallery[galleryIndex] ?? gallery[0] ?? PLACEHOLDER_IMAGE;
-  const imageKey = `${selectedVariant?.id ?? "product"}-${selectedColorId ?? "none"}-${mainImageUrl}`;
+  // Backlog 10.2 — hovering/focusing a colour swatch previews that colour's representative photo
+  // in the main frame only (not the thumbnail strip, not the selected size/price), same semantics
+  // as the storefront card's colour-dot hover swap; a colour with no photo of its own (the shared
+  // `colorSwatchPreviewImage` lookup returns null) previews nothing, the frame stays as it is.
+  const colorPreviewImages = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    for (const v of product.variants) {
+      const key = colorKey(v);
+      if (key in map) continue;
+      const galleryFirst = product.variantGalleries?.[key]?.[0];
+      map[key] = colorSwatchPreviewImage(galleryFirst ?? v.imageUrl);
+    }
+    return map;
+  }, [product.variants, product.variantGalleries]);
+
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const previewColor = useCallback(
+    (id: string) => {
+      const img = colorPreviewImages[id];
+      if (img) setPreviewImageUrl(img);
+    },
+    [colorPreviewImages]
+  );
+  const clearColorPreview = useCallback(() => setPreviewImageUrl(null), []);
+  // A real selection (click, or any other reason the active gallery changes) always wins over a
+  // stale hover/focus preview.
+  useEffect(() => {
+    setPreviewImageUrl(null);
+  }, [activeColorKey, galleryIndex]);
+
+  const mainImageUrl = previewImageUrl ?? gallery[galleryIndex] ?? gallery[0] ?? PLACEHOLDER_IMAGE;
+
+  // A short crossfade on every main-photo change (gallery nav, colour select, hover/focus
+  // preview) — `motion-reduce:transition-none` above disables the transition itself for
+  // `prefers-reduced-motion`, this just skips the opacity dip so there's no reduced-motion flash.
+  const [imageFading, setImageFading] = useState(false);
+  const prefersReducedMotionRef = useRef(false);
+  useEffect(() => {
+    prefersReducedMotionRef.current =
+      typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
+  useEffect(() => {
+    if (prefersReducedMotionRef.current) return;
+    setImageFading(true);
+    const id = requestAnimationFrame(() => setImageFading(false));
+    return () => cancelAnimationFrame(id);
+  }, [mainImageUrl]);
 
   const handleAdd = async (intent: "cart" | "buy") => {
     const result = validate();
@@ -216,10 +261,24 @@ export function ProductPageContent({
   return (
     <>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-        {/* Gallery */}
-        <div className="grid grid-cols-[64px_1fr] gap-3 md:grid-cols-[84px_1fr] md:gap-4">
-          <div role="list" aria-label="صور المنتج" className="flex flex-col gap-2.5">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,6fr)_minmax(0,6fr)]">
+        {/* Gallery — backlog 10.1: the main frame keeps the 4:5 ratio but its height is capped so
+            the whole photo fits above the fold. `aspect-ratio` + `max-height` alone collapses the
+            frame to 0×0 here (its width is auto inside a centred flex wrapper, so the browser has
+            two free axes and nothing to derive either from — the frame's only child is a
+            `next/image` `fill` <img>, absolutely positioned, contributing no intrinsic size
+            either). Capping the WIDTH from the height instead gives it exactly one free axis:
+            `max-width: (height cap) * 4/5`, `aspect-ratio: 4/5` derives the height from that
+            width, `w-full` lets it fill up to that cap. Pure CSS, no measurement — this is why it
+            renders correctly on first paint (no SSR-then-hydration jump). The thumbnail strip
+            caps to the same height expression and scrolls vertically once it has more thumbnails
+            than fit. */}
+        <div className="grid grid-cols-[64px_1fr] items-start gap-3 md:grid-cols-[84px_1fr] md:gap-4">
+          <div
+            role="list"
+            aria-label="صور المنتج"
+            className="flex max-h-[70dvh] flex-col gap-2.5 overflow-y-auto lg:max-h-[calc(100dvh-116px)]"
+          >
             {gallery.map((url, i) => {
               const active = i === galleryIndex;
               return (
@@ -231,7 +290,7 @@ export function ProductPageContent({
                   aria-current={active || undefined}
                   onClick={() => setGalleryIndex(i)}
                   className={cn(
-                    "relative aspect-[4/5] w-full overflow-hidden border bg-[hsl(38_22%_93%)]",
+                    "relative aspect-[4/5] w-full shrink-0 overflow-hidden border bg-[hsl(38_22%_93%)]",
                     active ? "border-[hsl(228_40%_14%)]" : "border-[hsl(228_16%_84%)]"
                   )}
                 >
@@ -240,14 +299,20 @@ export function ProductPageContent({
               );
             })}
           </div>
-          <div className="relative aspect-[4/5] overflow-hidden bg-[hsl(38_22%_93%)]">
+          <div className="flex min-w-0 justify-center">
+          <div
+            data-testid="pdp-main-frame"
+            className="relative aspect-[4/5] w-full max-w-[calc(70dvh*0.8)] overflow-hidden bg-[hsl(38_22%_93%)] lg:max-w-[calc((100dvh-116px)*0.8)]"
+          >
             <Image
-              key={imageKey}
               src={mainImageUrl}
               alt={product.name}
               fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 58vw"
+              className={cn(
+                "object-cover transition-opacity duration-150 motion-reduce:transition-none",
+                imageFading ? "opacity-0" : "opacity-100"
+              )}
+              sizes="(max-width: 1024px) 100vw, 50vw"
               priority
               unoptimized={mainImageUrl.startsWith("data:")}
             />
@@ -259,6 +324,7 @@ export function ProductPageContent({
             >
               <ZoomIn className="h-5 w-5" />
             </button>
+          </div>
           </div>
         </div>
 
@@ -321,6 +387,8 @@ export function ProductPageContent({
                 options={colorOptions}
                 value={selectedColorId ?? undefined}
                 onSelect={setSelectedColorId}
+                onPreview={previewColor}
+                onPreviewEnd={clearColorPreview}
                 shape="circle"
               />
               {selectedSize !== null && colorOptionsForSelectedSize.length > 1 && !selectedColorId && (

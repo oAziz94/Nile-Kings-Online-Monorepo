@@ -76,6 +76,40 @@ async function resolveVariant(page: Page) {
   }
 }
 
+// Backlog 10.1/10.2 (owner's manual test findings, v2.4.0). A real product with 6 distinct
+// colours already exists in the redesign DB (nk-7777), but no product in this DB snapshot has
+// a populated per-colour `VariantImage` gallery — needed to prove the thumbnail-strip height cap
+// with more than one thumbnail. This suite seeds exactly 6 `VariantImage` rows for one of
+// nk-7777's real, existing colours (never touching its existing variant/product rows) and
+// deletes precisely those seeded rows afterward (by id) — never a bulk/pattern delete.
+const GALLERY_PRODUCT_SLUG = "nk-7777";
+const GALLERY_COLOR_KEY = "wisteria|#C9A0DC";
+const GALLERY_PHOTOS = [
+  "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773321245/nile-kings/products/xtznkqr6zj5zi799utum.jpg",
+  "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773324600/nile-kings/products/xiwrxjqselhf0oiw5atg.jpg",
+  "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773323682/nile-kings/products/t8hu6dvlmjpcttwqegcd.jpg",
+  "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773322074/nile-kings/products/fcae3x6eppamqsxxcg1j.jpg",
+  "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773325414/nile-kings/products/ldtrwaucuo1zaooqacur.jpg",
+  "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773321245/nile-kings/products/xtznkqr6zj5zi799utum.jpg",
+];
+// nk-7777's "sky blue" colour already has its own distinct photo (no seeding needed) — used for
+// the 10.2 hover/keyboard preview tests so they're independent of the seeded gallery above.
+const HOVER_COLOR_NAME = "sky blue";
+const HOVER_COLOR_IMAGE_FRAGMENT = "xiwrxjqselhf0oiw5atg";
+
+const GALLERY_VIEWPORTS = [
+  { width: 1514, height: 681 },
+  { width: 1440, height: 900 },
+  { width: 1366, height: 768 },
+  { width: 1280, height: 720 },
+  { width: 1024, height: 768 },
+  { width: 768, height: 1024 },
+  { width: 390, height: 844 },
+  { width: 375, height: 667 },
+];
+
+const seededVariantImageIds: string[] = [];
+
 test.describe("Public PDP (backlog 4.9)", () => {
   test("renders h1/price/size radiogroup, validates add-to-cart, adds to cart, lightbox, tag pill", async ({
     page,
@@ -221,7 +255,143 @@ test.describe("Public PDP (backlog 4.9)", () => {
     }
   });
 
+  test.beforeAll(async () => {
+    const product = await prisma.product.findUnique({ where: { slug: GALLERY_PRODUCT_SLUG } });
+    if (!product) {
+      throw new Error(`Fixture product ${GALLERY_PRODUCT_SLUG} not found in the redesign DB.`);
+    }
+    for (let i = 0; i < GALLERY_PHOTOS.length; i++) {
+      const row = await prisma.variantImage.create({
+        data: { productId: product.id, colorKey: GALLERY_COLOR_KEY, url: GALLERY_PHOTOS[i], sortOrder: i },
+      });
+      seededVariantImageIds.push(row.id);
+    }
+  });
+
+  test("backlog 10.1 — main frame + price fit above the fold at 1514×681, gallery proof screenshots", async ({
+    page,
+    baseURL,
+  }) => {
+    const base = baseURL ?? "http://localhost:3100";
+    await setStorefrontLocation(page, base);
+
+    await page.setViewportSize({ width: 1514, height: 681 });
+    await page.goto(`/products/${GALLERY_PRODUCT_SLUG}`);
+
+    const frame = page.getByTestId("pdp-main-frame");
+    await expect(frame).toBeVisible();
+    const frameBox = await frame.boundingBox();
+    expect(frameBox).not.toBeNull();
+    // Whole photo visible: its bottom edge is above the viewport bottom, not clipped/cut off.
+    expect(frameBox!.y + frameBox!.height).toBeLessThanOrEqual(681);
+
+    await expect(page.locator("h1")).toBeVisible();
+    const price = page.getByText(/ج\.م/).first();
+    await expect(price).toBeVisible();
+    const priceBox = await price.boundingBox();
+    expect(priceBox).not.toBeNull();
+    expect(priceBox!.y + priceBox!.height).toBeLessThanOrEqual(681);
+
+    // Nothing overflows horizontally.
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(1514);
+
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "screenshots/pdp-10.1-1514x681.png" });
+
+    // Selecting the seeded 6-photo colour swaps to its gallery: the thumbnail strip now has more
+    // thumbnails than fit in the capped height and scrolls vertically instead of growing past it.
+    const wisteriaSwatch = page.getByRole("radio", { name: "wisteria" });
+    await wisteriaSwatch.click();
+    const thumbList = page.getByRole("list", { name: "صور المنتج" });
+    await expect(thumbList.getByRole("listitem")).toHaveCount(GALLERY_PHOTOS.length);
+    const [scrollHeight, clientHeight] = await thumbList.evaluate((el) => [el.scrollHeight, el.clientHeight]);
+    expect(scrollHeight).toBeGreaterThan(clientHeight);
+    const thumbBox = await thumbList.boundingBox();
+    expect(thumbBox).not.toBeNull();
+    expect(thumbBox!.y + thumbBox!.height).toBeLessThanOrEqual(681);
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "screenshots/pdp-10.1-1514x681-scrollable-thumbnails.png" });
+
+    for (const vp of GALLERY_VIEWPORTS.slice(1)) {
+      await page.setViewportSize(vp);
+      // The frame is sized by CSS alone; give any newly-requested images a moment to load.
+      await page.waitForTimeout(200);
+      await page.waitForLoadState("networkidle");
+      const box = await frame.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.y + box!.height).toBeLessThanOrEqual(vp.height);
+      await expect(page.locator("h1")).toBeVisible();
+      await page.screenshot({ path: `screenshots/pdp-10.1-${vp.width}x${vp.height}.png` });
+    }
+  });
+
+  test("backlog 10.2 — hovering/focusing a colour swatch previews its photo, restores on leave, click keeps it", async ({
+    page,
+    baseURL,
+  }) => {
+    const base = baseURL ?? "http://localhost:3100";
+    await setStorefrontLocation(page, base);
+
+    await page.setViewportSize({ width: 1514, height: 681 });
+    await page.goto(`/products/${GALLERY_PRODUCT_SLUG}`);
+
+    const mainImage = page.getByTestId("pdp-main-frame").locator("img");
+    const restSrc = await mainImage.getAttribute("src");
+    expect(restSrc).not.toContain(HOVER_COLOR_IMAGE_FRAGMENT);
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "screenshots/pdp-10.2-rest-1514x681.png" });
+
+    const swatch = page.getByRole("radio", { name: HOVER_COLOR_NAME });
+    await expect(swatch).toHaveAttribute("aria-checked", "false");
+
+    // Hover — previews, does not select.
+    await swatch.hover();
+    await expect(mainImage).toHaveAttribute("src", new RegExp(HOVER_COLOR_IMAGE_FRAGMENT), { timeout: 5_000 });
+    await expect(swatch).toHaveAttribute("aria-checked", "false");
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "screenshots/pdp-10.2-hover-1514x681.png" });
+
+    // Move away — restores, no sticky state.
+    await page.locator("h1").hover();
+    await expect(mainImage).not.toHaveAttribute("src", new RegExp(HOVER_COLOR_IMAGE_FRAGMENT), { timeout: 5_000 });
+    const restoredSrc = await mainImage.getAttribute("src");
+    expect(restoredSrc).toBe(restSrc);
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "screenshots/pdp-10.2-after-leave-1514x681.png" });
+
+    // Click — selects, and the preview becomes the new selection (stays after the mouse leaves).
+    await swatch.click();
+    await expect(swatch).toHaveAttribute("aria-checked", "true");
+    await expect(mainImage).toHaveAttribute("src", new RegExp(HOVER_COLOR_IMAGE_FRAGMENT));
+    await page.locator("h1").hover();
+    await expect(mainImage).toHaveAttribute("src", new RegExp(HOVER_COLOR_IMAGE_FRAGMENT));
+  });
+
+  test("backlog 10.2 — keyboard: focusing a swatch previews, blurring restores", async ({ page, baseURL }) => {
+    const base = baseURL ?? "http://localhost:3100";
+    await setStorefrontLocation(page, base);
+    await page.setViewportSize({ width: 1514, height: 681 });
+    await page.goto(`/products/${GALLERY_PRODUCT_SLUG}`);
+
+    const mainImage = page.getByTestId("pdp-main-frame").locator("img");
+    const restSrc = await mainImage.getAttribute("src");
+
+    const swatch = page.getByRole("radio", { name: HOVER_COLOR_NAME });
+    await swatch.focus();
+    await expect(mainImage).toHaveAttribute("src", new RegExp(HOVER_COLOR_IMAGE_FRAGMENT), { timeout: 5_000 });
+    await expect(swatch).toHaveAttribute("aria-checked", "false");
+
+    await page.keyboard.press("Tab");
+    await expect(mainImage).not.toHaveAttribute("src", new RegExp(HOVER_COLOR_IMAGE_FRAGMENT), { timeout: 5_000 });
+    const restoredSrc = await mainImage.getAttribute("src");
+    expect(restoredSrc).toBe(restSrc);
+  });
+
   test.afterAll(async () => {
+    if (seededVariantImageIds.length > 0) {
+      await prisma.variantImage.deleteMany({ where: { id: { in: seededVariantImageIds } } });
+    }
     await prisma.$disconnect();
   });
 });
