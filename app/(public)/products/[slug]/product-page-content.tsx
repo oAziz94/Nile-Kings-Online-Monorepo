@@ -12,15 +12,7 @@ import { ColorSwatches } from "@/components/shared/color-swatches";
 import { Disclosure } from "@/components/shared/disclosure";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "@/components/ui/dialog";
-import {
-  ShoppingCart,
-  Minus,
-  Plus,
-  Truck,
-  RefreshCw,
-  CreditCard,
-  X,
-} from "lucide-react";
+import { ShoppingCart, Minus, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { colorSwatchPreviewImage, discountPercentFromPrices, productCardLabel } from "@/lib/catalog";
 import type { VariantPublic } from "@/lib/catalog";
@@ -303,15 +295,15 @@ export function ProductPageContent({
     <>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,6fr)_minmax(0,6fr)]">
-        {/* Gallery — backlog 10.1/10.3: the main frame's height is capped so the whole photo fits
-            above the fold; the ratio itself is 5:4 landscape as of 10.3 (owner: "I need the width
-            larger than the height", the photo cropped rather than letterboxed — supersedes 10.1's
-            4:5). `aspect-ratio` + `max-height` alone collapses the frame to 0×0 here (its width is
-            auto inside a centred flex wrapper, so the browser has two free axes and nothing to
-            derive either from — the frame's only child is a `next/image` `fill` <img>, absolutely
-            positioned, contributing no intrinsic size either). Capping the WIDTH from the height
-            instead gives it exactly one free axis: `max-width: (height cap) * 5/4`,
-            `aspect-ratio: 5/4` derives the height from that width, `w-full` lets it fill up to
+        {/* Gallery — backlog 10.1/10.3/10.5: the main frame's height is capped so the whole photo
+            fits above the fold. 10.5 returns the ratio to the photo's own 4:5 (portrait, whole
+            photo, no crop — supersedes 10.3's 5:4 landscape crop; the owner disliked the crop on
+            seeing v2.4.2). `aspect-ratio` + `max-height` alone collapses the frame to 0×0 here (its
+            width is auto inside a centred flex wrapper, so the browser has two free axes and
+            nothing to derive either from — the frame's only child is a `next/image` `fill` <img>,
+            absolutely positioned, contributing no intrinsic size either). Capping the WIDTH from
+            the height instead gives it exactly one free axis: `max-width: (height cap) * 4/5`,
+            `aspect-ratio: 4/5` derives the height from that width, `w-full` lets it fill up to
             that cap. Pure CSS, no measurement — this is why it renders correctly on first paint
             (no SSR-then-hydration jump). The thumbnail strip is unchanged (still 4:5, still capped
             to the same height expression, still scrolling vertically past its fit). */}
@@ -349,7 +341,7 @@ export function ProductPageContent({
             onMouseLeave={handleFrameMouseLeave}
             onClick={handleFrameClick}
             className={cn(
-              "relative aspect-[5/4] w-full max-w-[calc(70dvh*1.25)] overflow-hidden bg-[hsl(38_22%_93%)] lg:max-w-[calc((100dvh-116px)*1.25)]",
+              "relative aspect-[4/5] w-full max-w-[calc(70dvh*0.8)] overflow-hidden bg-[hsl(38_22%_93%)] lg:max-w-[calc((100dvh-116px)*0.8)]",
               isTouchPointer && "cursor-pointer"
             )}
           >
@@ -365,9 +357,10 @@ export function ProductPageContent({
               priority
               unoptimized={mainImageUrl.startsWith("data:")}
             />
-            {/* Backlog 10.3 — desktop-only 2x zoom, the magnified region tracking the cursor. The
-                zoom base is the whole photo (not the 5:4 crop above), so panning toward an edge
-                reveals what the crop hides; leaving the frame restores the plain crop. Pointer-only,
+            {/* Backlog 10.3, unchanged by 10.5 — desktop-only 2x zoom, the magnified region
+                tracking the cursor. The zoom base is the whole photo (10.5: now the same 4:5 the
+                frame itself shows, since the frame crops nothing any more), so panning toward an
+                edge still pans the zoom normally; leaving the frame restores the plain view. Pointer-only,
                 never focusable, so nothing keyboard-reachable before is lost — see the hidden
                 "عرض الصورة كاملة" control below for the keyboard/screen-reader path. */}
             <div
@@ -416,33 +409,6 @@ export function ProductPageContent({
             size="lg"
           />
 
-          <div className="flex flex-col gap-2.5 border-y border-[hsl(228_16%_84%)] py-3.5 text-sm leading-6 text-[hsl(228_26%_24%)]">
-            <div className="flex items-start gap-2.5">
-              <Truck className="mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-              <span>الشحن يُحسب عند الدفع حسب المحافظة.</span>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <RefreshCw className="mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-              <span>
-                يحق لك طلب الاستبدال أو الاسترجاع خلال 30 يومًا من الاستلام في حال وجود عيب تصنيع؛
-                الملابس الداخلية غير قابلة للاسترجاع بعد فتح العبوة لأسباب صحية.{" "}
-                <Link href="/terms" className="border-b border-gold-500 text-[hsl(228_40%_14%)]">
-                  التفاصيل الكاملة
-                </Link>
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <CreditCard className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-              <span>الدفع:</span>
-              <span className="rounded-full border border-[hsl(228_40%_14%)]/30 px-2.5 py-0.5 text-xs">
-                الدفع عند الاستلام
-              </span>
-              <span className="rounded-full border border-[hsl(228_40%_14%)]/30 px-2.5 py-0.5 text-xs">
-                إنستاباي
-              </span>
-            </div>
-          </div>
-
           {colorOptions.length > 0 && (
             <div className="flex flex-col gap-2.5">
               <span className="text-[13px] text-[hsl(228_18%_50%)]">
@@ -461,7 +427,7 @@ export function ProductPageContent({
                 allowSelectingDisabled
               />
               {selectedSize !== null && colorOptionsForSelectedSize.length > 1 && !selectedColorId && (
-                <p className="text-sm text-destructive">{VARIANT_SELECTION_MESSAGES.selectColor}</p>
+                <p className="max-w-[60ch] text-sm text-destructive">{VARIANT_SELECTION_MESSAGES.selectColor}</p>
               )}
             </div>
           )}
@@ -480,7 +446,7 @@ export function ProductPageContent({
                 onSelect={setSelectedSize}
               />
               {selectedSize === null && (
-                <p className="text-sm text-[hsl(228_18%_50%)]">{VARIANT_SELECTION_MESSAGES.selectSize}</p>
+                <p className="max-w-[60ch] text-sm text-[hsl(228_18%_50%)]">{VARIANT_SELECTION_MESSAGES.selectSize}</p>
               )}
             </div>
           )}
@@ -537,10 +503,53 @@ export function ProductPageContent({
               اشتر الآن
             </Button>
             {selectedColorUnavailable && (
-              <p id={colorUnavailableMessageId} className="text-sm text-destructive">
+              <p id={colorUnavailableMessageId} className="max-w-[60ch] text-sm text-destructive">
                 هذا اللون غير متوفر حالياً
               </p>
             )}
+          </div>
+
+          {/* Backlog 10.5 — the accordion (previously under the gallery) moves into the buy-box
+              column, directly under the add-to-cart/buy-now buttons (and the unavailable-colour
+              message when shown), using the column's leftover space below the buttons; it also
+              now carries the three facts the removed info-line block used to state (shipping is
+              calculated at checkout by governorate, the 30-day returns terms + full policy link,
+              and the two payment methods) — each already lived in one of these panels. */}
+          <div className="border-t border-[hsl(228_16%_84%)]">
+            {product.description && (
+              <Disclosure title="الوصف" defaultOpen>
+                <p className="max-w-[60ch] whitespace-pre-line">{product.description}</p>
+              </Disclosure>
+            )}
+            <Disclosure title="الشحن" defaultOpen={!product.description}>
+              <p className="max-w-[60ch]">
+                الشحن يُحسب عند الدفع حسب المحافظة، وتختلف مدة التوصيل باختلاف المحافظة والعنوان.
+              </p>
+            </Disclosure>
+            <Disclosure title="الإرجاع">
+              <p className="max-w-[60ch]">
+                يحق لك طلب الاستبدال أو الاسترجاع خلال 30 يومًا من الاستلام في حال وجود عيب تصنيع مثبت.
+                لا يجوز استبدال أو استرجاع الملابس الداخلية بعد فتح عبوتها أو إزالة أختامها، لأسباب صحية
+                وحفاظًا على معايير النظافة والسلامة. راجع{" "}
+                <Link href="/terms" className="border-b border-gold-500 text-[hsl(228_40%_14%)]">
+                  سياسة الاستبدال والاسترجاع الكاملة
+                </Link>
+                .
+              </p>
+            </Disclosure>
+            <Disclosure title="الدفع">
+              <div className="flex max-w-[60ch] flex-col gap-2.5">
+                <p>الدفع عند الاستلام، أو عبر إنستاباي.</p>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="rounded-full border border-[hsl(228_40%_14%)]/30 px-2.5 py-0.5 text-xs">
+                    الدفع عند الاستلام
+                  </span>
+                  <span className="rounded-full border border-[hsl(228_40%_14%)]/30 px-2.5 py-0.5 text-xs">
+                    إنستاباي
+                  </span>
+                </div>
+              </div>
+            </Disclosure>
           </div>
 
           {product.tags.length > 0 && (
@@ -556,31 +565,6 @@ export function ProductPageContent({
               ))}
             </div>
           )}
-
-          <div className="border-t border-[hsl(228_16%_84%)]">
-            {product.description && (
-              <Disclosure title="الوصف" defaultOpen>
-                <p className="whitespace-pre-line">{product.description}</p>
-              </Disclosure>
-            )}
-            <Disclosure title="الشحن" defaultOpen={!product.description}>
-              <p>الشحن يُحسب عند الدفع حسب المحافظة، وتختلف مدة التوصيل باختلاف المحافظة والعنوان.</p>
-            </Disclosure>
-            <Disclosure title="الإرجاع">
-              <p>
-                يحق لك طلب الاستبدال أو الاسترجاع خلال 30 يومًا من الاستلام في حال وجود عيب تصنيع مثبت.
-                لا يجوز استبدال أو استرجاع الملابس الداخلية بعد فتح عبوتها أو إزالة أختامها، لأسباب صحية
-                وحفاظًا على معايير النظافة والسلامة. راجع{" "}
-                <Link href="/terms" className="border-b border-gold-500 text-[hsl(228_40%_14%)]">
-                  سياسة الاستبدال والاسترجاع الكاملة
-                </Link>
-                .
-              </p>
-            </Disclosure>
-            <Disclosure title="الدفع">
-              <p>الدفع عند الاستلام، أو عبر إنستاباي.</p>
-            </Disclosure>
-          </div>
         </div>
       </div>
 
