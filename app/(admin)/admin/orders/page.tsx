@@ -702,7 +702,6 @@ function AdminOrdersPageInner() {
                 return (
                   <div
                     key={o.id}
-                    data-row-id={o.id}
                     className={cn("rounded-2xl border border-stone-200 bg-white p-4", !o.assignedPartner && "bg-carnelian-50/40")}
                   >
                     <div className="flex items-center justify-between gap-2">

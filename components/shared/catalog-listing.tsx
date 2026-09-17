@@ -17,6 +17,11 @@ import type { PriceRangeValue } from "@/components/shared/price-range-control";
 
 const PAGE_SIZE = 9;
 const DEFAULT_SORT: SortOptionValue = "featured";
+// A stand-in "no bounds" range for `buildParams` once the effective min/max have already been
+// derived (see `effectiveMinPrice`/`effectiveMaxPrice` below) — passing this constant, rather than
+// the live `bounds` object, keeps `fetchPage`'s identity from changing when the price-bounds probe
+// resolves (10.9: that identity change re-triggered the initial fetch and wiped the back-restore).
+const UNBOUNDED_RANGE: PriceRangeValue = { min: -Infinity, max: Infinity };
 
 type ProductItem = {
   id: string;
@@ -238,6 +243,20 @@ export function CatalogListing({ lockedCategory }: CatalogListingProps) {
     };
   }, [category, lockedCategory]);
 
+  // The effective price params: a value only when the bounds probe has resolved AND the shopper
+  // has actually narrowed the range. Depending on these primitives (rather than the `bounds`
+  // object/`boundsReady` flag directly) is what keeps `fetchPage`'s identity — and so the
+  // "fetch page one" effect below — from re-firing when the probe resolves after the first
+  // products fetch (10.9).
+  const effectiveMinPrice = useMemo(() => {
+    if (!boundsReady || debouncedMinPrice == null || debouncedMinPrice <= bounds.min) return undefined;
+    return debouncedMinPrice;
+  }, [boundsReady, debouncedMinPrice, bounds.min]);
+  const effectiveMaxPrice = useMemo(() => {
+    if (!boundsReady || debouncedMaxPrice == null || debouncedMaxPrice >= bounds.max) return undefined;
+    return debouncedMaxPrice;
+  }, [boundsReady, debouncedMaxPrice, bounds.max]);
+
   const fetchPage = useCallback(
     async (offset: number, append: boolean) => {
       const params = buildParams({
@@ -245,12 +264,12 @@ export function CatalogListing({ lockedCategory }: CatalogListingProps) {
         category: isLocked ? lockedCategory!.slug : category,
         section: sectionParam,
         size,
-        minPrice: debouncedMinPrice,
-        maxPrice: debouncedMaxPrice,
+        minPrice: effectiveMinPrice,
+        maxPrice: effectiveMaxPrice,
         inStock,
         sort,
-        boundsReady,
-        bounds,
+        boundsReady: true,
+        bounds: UNBOUNDED_RANGE,
       });
       const limit =
         !append && !initialLimitAppliedRef.current && restore
@@ -284,12 +303,10 @@ export function CatalogListing({ lockedCategory }: CatalogListingProps) {
       }
     },
     [
-      bounds,
-      boundsReady,
       category,
-      debouncedMaxPrice,
-      debouncedMinPrice,
       debouncedSearch,
+      effectiveMaxPrice,
+      effectiveMinPrice,
       inStock,
       isLocked,
       lockedCategory,
