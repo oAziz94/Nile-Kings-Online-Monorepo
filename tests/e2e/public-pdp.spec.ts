@@ -83,7 +83,7 @@ async function resolveVariant(page: Page) {
   }
 }
 
-// Backlog 10.1/10.2/10.3 (owner's manual test findings, v2.4.0/v2.4.1). A real product with 6
+// Backlog 10.1/10.2/10.3/10.5 (owner's manual test findings, v2.4.0/v2.4.1/v2.4.2). A real product with 6
 // distinct colours already exists in the redesign DB (nk-7777), but no product in this DB
 // snapshot has a populated per-colour `VariantImage` gallery — needed to prove the
 // thumbnail-strip height cap with more than one thumbnail. This suite seeds exactly 6
@@ -293,7 +293,7 @@ test.describe("Public PDP (backlog 4.9)", () => {
     }
   });
 
-  test("backlog 10.3 — 5:4 main frame + price fit above the fold at every viewport, gallery proof screenshots", async ({
+  test("backlog 10.5 — 4:5 uncropped main frame + price fit above the fold at every viewport, accordion under the buy box, gallery proof screenshots", async ({
     page,
     baseURL,
   }) => {
@@ -309,8 +309,9 @@ test.describe("Public PDP (backlog 4.9)", () => {
     expect(frameBox).not.toBeNull();
     // Whole photo visible: its bottom edge is above the viewport bottom, not clipped/cut off.
     expect(frameBox!.y + frameBox!.height).toBeLessThanOrEqual(681);
-    // 5:4 landscape (supersedes 10.1's 4:5 portrait) at every viewport.
-    expect(Math.abs(frameBox!.width / frameBox!.height - 1.25)).toBeLessThan(0.02);
+    // Backlog 10.5 — back to the photo's own 4:5 portrait ratio, uncropped (supersedes 10.3's 5:4
+    // landscape crop; the owner disliked the crop).
+    expect(Math.abs(frameBox!.width / frameBox!.height - 0.8)).toBeLessThan(0.02);
 
     await expect(page.locator("h1")).toBeVisible();
     const price = page.getByText(/ج\.م/).first();
@@ -323,12 +324,51 @@ test.describe("Public PDP (backlog 4.9)", () => {
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(1514);
 
+    // Base proof screenshot, at the top of the page (before any accordion interaction scrolls
+    // it) — whole photo, title and price all in view without scrolling.
     await page.waitForLoadState("networkidle");
-    await page.screenshot({ path: "screenshots/pdp-10.3-1514x681.png" });
+    await page.screenshot({ path: "screenshots/pdp-10.5-1514x681.png" });
+
+    // Backlog 10.5(b)/(c) — the three old info lines are gone from the buy box, and the accordion
+    // (four headings) now lives in the same DOM ancestor as the add-to-cart button, directly under
+    // the action buttons, carrying the same facts.
+    // The accordion's four headings render inside the same DOM ancestor as the add-to-cart
+    // button (the buy-box column) — `..` on the actions block's parent.
+    const buyBoxColumn = page.getByTestId("pdp-actions").locator("..");
+    await expect(buyBoxColumn.getByText("الشحن يُحسب عند الدفع حسب المحافظة.", { exact: false })).toHaveCount(0);
+    await expect(buyBoxColumn.getByRole("button", { name: "الشحن" })).toBeVisible();
+    await expect(buyBoxColumn.getByRole("button", { name: "الإرجاع" })).toBeVisible();
+    await expect(buyBoxColumn.getByRole("button", { name: "الدفع" })).toBeVisible();
+
+    // The شحن panel is open by default when the product has no description (`defaultOpen={!product.description}`)
+    // — nk-7777 has none — so only click it open if it isn't already.
+    const shippingHeading = buyBoxColumn.getByRole("button", { name: "الشحن" });
+    if ((await shippingHeading.getAttribute("aria-expanded")) !== "true") {
+      await shippingHeading.click();
+    }
+    const shippingText = buyBoxColumn.getByText("يُحسب عند الدفع", { exact: false });
+    await expect(shippingText).toBeVisible();
+    // Backlog 10.5(d) — the panel's prose is capped at 60ch so no line runs the full column
+    // width on a wide screen.
+    const shippingMaxWidth = await shippingText.evaluate((el) => getComputedStyle(el).maxWidth);
+    expect(shippingMaxWidth).not.toBe("none");
+    const columnWidth = (await buyBoxColumn.boundingBox())!.width;
+    const shippingWidth = (await shippingText.boundingBox())!.width;
+    expect(shippingWidth).toBeLessThan(columnWidth);
+    // Scroll the expanded panel into view so this proof screenshot actually shows the line
+    // length, not just the (already-fitting) top of the page.
+    await shippingText.scrollIntoViewIfNeeded();
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "screenshots/pdp-10.5-shipping-open-1514x681.png" });
+
+    const returnsHeading = buyBoxColumn.getByRole("button", { name: "الإرجاع" });
+    await returnsHeading.click();
+    await expect(buyBoxColumn.getByRole("link", { name: "سياسة الاستبدال والاسترجاع الكاملة" })).toBeVisible();
+    await returnsHeading.click();
 
     // Selecting the seeded 6-photo colour swaps to its gallery: the thumbnail strip now has more
     // thumbnails than fit in the capped height and scrolls vertically instead of growing past it.
-    // The thumbnail strip itself is unchanged by 10.3 (still 4:5, still capped/scrollable).
+    // The thumbnail strip itself is unchanged (still 4:5, still capped/scrollable).
     const wisteriaSwatch = page.getByRole("radio", { name: "wisteria" });
     await wisteriaSwatch.click();
     const thumbList = page.getByRole("list", { name: "صور المنتج" });
@@ -339,7 +379,7 @@ test.describe("Public PDP (backlog 4.9)", () => {
     expect(thumbBox).not.toBeNull();
     expect(thumbBox!.y + thumbBox!.height).toBeLessThanOrEqual(681);
     await page.waitForLoadState("networkidle");
-    await page.screenshot({ path: "screenshots/pdp-10.3-1514x681-scrollable-thumbnails.png" });
+    await page.screenshot({ path: "screenshots/pdp-10.5-1514x681-scrollable-thumbnails.png" });
 
     for (const vp of GALLERY_VIEWPORTS.slice(1)) {
       await page.setViewportSize(vp);
@@ -349,9 +389,9 @@ test.describe("Public PDP (backlog 4.9)", () => {
       const box = await frame.boundingBox();
       expect(box).not.toBeNull();
       expect(box!.y + box!.height).toBeLessThanOrEqual(vp.height);
-      expect(Math.abs(box!.width / box!.height - 1.25)).toBeLessThan(0.02);
+      expect(Math.abs(box!.width / box!.height - 0.8)).toBeLessThan(0.02);
       await expect(page.locator("h1")).toBeVisible();
-      await page.screenshot({ path: `screenshots/pdp-10.3-${vp.width}x${vp.height}.png` });
+      await page.screenshot({ path: `screenshots/pdp-10.5-${vp.width}x${vp.height}.png` });
     }
   });
 
