@@ -149,6 +149,7 @@ production:
    this against production** until a reconcile query confirms production's
    `Variant.stockAvailable`/`stockReserved` sums are either zero or already accounted for in
    the matching partner's `PartnerInventory` row — the drop is irreversible.
+   **Decided 2026-09-17 (owner):** the legacy counters are leftovers nobody updates — production carried 784 variants with Σ stockAvailable 3,328 / Σ stockReserved 0 against 5,745 / 61 in PartnerInventory (measured on a fresh Neon copy of production, 2026-09-14). Nothing is moved into receipts; the drop runs as is. The full deploy sequence was rehearsed on that copy with `prisma migrate deploy` (production keeps a migration history and sat at the August migration; both files applied cleanly; the live schema then matched the datamodel except production's hand-made partial unique index on `Variant.slug`, which is equivalent and needs no migration).
 
 **One-time media sync after deploy**: once 9.8a is live and the three `CLOUDINARY_*` variables
 are set, `MediaAsset` starts empty in production — every asset already in Cloudinary (every
