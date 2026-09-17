@@ -723,4 +723,28 @@ test.describe("Public PDP (backlog 4.9)", () => {
     }
     await prisma.$disconnect();
   });
+
+  test("backlog 10.5 — a product with a description shows الوصف first and open, الشحن closed (verifier's required fix)", async ({ page, baseURL }) => {
+    const base = baseURL ?? "http://localhost:3100";
+    await setStorefrontLocation(page, base);
+    // Find a real product with a non-empty description through the public API (read-only).
+    const list = await page.request.get("/api/products?take=60");
+    expect(list.ok()).toBeTruthy();
+    const products = (await list.json()).data.products as { slug: string }[];
+    let slug: string | null = null;
+    for (const p of products) {
+      const detail = (await (await page.request.get(`/api/products/${p.slug}`)).json()).data as { description?: string | null };
+      if (detail?.description && detail.description.trim().length > 0) { slug = p.slug; break; }
+    }
+    expect(slug, "no product with a description found in the first 60").toBeTruthy();
+    await page.goto(`/products/${slug}`);
+    const column = page.getByTestId("pdp-actions").locator("..");
+    const headings = column.getByRole("button", { name: /^(الوصف|الشحن|الإرجاع|الدفع)$/ });
+    await expect(headings).toHaveCount(4);
+    await expect(headings.nth(0)).toHaveText("الوصف");
+    await expect(headings.nth(0)).toHaveAttribute("aria-expanded", "true");
+    await expect(headings.nth(1)).toHaveText("الشحن");
+    await expect(headings.nth(1)).toHaveAttribute("aria-expanded", "false");
+  });
+
 });
