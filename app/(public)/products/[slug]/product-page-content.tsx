@@ -193,38 +193,6 @@ export function ProductPageContent({
 
   const mainImageUrl = previewImageUrl ?? gallery[galleryIndex] ?? gallery[0] ?? PLACEHOLDER_IMAGE;
 
-  // Backlog 10.1 — measures the gallery column's real width and the frame's own remaining
-  // distance to the viewport bottom, and picks whichever of (fill the column width) / (fit the
-  // remaining viewport height) is smaller, so the 4:5 frame is always whole on screen. See the
-  // comment above the JSX for why this is JS-measured rather than pure CSS.
-  const galleryColumnRef = useRef<HTMLDivElement>(null);
-  const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
-  useEffect(() => {
-    const el = galleryColumnRef.current;
-    if (!el) return;
-    function recompute() {
-      if (!el) return;
-      const availableWidth = el.clientWidth;
-      if (availableWidth <= 0) return;
-      const top = el.getBoundingClientRect().top;
-      // A little headroom (16px) so the frame's bottom edge never touches the viewport edge
-      // exactly — keeps it comfortably "above the fold", not flush with it.
-      const capHeight = Math.max(200, window.innerHeight - top - 16);
-      const naturalHeight = availableWidth * 1.25; // 4:5 ratio: height = width * 5/4
-      const height = Math.min(naturalHeight, capHeight);
-      const width = height * 0.8;
-      setFrameSize({ width: Math.round(width), height: Math.round(height) });
-    }
-    recompute();
-    const ro = new ResizeObserver(recompute);
-    ro.observe(el);
-    window.addEventListener("resize", recompute);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", recompute);
-    };
-  }, []);
-
   // A short crossfade on every main-photo change (gallery nav, colour select, hover/focus
   // preview) — `motion-reduce:transition-none` above disables the transition itself for
   // `prefers-reduced-motion`, this just skips the opacity dip so there's no reduced-motion flash.
@@ -295,24 +263,21 @@ export function ProductPageContent({
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,6fr)_minmax(0,6fr)]">
         {/* Gallery — backlog 10.1: the main frame keeps the 4:5 ratio but its height is capped so
-            the whole photo fits above the fold. A pure-CSS `aspect-ratio` + `max-height` frame
-            (tried first) collapses to 0×0 in Chromium here — the frame's only child is a
-            `next/image` `fill` <img>, which is absolutely positioned and so contributes no
-            intrinsic size, and a grid item with both dimensions "auto" has nothing to derive a
-            size from. Instead, `galleryColumnRef` measures the column's real available width and
-            the frame's own distance from the viewport bottom (`window.innerHeight - top`, which
-            already accounts for the header + page padding above it, however tall they are) and
-            sets an explicit pixel width/height from those two numbers directly — the same 4:5
-            "cap by whichever of width/height is more restrictive" math, just computed in JS
-            instead of relying on the aspect-ratio auto-sizing algorithm. The thumbnail strip caps
-            to the same measured height and scrolls vertically once it has more thumbnails than
-            fit. */}
+            the whole photo fits above the fold. `aspect-ratio` + `max-height` alone collapses the
+            frame to 0×0 here (its width is auto inside a centred flex wrapper, so the browser has
+            two free axes and nothing to derive either from — the frame's only child is a
+            `next/image` `fill` <img>, absolutely positioned, contributing no intrinsic size
+            either). Capping the WIDTH from the height instead gives it exactly one free axis:
+            `max-width: (height cap) * 4/5`, `aspect-ratio: 4/5` derives the height from that
+            width, `w-full` lets it fill up to that cap. Pure CSS, no measurement — this is why it
+            renders correctly on first paint (no SSR-then-hydration jump). The thumbnail strip
+            caps to the same height expression and scrolls vertically once it has more thumbnails
+            than fit. */}
         <div className="grid grid-cols-[64px_1fr] items-start gap-3 md:grid-cols-[84px_1fr] md:gap-4">
           <div
             role="list"
             aria-label="صور المنتج"
-            className="flex flex-col gap-2.5 overflow-y-auto"
-            style={{ maxHeight: frameSize?.height ?? "70dvh" }}
+            className="flex max-h-[70dvh] flex-col gap-2.5 overflow-y-auto lg:max-h-[calc(100dvh-116px)]"
           >
             {gallery.map((url, i) => {
               const active = i === galleryIndex;
@@ -334,11 +299,10 @@ export function ProductPageContent({
               );
             })}
           </div>
-          <div ref={galleryColumnRef} className="flex min-w-0 justify-center">
+          <div className="flex min-w-0 justify-center">
           <div
             data-testid="pdp-main-frame"
-            className="relative aspect-[4/5] max-h-[70dvh] overflow-hidden bg-[hsl(38_22%_93%)] lg:max-h-[calc(100dvh-116px)]"
-            style={frameSize ? { width: frameSize.width, height: frameSize.height } : undefined}
+            className="relative aspect-[4/5] w-full max-w-[calc(70dvh*0.8)] overflow-hidden bg-[hsl(38_22%_93%)] lg:max-w-[calc((100dvh-116px)*0.8)]"
           >
             <Image
               src={mainImageUrl}
