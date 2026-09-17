@@ -453,7 +453,9 @@ export function DashboardShell({
             (e.g. the reports switcher chips) via `DashboardTopbarSlot`. */}
         <div {...{ [chromeAttr]: true }} className="hidden items-center justify-between gap-3 border-b border-stone-200 bg-white px-7 py-4 print:hidden lg:flex">
           <div ref={setTopbarSlotEl} className="min-w-0 flex-1 empty:hidden" />
-          <div className="flex shrink-0 items-center gap-3">
+          {/* Backlog 10.8: `ms-auto` keeps this group at the inline-end edge (left in RTL) even
+              when the middle slot is empty — before, an empty slot let it drift to the start. */}
+          <div className="ms-auto flex shrink-0 items-center gap-3">
             {topbarEnd}
           </div>
         </div>

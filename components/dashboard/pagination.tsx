@@ -101,7 +101,7 @@ export function PaginationBar({
             aria-label="الصفحة التالية"
             disabled={disabled || safePage >= totalPages - 1}
             onClick={() => onPageChange(safePage + 1)}
-            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-stone-100 text-[13px] font-bold text-ink-soft transition-colors hover:bg-stone-200 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-1"
+            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-stone-100 text-[13px] font-bold text-ink-soft transition-colors hover:bg-stone-200 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-1 [&_svg]:scale-x-[-1]"
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 6l6 6-6 6" />
