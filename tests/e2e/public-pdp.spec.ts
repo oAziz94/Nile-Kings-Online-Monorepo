@@ -12,11 +12,16 @@ import { test, expect, devices, type Page } from "@playwright/test";
 
 const prisma = new PrismaClient();
 
-async function setStorefrontLocation(page: Page, baseURL: string | undefined) {
+async function setStorefrontLocation(
+  page: Page,
+  baseURL: string | undefined,
+  governorate = "القاهرة",
+  area: string | null = "مدينة نصر"
+) {
   await page.context().addCookies([
     {
       name: "nile_storefront_location",
-      value: encodeURIComponent(JSON.stringify({ governorate: "القاهرة", area: "مدينة نصر" })),
+      value: encodeURIComponent(JSON.stringify({ governorate, area })),
       url: baseURL ?? "http://localhost:3100",
     },
   ]);
@@ -100,15 +105,20 @@ const GALLERY_PHOTOS = [
 const HOVER_COLOR_NAME = "sky blue";
 const HOVER_COLOR_IMAGE_FRAGMENT = "xiwrxjqselhf0oiw5atg";
 
-// Backlog 10.4 — nk-7777's "boysenberry" colour, distinct from the gallery/hover colours above
-// and with its own distinct photo (unlike "اسود", which has none), temporarily zeroed to 0
-// partner stock for the test governorate (القاهرة) through the existing `PartnerInventory` rows
-// (never a production row's stock left mutated — every row this test touches is restored to its
-// original `stockAvailable` in a `finally` block, same pattern already used by
-// `public-checkout.spec.ts`'s COD stock restoration).
-const OUT_OF_STOCK_COLOR_NAME = "boysenberry";
-const OUT_OF_STOCK_COLOR_KEY = "boysenberry|#873260";
-const TEST_GOVERNORATE = "القاهرة";
+// Backlog 10.4 — PM fix (standing rule: "never mutate rows your fixtures did not create").
+// Zeroing a REAL product's PartnerInventory rows and restoring them in a `finally` risked
+// leaving a shared, production-copied product at 0 stock if the run crashed. Owns a whole
+// fixture product end to end instead: two colours, each with its own distinct photo, one
+// in stock and one not, at a fixture partner covering a governorate ("الوادي الجديد") that
+// has NO active `ReroutingRule` in the redesign DB today (verified live) — so seeding a rule
+// for it can never collide with or shadow any real partner's coverage. Every row is created
+// by `test.beforeAll` below and deleted by id in `test.afterAll`.
+const FIXTURE_GOVERNORATE = "الوادي الجديد";
+const FIXTURE_IN_STOCK_COLOR_NAME = "لون متوفر";
+const FIXTURE_OUT_OF_STOCK_COLOR_NAME = "لون غير متوفر";
+const FIXTURE_IN_STOCK_COLOR_HEX = "#2e7d32";
+const FIXTURE_OUT_OF_STOCK_COLOR_HEX = "#c62828";
+const FIXTURE_SIZES = ["S", "M"];
 
 const GALLERY_VIEWPORTS = [
   { width: 1514, height: 681 },
@@ -480,121 +490,190 @@ test.describe("Public PDP (backlog 4.9)", () => {
   });
 
   test.describe("backlog 10.4 — an out-of-stock colour can be previewed and selected, only buying is blocked", () => {
+    // Every id here is created by this describe's `beforeAll` and deleted by id (never a
+    // pattern/bulk delete, never a possibly-undefined id in a `where`) in its `afterAll` — see
+    // the FIXTURE_* constants' comment above for why this owns a whole fixture product+partner
+    // rather than touching a real one.
+    let categoryId: string | undefined;
+    let productId: string | undefined;
+    let productSlug: string | undefined;
+    let partnerId: string | undefined;
+    let ruleId: string | undefined;
+    let rulePartnerId: string | undefined;
+    const partnerInventoryIds: string[] = [];
+
+    test.beforeAll(async () => {
+      const suffix = `${Date.now()}`;
+
+      const category = await prisma.category.create({
+        data: { name: `فئة اختبار 10.4 ${suffix}`, slug: `pdp-104-cat-${suffix}`, sortOrder: 0 },
+      });
+      categoryId = category.id;
+
+      const product = await prisma.product.create({
+        data: {
+          categoryId,
+          name: `منتج اختبار 10.4 ${suffix}`,
+          slug: `pdp-104-product-${suffix}`,
+          active: true,
+          variants: {
+            create: [
+              ...FIXTURE_SIZES.map((size) => ({
+                sku: `PDP104-INSTOCK-${size}-${suffix}`,
+                slug: `pdp-104-product-${suffix}_${size.toLowerCase()}_instock`,
+                name: size,
+                colorName: FIXTURE_IN_STOCK_COLOR_NAME,
+                colorHex: FIXTURE_IN_STOCK_COLOR_HEX,
+                imageUrl:
+                  "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773324600/nile-kings/products/xiwrxjqselhf0oiw5atg.jpg",
+                pricePiastres: 10000,
+              })),
+              ...FIXTURE_SIZES.map((size) => ({
+                sku: `PDP104-OOS-${size}-${suffix}`,
+                slug: `pdp-104-product-${suffix}_${size.toLowerCase()}_oos`,
+                name: size,
+                colorName: FIXTURE_OUT_OF_STOCK_COLOR_NAME,
+                colorHex: FIXTURE_OUT_OF_STOCK_COLOR_HEX,
+                imageUrl:
+                  "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773322074/nile-kings/products/fcae3x6eppamqsxxcg1j.jpg",
+                pricePiastres: 10000,
+              })),
+            ],
+          },
+        },
+        include: { variants: true },
+      });
+      productId = product.id;
+      productSlug = product.slug;
+
+      // A bare fixture Partner (no linked User needed — `Partner.userId` is optional) covering a
+      // governorate with no existing `ReroutingRule` today, so this can never shadow or collide
+      // with real routing.
+      const partner = await prisma.partner.create({
+        data: {
+          partnerType: "AGENT",
+          name: `شريك اختبار 10.4 ${suffix}`,
+          governorate: FIXTURE_GOVERNORATE,
+          phone: `+2010${suffix}`.slice(0, 13),
+          isActive: true,
+        },
+      });
+      partnerId = partner.id;
+
+      const rule = await prisma.reroutingRule.create({
+        data: { governorate: FIXTURE_GOVERNORATE, isActive: true },
+      });
+      ruleId = rule.id;
+
+      const rulePartner = await prisma.reroutingRulePartner.create({
+        data: { ruleId, partnerId, isActive: true, priority: 0 },
+      });
+      rulePartnerId = rulePartner.id;
+
+      const inStockVariants = product.variants.filter((v) => v.colorName === FIXTURE_IN_STOCK_COLOR_NAME);
+      for (const v of inStockVariants) {
+        const row = await prisma.partnerInventory.create({
+          data: { partnerId, variantId: v.id, stockAvailable: 5, stockReserved: 0 },
+        });
+        partnerInventoryIds.push(row.id);
+      }
+      // The out-of-stock colour's variants get NO `PartnerInventory` row at all — a missing
+      // variantId is already 0 stock for this partner/governorate (`getPartnerStockOverrides`),
+      // exactly like the spec's "the other colour no rows or zero rows".
+    });
+
+    test.afterAll(async () => {
+      if (partnerInventoryIds.length > 0) {
+        await prisma.partnerInventory.deleteMany({ where: { id: { in: partnerInventoryIds } } });
+      }
+      if (rulePartnerId) await prisma.reroutingRulePartner.deleteMany({ where: { id: rulePartnerId } });
+      if (ruleId) await prisma.reroutingRule.deleteMany({ where: { id: ruleId } });
+      if (partnerId) await prisma.partner.deleteMany({ where: { id: partnerId } });
+      if (productId) {
+        await prisma.variant.deleteMany({ where: { productId } });
+        await prisma.product.deleteMany({ where: { id: productId } });
+      }
+      if (categoryId) await prisma.category.deleteMany({ where: { id: categoryId } });
+    });
+
     test("hover previews it, click selects it, buttons disabled with the message, sizes struck through, add-to-cart impossible", async ({
       page,
       baseURL,
     }) => {
       const base = baseURL ?? "http://localhost:3100";
+      if (!productSlug) throw new Error("Fixture product was not created in beforeAll.");
 
-      const product = await prisma.product.findUnique({
-        where: { slug: GALLERY_PRODUCT_SLUG },
-        include: { variants: true },
-      });
-      if (!product) throw new Error(`Fixture product ${GALLERY_PRODUCT_SLUG} not found.`);
-      const rule = await prisma.reroutingRule.findFirst({
-        where: { governorate: TEST_GOVERNORATE, isActive: true },
-        include: {
-          partners: {
-            where: { isActive: true, partner: { isActive: true } },
-            orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
-            include: { partner: { select: { id: true } } },
-          },
-        },
-      });
-      const partnerId = rule?.partners[0]?.partner.id;
-      if (!partnerId) throw new Error(`No partner covers ${TEST_GOVERNORATE} in the redesign DB.`);
+      await setStorefrontLocation(page, base, FIXTURE_GOVERNORATE, null);
+      await page.setViewportSize({ width: 1514, height: 681 });
+      await page.goto(`/products/${productSlug}`);
 
-      const colorVariants = product.variants.filter((v) => `${v.colorName}|${v.colorHex}` === OUT_OF_STOCK_COLOR_KEY);
-      const inventoryRows = await prisma.partnerInventory.findMany({
-        where: { partnerId, variantId: { in: colorVariants.map((v) => v.id) } },
-      });
-      const originalStock = inventoryRows.map((row) => ({ id: row.id, stockAvailable: row.stockAvailable }));
+      const swatch = page.getByRole("radio", { name: new RegExp(`^${FIXTURE_OUT_OF_STOCK_COLOR_NAME}`) });
+      await expect(swatch).toBeVisible();
+      // `aria-disabled` is not used on the swatch (backlog 10.4) — it's a real, reachable radio.
+      await expect(swatch).not.toHaveAttribute("aria-disabled", "true");
+      await expect(swatch).toHaveAttribute("data-out-of-stock", "true");
+      // Screen readers hear the colour name plus "غير متوفر".
+      await expect(swatch).toHaveAccessibleName(new RegExp(`${FIXTURE_OUT_OF_STOCK_COLOR_NAME}.*غير متوفر`));
 
-      try {
-        // Zero every existing row for this colour/partner — any size with no row at all is
-        // already 0 stock for this governorate (`getPartnerStockOverrides` treats a missing
-        // variantId as 0), so this alone makes the whole colour unavailable here.
-        for (const row of inventoryRows) {
-          await prisma.partnerInventory.update({ where: { id: row.id }, data: { stockAvailable: 0 } });
-        }
+      const mainImage = page.getByTestId("pdp-main-frame").locator("img");
 
-        await setStorefrontLocation(page, base);
-        await page.setViewportSize({ width: 1514, height: 681 });
-        await page.goto(`/products/${GALLERY_PRODUCT_SLUG}`);
+      // Establish a known baseline photo first (the in-stock colour, a distinct photo from the
+      // out-of-stock one), so the hover-preview assertion isn't at the mercy of coincidence.
+      const inStockSwatch = page.getByRole("radio", { name: new RegExp(`^${FIXTURE_IN_STOCK_COLOR_NAME}`) });
+      await inStockSwatch.click();
+      const restSrc = await mainImage.getAttribute("src");
 
-        const swatch = page.getByRole("radio", { name: new RegExp(`^${OUT_OF_STOCK_COLOR_NAME}`) });
-        await expect(swatch).toBeVisible();
-        // `aria-disabled` is not used on the swatch (backlog 10.4) — it's a real, reachable radio.
-        await expect(swatch).not.toHaveAttribute("aria-disabled", "true");
-        await expect(swatch).toHaveAttribute("data-out-of-stock", "true");
-        // Screen readers hear the colour name plus "غير متوفر".
-        await expect(swatch).toHaveAccessibleName(new RegExp(`${OUT_OF_STOCK_COLOR_NAME}.*غير متوفر`));
+      // Hover previews it (10.2 behaviour extends to an out-of-stock colour).
+      await swatch.hover();
+      await expect(mainImage).not.toHaveAttribute("src", restSrc ?? "", { timeout: 5_000 });
+      await expect(swatch).toHaveAttribute("aria-checked", "false");
 
-        const mainImage = page.getByTestId("pdp-main-frame").locator("img");
+      // Move away — restores, no sticky preview.
+      await page.locator("h1").hover();
+      await expect(mainImage).toHaveAttribute("src", restSrc ?? "", { timeout: 5_000 });
 
-        // Establish a known baseline photo first (an in-stock colour distinct from the
-        // out-of-stock one below), so the hover-preview assertion isn't at the mercy of the
-        // out-of-stock colour's photo coincidentally matching the page's initial default photo.
-        const hoverBaselineSwatch = page.getByRole("radio", { name: HOVER_COLOR_NAME });
-        await hoverBaselineSwatch.click();
-        const restSrc = await mainImage.getAttribute("src");
+      // Click selects it.
+      await swatch.click();
+      await expect(swatch).toHaveAttribute("aria-checked", "true");
 
-        // Hover previews it (10.2 behaviour extends to an out-of-stock colour).
-        await swatch.hover();
-        await expect(mainImage).not.toHaveAttribute("src", restSrc ?? "", { timeout: 5_000 });
-        await expect(swatch).toHaveAttribute("aria-checked", "false");
+      const actions = page.getByTestId("pdp-actions");
+      const addToCartButton = actions.getByRole("button", { name: "أضف إلى السلة" });
+      const buyNowButton = actions.getByRole("button", { name: "اشتر الآن" });
+      const message = page.getByText("هذا اللون غير متوفر حالياً");
 
-        // Move away — restores, no sticky preview.
-        await page.locator("h1").hover();
-        await expect(mainImage).toHaveAttribute("src", restSrc ?? "", { timeout: 5_000 });
+      await expect(addToCartButton).toBeDisabled();
+      await expect(buyNowButton).toBeDisabled();
+      await expect(message).toBeVisible();
+      const messageId = await message.getAttribute("id");
+      expect(messageId).toBeTruthy();
+      await expect(addToCartButton).toHaveAttribute("aria-describedby", messageId!);
+      await expect(buyNowButton).toHaveAttribute("aria-describedby", messageId!);
 
-        // Click selects it.
-        await swatch.click();
-        await expect(swatch).toHaveAttribute("aria-checked", "true");
-
-        const actions = page.getByTestId("pdp-actions");
-        const addToCartButton = actions.getByRole("button", { name: "أضف إلى السلة" });
-        const buyNowButton = actions.getByRole("button", { name: "اشتر الآن" });
-        const message = page.getByText("هذا اللون غير متوفر حالياً");
-
-        await expect(addToCartButton).toBeDisabled();
-        await expect(buyNowButton).toBeDisabled();
-        await expect(message).toBeVisible();
-        const messageId = await message.getAttribute("id");
-        expect(messageId).toBeTruthy();
-        await expect(addToCartButton).toHaveAttribute("aria-describedby", messageId!);
-        await expect(buyNowButton).toHaveAttribute("aria-describedby", messageId!);
-
-        // Sizes struck through/disabled — stock is per governorate/colour, this colour has zero
-        // stock in every size at the test partner even though other colours share the same
-        // size labels and remain in stock.
-        const sizeGroup = page.getByRole("radiogroup", { name: "المقاس" });
-        const sizeRadios = sizeGroup.getByRole("radio");
-        const sizeCount = await sizeRadios.count();
-        expect(sizeCount).toBeGreaterThan(0);
-        for (let i = 0; i < sizeCount; i++) {
-          await expect(sizeRadios.nth(i)).toHaveAttribute("aria-disabled", "true");
-        }
-
-        // The quantity stepper is hidden or disabled — this PDP hides it entirely.
-        await expect(page.getByRole("button", { name: "تقليل الكمية" })).toHaveCount(0);
-        await expect(page.getByRole("button", { name: "زيادة الكمية" })).toHaveCount(0);
-
-        // Add-to-cart via the page is impossible: the button is truly `disabled`, not just styled.
-        await addToCartButton.click({ force: true });
-        await expect(page.getByRole("dialog", { name: "سلة التسوق" })).not.toBeVisible();
-
-        await page.waitForLoadState("networkidle");
-        await page.screenshot({ path: "screenshots/pdp-10.4-1514x681.png" });
-
-        await page.setViewportSize({ width: 390, height: 844 });
-        await page.waitForLoadState("networkidle");
-        await page.screenshot({ path: "screenshots/pdp-10.4-390x844.png" });
-      } finally {
-        for (const row of originalStock) {
-          await prisma.partnerInventory.update({ where: { id: row.id }, data: { stockAvailable: row.stockAvailable } });
-        }
+      // Sizes struck through/disabled — stock is per governorate/colour, this colour has zero
+      // stock in every size at the fixture partner even though the other (in-stock) colour
+      // shares the same size labels.
+      const sizeGroup = page.getByRole("radiogroup", { name: "المقاس" });
+      const sizeRadios = sizeGroup.getByRole("radio");
+      const sizeCount = await sizeRadios.count();
+      expect(sizeCount).toBe(FIXTURE_SIZES.length);
+      for (let i = 0; i < sizeCount; i++) {
+        await expect(sizeRadios.nth(i)).toHaveAttribute("aria-disabled", "true");
       }
+
+      // The quantity stepper is hidden or disabled — this PDP hides it entirely.
+      await expect(page.getByRole("button", { name: "تقليل الكمية" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "زيادة الكمية" })).toHaveCount(0);
+
+      // Add-to-cart via the page is impossible: the button is truly `disabled`, not just styled.
+      await addToCartButton.click({ force: true });
+      await expect(page.getByRole("dialog", { name: "سلة التسوق" })).not.toBeVisible();
+
+      await page.waitForLoadState("networkidle");
+      await page.screenshot({ path: "screenshots/pdp-10.4-1514x681.png" });
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.waitForLoadState("networkidle");
+      await page.screenshot({ path: "screenshots/pdp-10.4-390x844.png" });
     });
   });
 
