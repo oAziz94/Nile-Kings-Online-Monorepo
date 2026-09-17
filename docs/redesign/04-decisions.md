@@ -1,3 +1,7 @@
+## 2026-09-17 — Three small things the owner saw in ten minutes (10.8, v2.4.5)
+
+A control that waits for input must say so; it must never look like a failure. The custom date range on every report waited silently for two dates and the view called the wait an error — now the range is prefilled and the report simply loads. Two RTL rulings alongside: a mirrored icon is mirrored on both ends of a pair, and a topbar group that belongs at one edge is pinned there with a margin, not left to whatever justify-between does when the other side is empty.
+
 ## 2026-09-17 — Centre the page (10.7, v2.4.4)
 
 The owner's complaint about gaps around the product photo turned out to be two things, and the second was older than the redesign of the page: the storefront's page container had never been centred, so on any screen wider than the breakpoint the whole site leaned to one edge and every gutter fell on the other. One line in the Tailwind config centres it everywhere; the product page then got a gallery column that is exactly as wide as its thumbnails and photo, a capped buy-box track beside it, and the pair centred. Ruling for the future: when a screen "has too much space on one side", measure the page container before touching the component — a component cannot fix a page that is not centred.
