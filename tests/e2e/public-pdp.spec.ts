@@ -315,8 +315,7 @@ test.describe("Public PDP (backlog 4.9)", () => {
 
     for (const vp of GALLERY_VIEWPORTS.slice(1)) {
       await page.setViewportSize(vp);
-      // The frame's size is JS-measured (ResizeObserver + a window resize listener), so give it
-      // a moment to recompute, then let any newly-requested images finish loading.
+      // The frame is sized by CSS alone; give any newly-requested images a moment to load.
       await page.waitForTimeout(200);
       await page.waitForLoadState("networkidle");
       const box = await frame.boundingBox();
