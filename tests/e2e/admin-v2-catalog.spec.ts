@@ -447,3 +447,30 @@ test("screenshots at 1440x900, 1514x681, 1024x768, 390x844: product, products li
     await page.screenshot({ path: `screenshots/admin-v2-categories-${w}x${h}.png` });
   }
 });
+
+test("10.12 — the product page's «← المنتجات» button returns to the same list page and scrolls to the product", async ({ page }) => {
+  await apiLoginAsAdmin(page);
+  await page.goto("/admin/products");
+  const rows = page.locator("tr[data-row-id]");
+  await expect(rows.first()).toBeVisible({ timeout: 30_000 });
+  // Go to the second page when the catalogue has one; the bug was the button pushing page 1.
+  const next = page.getByRole("button", { name: "الصفحة التالية" }).first();
+  const paged = (await next.count()) > 0 && (await next.isEnabled());
+  if (paged) {
+    const firstOnPage1 = await rows.first().getAttribute("data-row-id");
+    await next.click();
+    await expect(page).toHaveURL(/page=1/, { timeout: 20_000 });
+    // Page 1's rows (and the counter) update before page 2's rows arrive — wait for the rows.
+    await expect(rows.first()).not.toHaveAttribute("data-row-id", firstOnPage1!, { timeout: 30_000 });
+  }
+  const idx = Math.min((await rows.count()) - 1, 12);
+  const row = rows.nth(idx);
+  const rowId = await row.getAttribute("data-row-id");
+  await row.scrollIntoViewIfNeeded();
+  await row.locator(`a[href="/admin/products/${rowId}"]`).first().click();
+  await expect(page).toHaveURL(new RegExp(`/admin/products/${rowId}$`), { timeout: 30_000 });
+  await page.getByRole("button", { name: "← المنتجات" }).click();
+  await expect(page).toHaveURL(paged ? /\/admin\/products\?page=1$/ : /\/admin\/products$/, { timeout: 30_000 });
+  const target = page.locator(`tr[data-row-id="${rowId}"]`);
+  await expect(target).toBeInViewport({ timeout: 30_000 });
+});
