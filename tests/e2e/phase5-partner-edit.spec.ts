@@ -5,6 +5,7 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { seedPartnerPair, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 8.2 — admin partner edit + deactivate. Coverage:
@@ -68,7 +69,7 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await cleanupPartnerPair(prisma, pair);
-  await prisma.user.deleteMany({ where: { id: adminUserId } });
+  await prisma.user.deleteMany({ where: safeWhere({ id: adminUserId }) });
   await prisma.$disconnect();
 });
 

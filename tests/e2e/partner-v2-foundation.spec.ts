@@ -3,6 +3,7 @@ import { loadRedesignTestEnv } from "./test-env";
 loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
+import { safeWhere } from "./db-cleanup";
 import {
   seedPartnerPair,
   loginAs,
@@ -68,17 +69,17 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await prisma.partnerPayment.deleteMany({ where: { partnerId: pair.agent.partnerId } });
-  await prisma.partnerStockThreshold.deleteMany({ where: { partnerId: pair.agent.partnerId } });
-  await prisma.stockReceiptLine.deleteMany({ where: { receipt: { partnerId: pair.agent.partnerId } } });
-  await prisma.stockReceipt.deleteMany({ where: { partnerId: pair.agent.partnerId } });
-  await prisma.inventoryLedger.deleteMany({ where: { partnerId: pair.agent.partnerId } });
-  await prisma.partnerInventory.deleteMany({ where: { partnerId: pair.agent.partnerId } });
-  await prisma.variant.deleteMany({ where: { productId } });
-  await prisma.product.deleteMany({ where: { id: productId } });
-  await prisma.category.delete({ where: { id: categoryId } });
+  await prisma.partnerPayment.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId }) });
+  await prisma.partnerStockThreshold.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId }) });
+  await prisma.stockReceiptLine.deleteMany({ where: { receipt: safeWhere({ partnerId: pair.agent.partnerId }) } });
+  await prisma.stockReceipt.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId }) });
+  await prisma.inventoryLedger.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId }) });
+  await prisma.partnerInventory.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId }) });
+  await prisma.variant.deleteMany({ where: safeWhere({ productId }) });
+  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await prisma.category.delete({ where: safeWhere({ id: categoryId }) });
   await cleanupPartnerPair(prisma, pair);
-  await prisma.user.delete({ where: { id: adminUserId } });
+  await prisma.user.delete({ where: safeWhere({ id: adminUserId }) });
   await prisma.$disconnect();
 });
 
@@ -156,7 +157,7 @@ test("a product threshold beats a category one beats the default in resolveThres
   lookup = await resolveThreshold(partnerId);
   expect(lookup.forVariant({ productId, categoryId })).toBe(12);
 
-  await prisma.partnerStockThreshold.deleteMany({ where: { partnerId } });
+  await prisma.partnerStockThreshold.deleteMany({ where: safeWhere({ partnerId }) });
 });
 
 test("a FACTORY receipt snapshots unitCostPiastres/totalCostPiastres, a COUNT leaves both null", async ({ page }) => {

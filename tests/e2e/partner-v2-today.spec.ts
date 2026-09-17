@@ -4,6 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import { seedPartnerPair, loginAs, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 5.2 (اليوم home) coverage. Serial mode: one seeded fixture pair (AGENT with a
@@ -146,9 +147,9 @@ test.afterAll(async () => {
   await prisma.inventoryLedger.deleteMany({ where: { variantId: { in: [variantId, lowStockVariantId] } } });
   await prisma.partnerInventory.deleteMany({ where: { variantId: { in: [variantId, lowStockVariantId] } } });
   await prisma.variant.deleteMany({ where: { id: { in: [variantId, lowStockVariantId] } } });
-  await prisma.product.delete({ where: { id: productId } });
-  await prisma.category.delete({ where: { id: categoryId } });
-  await prisma.user.delete({ where: { id: customerUserId } });
+  await prisma.product.delete({ where: safeWhere({ id: productId }) });
+  await prisma.category.delete({ where: safeWhere({ id: categoryId }) });
+  await prisma.user.delete({ where: safeWhere({ id: customerUserId }) });
   await cleanupPartnerPair(prisma, pair);
   await prisma.$disconnect();
 });

@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { uploadToCloudinary, cloudinaryCredentialsAvailable } from "@/lib/media/cloudinary-upload";
 import { destroyCloudinaryAsset, cloudinaryResourceExists } from "@/lib/media/cloudinary-admin";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 9.8a coverage: MediaAsset registration at upload, usage matching, assign/hero/
@@ -138,8 +139,8 @@ async function sweepStaleE2eAssets() {
       const exists = await cloudinaryResourceExists(row.publicId).catch(() => false);
       if (exists) await destroyCloudinaryAsset(row.publicId).catch(() => undefined);
     }
-    await prisma.adminAuditLog.deleteMany({ where: { entityId: row.id } });
-    await prisma.mediaAsset.delete({ where: { id: row.id } }).catch(() => undefined);
+    await prisma.adminAuditLog.deleteMany({ where: safeWhere({ entityId: row.id }) });
+    await prisma.mediaAsset.delete({ where: safeWhere({ id: row.id }) }).catch(() => undefined);
   }
   if (stale.length > 0) console.log(`[9.8a hygiene] swept ${stale.length} stale e2e MediaAsset row(s)`);
 }
@@ -201,12 +202,12 @@ test.afterAll(async () => {
   });
   const allAssetIds = Array.from(new Set([...createdAssetIds, ...rowsToDelete.map((r) => r.id)]));
 
-  await prisma.adminAuditLog.deleteMany({ where: { OR: [{ entityId: productId }, { entityId: { in: allAssetIds } }] } });
-  await prisma.variantImage.deleteMany({ where: { productId } });
+  await prisma.adminAuditLog.deleteMany({ where: { OR: [safeWhere({ entityId: productId }), { entityId: { in: allAssetIds } }] } });
+  await prisma.variantImage.deleteMany({ where: safeWhere({ productId }) });
   await prisma.mediaAsset.deleteMany({ where: { id: { in: allAssetIds } } });
-  await prisma.variant.deleteMany({ where: { productId } });
-  await prisma.product.deleteMany({ where: { id: productId } });
-  await prisma.category.deleteMany({ where: { id: categoryId } });
+  await prisma.variant.deleteMany({ where: safeWhere({ productId }) });
+  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
   await prisma.user.deleteMany({ where: { id: { in: [adminUserId, customerUserId] } } });
   await prisma.$disconnect();
 });
@@ -321,7 +322,7 @@ test("delete is refused (409) while an asset is in use, and allowed once unused"
 
   // Simulate the admin removing the asset from the gallery (9.8a has no dedicated "unassign"
   // route — that's a 9.8b product-page action) so the delete path can be proven end to end.
-  await prisma.variantImage.deleteMany({ where: { productId, assetId } });
+  await prisma.variantImage.deleteMany({ where: safeWhere({ productId, assetId }) });
 
   const deleteRes2 = await page.request.delete(`/api/admin/media/${assetId}`);
   expect(deleteRes2.ok()).toBeTruthy();

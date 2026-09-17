@@ -4,6 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 6.5a (order tickets — schema, customer API, customer UI) coverage. Same seeded-
@@ -138,13 +139,13 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await prisma.orderTicketMessage.deleteMany({ where: { ticket: { orderId } } });
-  await prisma.orderTicket.deleteMany({ where: { orderId } });
-  await prisma.orderItem.deleteMany({ where: { orderId } });
-  await prisma.order.deleteMany({ where: { id: orderId } });
-  await prisma.variant.deleteMany({ where: { id: variantId } });
-  await prisma.product.deleteMany({ where: { id: productId } });
-  await prisma.category.deleteMany({ where: { id: categoryId } });
+  await prisma.orderTicketMessage.deleteMany({ where: { ticket: safeWhere({ orderId }) } });
+  await prisma.orderTicket.deleteMany({ where: safeWhere({ orderId }) });
+  await prisma.orderItem.deleteMany({ where: safeWhere({ orderId }) });
+  await prisma.order.deleteMany({ where: safeWhere({ id: orderId }) });
+  await prisma.variant.deleteMany({ where: safeWhere({ id: variantId }) });
+  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
   await prisma.user.deleteMany({ where: { id: { in: [fixtureUserId, otherUserId, adminUserId] } } });
   await prisma.$disconnect();
 });

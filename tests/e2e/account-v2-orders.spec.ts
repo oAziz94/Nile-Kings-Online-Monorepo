@@ -4,6 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 6.4 (Orders: track, detail, filters, pagination, reorder, cancel) coverage.
@@ -392,17 +393,17 @@ test.afterAll(async () => {
   await prisma.orderAuditLog.deleteMany({ where: { orderId: { in: allOrderIds } } });
   await prisma.orderItem.deleteMany({ where: { orderId: { in: allOrderIds } } });
   await prisma.order.deleteMany({ where: { id: { in: allOrderIds } } });
-  await prisma.cartItem.deleteMany({ where: { cart: { userId: fixtureUserId } } });
-  await prisma.partnerInventory.deleteMany({ where: { partnerId, variantId } });
+  await prisma.cartItem.deleteMany({ where: { cart: safeWhere({ userId: fixtureUserId }) } });
+  await prisma.partnerInventory.deleteMany({ where: safeWhere({ partnerId, variantId }) });
   if (cairoStockPartnerId) {
-    await prisma.partnerInventory.deleteMany({ where: { partnerId: cairoStockPartnerId, variantId } });
-    await prisma.inventoryLedger.deleteMany({ where: { partnerId: cairoStockPartnerId, variantId } });
+    await prisma.partnerInventory.deleteMany({ where: safeWhere({ partnerId: cairoStockPartnerId, variantId }) });
+    await prisma.inventoryLedger.deleteMany({ where: safeWhere({ partnerId: cairoStockPartnerId, variantId }) });
   }
-  await prisma.inventoryLedger.deleteMany({ where: { partnerId, variantId } });
-  await prisma.variant.deleteMany({ where: { id: variantId } });
-  await prisma.product.deleteMany({ where: { id: productId } });
-  await prisma.category.deleteMany({ where: { id: categoryId } });
-  await prisma.partner.deleteMany({ where: { id: partnerId } });
+  await prisma.inventoryLedger.deleteMany({ where: safeWhere({ partnerId, variantId }) });
+  await prisma.variant.deleteMany({ where: safeWhere({ id: variantId }) });
+  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
+  await prisma.partner.deleteMany({ where: safeWhere({ id: partnerId }) });
   await prisma.user.deleteMany({ where: { id: { in: [partnerUserId] } } });
   await prisma.$disconnect();
 });
@@ -465,7 +466,7 @@ test("expanded detail totals equal the API's piastre fields", async ({ page }) =
 test("reorder on a DELIVERED order puts the right variant/quantity in the cart", async ({ page }) => {
   await loginViaUi(page);
   // Start from an empty cart so the assertion is unambiguous.
-  await prisma.cartItem.deleteMany({ where: { cart: { userId: fixtureUserId } } });
+  await prisma.cartItem.deleteMany({ where: { cart: safeWhere({ userId: fixtureUserId }) } });
 
   await page.goto("/profile/orders");
   const card = page.locator("article", { hasText: `#${orderDeliveredId.slice(-8).toUpperCase()}` });
@@ -479,7 +480,7 @@ test("reorder on a DELIVERED order puts the right variant/quantity in the cart",
     expect(line.quantity).toBe(2);
   }).toPass({ timeout: 10_000 });
 
-  await prisma.cartItem.deleteMany({ where: { cart: { userId: fixtureUserId } } });
+  await prisma.cartItem.deleteMany({ where: { cart: safeWhere({ userId: fixtureUserId }) } });
 });
 
 // Backlog 7.3 — a cancelled order is not one of the customer's orders: the identity strip, the

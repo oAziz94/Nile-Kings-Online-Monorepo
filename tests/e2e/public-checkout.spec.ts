@@ -4,6 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
+import { safeWhere } from "./db-cleanup";
 
 // Backlog 4.12 (Checkout) regression coverage. This is the highest-risk storefront screen
 // (revenue-adjacent), so — unlike the other public-* specs — this file seeds a real fixture user
@@ -88,7 +89,7 @@ test.beforeAll(async () => {
   // Deterministic starting state for a re-runnable fixture: no leftover saved address from a
   // previous run (the checkout page shows the saved-address list instead of the new-address form
   // once one exists, which this spec's flow does not drive).
-  await prisma.savedAddress.deleteMany({ where: { userId: user.id } });
+  await prisma.savedAddress.deleteMany({ where: safeWhere({ userId: user.id }) });
 });
 
 /** Opens the new-address form regardless of whether a saved address already exists for this user. */
@@ -107,7 +108,7 @@ test.afterAll(async () => {
   // The COD test's new-address auto-save (checkout.md's documented side effect) leaves a
   // `SavedAddress` row behind — clean it up so the fixture user starts fresh next run too.
   const user = await prisma.user.findUnique({ where: { phone: FIXTURE_PHONE } });
-  if (user) await prisma.savedAddress.deleteMany({ where: { userId: user.id } });
+  if (user) await prisma.savedAddress.deleteMany({ where: safeWhere({ userId: user.id }) });
   await prisma.$disconnect();
 });
 
@@ -227,12 +228,12 @@ test.describe("Checkout — COD order placement (money walk)", () => {
     if (fullOrder?.assignedPartnerId) {
       for (const item of fullOrder.items) {
         await prisma.partnerInventory.updateMany({
-          where: { partnerId: fullOrder.assignedPartnerId, variantId: item.variantId },
+          where: safeWhere({ partnerId: fullOrder.assignedPartnerId, variantId: item.variantId }),
           data: { stockAvailable: { increment: item.quantity } },
         });
       }
     }
-    await prisma.order.delete({ where: { id: placedOrder.id } });
+    await prisma.order.delete({ where: safeWhere({ id: placedOrder.id }) });
   });
 });
 

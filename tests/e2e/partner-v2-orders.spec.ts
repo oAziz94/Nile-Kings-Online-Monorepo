@@ -4,6 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import { seedPartnerPair, loginAs, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 5.3 (الطلبات pipeline + detail) coverage. Replaces `partner-orders.spec.ts`
@@ -128,12 +129,12 @@ test.afterAll(async () => {
   await prisma.orderAuditLog.deleteMany({ where: { orderId: { in: orderIds } } });
   await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } });
   await prisma.order.deleteMany({ where: { id: { in: orderIds } } });
-  await prisma.inventoryLedger.deleteMany({ where: { variantId } });
-  await prisma.partnerInventory.deleteMany({ where: { variantId } });
-  await prisma.variant.delete({ where: { id: variantId } });
-  await prisma.product.delete({ where: { id: productId } });
-  await prisma.category.delete({ where: { id: categoryId } });
-  await prisma.user.delete({ where: { id: customerUserId } });
+  await prisma.inventoryLedger.deleteMany({ where: safeWhere({ variantId }) });
+  await prisma.partnerInventory.deleteMany({ where: safeWhere({ variantId }) });
+  await prisma.variant.delete({ where: safeWhere({ id: variantId }) });
+  await prisma.product.delete({ where: safeWhere({ id: productId }) });
+  await prisma.category.delete({ where: safeWhere({ id: categoryId }) });
+  await prisma.user.delete({ where: safeWhere({ id: customerUserId }) });
   await cleanupPartnerPair(prisma, pair);
   await prisma.$disconnect();
 });
@@ -236,9 +237,9 @@ test("two parallel next-status requests on one order: exactly one applies, one a
     const auditRows = await prisma.orderAuditLog.findMany({ where: { orderId: order.id, event: "confirmed" } });
     expect(auditRows).toHaveLength(1);
   } finally {
-    await prisma.orderAuditLog.deleteMany({ where: { orderId: order.id } });
-    await prisma.orderItem.deleteMany({ where: { orderId: order.id } });
-    await prisma.order.delete({ where: { id: order.id } });
+    await prisma.orderAuditLog.deleteMany({ where: safeWhere({ orderId: order.id }) });
+    await prisma.orderItem.deleteMany({ where: safeWhere({ orderId: order.id }) });
+    await prisma.order.delete({ where: safeWhere({ id: order.id }) });
   }
 });
 

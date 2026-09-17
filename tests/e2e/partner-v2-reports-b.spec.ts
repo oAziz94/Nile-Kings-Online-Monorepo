@@ -4,6 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import { seedPartnerPair, loginAs, cleanupPartnerPair, hashPassword, type PartnerFixturePair } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 5.6b (Partner portal v2 — Fulfilment + Network + Money reports) e2e coverage.
@@ -190,15 +191,15 @@ test.afterAll(async () => {
   await prisma.orderAuditLog.deleteMany({ where: { orderId: { in: orderIds } } });
   await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } });
   await prisma.order.deleteMany({ where: { id: { in: orderIds } } });
-  await prisma.partnerPayment.deleteMany({ where: { partnerId: pair.agent.partnerId } });
-  await prisma.stockReceiptLine.deleteMany({ where: { receiptId } });
-  await prisma.stockReceipt.deleteMany({ where: { id: receiptId } });
-  await prisma.variant.deleteMany({ where: { productId } });
-  await prisma.product.deleteMany({ where: { id: productId } });
-  await prisma.category.delete({ where: { id: categoryId } });
-  await prisma.user.deleteMany({ where: { id: customerUserId } });
+  await prisma.partnerPayment.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId }) });
+  await prisma.stockReceiptLine.deleteMany({ where: safeWhere({ receiptId }) });
+  await prisma.stockReceipt.deleteMany({ where: safeWhere({ id: receiptId }) });
+  await prisma.variant.deleteMany({ where: safeWhere({ productId }) });
+  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await prisma.category.delete({ where: safeWhere({ id: categoryId }) });
+  await prisma.user.deleteMany({ where: safeWhere({ id: customerUserId }) });
   await cleanupPartnerPair(prisma, pair);
-  await prisma.user.delete({ where: { id: adminUserId } });
+  await prisma.user.delete({ where: safeWhere({ id: adminUserId }) });
   await prisma.$disconnect();
 });
 

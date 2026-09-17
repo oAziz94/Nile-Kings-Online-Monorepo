@@ -5,6 +5,7 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { seedPartnerPair, loginAs, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -131,15 +132,15 @@ test.afterAll(async () => {
       ],
     },
   });
-  if (couponId) await prisma.coupon.deleteMany({ where: { id: couponId } });
-  await prisma.orderItem.deleteMany({ where: { orderId } });
-  await prisma.order.deleteMany({ where: { id: orderId } });
+  if (couponId) await prisma.coupon.deleteMany({ where: safeWhere({ id: couponId }) });
+  await prisma.orderItem.deleteMany({ where: safeWhere({ orderId }) });
+  await prisma.order.deleteMany({ where: safeWhere({ id: orderId }) });
   await prisma.user.deleteMany({ where: { phone: "+201099966202" } });
   await cleanupPartnerPair(prisma, pair);
-  await prisma.variant.deleteMany({ where: { id: variantId } });
-  await prisma.product.deleteMany({ where: { id: productId } });
-  await prisma.category.deleteMany({ where: { id: categoryId } });
-  await prisma.user.deleteMany({ where: { id: adminUserId } });
+  await prisma.variant.deleteMany({ where: safeWhere({ id: variantId }) });
+  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
+  await prisma.user.deleteMany({ where: safeWhere({ id: adminUserId }) });
   await prisma.$disconnect();
 });
 
@@ -320,7 +321,7 @@ test("retention: rows dated 401 days ago are pruned unless money/stock", async (
   expect(couponRow).toBeNull();
   expect(receiptRow).toBeTruthy();
 
-  await prisma.adminAuditLog.deleteMany({ where: { id: oldReceipt.id } });
+  await prisma.adminAuditLog.deleteMany({ where: safeWhere({ id: oldReceipt.id }) });
 });
 
 test("the cancel-reason floor: PATCH to CANCELLED with a short/missing reason is 400", async ({ page }) => {

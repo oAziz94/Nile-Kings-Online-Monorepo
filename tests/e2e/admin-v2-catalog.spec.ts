@@ -5,6 +5,7 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { buildVariantSku, variantSlug } from "@/lib/admin/slug";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 9.8b coverage: the product page rebuilt around colours and sizes (colour creation
@@ -130,7 +131,7 @@ test.afterAll(async () => {
     await prisma.variant.deleteMany({ where: { productId: { in: productIds } } });
     await prisma.product.deleteMany({ where: { id: { in: productIds } } });
   }
-  if (categoryId) await prisma.category.deleteMany({ where: { id: categoryId } });
+  if (categoryId) await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
   const userIds = [adminUserId, customerUserId].filter((id): id is string => Boolean(id));
   if (userIds.length > 0) await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   await prisma.$disconnect();

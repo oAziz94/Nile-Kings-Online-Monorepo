@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
+import { definedIds, safeWhere } from "./db-cleanup";
 
 /**
  * Shared partner e2e fixture helpers (backlog 4.16, standing rule 9: "e2e fixtures come
@@ -215,27 +216,34 @@ export async function cleanupPartnerPair(
   pair: PartnerFixturePair,
   extra: { partnerIds?: string[]; userIds?: string[] } = {}
 ): Promise<void> {
-  const partnerIds = [pair.agent.partnerId, pair.distributor.partnerId, ...(extra.partnerIds ?? [])];
+  // Backlog 10.10 — refuse before touching anything if the pair (or a required id inside
+  // it) is missing, rather than let a partial/undefined pair silently widen an `in:` list
+  // filter or fall through to an unfiltered delete downstream.
+  if (!pair || !pair.agent?.partnerId || !pair.distributor?.partnerId) {
+    throw new Error("cleanupPartnerPair: refusing to clean up — pair or a partnerId is missing");
+  }
+
+  const partnerIds = definedIds([pair.agent.partnerId, pair.distributor.partnerId, ...(extra.partnerIds ?? [])]);
 
   // Backlog 5.1 — new tables, deleted before their `StockReceipt`/`Partner` parents.
-  await prisma.partnerPayment.deleteMany({ where: { partnerId: { in: partnerIds } } });
-  await prisma.partnerStockThreshold.deleteMany({ where: { partnerId: { in: partnerIds } } });
-  await prisma.stockReceiptLine.deleteMany({ where: { receipt: { partnerId: { in: partnerIds } } } });
-  await prisma.stockReceipt.deleteMany({ where: { partnerId: { in: partnerIds } } });
+  await prisma.partnerPayment.deleteMany({ where: safeWhere({ partnerId: { in: partnerIds } }) });
+  await prisma.partnerStockThreshold.deleteMany({ where: safeWhere({ partnerId: { in: partnerIds } }) });
+  await prisma.stockReceiptLine.deleteMany({ where: safeWhere({ receipt: { partnerId: { in: partnerIds } } }) });
+  await prisma.stockReceipt.deleteMany({ where: safeWhere({ partnerId: { in: partnerIds } }) });
   await prisma.restockRequestItem.deleteMany({
-    where: { restockRequest: { OR: [{ sourcePartnerId: { in: partnerIds } }, { destinationPartnerId: { in: partnerIds } }] } },
+    where: safeWhere({ restockRequest: { OR: [{ sourcePartnerId: { in: partnerIds } }, { destinationPartnerId: { in: partnerIds } }] } }),
   });
   await prisma.restockRequest.deleteMany({
-    where: { OR: [{ sourcePartnerId: { in: partnerIds } }, { destinationPartnerId: { in: partnerIds } }] },
+    where: safeWhere({ OR: [{ sourcePartnerId: { in: partnerIds } }, { destinationPartnerId: { in: partnerIds } }] }),
   });
-  await prisma.inventoryLedger.deleteMany({ where: { partnerId: { in: partnerIds } } });
-  await prisma.partnerInventory.deleteMany({ where: { partnerId: { in: partnerIds } } });
+  await prisma.inventoryLedger.deleteMany({ where: safeWhere({ partnerId: { in: partnerIds } }) });
+  await prisma.partnerInventory.deleteMany({ where: safeWhere({ partnerId: { in: partnerIds } }) });
   await prisma.order.updateMany({
-    where: { assignedPartnerId: { in: partnerIds } },
+    where: safeWhere({ assignedPartnerId: { in: partnerIds } }),
     data: { assignedPartnerId: null },
   });
-  await prisma.partner.deleteMany({ where: { id: { in: partnerIds } } });
+  await prisma.partner.deleteMany({ where: safeWhere({ id: { in: partnerIds } }) });
   await prisma.user.deleteMany({
-    where: { id: { in: [pair.agent.userId, pair.distributor.userId, ...(extra.userIds ?? [])] } },
+    where: safeWhere({ id: { in: definedIds([pair.agent.userId, pair.distributor.userId, ...(extra.userIds ?? [])]) } }),
   });
 }

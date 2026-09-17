@@ -5,6 +5,7 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import * as XLSX from "xlsx";
 import { seedPartnerPair, loginAs, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 5.4 (المخزون hub) coverage. Folds the behaviours of the old
@@ -174,17 +175,17 @@ test.describe("stock index: search, thresholds, quick adjust, cover", () => {
     const orderId = (global as unknown as { __coverOrderId?: string }).__coverOrderId;
     const buyerId = (global as unknown as { __coverBuyerId?: string }).__coverBuyerId;
     if (orderId) {
-      await prisma.orderItem.deleteMany({ where: { orderId } });
-      await prisma.order.delete({ where: { id: orderId } });
+      await prisma.orderItem.deleteMany({ where: safeWhere({ orderId }) });
+      await prisma.order.delete({ where: safeWhere({ id: orderId }) });
     }
-    if (buyerId) await prisma.user.delete({ where: { id: buyerId } });
-    await prisma.inventoryLedger.deleteMany({ where: { partnerId: pair.agent.partnerId } });
-    await prisma.partnerInventory.deleteMany({ where: { partnerId: pair.agent.partnerId } });
+    if (buyerId) await prisma.user.delete({ where: safeWhere({ id: buyerId }) });
+    await prisma.inventoryLedger.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId }) });
+    await prisma.partnerInventory.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId }) });
     await prisma.variant.deleteMany({
       where: { productId: { in: [healthyProductId, lowProductId, reservedProductId, coverProductId] } },
     });
     await prisma.product.deleteMany({ where: { id: { in: [healthyProductId, lowProductId, reservedProductId, coverProductId] } } });
-    await prisma.category.delete({ where: { id: categoryId } });
+    await prisma.category.delete({ where: safeWhere({ id: categoryId }) });
     await cleanupPartnerPair(prisma, pair);
     await prisma.$disconnect();
   });
@@ -338,13 +339,13 @@ test.describe("intake and counts (moved receipts screens)", () => {
   });
 
   test.afterAll(async () => {
-    await prisma.stockReceiptLine.deleteMany({ where: { receipt: { partnerId: pair.agent.partnerId } } });
-    await prisma.stockReceipt.deleteMany({ where: { partnerId: pair.agent.partnerId } });
-    await prisma.inventoryLedger.deleteMany({ where: { partnerId: pair.agent.partnerId } });
-    await prisma.partnerInventory.deleteMany({ where: { partnerId: pair.agent.partnerId } });
-    await prisma.variant.deleteMany({ where: { productId } });
-    await prisma.product.deleteMany({ where: { id: productId } });
-    await prisma.category.delete({ where: { id: categoryId } });
+    await prisma.stockReceiptLine.deleteMany({ where: { receipt: safeWhere({ partnerId: pair.agent.partnerId }) } });
+    await prisma.stockReceipt.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId }) });
+    await prisma.inventoryLedger.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId }) });
+    await prisma.partnerInventory.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId }) });
+    await prisma.variant.deleteMany({ where: safeWhere({ productId }) });
+    await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+    await prisma.category.delete({ where: safeWhere({ id: categoryId }) });
     await cleanupPartnerPair(prisma, pair);
     await prisma.$disconnect();
   });
@@ -514,11 +515,11 @@ test.describe("movements tab", () => {
   });
 
   test.afterAll(async () => {
-    await prisma.inventoryLedger.deleteMany({ where: { partnerId: pair.agent.partnerId } });
-    await prisma.partnerInventory.deleteMany({ where: { partnerId: pair.agent.partnerId } });
-    await prisma.variant.deleteMany({ where: { productId } });
-    await prisma.product.deleteMany({ where: { id: productId } });
-    await prisma.category.delete({ where: { id: categoryId } });
+    await prisma.inventoryLedger.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId }) });
+    await prisma.partnerInventory.deleteMany({ where: safeWhere({ partnerId: pair.agent.partnerId }) });
+    await prisma.variant.deleteMany({ where: safeWhere({ productId }) });
+    await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+    await prisma.category.delete({ where: safeWhere({ id: categoryId }) });
     await cleanupPartnerPair(prisma, pair);
     await prisma.$disconnect();
   });
@@ -654,8 +655,10 @@ test.describe("requests tab (restock transfer)", () => {
     const cancelledRequest = await prisma.restockRequest.findFirst({ where: { destinationPartnerId: pair.distributor.partnerId, status: "CANCELLED" } });
     await prisma.restockRequestItem.deleteMany({ where: { restockRequestId: { in: [restockRequest!.id, cancelledRequest?.id ?? ""] } } });
     await prisma.restockRequest.deleteMany({ where: { id: { in: [restockRequest!.id, cancelledRequest?.id ?? ""] } } });
-    await prisma.inventoryLedger.deleteMany({ where: { restockRequestId: restockRequest!.id } });
-    await prisma.partnerInventory.deleteMany({ where: { partnerId: { in: [pair.agent.partnerId, pair.distributor.partnerId] }, variantId: variantB.id } });
+    await prisma.inventoryLedger.deleteMany({ where: safeWhere({ restockRequestId: restockRequest!.id }) });
+    await prisma.partnerInventory.deleteMany({
+      where: safeWhere({ partnerId: { in: [pair.agent.partnerId, pair.distributor.partnerId] }, variantId: variantB.id }),
+    });
   });
 
   async function createDraftLine(page: import("@playwright/test").Page, sku: string, quantity: number) {
