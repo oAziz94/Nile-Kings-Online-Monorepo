@@ -4,6 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import parsePhoneNumber from "libphonenumber-js/mobile";
+import { safeWhere } from "./db-cleanup";
 
 // Backlog 4.14 (Become a partner, `/partners`) regression coverage — same one-spec-per-screen
 // pattern as tests/e2e/public-cart.spec.ts. Covers the `?type=` query contract, the client
@@ -148,7 +149,7 @@ test.describe("Become a partner (/partners)", () => {
       expect(created).not.toBeNull();
       expect(created?.requestType).toBe("AGENT");
     } finally {
-      await prisma.partnerRequest.deleteMany({ where: { phone } });
+      await prisma.partnerRequest.deleteMany({ where: safeWhere({ phone }) });
     }
 
     await page.getByRole("button", { name: "إرسال طلب آخر" }).click();

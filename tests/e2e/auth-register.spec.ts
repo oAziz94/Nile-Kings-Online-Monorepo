@@ -6,6 +6,7 @@ import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { Redis } from "@upstash/redis";
 import parsePhoneNumber from "libphonenumber-js/mobile";
+import { safeWhere } from "./db-cleanup";
 
 // Regression coverage for backlog task 4.4 (WhatsApp OTP via WaPilot), which reinstated OTP
 // verification at registration — a real flow change from the previous phone->profile->submit
@@ -97,7 +98,7 @@ function saudiE164(national: string): string {
  * (see file header) so the OTP step's verify action can run for real against a known code. */
 async function seedRegisterOtp(phone: string, code: string): Promise<void> {
   const future = new Date(Date.now() + 10 * 60 * 1000);
-  await prisma.oTPRequest.deleteMany({ where: { phone, purpose: "register" } });
+  await prisma.oTPRequest.deleteMany({ where: safeWhere({ phone, purpose: "register" }) });
   await prisma.oTPRequest.create({
     data: { phone, codeHash: hashOtp(code), expiresAt: future, purpose: "register" },
   });

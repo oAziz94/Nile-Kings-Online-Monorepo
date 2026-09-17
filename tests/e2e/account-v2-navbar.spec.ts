@@ -4,6 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
+import { safeWhere } from "./db-cleanup";
 
 // Backlog 6.1 (Navbar additions + drawer + search page) regression coverage. Same seeded
 // fixture-user + scrypt-hash pattern as tests/e2e/public-profile.spec.ts, run against the
@@ -83,10 +84,10 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await prisma.orderItem.deleteMany({ where: { order: { userId: fixtureUserId } } });
-  await prisma.order.deleteMany({ where: { userId: fixtureUserId } });
-  await prisma.savedAddress.deleteMany({ where: { userId: fixtureUserId } });
-  await prisma.user.delete({ where: { id: fixtureUserId } }).catch(() => {});
+  await prisma.orderItem.deleteMany({ where: { order: safeWhere({ userId: fixtureUserId }) } });
+  await prisma.order.deleteMany({ where: safeWhere({ userId: fixtureUserId }) });
+  await prisma.savedAddress.deleteMany({ where: safeWhere({ userId: fixtureUserId }) });
+  await prisma.user.delete({ where: safeWhere({ id: fixtureUserId }) }).catch(() => {});
   await prisma.$disconnect();
 });
 

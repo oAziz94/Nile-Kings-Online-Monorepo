@@ -4,6 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import { hashPassword, loginWithPhone } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 9.0b (iii): every `useListUrlState` consumer's search-on-keystroke fetch now goes
@@ -128,9 +129,9 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } });
   await prisma.order.deleteMany({ where: { id: { in: orderIds } } });
-  await prisma.variant.deleteMany({ where: { id: variantId } });
-  await prisma.product.deleteMany({ where: { id: productId } });
-  await prisma.category.deleteMany({ where: { id: categoryId } });
+  await prisma.variant.deleteMany({ where: safeWhere({ id: variantId }) });
+  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
   await prisma.user.deleteMany({ where: { id: { in: [adminUserId, slowCustomerId, fastCustomerId] } } });
   await prisma.$disconnect();
 });

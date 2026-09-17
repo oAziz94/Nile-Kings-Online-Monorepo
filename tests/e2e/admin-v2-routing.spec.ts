@@ -6,6 +6,7 @@ import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { assignOrderToGovernorate } from "@/lib/rerouting/assign";
+import { safeWhere } from "./db-cleanup";
 import { ROUTING_TEST_GOVERNORATE } from "./test-env";
 
 /**
@@ -130,21 +131,22 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  // cleanup-safe: FIXTURE_GOVERNORATE is a module-level const string built from uniqueSuffix — never undefined.
   await prisma.adminAuditLog.deleteMany({ where: { entityType: "routing", entityId: FIXTURE_GOVERNORATE } });
   if (orderIds.length) {
     await prisma.routedOrder.deleteMany({ where: { orderId: { in: orderIds } } });
     await prisma.order.deleteMany({ where: { id: { in: orderIds } } });
   }
   if (ruleId) {
-    await prisma.reroutingRulePartner.deleteMany({ where: { ruleId } });
-    await prisma.reroutingRule.deleteMany({ where: { id: ruleId } });
+    await prisma.reroutingRulePartner.deleteMany({ where: safeWhere({ ruleId }) });
+    await prisma.reroutingRule.deleteMany({ where: safeWhere({ id: ruleId }) });
   }
   await prisma.partner.deleteMany({ where: { id: { in: [partnerA.partnerId, partnerB.partnerId] } } });
   await prisma.user.deleteMany({ where: { id: { in: [adminUserId, customerUserId, partnerA.userId, partnerB.userId] } } });
   // Backlog 9.0c — restore ROUTING_TEST_GOVERNORATE to "no rule" for the next run.
   if (wadiRuleId) {
-    await prisma.reroutingRulePartner.deleteMany({ where: { ruleId: wadiRuleId } });
-    await prisma.reroutingRule.deleteMany({ where: { id: wadiRuleId } });
+    await prisma.reroutingRulePartner.deleteMany({ where: safeWhere({ ruleId: wadiRuleId }) });
+    await prisma.reroutingRule.deleteMany({ where: safeWhere({ id: wadiRuleId }) });
   }
   await prisma.$disconnect();
 });

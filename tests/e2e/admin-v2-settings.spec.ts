@@ -4,6 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 9.7 (a)/(b) coverage: the four الإعدادات groups, the price-affecting confirm
@@ -77,9 +78,9 @@ test.afterAll(async () => {
   // Restore stored network defaults to the schema constants so this run never leaks into
   // another spec's assumptions about a fresh install's fallback.
   await prisma.siteSetting.deleteMany({ where: { key: { in: ["partnerDefaults", "adminAlertPrefs"] } } });
-  await prisma.adminAuditLog.deleteMany({ where: { OR: [{ entityId: fixturePartnerId }, { entityId: { in: createdPartnerIds } }] } });
+  await prisma.adminAuditLog.deleteMany({ where: { OR: [safeWhere({ entityId: fixturePartnerId }), { entityId: { in: createdPartnerIds } }] } });
   await prisma.partner.deleteMany({ where: { id: { in: [fixturePartnerId, ...createdPartnerIds] } } });
-  await prisma.user.deleteMany({ where: { id: adminUserId } });
+  await prisma.user.deleteMany({ where: safeWhere({ id: adminUserId }) });
   await prisma.$disconnect();
 });
 

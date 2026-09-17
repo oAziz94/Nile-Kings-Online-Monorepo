@@ -5,6 +5,7 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { seedPartnerPair, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+import { safeWhere } from "./db-cleanup";
 
 /**
  * Backlog 9.3 (الطلبات — the network pipeline + the order detail with admin powers)
@@ -182,8 +183,8 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await prisma.orderTicketMessage.deleteMany({ where: { ticketId } });
-  await prisma.orderTicket.deleteMany({ where: { id: ticketId } });
+  await prisma.orderTicketMessage.deleteMany({ where: safeWhere({ ticketId }) });
+  await prisma.orderTicket.deleteMany({ where: safeWhere({ id: ticketId }) });
   await prisma.adminAuditLog.deleteMany({ where: { entityId: { in: allOrderIds } } });
   await prisma.inventoryLedger.deleteMany({ where: { orderId: { in: allOrderIds } } });
   await prisma.orderAuditLog.deleteMany({ where: { orderId: { in: allOrderIds } } });
@@ -192,8 +193,8 @@ test.afterAll(async () => {
   await prisma.order.deleteMany({ where: { id: { in: allOrderIds } } });
   await cleanupPartnerPair(prisma, pair);
   await prisma.variant.deleteMany({ where: { id: { in: [variantAId, variantBId, variantCId] } } });
-  await prisma.product.deleteMany({ where: { id: productId } });
-  await prisma.category.deleteMany({ where: { id: categoryId } });
+  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
   await prisma.user.deleteMany({ where: { id: { in: [adminUserId, customerUserId] } } });
   await prisma.$disconnect();
 });

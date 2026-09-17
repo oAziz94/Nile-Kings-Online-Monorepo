@@ -3,6 +3,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import { test, expect, devices, type Page } from "@playwright/test";
+import { safeWhere } from "./db-cleanup";
 
 // Backlog 4.9 (PDP) regression coverage. Reads a real product from the redesign DB via the
 // public listing API (never invents fixture data), exercises the shared `useVariantSelection`
@@ -644,14 +645,14 @@ test.describe("Public PDP (backlog 4.9)", () => {
       if (partnerInventoryIds.length > 0) {
         await prisma.partnerInventory.deleteMany({ where: { id: { in: partnerInventoryIds } } });
       }
-      if (rulePartnerId) await prisma.reroutingRulePartner.deleteMany({ where: { id: rulePartnerId } });
-      if (ruleId) await prisma.reroutingRule.deleteMany({ where: { id: ruleId } });
-      if (partnerId) await prisma.partner.deleteMany({ where: { id: partnerId } });
+      if (rulePartnerId) await prisma.reroutingRulePartner.deleteMany({ where: safeWhere({ id: rulePartnerId }) });
+      if (ruleId) await prisma.reroutingRule.deleteMany({ where: safeWhere({ id: ruleId }) });
+      if (partnerId) await prisma.partner.deleteMany({ where: safeWhere({ id: partnerId }) });
       if (productId) {
-        await prisma.variant.deleteMany({ where: { productId } });
-        await prisma.product.deleteMany({ where: { id: productId } });
+        await prisma.variant.deleteMany({ where: safeWhere({ productId }) });
+        await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
       }
-      if (categoryId) await prisma.category.deleteMany({ where: { id: categoryId } });
+      if (categoryId) await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
     });
 
     test("hover previews it, click selects it, buttons disabled with the message, sizes struck through, add-to-cart impossible", async ({
@@ -745,24 +746,49 @@ test.describe("Public PDP (backlog 4.9)", () => {
   test("backlog 10.5 — a product with a description shows الوصف first and open, الشحن closed (verifier's required fix)", async ({ page, baseURL }) => {
     const base = baseURL ?? "http://localhost:3100";
     await setStorefrontLocation(page, base);
-    // Find a real product with a non-empty description through the public API (read-only).
-    const list = await page.request.get("/api/products?take=60");
-    expect(list.ok()).toBeTruthy();
-    const products = (await list.json()).data.products as { slug: string }[];
-    let slug: string | null = null;
-    for (const p of products) {
-      const detail = (await (await page.request.get(`/api/products/${p.slug}`)).json()).data as { description?: string | null };
-      if (detail?.description && detail.description.trim().length > 0) { slug = p.slug; break; }
+    // The test owns a fixture product with a description (the production copy has none —
+    // 0 of 305 active products on 2026-09-17), created here and deleted by id below.
+    const suffix = `${Date.now()}`;
+    const category = await prisma.category.create({
+      data: { name: `فئة اختبار 10.5 ${suffix}`, slug: `pdp-105-cat-${suffix}`, sortOrder: 0 },
+    });
+    const product = await prisma.product.create({
+      data: {
+        categoryId: category.id,
+        name: `منتج اختبار 10.5 ${suffix}`,
+        slug: `pdp-105-product-${suffix}`,
+        description: "وصف اختباري للمنتج: قطن مصري مُمشّط، خياطة مزدوجة، مناسب للاستخدام اليومي.",
+        active: true,
+        variants: {
+          create: [
+            {
+              sku: `PDP105-M-${suffix}`,
+              slug: `pdp-105-product-${suffix}_m`,
+              name: "M",
+              colorName: "أسود",
+              colorHex: "#111111",
+              imageUrl:
+                "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773324600/nile-kings/products/xiwrxjqselhf0oiw5atg.jpg",
+              pricePiastres: 10000,
+            },
+          ],
+        },
+      },
+    });
+    try {
+      await page.goto(`/products/${product.slug}`);
+      const column = page.getByTestId("pdp-actions").locator("..");
+      const headings = column.getByRole("button", { name: /^(الوصف|الشحن|الإرجاع|الدفع)$/ });
+      await expect(headings).toHaveCount(4);
+      await expect(headings.nth(0)).toHaveText("الوصف");
+      await expect(headings.nth(0)).toHaveAttribute("aria-expanded", "true");
+      await expect(headings.nth(1)).toHaveText("الشحن");
+      await expect(headings.nth(1)).toHaveAttribute("aria-expanded", "false");
+    } finally {
+      await prisma.variant.deleteMany({ where: safeWhere({ productId: product.id }) });
+      await prisma.product.deleteMany({ where: safeWhere({ id: product.id }) });
+      await prisma.category.deleteMany({ where: safeWhere({ id: category.id }) });
     }
-    expect(slug, "no product with a description found in the first 60").toBeTruthy();
-    await page.goto(`/products/${slug}`);
-    const column = page.getByTestId("pdp-actions").locator("..");
-    const headings = column.getByRole("button", { name: /^(الوصف|الشحن|الإرجاع|الدفع)$/ });
-    await expect(headings).toHaveCount(4);
-    await expect(headings.nth(0)).toHaveText("الوصف");
-    await expect(headings.nth(0)).toHaveAttribute("aria-expanded", "true");
-    await expect(headings.nth(1)).toHaveText("الشحن");
-    await expect(headings.nth(1)).toHaveAttribute("aria-expanded", "false");
   });
 
 });
