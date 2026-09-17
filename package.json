@@ -1,6 +1,6 @@
 {
   "name": "nile-kings-online",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "private": true,
   "scripts": {
     "postinstall": "prisma generate",
