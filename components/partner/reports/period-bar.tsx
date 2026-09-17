@@ -44,7 +44,19 @@ export function PeriodBar<TPreset extends PeriodPreset>({
           <button
             key={String(p.id)}
             type="button"
-            onClick={() => onPresetChange(p.id)}
+            onClick={() => {
+              onPresetChange(p.id);
+              // Backlog 10.8: "مخصص" with empty dates left the view showing an error (the query
+              // waits for both dates, and "no data yet" rendered as a failure). Prefill the last
+              // 30 days so the report loads at once; the shopper then narrows the dates.
+              if ((p.id as string) === "custom" && (!from || !to)) {
+                const today = new Date();
+                const start = new Date(today);
+                start.setDate(start.getDate() - 29);
+                const iso = (d: Date) => d.toISOString().slice(0, 10);
+                onCustomRangeChange({ from: from || iso(start), to: to || iso(today) });
+              }
+            }}
             aria-pressed={preset === p.id}
             className={cn(
               "inline-flex h-[30px] items-center rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2",
