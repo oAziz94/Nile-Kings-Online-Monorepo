@@ -108,6 +108,9 @@ test.beforeAll(async () => {
       shippingAddress,
       shippingProvider: "Egypt Post",
       paymentMethod: "COD",
+      // The card shows the ROWS_PER_CARD oldest unassigned orders; a production copy carries
+      // dozens of real ones, so the fixture must be the oldest to appear in the rows at all.
+      createdAt: new Date("2020-01-01T00:00:00Z"),
     },
   });
   unassignedOrderId = unassigned.id;
