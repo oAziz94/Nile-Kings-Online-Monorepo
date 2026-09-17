@@ -372,7 +372,25 @@ test.describe("Public PDP (backlog 4.9)", () => {
     const wisteriaSwatch = page.getByRole("radio", { name: "wisteria" });
     await wisteriaSwatch.click();
     const thumbList = page.getByRole("list", { name: "صور المنتج" });
-    await expect(thumbList.getByRole("listitem")).toHaveCount(GALLERY_PHOTOS.length);
+    // The PDP's product query sits behind `unstable_cache` with a 60 s window, so a render from
+    // before `beforeAll` seeded the gallery (a previous run's cleanup, a warm-up request) can be
+    // served for up to a minute — the "1 thumbnail instead of 6" first-run flake. Poll with a
+    // reload until the window has passed instead of failing on the stale render.
+    test.setTimeout(240_000);
+    await expect
+      .poll(
+        async () => {
+          const n = await thumbList.getByRole("listitem").count();
+          if (n !== GALLERY_PHOTOS.length) {
+            await page.waitForTimeout(5_000);
+            await page.reload({ waitUntil: "networkidle" });
+            await page.getByRole("radio", { name: "wisteria" }).click();
+          }
+          return n;
+        },
+        { timeout: 90_000, intervals: [1_000], message: "PDP data cache still serving the pre-seed gallery" }
+      )
+      .toBe(GALLERY_PHOTOS.length);
     const [scrollHeight, clientHeight] = await thumbList.evaluate((el) => [el.scrollHeight, el.clientHeight]);
     expect(scrollHeight).toBeGreaterThan(clientHeight);
     const thumbBox = await thumbList.boundingBox();

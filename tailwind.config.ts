@@ -8,6 +8,10 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    // Backlog 10.7 (owner, 2026-09-17): the storefront `container` was never centred, so at any
+    // width past a breakpoint the page hugged the inline-start edge and left every gutter on the
+    // other side (234 px of dead space on the left at 1514 wide). Centred once, here.
+    container: { center: true },
     extend: {
       colors: {
         border: "hsl(var(--border))",

@@ -294,7 +294,11 @@ export function ProductPageContent({
   return (
     <>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,6fr)_minmax(0,6fr)]">
+      {/* Backlog 10.7 (owner, 2026-09-17): the gallery column is exactly as wide as thumbnails +
+          photo (`auto`), the buy box takes a capped track next to it, and the pair is centred, so
+          there is no dead space between the photo and the thumbnails or between the photo and
+          the buy box, and both page edges get the same margin. */}
+      <div className="grid gap-8 lg:grid-cols-[auto_minmax(0,560px)] lg:justify-center lg:gap-12">
         {/* Gallery — backlog 10.1/10.3/10.5: the main frame's height is capped so the whole photo
             fits above the fold. 10.5 returns the ratio to the photo's own 4:5 (portrait, whole
             photo, no crop — supersedes 10.3's 5:4 landscape crop; the owner disliked the crop on
@@ -333,7 +337,7 @@ export function ProductPageContent({
               );
             })}
           </div>
-          <div className="flex min-w-0 justify-center">
+          <div className="flex min-w-0 justify-start">
           <div
             data-testid="pdp-main-frame"
             onMouseEnter={handleFrameMouseEnter}
@@ -341,7 +345,10 @@ export function ProductPageContent({
             onMouseLeave={handleFrameMouseLeave}
             onClick={handleFrameClick}
             className={cn(
-              "relative aspect-[4/5] w-full max-w-[calc(70dvh*0.8)] overflow-hidden bg-[hsl(38_22%_93%)] lg:max-w-[calc((100dvh-116px)*0.8)]",
+              // Below lg the frame fills the single column up to the height cap; at lg+ the column
+              // is `auto`, so the frame needs a definite width: the height cap × 4/5, never more
+              // than 42vw so the buy box keeps room on a short, narrow desktop window.
+              "relative aspect-[4/5] w-full max-w-[calc(70dvh*0.8)] overflow-hidden bg-[hsl(38_22%_93%)] lg:w-[min(calc((100dvh-116px)*0.8),42vw)] lg:max-w-none",
               isTouchPointer && "cursor-pointer"
             )}
           >
