@@ -5,7 +5,8 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { seedPartnerPair, cleanupPartnerPair, loginAs, type PartnerFixturePair } from "./partner-fixtures";
-import { safeWhere } from "./db-cleanup";
+import { safeWhere, deleteByIds } from "./db-cleanup";
+import { formatMoney2 } from "@/lib/reports/print/build";
 
 /**
  * Backlog 9.6 (التقارير network-wide) coverage. Serial mode, one shared fixture set: admin +
@@ -47,10 +48,17 @@ let pair: PartnerFixturePair;
 let categoryId: string;
 let productId: string;
 let variantId: string;
+let oddPriceProductId: string;
+let oddPriceVariantId: string;
 let receiptId: string;
 const RECEIPT_REFERENCE = `RCPT-${uniqueSuffix}`;
 const allOrderIds: string[] = [];
 const ORDER_UNIT_PIASTRES = 20000;
+// Backlog 10.14 (verifier, third pass) — a unit price that is *not* a round hundred piastres,
+// so the print page's money formatting is proven against a real piastre remainder, not just
+// values that would print correctly even through the old (buggy) whole-pound rounding path.
+const ODD_UNIT_PIASTRES = 19999;
+const ODD_PRODUCT_NAME_SUFFIX = "سعر كسري";
 
 async function loginAsAdmin(page: Page) {
   await page.goto("/login");
@@ -90,6 +98,24 @@ test.beforeAll(async () => {
   });
   variantId = variant.id;
 
+  // A *separate* product (the print product table's row label is the product name only, no
+  // variant differentiator — same as the on-screen tab) so the odd-priced order's row is
+  // findable by a unique product name, not conflated with the round-price fixture above.
+  const oddProduct = await prisma.product.create({
+    data: {
+      categoryId,
+      name: `منتج ${ODD_PRODUCT_NAME_SUFFIX} ${uniqueSuffix}`,
+      slug: `reports-odd-product-${uniqueSuffix}`,
+      active: true,
+      weightGrams: 300,
+    },
+  });
+  oddPriceProductId = oddProduct.id;
+  const oddVariant = await prisma.variant.create({
+    data: { productId: oddPriceProductId, sku: `RPT-ODD-${uniqueSuffix}`, name: "L", colorName: "أخضر", pricePiastres: ODD_UNIT_PIASTRES },
+  });
+  oddPriceVariantId = oddVariant.id;
+
   for (const side of [pair.agent, pair.distributor]) {
     const order = await prisma.order.create({
       data: {
@@ -119,6 +145,37 @@ test.beforeAll(async () => {
     allOrderIds.push(order.id);
   }
 
+  // Backlog 10.14 (verifier, third pass) — one more DELIVERED order, same product, the odd-
+  // priced variant, no discount: its net merchandise (= subtotal, no discount/senior-free) is
+  // exactly 19,999 piastres, so the product breakdown's own row for it must print "199.99 ج.م"
+  // — proof the print page's money formatting survives a real piastre remainder.
+  const oddOrder = await prisma.order.create({
+    data: {
+      userId: customerUserId,
+      status: "DELIVERED",
+      assignedPartnerId: pair.agent.partnerId,
+      subtotalPiastres: ODD_UNIT_PIASTRES,
+      totalPiastres: ODD_UNIT_PIASTRES,
+      shippingAddress: { governorate: "القاهرة", city: "القاهرة", area: "مدينة نصر" },
+      shippingProvider: "Egypt Post",
+      paymentMethod: "COD",
+      items: {
+        create: [
+          {
+            variantId: oddPriceVariantId,
+            productName: oddProduct.name,
+            variantName: `${oddProduct.slug}-${oddVariant.sku}`,
+            sku: oddVariant.sku,
+            quantity: 1,
+            unitPricePiastres: ODD_UNIT_PIASTRES,
+            totalPiastres: ODD_UNIT_PIASTRES,
+          },
+        ],
+      },
+    },
+  });
+  allOrderIds.push(oddOrder.id);
+
   // A FACTORY receipt for the agent, for fix (c)'s "the network receipts table shows the
   // fixture receipt with its partner name" assertion.
   const receipt = await prisma.stockReceipt.create({
@@ -131,8 +188,8 @@ test.afterAll(async () => {
   await prisma.stockReceipt.delete({ where: safeWhere({ id: receiptId }) });
   await prisma.orderAuditLog.deleteMany({ where: { orderId: { in: allOrderIds } } });
   await prisma.order.deleteMany({ where: { id: { in: allOrderIds } } });
-  await prisma.variant.deleteMany({ where: safeWhere({ id: variantId }) });
-  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await deleteByIds(prisma.variant, [variantId, oddPriceVariantId]);
+  await deleteByIds(prisma.product, [productId, oddPriceProductId]);
   await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
   await cleanupPartnerPair(prisma, pair);
   await prisma.user.deleteMany({ where: { id: { in: [adminUserId, customerUserId] } } });
@@ -422,7 +479,6 @@ test("10.14: the sales print page renders the four tiles and its total row equal
   const apiJson = await apiRes.json();
   const byKey = (headline: { key: string; value: number }[]) => Object.fromEntries(headline.map((h) => [h.key, h.value]));
   const apiRevenuePiastres = byKey(apiJson.data.headline).revenue as number;
-  const apiRevenueEgp = apiRevenuePiastres / 100;
 
   await page.goto("/admin/reports/sales/print?preset=30d&orders=accomplished");
   await expect(page.locator(".tile")).toHaveCount(4);
@@ -431,7 +487,15 @@ test("10.14: the sales print page renders the four tiles and its total row equal
   // token (comma thousands separator stripped) rather than a blanket "keep digits and dots"
   // regex, which would also keep the dot inside "ج.م" and produce a trailing-dot NaN.
   const parseMoneyCell = (text: string) => Number(text.trim().split(/\s/)[0].replace(/,/g, ""));
-  expect(parseMoneyCell(revenueTileValue)).toBeCloseTo(apiRevenueEgp, 1);
+  // Backlog 10.14 (verifier, third pass) — exact string equality, not "close to": the fixture
+  // seeded above (a 19,999-piastre order, never a round hundred) guarantees the period's total
+  // revenue carries a real piastre remainder, so a whole-pound-then-".00" bug (the one the
+  // verifier caught live on the money tab) would fail this assertion, not slip through a loose
+  // tolerance. `formatMoney2` is the same function the print page itself calls — this proves
+  // the *page* renders what the (separately unit-tested) formatter produces from the API's own
+  // piastre count, not a second, independent computation.
+  expect(revenueTileValue).toBe(formatMoney2(apiRevenuePiastres));
+  expect(apiRevenuePiastres % 100).not.toBe(0); // the fixture's odd remainder actually landed in this total
 
   // The product breakdown's total row (columns: المنتج, القطع, الإيراد, حصة الإيراد) sums to
   // الإيراد within ±1 piastre (10.13's per-item discount allocation can drift by a rounding

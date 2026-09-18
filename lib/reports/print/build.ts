@@ -27,12 +27,25 @@ import type { FulfilmentReportResponse } from "@/lib/analytics/partner-fulfilmen
 import type { InventoryReportResponse } from "@/lib/analytics/partner-inventory-report";
 import type { MoneyReportResponse } from "@/lib/analytics/partner-money-report";
 import { PAYMENT_METHOD_LABELS } from "@/lib/analytics/partner-money-report";
-import { piastresToEgp } from "@/lib/catalog";
 
-/** Money in pounds with two decimals, Western numerals (backlog 10.14 — the print pages'
- * own money format; the on-screen tabs round to whole pounds, this does not). */
+/**
+ * Money in pounds with two decimals, Western numerals (backlog 10.14 — the print pages' own
+ * money format; the on-screen tabs round to whole pounds, this does not).
+ *
+ * PM review (verifier, third pass) — this must format straight from piastres, never through
+ * `lib/catalog.ts`'s `piastresToEgp` (`Math.round(piastres / 100)`, whole pounds — built for
+ * the on-screen tiles, which round on purpose). Going through it first and appending ".00"
+ * after the fact silently threw away the piastre remainder on every print figure (verified
+ * live: 5,324,791 piastres printed "53,248.00" instead of "53,247.91"). Split the integer
+ * pound part and the two-digit piastre remainder directly off the integer piastre count —
+ * never a float division for the pounds, which would reintroduce the same rounding.
+ */
 export function formatMoney2(piastres: number): string {
-  return `${piastresToEgp(piastres).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م`;
+  const sign = piastres < 0 ? "−" : "";
+  const abs = Math.abs(Math.trunc(piastres));
+  const pounds = Math.trunc(abs / 100);
+  const remainder = abs % 100;
+  return `${sign}${pounds.toLocaleString("en-US")}.${String(remainder).padStart(2, "0")} ج.م`;
 }
 
 export function formatCount(n: number): string {

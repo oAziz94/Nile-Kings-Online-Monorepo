@@ -173,13 +173,29 @@ export function renderReportPrintPage(input: PrintPageInput): string {
   .share-text { direction: ltr; display: inline-block; }
   .table-note { font-size: 10.5px; color: #6b6558; margin: 4px 0 0; }
   .footnote { font-size: 11px; color: #8a8474; margin-top: 12px; }
-  .page-footer { font-size: 10px; color: #8a8474; text-align: center; margin-top: 24px; }
 
-  @page { size: A4 landscape; margin: 14mm; }
+  /* Page numbers (backlog 10.14, verifier third pass): counter(page)/counter(pages) only
+   * exist inside a page's own @page margin boxes — a flow element (e.g. a <p> in <body>)
+   * has no page-counter context at all and silently renders nothing, in Chromium or any other
+   * engine; the previous .page-footer::after was exactly that mistake. The margin-box form
+   * below is the CSS Paged Media rule; Chromium's headless page.pdf() does not paint @page
+   * margin boxes (a known Chromium limitation, not a bug in this rule), so it will not appear
+   * in a PDF produced by page.pdf() — but it renders in a real browser's print dialog and
+   * in any other engine that implements margin boxes, which is what the toolbar's own
+   * print button drives. Kept regardless of the headless gap.
+   */
+  @page {
+    size: A4 landscape;
+    margin: 14mm;
+    @bottom-center {
+      content: "صفحة " counter(page) " من " counter(pages);
+      font-size: 9pt;
+      color: #8a8474;
+    }
+  }
   @media print {
     .toolbar { display: none !important; }
     body { padding: 0; }
-    .page-footer::after { content: "صفحة " counter(page) " من " counter(pages); }
   }
 </style>
 </head>
@@ -210,8 +226,6 @@ export function renderReportPrintPage(input: PrintPageInput): string {
   ${tables}
 
   ${input.footnote ? `<p class="footnote">${esc(input.footnote)}</p>` : ""}
-
-  <p class="page-footer"></p>
 </body>
 </html>`;
 }
