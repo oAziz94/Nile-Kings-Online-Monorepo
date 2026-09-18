@@ -443,6 +443,15 @@ test("10.14: the sales print page renders the four tiles and its total row equal
   const totalRowPiastres = Math.round(parseMoneyCell(totalRowText) * 100);
   expect(Math.abs(totalRowPiastres - apiRevenuePiastres)).toBeLessThanOrEqual(1);
 
+  // PM review (second pass) — the product table folds past 25 data rows into one "باقي
+  // المنتجات (N)" row, so it never prints more than 25 data rows + 1 rest row + 1 total row,
+  // however many products actually sold in the period (this fixture DB's ~300+). The
+  // reconciliation above already proves the fold doesn't drop any revenue.
+  const productDataRows = productTable.locator("tbody tr:not(.total-row)");
+  const productDataRowCount = await productDataRows.count();
+  expect(productDataRowCount).toBeLessThanOrEqual(26);
+  await expect(productTable.getByText(/^باقي المنتجات \(\d+\)$/)).toBeVisible();
+
   // Fix 4 — the top product row's share bar renders at full width (100%), not a literal
   // percent-of-100 (which would leave every real row's bar looking nearly empty).
   // The browser normalises the inline style's percentage text (e.g. "100.0%" -> "100%"); parse
