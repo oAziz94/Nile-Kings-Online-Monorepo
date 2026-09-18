@@ -589,6 +589,78 @@ test("10.16 — حسب المنتج row and the print page show the fixture prod
   await expect(printRow.locator(".cell-sub")).toHaveText(product.slug);
 });
 
+test("10.17 — حسب المنتج is one row per product: a second sold variant of the same product still appears exactly once, on screen and on the print page", async ({ page }) => {
+  await loginAsAdmin(page);
+  const product = await prisma.product.findUniqueOrThrow({ where: { id: productId }, select: { name: true, slug: true } });
+
+  type ProductRow = { productId: string; units: number; revenuePiastres: number; orderCount: number; productSlug: string | null };
+  const rowsFor = (rows: ProductRow[]) => rows.filter((r) => r.productId === productId);
+  // Before this test's own order, the product's row already carries the `beforeAll` fixture's
+  // orders (round-price + the 10.16 test's ranking order, both on the original `variantId`).
+  const beforeRes = await page.request.get("/api/admin/reports/sales?preset=today");
+  const beforeJson = await beforeRes.json();
+  const before = rowsFor(beforeJson.data.breakdowns.product.rows)[0];
+  expect(before).toBeTruthy();
+
+  // A second variant of the SAME product (`productId`), sold in its own order — before 10.17
+  // this would have produced a second "حسب المنتج" row with the identical name/slug (keyed
+  // per variant); the ruling groups both under one row, summing units/revenue.
+  const secondVariant = await prisma.variant.create({
+    data: { productId, sku: `RPT-2ND-${uniqueSuffix}`, name: "S", colorName: "أحمر", pricePiastres: ORDER_UNIT_PIASTRES },
+  });
+  const secondVariantOrder = await prisma.order.create({
+    data: {
+      userId: customerUserId,
+      status: "DELIVERED",
+      assignedPartnerId: pair.agent.partnerId,
+      subtotalPiastres: ORDER_UNIT_PIASTRES * 4,
+      totalPiastres: ORDER_UNIT_PIASTRES * 4,
+      shippingAddress: { governorate: "القاهرة", city: "القاهرة", area: "مدينة نصر" },
+      shippingProvider: "Egypt Post",
+      paymentMethod: "COD",
+      items: {
+        create: [
+          {
+            variantId: secondVariant.id,
+            productName: product.name,
+            variantName: `${product.slug}-${secondVariant.sku}`,
+            sku: secondVariant.sku,
+            quantity: 4,
+            unitPricePiastres: ORDER_UNIT_PIASTRES,
+            totalPiastres: ORDER_UNIT_PIASTRES * 4,
+          },
+        ],
+      },
+    },
+  });
+
+  try {
+    const afterRes = await page.request.get("/api/admin/reports/sales?preset=today");
+    const afterJson = await afterRes.json();
+    const afterMatches = rowsFor(afterJson.data.breakdowns.product.rows);
+    // Exactly one row for the product, never two, however many of its variants sold.
+    expect(afterMatches).toHaveLength(1);
+    const after = afterMatches[0];
+    expect(after.units - before.units).toBe(4);
+    expect(after.revenuePiastres - before.revenuePiastres).toBe(ORDER_UNIT_PIASTRES * 4);
+    expect(after.orderCount - before.orderCount).toBe(1);
+    expect(after.productSlug).toBe(product.slug);
+
+    await page.goto("/admin/reports/sales?preset=today");
+    await page.getByRole("button", { name: "حسب المنتج" }).click();
+    const onScreenRows = page.getByRole("row").filter({ hasText: product.name });
+    await expect(onScreenRows).toHaveCount(1, { timeout: 15_000 });
+
+    await page.goto("/admin/reports/sales/print?preset=today&orders=accomplished");
+    const productTable = page.locator(".table-block", { has: page.getByRole("heading", { name: "حسب المنتج" }) });
+    const printRows = productTable.locator("tbody tr").filter({ hasText: product.name });
+    await expect(printRows).toHaveCount(1);
+  } finally {
+    await prisma.order.deleteMany({ where: safeWhere({ id: secondVariantOrder.id }) });
+    await deleteByIds(prisma.variant, [secondVariant.id]);
+  }
+});
+
 test("10.14: preset/tab validation, and a partner session gets 403 on the print route", async ({ page }) => {
   await loginAsAdmin(page);
   const badTab = await page.request.get("/admin/reports/bogus/print");

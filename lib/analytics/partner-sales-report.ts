@@ -104,16 +104,23 @@ function governorateOf(order: { shippingAddress: unknown }): string {
 }
 
 export type ProductBreakdownRow = {
-  variantId: string;
+  /** 10.17 — one row per product (`Product.id`), not per variant: the row sums every sold
+   * variant of the product. `productId` falls back to a variant's own id only when the
+   * variant's product could not be resolved (deleted product) — keeps such a row from
+   * merging with an unrelated product that happens to share no id. */
+  productId: string;
   productName: string;
-  /** 10.16 — the product's slug, for the identifier line under the name (product-level
-   * row: this breakdown's "product" is really keyed per variant, but the owner asked for
-   * the slug here, not the SKU). `null` only if the variant's product has since been deleted. */
+  /** 10.16 — the product's slug, for the identifier line under the name. `null` only if the
+   * product could not be resolved (deleted). */
   productSlug: string | null;
   units: number;
   revenuePiastres: number;
   previousRevenuePiastres: number;
   revenueSharePct: number;
+  /** 10.17 — distinct orders containing at least one of the product's variants (not a sum
+   * of each variant's own order count — an order with two sizes of the same product counts
+   * once). */
+  orderCount: number;
 };
 
 export type SimpleBreakdownRow = {
@@ -207,7 +214,7 @@ export async function getPartnerSalesReport(
     payment: paginate(full.payment, page, input.all),
     day: paginate(full.day, page, input.all),
   };
-  const actions = isNetworkScope(scope) ? [] : await buildActions(scope.partnerId, currentOrders, full);
+  const actions = isNetworkScope(scope) ? [] : await buildActions(scope.partnerId, currentOrders, currentItems, full);
 
   return {
     period,
@@ -389,6 +396,67 @@ export function countDistinctOrdersByKey<T extends { orderId: string }>(
   return new Map(Array.from(sets.entries()).map(([key, ids]) => [key, ids.size]));
 }
 
+/** A variant's product identity, as needed to aggregate the product breakdown (10.17). */
+export type VariantProductInfo = { productId: string; productSlug: string | null };
+
+/**
+ * 10.17 (PM ruling) — "حسب المنتج" is one row per product, not per variant: sums units and
+ * allocated revenue across every sold variant of the product, carries the previous-period
+ * revenue and share the same way, and counts distinct orders containing *any* of the
+ * product's variants (`countDistinctOrdersByKey`, keyed by product id — an order with two
+ * sizes of the same product counts once, not twice). Pure and exported for a database-free
+ * unit test; `productInfoByVariant` is supplied by the caller (a single `Variant.findMany`
+ * covering both periods' variant ids — see `buildFullBreakdowns`) so this function needs no
+ * Prisma access of its own. A variant missing from `productInfoByVariant` (its product was
+ * deleted) falls back to its own variant id as the grouping key, so it still gets a row
+ * rather than silently vanishing or merging into an unrelated product.
+ */
+export function buildProductRows(
+  currentItems: OrderItemForSales[],
+  previousItems: OrderItemForSales[],
+  curOrderById: Map<string, OrderForSales>,
+  prevOrderById: Map<string, OrderForSales>,
+  productInfoByVariant: Map<string, VariantProductInfo>,
+  totalRevenue: number
+): ProductBreakdownRow[] {
+  const keyOf = (variantId: string) => productInfoByVariant.get(variantId)?.productId ?? variantId;
+
+  const curByProduct = new Map<string, { units: number; revenue: number; productName: string; productSlug: string | null }>();
+  for (const it of currentItems) {
+    const key = keyOf(it.variantId);
+    const existing = curByProduct.get(key) ?? {
+      units: 0,
+      revenue: 0,
+      productName: it.productName,
+      productSlug: productInfoByVariant.get(it.variantId)?.productSlug ?? null,
+    };
+    existing.units += it.quantity;
+    existing.revenue += allocatedItemRevenue(it, curOrderById);
+    curByProduct.set(key, existing);
+  }
+
+  const prevByProduct = new Map<string, number>();
+  for (const it of previousItems) {
+    const key = keyOf(it.variantId);
+    prevByProduct.set(key, (prevByProduct.get(key) ?? 0) + allocatedItemRevenue(it, prevOrderById));
+  }
+
+  const orderCounts = countDistinctOrdersByKey(currentItems, (it) => keyOf(it.variantId));
+
+  return Array.from(curByProduct.entries())
+    .map(([productId, row]) => ({
+      productId,
+      productName: row.productName,
+      productSlug: row.productSlug,
+      units: row.units,
+      revenuePiastres: row.revenue,
+      previousRevenuePiastres: prevByProduct.get(productId) ?? 0,
+      revenueSharePct: totalRevenue > 0 ? (row.revenue / totalRevenue) * 100 : 0,
+      orderCount: orderCounts.get(productId) ?? 0,
+    }))
+    .sort((a, b) => b.revenuePiastres - a.revenuePiastres);
+}
+
 async function buildFullBreakdowns(
   scope: ReportScope,
   currentOrders: OrderForSales[],
@@ -417,11 +485,6 @@ async function buildFullBreakdowns(
     row.revenue += allocatedItemRevenue(it, curOrderById);
     curByVariant.set(it.variantId, row);
   }
-  const prevByVariant = new Map<string, number>();
-  for (const it of previousItems) {
-    prevByVariant.set(it.variantId, (prevByVariant.get(it.variantId) ?? 0) + allocatedItemRevenue(it, prevOrderById));
-  }
-
   // --- category (via variant -> product -> category); the variant lookup covers both
   // periods' variant ids, since a variant that only sold in the previous period still needs
   // its category resolved to land in that category's previous-revenue map. Also carries the
@@ -433,23 +496,17 @@ async function buildFullBreakdowns(
   const variants = allVariantIdsForCategory.length
     ? await prisma.variant.findMany({
         where: { id: { in: allVariantIdsForCategory } },
-        select: { id: true, product: { select: { slug: true, category: { select: { id: true, name: true } } } } },
+        select: { id: true, product: { select: { id: true, slug: true, category: { select: { id: true, name: true } } } } },
       })
     : [];
   const categoryByVariant = new Map(variants.map((v) => [v.id, v.product.category]));
-  const slugByVariant = new Map(variants.map((v) => [v.id, v.product.slug]));
+  // 10.17 — product identity per variant (id + slug), for `buildProductRows`'s per-product
+  // aggregation; one query covers both periods' variant ids, same as `categoryByVariant`.
+  const productInfoByVariant = new Map<string, VariantProductInfo>(
+    variants.map((v) => [v.id, { productId: v.product.id, productSlug: v.product.slug }])
+  );
 
-  const productRows: ProductBreakdownRow[] = Array.from(curByVariant.entries())
-    .map(([variantId, row]) => ({
-      variantId,
-      productName: row.productName,
-      productSlug: slugByVariant.get(variantId) ?? null,
-      units: row.units,
-      revenuePiastres: row.revenue,
-      previousRevenuePiastres: prevByVariant.get(variantId) ?? 0,
-      revenueSharePct: totalRevenue > 0 ? (row.revenue / totalRevenue) * 100 : 0,
-    }))
-    .sort((a, b) => b.revenuePiastres - a.revenuePiastres);
+  const productRows = buildProductRows(currentItems, previousItems, curOrderById, prevOrderById, productInfoByVariant, totalRevenue);
   const categoryOrderCounts = countDistinctOrdersByKey(currentItems, (it) => categoryByVariant.get(it.variantId)?.id ?? "uncategorised");
   const categoryMap = new Map<string, BaseSimpleRow>();
   for (const [variantId, row] of curByVariant) {
@@ -597,12 +654,26 @@ async function buildFullBreakdowns(
 async function buildActions(
   partnerId: string,
   currentOrders: OrderForSales[],
+  currentItems: OrderItemForSales[],
   breakdowns: FullBreakdowns
 ): Promise<ReportAction[]> {
   const actions: ReportAction[] = [];
 
-  // Top sellers under threshold -> stock.
-  const topVariantIds = breakdowns.product.slice(0, 10).map((r) => r.variantId);
+  // Top sellers under threshold -> stock. 10.17 — the product breakdown is now aggregated
+  // per product (not per variant), so this stock check (which needs actual variant ids to
+  // look up `PartnerInventory`) recomputes its own per-variant revenue ranking rather than
+  // reading `breakdowns.product`; same underlying numbers as before (top 10 variants by
+  // allocated revenue in the current set), just computed locally instead of borrowed from a
+  // table that no longer has variant rows.
+  const curOrderById = new Map(currentOrders.map((o) => [o.id, o]));
+  const variantRevenue = new Map<string, number>();
+  for (const it of currentItems) {
+    variantRevenue.set(it.variantId, (variantRevenue.get(it.variantId) ?? 0) + allocatedItemRevenue(it, curOrderById));
+  }
+  const topVariantIds = Array.from(variantRevenue.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([id]) => id);
   if (topVariantIds.length > 0) {
     const [threshold, inventories] = await Promise.all([
       resolveThreshold(partnerId),

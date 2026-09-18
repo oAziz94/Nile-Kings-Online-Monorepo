@@ -275,7 +275,7 @@ export function SalesReportView({
                   <BreakdownTable
                     page={data.breakdowns.product}
                     columns={["المنتج", "القطع", "الإيراد", "مقارنة بالفترة السابقة", "حصة الإيراد"]}
-                    rowKey={(r) => r.variantId}
+                    rowKey={(r) => r.productId}
                     onPageChange={setPage}
                     renderRow={(r) => (
                       <>
