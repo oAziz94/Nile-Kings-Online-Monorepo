@@ -383,6 +383,88 @@ test("401 signed-out; 403 for a customer", async ({ browser }) => {
   await customerContext.close();
 });
 
+// Backlog 10.14 — print-ready PDF page per admin report tab.
+test("10.14: the «PDF» button opens a new page whose URL carries the tab's params", async ({ page, context }) => {
+  await loginAsAdmin(page);
+  await page.goto("/admin/reports/sales");
+  await expect(page.getByRole("heading", { name: "تقرير المبيعات" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".nk-shimmer").first()).toHaveCount(0, { timeout: 30_000 });
+
+  await page.getByRole("button", { name: "النشطة" }).click();
+  await expect(page).toHaveURL(/orders=active/);
+
+  const popupPromise = context.waitForEvent("page");
+  await page.getByRole("button", { name: "PDF" }).click();
+  const popup = await popupPromise;
+  await popup.waitForLoadState();
+  expect(popup.url()).toContain("/admin/reports/sales/print");
+  expect(popup.url()).toContain("preset=30d");
+  expect(popup.url()).toContain("orders=active");
+  await popup.close();
+});
+
+test("10.14: the print page has no PDF button on the partner pages", async ({ page }) => {
+  await loginAs(page, pair, "AGENT");
+  await page.goto("/partner/reports/sales");
+  await expect(page.getByRole("heading", { name: "تقرير المبيعات" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "PDF" })).toHaveCount(0);
+});
+
+test("10.14: the sales print page renders the four tiles and its total row equals the API's headline revenue", async ({ page }) => {
+  await loginAsAdmin(page);
+
+  const apiRes = await page.request.get("/api/admin/reports/sales?preset=today");
+  const apiJson = await apiRes.json();
+  const byKey = (headline: { key: string; value: number }[]) => Object.fromEntries(headline.map((h) => [h.key, h.value]));
+  const apiRevenuePiastres = byKey(apiJson.data.headline).revenue as number;
+  const apiRevenueEgp = apiRevenuePiastres / 100;
+
+  await page.goto("/admin/reports/sales/print?preset=today&orders=accomplished");
+  await expect(page.locator(".tile")).toHaveCount(4);
+  const revenueTileValue = await page.locator(".tile").first().locator(".tile-value").innerText();
+  // The print page formats money to two decimals ("1,234.56 ج.م"); take the leading numeral
+  // token (comma thousands separator stripped) rather than a blanket "keep digits and dots"
+  // regex, which would also keep the dot inside "ج.م" and produce a trailing-dot NaN.
+  const parseMoneyCell = (text: string) => Number(text.trim().split(/\s/)[0].replace(/,/g, ""));
+  expect(parseMoneyCell(revenueTileValue)).toBeCloseTo(apiRevenueEgp, 1);
+
+  // The product breakdown's total row (columns: المنتج, القطع, الإيراد, حصة الإيراد) sums to
+  // الإيراد within the documented rounding drift (10.13's per-item discount allocation can
+  // drift by a few piastres) — located by its own heading, since network scope's first table
+  // is "حسب الشريك", not "حسب المنتج".
+  const productTable = page.locator(".table-block", { has: page.getByRole("heading", { name: "حسب المنتج" }) });
+  const totalRowText = await productTable.locator("tr.total-row td").nth(2).innerText();
+  const totalRowEgp = parseMoneyCell(totalRowText);
+  expect(Math.abs(totalRowEgp - apiRevenueEgp)).toBeLessThan(1);
+});
+
+test("10.14: preset/tab validation, and a partner session gets 403 on the print route", async ({ page }) => {
+  await loginAsAdmin(page);
+  const badTab = await page.request.get("/admin/reports/bogus/print");
+  expect(badTab.status()).toBe(400);
+  const badPreset = await page.request.get("/admin/reports/sales/print?preset=bogus");
+  expect(badPreset.status()).toBe(400);
+
+  const okRes = await page.request.get("/admin/reports/sales/print?preset=today");
+  expect(okRes.ok()).toBeTruthy();
+  expect(okRes.headers()["content-type"]).toContain("text/html");
+
+  const partnerContext = await page.context().browser()!.newContext();
+  const partnerPage = await partnerContext.newPage();
+  await loginAs(partnerPage, pair, "AGENT");
+  const partnerRes = await partnerPage.request.get("/admin/reports/sales/print?preset=today");
+  expect(partnerRes.status()).toBe(403);
+  await partnerContext.close();
+});
+
+test("10.14: a logged-out request to the print route is a 401, like the admin API routes", async ({ browser }) => {
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+  const res = await guestPage.request.get("/admin/reports/sales/print?preset=today");
+  expect(res.status()).toBe(401);
+  await guestContext.close();
+});
+
 const SCREENSHOT_VIEWPORTS = [
   { width: 1440, height: 900 },
   { width: 1514, height: 681 },
