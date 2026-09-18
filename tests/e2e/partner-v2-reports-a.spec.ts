@@ -258,11 +258,18 @@ test("sales report: every headline and delta equals a hand computation", async (
   expect(byKey.cancellationRate.delta.changePct).toBeNull(); // previous is 0
   expect(byKey.cancellationRate.delta.changeAbs).toBeCloseTo(25, 5);
 
-  // Product breakdown: our sales-test SKU's own row, independent of the other variant.
-  const productRow = json.data.breakdowns.product.rows.find((r: { variantId: string }) => r.variantId === salesVariantId);
-  expect(productRow.units).toBe(5);
-  expect(productRow.revenuePiastres).toBe(30000);
-  expect(productRow.revenueSharePct).toBeCloseTo((30000 / 130000) * 100, 5);
+  // Product breakdown (10.17: one row per product) — `salesVariantId` AND `invVariantId` are
+  // both variants of the SAME `productId` (see the fixture above), so this row sums both:
+  // units 2+3 (sales variant) + 14 (inventory variant) = 19; revenue 10000+20000+100000 =
+  // 130000 (no discount anywhere in this fixture — every item's allocated revenue equals its
+  // own totalPiastres) = the whole partner's revenue, so the share is 100%; orderCount = 3
+  // distinct DELIVERED orders (2 on the sales variant + 1 on the inventory variant), never 4
+  // (the CANCELLED order is outside the accomplished set).
+  const productRow = json.data.breakdowns.product.rows.find((r: { productId: string }) => r.productId === productId);
+  expect(productRow.units).toBe(19);
+  expect(productRow.revenuePiastres).toBe(130000);
+  expect(productRow.revenueSharePct).toBeCloseTo(100, 5);
+  expect(productRow.orderCount).toBe(3);
 
   // Governorate breakdown (backlog 7.4): every seeded order shares "القاهرة", so this row's
   // revenue equals the whole-partner headline above — 130000 now vs. 10000 previously ->

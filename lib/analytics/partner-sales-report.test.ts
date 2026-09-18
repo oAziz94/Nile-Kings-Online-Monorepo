@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { allocatedItemRevenue, attachRevenueDelta, buildHeadline, countDistinctOrdersByKey, type OrderForSales, type OrderItemForSales } from "./partner-sales-report";
+import {
+  allocatedItemRevenue,
+  attachRevenueDelta,
+  buildHeadline,
+  buildProductRows,
+  countDistinctOrdersByKey,
+  type OrderForSales,
+  type OrderItemForSales,
+  type VariantProductInfo,
+} from "./partner-sales-report";
 import { netMerchandisePiastres } from "./queries";
 
 describe("7.4 — attachRevenueDelta (shared by category/governorate/payment breakdown rows)", () => {
@@ -206,5 +215,78 @@ describe("10.14 (print-page review) — countDistinctOrdersByKey: the category b
 
   it("no items -> an empty map", () => {
     expect(countDistinctOrdersByKey([], (it: { key: string }) => it.key).size).toBe(0);
+  });
+});
+
+describe("10.17 (PM ruling) — buildProductRows: حسب المنتج is one row per product", () => {
+  function orderWith(id: string, subtotal: number): OrderForSales {
+    return {
+      id,
+      status: "DELIVERED",
+      totalPiastres: subtotal, // no shipping/COD surcharge here — not the point of this suite.
+      subtotalPiastres: subtotal,
+      discountPiastres: 0,
+      seniorFreeValuePiastres: 0,
+      paymentMethod: "COD",
+      createdAt: new Date("2026-09-10"),
+      shippingAddress: { governorate: "القاهرة" },
+      assignedPartnerId: "p1",
+    };
+  }
+
+  function itemFor(orderId: string, variantId: string, quantity: number, totalPiastres: number): OrderItemForSales {
+    return { orderId, variantId, quantity, totalPiastres, productName: "قميص", variantName: variantId, assignedPartnerId: "p1" };
+  }
+
+  it("two sold variants of one product in one order, plus a third variant of the same product in a second order -> one row, units and revenue summed, distinct orderCount, 100% share (single product in the set)", () => {
+    const orderA = orderWith("order-a", 10_000); // v1 (6,000) + v2 (4,000)
+    const orderB = orderWith("order-b", 3_000); // v3 alone
+    const currentOrders = [orderA, orderB];
+    const curOrderById = new Map(currentOrders.map((o) => [o.id, o]));
+    const currentItems = [
+      itemFor("order-a", "v1", 2, 6_000),
+      itemFor("order-a", "v2", 1, 4_000),
+      itemFor("order-b", "v3", 3, 3_000),
+    ];
+    // Every variant belongs to the same product ("prod-1") — the point of the test.
+    const productInfoByVariant = new Map<string, VariantProductInfo>([
+      ["v1", { productId: "prod-1", productSlug: "shirt-slug" }],
+      ["v2", { productId: "prod-1", productSlug: "shirt-slug" }],
+      ["v3", { productId: "prod-1", productSlug: "shirt-slug" }],
+    ]);
+    const totalRevenue = 13_000; // the whole set's net merchandise — this product is the only seller.
+
+    const rows = buildProductRows(currentItems, [], curOrderById, new Map(), productInfoByVariant, totalRevenue);
+
+    expect(rows).toHaveLength(1);
+    const row = rows[0];
+    expect(row.productId).toBe("prod-1");
+    expect(row.productSlug).toBe("shirt-slug");
+    expect(row.units).toBe(6); // 2 + 1 + 3
+    expect(row.revenuePiastres).toBe(13_000); // 6,000 + 4,000 + 3,000, no discount to allocate
+    expect(row.orderCount).toBe(2); // order-a and order-b, not 3 (one per item)
+    expect(row.revenueSharePct).toBeCloseTo(100, 5);
+  });
+
+  it("two different products stay on their own rows, sorted by revenue desc", () => {
+    const order = orderWith("order-c", 10_000);
+    const curOrderById = new Map([[order.id, order]]);
+    const currentItems = [itemFor("order-c", "va", 1, 3_000), itemFor("order-c", "vb", 1, 7_000)];
+    const productInfoByVariant = new Map<string, VariantProductInfo>([
+      ["va", { productId: "prod-a", productSlug: "a" }],
+      ["vb", { productId: "prod-b", productSlug: "b" }],
+    ]);
+    const rows = buildProductRows(currentItems, [], curOrderById, new Map(), productInfoByVariant, 10_000);
+    expect(rows.map((r) => r.productId)).toEqual(["prod-b", "prod-a"]); // 7,000 before 3,000
+  });
+
+  it("a variant missing from productInfoByVariant (deleted product) still gets its own row, keyed by its variant id", () => {
+    const order = orderWith("order-d", 5_000);
+    const curOrderById = new Map([[order.id, order]]);
+    const currentItems = [itemFor("order-d", "orphan-v", 1, 5_000)];
+    const rows = buildProductRows(currentItems, [], curOrderById, new Map(), new Map(), 5_000);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].productId).toBe("orphan-v");
+    expect(rows[0].productSlug).toBeNull();
   });
 });

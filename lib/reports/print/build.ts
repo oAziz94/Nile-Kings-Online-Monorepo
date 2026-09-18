@@ -164,18 +164,20 @@ export function buildSalesPrintData(
     });
   }
 
-  // --- حسب المنتج: name, units, revenue, share (no per-item order count available) — top 25
-  // plus a "باقي المنتجات" row (the reconciliation to الإيراد below is over the *full* list,
-  // not just the top 25, so it holds whether or not the fold triggers). ---
+  // --- حسب المنتج: name, units, revenue, share — one row per product (10.17), top 25 plus a
+  // "باقي المنتجات (N)" row counting products, not variants (the reconciliation to الإيراد
+  // below is over the *full* list, not just the top 25, so it holds whether or not the fold
+  // triggers). ---
   const productRowsFull = dropAllZeroRows(data.breakdowns.product.rows, (r) => r.units === 0 && r.revenuePiastres === 0);
   const productRows = foldRest(productRowsFull, (rest) => ({
-    variantId: REST_KEY,
+    productId: REST_KEY,
     productName: `باقي المنتجات (${rest.length})`,
     productSlug: null,
     units: rest.reduce((s, r) => s + r.units, 0),
     revenuePiastres: rest.reduce((s, r) => s + r.revenuePiastres, 0),
     previousRevenuePiastres: rest.reduce((s, r) => s + r.previousRevenuePiastres, 0),
     revenueSharePct: rest.reduce((s, r) => s + r.revenueSharePct, 0),
+    orderCount: rest.reduce((s, r) => s + r.orderCount, 0),
   }));
   const productShareCells = scaleSharesToMax(
     productRows.map((r) => r.revenueSharePct),
