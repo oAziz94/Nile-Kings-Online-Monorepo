@@ -714,9 +714,10 @@ function AdminOrdersPageInner() {
                     <p className="text-xs text-ink-soft">
                       {[o.shippingAddress?.area, o.shippingAddress?.governorate].filter(Boolean).join(" · ")}
                     </p>
-                    <p className="mt-1 text-xs">
+                    {/* div, not p: StatusPill renders a block element, which a <p> cannot contain (hydration error). */}
+                    <div className="mt-1 text-xs">
                       {o.assignedPartner ? <span className="font-bold">{o.assignedPartner.name}</span> : <StatusPill variant="danger">بلا شريك</StatusPill>}
-                    </p>
+                    </div>
                     <div className="mt-2 flex items-center justify-between text-sm">
                       <span className="font-extrabold tabular-nums">{egp(o.totalPiastres)}</span>
                       <span className="text-ink-soft">{relativeSince(o.statusSince)}</span>
