@@ -4,7 +4,7 @@ loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
 import { seedPartnerPair, loginAs, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
-import { safeWhere } from "./db-cleanup";
+import { deleteByIds, safeWhere } from "./db-cleanup";
 // Pure, no `@/*` alias and no Prisma import inside `cairo-day.ts` itself — safe to import
 // by relative path from a spec (unlike `lib/analytics/partner-reports.ts`, see the
 // `noonDaysAgo` comment below).
@@ -230,19 +230,22 @@ test("sales report: every headline and delta equals a hand computation", async (
 
   // The sales headline is partner-wide (not per-SKU) — it also picks up the inventory
   // report's own seeded order below (DELIVERED, 100000 piastres, qty 14, same window),
-  // since both seeds share one partner. Hand computation over *all* of the partner's
-  // orders in the current/previous 7-day windows:
-  //   current: DELIVERED 10000+20000+100000=130000 (3 delivered), 1 CANCELLED (5000, excluded
-  //     from revenue) -> orders=4, units=2+3+14=19, cancellationRate=1/4=25%
+  // since both seeds share one partner. No `orders=` param -> default "accomplished"
+  // (backlog 10.13: `orders`/`revenue`/`units`/`averageOrder` are scoped to DELIVERED-only;
+  // `cancellationRate` alone stays over every order in the period regardless of the filter).
+  // Hand computation over *all* of the partner's orders in the current/previous 7-day windows:
+  //   current: DELIVERED 10000+20000+100000=130000 (3 delivered orders), 1 CANCELLED (5000,
+  //     excluded from both the revenue and the accomplished order count) -> orders=3,
+  //     units=2+3+14=19, cancellationRate=1/4(all 4 orders)=25%
   //   previous: DELIVERED 10000 (1 delivered) -> orders=1, units=1
   expect(byKey.revenue.value).toBe(130000);
   expect(byKey.revenue.previous).toBe(10000);
   expect(byKey.revenue.delta.changePct).toBe(1200);
   expect(byKey.revenue.delta.direction).toBe("up");
 
-  expect(byKey.orders.value).toBe(4);
+  expect(byKey.orders.value).toBe(3);
   expect(byKey.orders.previous).toBe(1);
-  expect(byKey.orders.delta.changePct).toBe(300);
+  expect(byKey.orders.delta.changePct).toBe(200);
 
   expect(byKey.units.value).toBe(19);
   expect(byKey.units.previous).toBe(1);
@@ -295,6 +298,162 @@ test("sales report UI: the revenue tile renders the hand-computed value, and cha
   const govRow = page.locator("tr", { hasText: "القاهرة" }).first();
   await expect(govRow).toBeVisible({ timeout: 15_000 });
   await expect(govRow.getByText("+1200%", { exact: true })).toBeVisible();
+});
+
+test("sales report: orders=accomplished|active order-set filter, revenue is net merchandise, cancel rate unchanged by the filter", async ({ page }) => {
+  // Backlog 10.13 — its own isolated fixture (a second partner pair) so this test's exact
+  // "one DELIVERED, one SHIPPED, one CANCELLED, one CREATED" recipe doesn't have to account
+  // for the shared 5.6a fixture's own orders on the same partner/window.
+  const scopePair = await seedPartnerPair(prisma);
+  const scopeOrderIds: string[] = [];
+  let scopeCustomerId: string | undefined;
+  let scopeCategoryId: string | undefined;
+  let scopeProductId: string | undefined;
+  let scopeVariantId: string | undefined;
+  try {
+    const customer = await prisma.user.create({
+      data: { phone: `+2012${String(Date.now()).slice(-8)}`, role: "CUSTOMER" },
+    });
+    scopeCustomerId = customer.id;
+
+    const category = await prisma.category.create({
+      data: { name: `فئة 10.13 ${RUN_TAG}`, slug: `cat-10-13-${RUN_TAG}` },
+    });
+    scopeCategoryId = category.id;
+    const product = await prisma.product.create({
+      data: { categoryId: category.id, name: `منتج 10.13 ${RUN_TAG}`, slug: `p-10-13-${RUN_TAG}`, active: true },
+    });
+    scopeProductId = product.id;
+    const variant = await prisma.variant.create({
+      data: { productId: product.id, sku: `SKU-10-13-${RUN_TAG}`, name: "M", pricePiastres: 10000 },
+    });
+    scopeVariantId = variant.id;
+
+    const address = {
+      governorate: "القاهرة",
+      city: "القاهرة",
+      area: "test",
+      street: "test",
+      building: "1",
+      floor: "1",
+      apartment: "1",
+      phone: "01000000000",
+    };
+
+    async function makeScopeOrder(status: "DELIVERED" | "SHIPPED" | "CANCELLED" | "CREATED", subtotal: number, discount: number) {
+      const order = await prisma.order.create({
+        data: {
+          userId: customer.id,
+          status,
+          subtotalPiastres: subtotal,
+          discountPiastres: discount,
+          // totalPiastres carries a fake shipping+COD fee on top, so a test that reads it
+          // by mistake instead of the net-merchandise basis fails loudly.
+          totalPiastres: subtotal - discount + 2500,
+          shippingAddress: address,
+          shippingProvider: "Egypt Post",
+          paymentMethod: "COD",
+          assignedPartnerId: scopePair.agent.partnerId,
+          items: {
+            create: [
+              {
+                variantId: variant.id,
+                productName: product.name,
+                variantName: "M",
+                sku: variant.sku,
+                quantity: 1,
+                unitPricePiastres: subtotal,
+                totalPiastres: subtotal,
+              },
+            ],
+          },
+        },
+      });
+      scopeOrderIds.push(order.id);
+      return order;
+    }
+
+    // Exactly the owner's recipe (backlog 10.13's own test description).
+    await makeScopeOrder("DELIVERED", 10_000, 1_000); // net merchandise 9,000
+    await makeScopeOrder("SHIPPED", 8_000, 0); // net merchandise 8,000
+    await makeScopeOrder("CANCELLED", 5_000, 0);
+    await makeScopeOrder("CREATED", 3_000, 0);
+
+    await loginAs(page, scopePair, "AGENT");
+
+    const accomplishedRes = await page.request.get("/api/partner/reports/sales?preset=today&orders=accomplished");
+    expect(accomplishedRes.ok()).toBeTruthy();
+    const accomplishedJson = await accomplishedRes.json();
+    const acc = Object.fromEntries(
+      (accomplishedJson.data.headline as { key: string; value: number }[]).map((h) => [h.key, h.value])
+    );
+    expect(acc.orders).toBe(1);
+    expect(acc.revenue).toBe(9_000); // subtotal − discount, never totalPiastres (12,500 no less).
+    expect(acc.cancellationRate).toBeCloseTo(25, 5); // 1 cancelled / 4 orders total, whatever the filter.
+
+    const activeRes = await page.request.get("/api/partner/reports/sales?preset=today&orders=active");
+    expect(activeRes.ok()).toBeTruthy();
+    const activeJson = await activeRes.json();
+    const act = Object.fromEntries(
+      (activeJson.data.headline as { key: string; value: number }[]).map((h) => [h.key, h.value])
+    );
+    expect(act.orders).toBe(1);
+    expect(act.revenue).toBe(8_000);
+    expect(act.cancellationRate).toBeCloseTo(25, 5); // same basis/denominator as accomplished above.
+
+    // Default (no `orders=`) is accomplished.
+    const defaultRes = await page.request.get("/api/partner/reports/sales?preset=today");
+    const defaultJson = await defaultRes.json();
+    expect(defaultJson.data.headline.find((h: { key: string }) => h.key === "orders").value).toBe(1);
+    expect(defaultJson.data.headline.find((h: { key: string }) => h.key === "revenue").value).toBe(9_000);
+
+    // Unknown value -> 400, same as a bad preset.
+    const badRes = await page.request.get("/api/partner/reports/sales?orders=bogus");
+    expect(badRes.status()).toBe(400);
+
+    // CSV export carries `orders=`.
+    const csvRes = await page.request.get("/api/partner/reports/sales?preset=today&orders=active&format=csv&breakdown=day");
+    expect(csvRes.ok()).toBeTruthy();
+  } finally {
+    await deleteByIds(prisma.orderItem, scopeOrderIds, "orderId");
+    await deleteByIds(prisma.order, scopeOrderIds);
+    if (scopeVariantId) await prisma.variant.deleteMany({ where: safeWhere({ id: scopeVariantId }) });
+    if (scopeProductId) await prisma.product.deleteMany({ where: safeWhere({ id: scopeProductId }) });
+    if (scopeCategoryId) await prisma.category.deleteMany({ where: safeWhere({ id: scopeCategoryId }) });
+    await cleanupPartnerPair(prisma, scopePair);
+    if (scopeCustomerId) await prisma.user.deleteMany({ where: safeWhere({ id: scopeCustomerId }) });
+  }
+});
+
+test("sales report UI: the accomplished/active chip round-trips through the URL and updates the explainer line", async ({ page }) => {
+  await loginAs(page, pair, "AGENT");
+  await page.goto("/partner/reports/sales");
+  await expect(page.getByRole("heading", { name: "تقرير المبيعات" })).toBeVisible();
+
+  await expect(page.getByRole("button", { name: "المُنجَزة" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("تُحسب الأرقام من الطلبات المُسلَّمة فقط.")).toBeVisible({ timeout: 15_000 });
+  // Backlog 10.13 proof — screenshots of both chip states at the two required viewports.
+  for (const vp of [{ w: 1514, h: 681 }, { w: 390, h: 844 }]) {
+    await page.setViewportSize({ width: vp.w, height: vp.h });
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: `screenshots/partner-reports-sales-accomplished-${vp.w}x${vp.h}.png`, fullPage: true });
+  }
+
+  await page.getByRole("button", { name: "النشطة" }).click();
+  await expect(page).toHaveURL(/orders=active/);
+  await expect(page.getByRole("button", { name: "النشطة" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("تُحسب الأرقام من الطلبات النشطة", { exact: false })).toBeVisible({ timeout: 15_000 });
+  for (const vp of [{ w: 1514, h: 681 }, { w: 390, h: 844 }]) {
+    await page.setViewportSize({ width: vp.w, height: vp.h });
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: `screenshots/partner-reports-sales-active-${vp.w}x${vp.h}.png`, fullPage: true });
+  }
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "النشطة" })).toHaveAttribute("aria-pressed", "true");
+
+  await page.getByRole("button", { name: "المُنجَزة" }).click();
+  await expect(page).toHaveURL(/orders=accomplished/);
 });
 
 test("inventory report: velocity, days of cover and the reorder formula match the hand computation", async ({ page }) => {

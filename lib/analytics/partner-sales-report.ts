@@ -1,17 +1,22 @@
 /**
- * Sales report (backlog 5.6a) — `GET /api/partner/reports/sales`. Headline numbers use two
- * deliberately different universes, documented here since it's easy to conflate:
- *  - `orders` and `cancellationRate` count every order assigned to the partner and created
- *    in the period, whatever its current status (the whole funnel, including still-open and
- *    cancelled orders — this is what makes a cancellation rate meaningful at all).
- *  - `revenue`, `units` and `averageOrder` only count `DELIVERED` orders (completed, paid-out
- *    business) — the same trust signal the v1 report's "تم التسليم فقط" badge encoded,
- *    carried over into the new headline shape rather than a separate badge.
- * Breakdowns (product/category/governorate/payment/day) are computed over the same
- * DELIVERED universe as revenue, since they exist to explain where that revenue came from.
+ * Sales report (backlog 5.6a) — `GET /api/partner/reports/sales`. Backlog 10.13 replaced the
+ * old hardcoded DELIVERED-only headline with an owner-chosen **order set** the caller picks
+ * via `orders=accomplished|active` (default `accomplished`):
+ *  - `accomplished` = `DELIVERED` only (completed, paid-out business — the same trust signal
+ *    the v1 report's "تم التسليم فقط" badge encoded).
+ *  - `active` = `CONFIRMED`, `PROCESSING`, `READY_TO_SHIP`, `SHIPPED` (still in flight, not yet
+ *    delivered, not cancelled).
+ *  - Unpaid `CREATED` and `CANCELLED` orders are in neither set.
+ * The chosen set drives every tile and breakdown **except** `cancellationRate`, which stays
+ * cancelled ÷ every order created in the period regardless of the filter (a funnel number).
+ * Revenue is **net merchandise** (`netMerchandisePiastres` — subtotal − discount − senior free
+ * value), never `Order.totalPiastres` (which also carries shipping + the COD fee) — the same
+ * basis the money report already uses.
  */
 import { prisma } from "@/lib/db";
+import type { OrderStatus, Prisma } from "@prisma/client";
 import { resolveThreshold } from "@/lib/partner/resolve-threshold";
+import { netMerchandisePiastres } from "./queries";
 import {
   attachPreviousAndDelta,
   computeDelta,
@@ -31,17 +36,34 @@ import {
 } from "./partner-reports";
 import { formatDateEn } from "@/lib/format-en-numbers";
 
-type OrderForSales = {
+/** Backlog 10.13 — the two order sets a sales report can be scoped to. */
+export type SalesOrderSet = "accomplished" | "active";
+
+export const ACCOMPLISHED_STATUSES: OrderStatus[] = ["DELIVERED"];
+export const ACTIVE_STATUSES: OrderStatus[] = ["CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED"];
+
+/** `OrderForSales.status` is a plain `string` (loaded via `select`, not the enum type), so
+ * this returns `string[]` for `.includes()` checks against it; `orderStatusesForPrismaFilter`
+ * below returns the enum-typed array Prisma's `in` filter needs. */
+export function statusesForOrderSet(orderSet: SalesOrderSet): string[] {
+  return orderSet === "active" ? ACTIVE_STATUSES : ACCOMPLISHED_STATUSES;
+}
+
+/** Exported (10.13) so `buildHeadline` is unit-testable against hand-built fixture orders. */
+export type OrderForSales = {
   id: string;
   status: string;
   totalPiastres: number;
+  subtotalPiastres: number;
+  discountPiastres: number;
+  seniorFreeValuePiastres: number;
   paymentMethod: string;
   createdAt: Date;
   shippingAddress: unknown;
   assignedPartnerId: string | null;
 };
 
-type OrderItemForSales = {
+export type OrderItemForSales = {
   orderId: string;
   variantId: string;
   quantity: number;
@@ -51,7 +73,10 @@ type OrderItemForSales = {
   assignedPartnerId: string | null;
 };
 
-function scopeWhere(scope: ReportScope) {
+/** Explicit `Prisma.OrderWhereInput` return type (10.13) — an inferred union type here made
+ * TS mis-resolve the `where.order` overload once `loadOrderItems` gained a second filter
+ * (`status: { in: [...] }`) spread alongside it; a concrete type keeps the merge a single shape. */
+function scopeWhere(scope: ReportScope): Prisma.OrderWhereInput {
   return isNetworkScope(scope) ? { assignedPartnerId: { not: null } } : { assignedPartnerId: scope.partnerId };
 }
 
@@ -62,6 +87,9 @@ async function loadOrders(scope: ReportScope, range: { from: Date; to: Date }): 
       id: true,
       status: true,
       totalPiastres: true,
+      subtotalPiastres: true,
+      discountPiastres: true,
+      seniorFreeValuePiastres: true,
       paymentMethod: true,
       createdAt: true,
       shippingAddress: true,
@@ -118,17 +146,18 @@ const PAGE_SIZE = 25;
  */
 export async function getPartnerSalesFullBreakdown(
   scope: ReportScope,
-  input: { preset: SalesReportPreset; from?: string; to?: string },
+  input: { preset: SalesReportPreset; from?: string; to?: string; orderSet?: SalesOrderSet },
   key: keyof SalesReportBreakdowns
 ): Promise<unknown[]> {
+  const orderSet = input.orderSet ?? "accomplished";
   const period = resolvePeriod(input);
   const [currentOrders, previousOrders, currentItems, previousItems] = await Promise.all([
     loadOrders(scope, periodToDateRange(period.current)),
     loadOrders(scope, periodToDateRange(period.previous)),
-    loadOrderItems(scope, periodToDateRange(period.current)),
-    loadOrderItems(scope, periodToDateRange(period.previous)),
+    loadOrderItems(scope, periodToDateRange(period.current), orderSet),
+    loadOrderItems(scope, periodToDateRange(period.previous), orderSet),
   ]);
-  const full = await buildFullBreakdowns(scope, currentOrders, previousOrders, currentItems, previousItems);
+  const full = await buildFullBreakdowns(scope, currentOrders, previousOrders, currentItems, previousItems, orderSet);
   return full[key] ?? [];
 }
 
@@ -139,21 +168,22 @@ function paginate<T>(rows: T[], page: number): ReportBreakdownPage<T> {
 
 export async function getPartnerSalesReport(
   scope: ReportScope,
-  input: { preset: SalesReportPreset; from?: string; to?: string; page?: number }
+  input: { preset: SalesReportPreset; from?: string; to?: string; page?: number; orderSet?: SalesOrderSet }
 ): Promise<SalesReportResponse> {
+  const orderSet = input.orderSet ?? "accomplished";
   const period = resolvePeriod(input);
   const page = Math.max(1, input.page ?? 1);
 
   const [currentOrders, previousOrders, currentItems, previousItems] = await Promise.all([
     loadOrders(scope, periodToDateRange(period.current)),
     loadOrders(scope, periodToDateRange(period.previous)),
-    loadOrderItems(scope, periodToDateRange(period.current)),
-    loadOrderItems(scope, periodToDateRange(period.previous)),
+    loadOrderItems(scope, periodToDateRange(period.current), orderSet),
+    loadOrderItems(scope, periodToDateRange(period.previous), orderSet),
   ]);
 
-  const headline = buildHeadline(currentOrders, previousOrders, currentItems, previousItems);
-  const series = buildSeries(currentOrders, previousOrders, period);
-  const full = await buildFullBreakdowns(scope, currentOrders, previousOrders, currentItems, previousItems);
+  const headline = buildHeadline(currentOrders, previousOrders, currentItems, previousItems, orderSet);
+  const series = buildSeries(currentOrders, previousOrders, period, orderSet);
+  const full = await buildFullBreakdowns(scope, currentOrders, previousOrders, currentItems, previousItems, orderSet);
   const breakdowns: SalesReportBreakdowns = {
     byPartner: full.byPartner ? paginate(full.byPartner, page) : null,
     product: paginate(full.product, page),
@@ -174,10 +204,18 @@ export async function getPartnerSalesReport(
   };
 }
 
-async function loadOrderItems(scope: ReportScope, range: { from: Date; to: Date }): Promise<OrderItemForSales[]> {
+async function loadOrderItems(
+  scope: ReportScope,
+  range: { from: Date; to: Date },
+  orderSet: SalesOrderSet
+): Promise<OrderItemForSales[]> {
   const items = await prisma.orderItem.findMany({
     where: {
-      order: { ...scopeWhere(scope), status: "DELIVERED", createdAt: { gte: range.from, lte: range.to } },
+      order: {
+        ...scopeWhere(scope),
+        status: { in: orderSet === "active" ? ACTIVE_STATUSES : ACCOMPLISHED_STATUSES },
+        createdAt: { gte: range.from, lte: range.to },
+      },
     },
     select: {
       orderId: true,
@@ -192,50 +230,61 @@ async function loadOrderItems(scope: ReportScope, range: { from: Date; to: Date 
   return items.map((it) => ({ ...it, assignedPartnerId: it.order.assignedPartnerId }));
 }
 
-function buildHeadline(
+/** Exported (10.13) for a database-free unit test against fixture orders. */
+export function buildHeadline(
   currentOrders: OrderForSales[],
   previousOrders: OrderForSales[],
   currentItems: OrderItemForSales[],
-  previousItems: OrderItemForSales[]
+  previousItems: OrderItemForSales[],
+  orderSet: SalesOrderSet
 ): ReportHeadline[] {
-  const delivered = (orders: OrderForSales[]) => orders.filter((o) => o.status === "DELIVERED");
+  const statuses = statusesForOrderSet(orderSet);
+  const inSet = (orders: OrderForSales[]) => orders.filter((o) => statuses.includes(o.status));
   const cancelled = (orders: OrderForSales[]) => orders.filter((o) => o.status === "CANCELLED");
 
-  const curDelivered = delivered(currentOrders);
-  const prevDelivered = delivered(previousOrders);
+  const curSet = inSet(currentOrders);
+  const prevSet = inSet(previousOrders);
 
-  const curRevenue = curDelivered.reduce((s, o) => s + o.totalPiastres, 0);
-  const prevRevenue = prevDelivered.reduce((s, o) => s + o.totalPiastres, 0);
+  const curRevenue = curSet.reduce((s, o) => s + netMerchandisePiastres(o), 0);
+  const prevRevenue = prevSet.reduce((s, o) => s + netMerchandisePiastres(o), 0);
 
   const curUnits = currentItems.reduce((s, i) => s + i.quantity, 0);
   const prevUnits = previousItems.reduce((s, i) => s + i.quantity, 0);
 
-  const curAvg = curDelivered.length > 0 ? curRevenue / curDelivered.length : 0;
-  const prevAvg = prevDelivered.length > 0 ? prevRevenue / prevDelivered.length : 0;
+  const curAvg = curSet.length > 0 ? curRevenue / curSet.length : 0;
+  const prevAvg = prevSet.length > 0 ? prevRevenue / prevSet.length : 0;
 
-  const curOrderCount = currentOrders.length;
-  const prevOrderCount = previousOrders.length;
+  const curOrderCount = curSet.length;
+  const prevOrderCount = prevSet.length;
 
-  const curCancelRate = curOrderCount > 0 ? (cancelled(currentOrders).length / curOrderCount) * 100 : 0;
-  const prevCancelRate = prevOrderCount > 0 ? (cancelled(previousOrders).length / prevOrderCount) * 100 : 0;
+  // نسبة الإلغاء stays as today (10.13): cancelled ÷ every order created in the period,
+  // whatever the chosen set — a funnel number, not scoped by the filter.
+  const curCancelRate = currentOrders.length > 0 ? (cancelled(currentOrders).length / currentOrders.length) * 100 : 0;
+  const prevCancelRate = previousOrders.length > 0 ? (cancelled(previousOrders).length / previousOrders.length) * 100 : 0;
 
   return [
-    { key: "revenue", label: "الإيراد", value: curRevenue, previous: prevRevenue, delta: computeDelta(curRevenue, prevRevenue), unit: "piastres", hint: "طلبات تم تسليمها فقط" },
-    { key: "orders", label: "الطلبات", value: curOrderCount, previous: prevOrderCount, delta: computeDelta(curOrderCount, prevOrderCount), unit: "count", hint: "كل الحالات" },
-    { key: "units", label: "القطع", value: curUnits, previous: prevUnits, delta: computeDelta(curUnits, prevUnits), unit: "count", hint: "طلبات تم تسليمها فقط" },
-    { key: "averageOrder", label: "متوسط الطلب", value: Math.round(curAvg), previous: Math.round(prevAvg), delta: computeDelta(curAvg, prevAvg), unit: "piastres", hint: "طلبات تم تسليمها فقط" },
-    { key: "cancellationRate", label: "نسبة الإلغاء", value: curCancelRate, previous: prevCancelRate, delta: computeDelta(curCancelRate, prevCancelRate), unit: "percent", hint: "من كل الطلبات" },
+    { key: "revenue", label: "الإيراد", value: curRevenue, previous: prevRevenue, delta: computeDelta(curRevenue, prevRevenue), unit: "piastres", hint: "بدون الشحن ورسوم الدفع عند الاستلام" },
+    { key: "orders", label: "الطلبات", value: curOrderCount, previous: prevOrderCount, delta: computeDelta(curOrderCount, prevOrderCount), unit: "count" },
+    { key: "units", label: "القطع", value: curUnits, previous: prevUnits, delta: computeDelta(curUnits, prevUnits), unit: "count" },
+    { key: "averageOrder", label: "متوسط الطلب", value: Math.round(curAvg), previous: Math.round(prevAvg), delta: computeDelta(curAvg, prevAvg), unit: "piastres" },
+    { key: "cancellationRate", label: "نسبة الإلغاء", value: curCancelRate, previous: prevCancelRate, delta: computeDelta(curCancelRate, prevCancelRate), unit: "percent", hint: "من كل الطلبات في الفترة" },
   ];
 }
 
-function buildSeries(currentOrders: OrderForSales[], previousOrders: OrderForSales[], period: ResolvedPeriod): ReportSeries[] {
+function buildSeries(
+  currentOrders: OrderForSales[],
+  previousOrders: OrderForSales[],
+  period: ResolvedPeriod,
+  orderSet: SalesOrderSet
+): ReportSeries[] {
+  const statuses = statusesForOrderSet(orderSet);
   const dayKey = (d: Date) => d.toISOString().slice(0, 10);
   const bucket = (orders: OrderForSales[]) => {
     const map = new Map<string, number>();
     for (const o of orders) {
-      if (o.status !== "DELIVERED") continue;
+      if (!statuses.includes(o.status)) continue;
       const key = dayKey(o.createdAt);
-      map.set(key, (map.get(key) ?? 0) + o.totalPiastres);
+      map.set(key, (map.get(key) ?? 0) + netMerchandisePiastres(o));
     }
     return map;
   };
@@ -286,26 +335,54 @@ export function attachRevenueDelta(rows: BaseSimpleRow[], previousRevenueByKey: 
   });
 }
 
+/**
+ * PM ruling (10.13 verifier fix) — the product/category breakdowns previously summed
+ * `OrderItem.totalPiastres` (the line's own subtotal share, no discount applied), which no
+ * longer reconciled to الإيراد once that tile moved to net merchandise. An item's revenue is
+ * now the order's net merchandise spread over its items by their share of the order's
+ * subtotal: `round(item.totalPiastres × netMerchandise(order) ÷ order.subtotalPiastres)` (0
+ * when `subtotalPiastres` is 0 — never divide by zero). Exported for a database-free unit
+ * test; per-item rounding can drift the row sum from the headline by up to a few piastres
+ * (documented, not "fixed" further — there is no canonical way to force integer shares of an
+ * integer total to sum exactly without an arbitrary tie-breaker the owner never asked for).
+ */
+export function allocatedItemRevenue(item: { orderId: string; totalPiastres: number }, orderById: Map<string, OrderForSales>): number {
+  const order = orderById.get(item.orderId);
+  if (!order || order.subtotalPiastres === 0) return 0;
+  return Math.round((item.totalPiastres * netMerchandisePiastres(order)) / order.subtotalPiastres);
+}
+
 async function buildFullBreakdowns(
   scope: ReportScope,
   currentOrders: OrderForSales[],
   previousOrders: OrderForSales[],
   currentItems: OrderItemForSales[],
-  previousItems: OrderItemForSales[]
+  previousItems: OrderItemForSales[],
+  orderSet: SalesOrderSet
 ): Promise<FullBreakdowns> {
-  const totalRevenue = currentOrders.filter((o) => o.status === "DELIVERED").reduce((s, o) => s + o.totalPiastres, 0);
+  const statuses = statusesForOrderSet(orderSet);
+  const inSet = (o: OrderForSales) => statuses.includes(o.status);
+  const totalRevenue = currentOrders.filter(inSet).reduce((s, o) => s + netMerchandisePiastres(o), 0);
 
-  // --- product ---
+  // Order lookup for the per-item discount allocation below — `currentItems`/`previousItems`
+  // are already filtered to the chosen order set (`loadOrderItems`), so every item's order is
+  // present in `currentOrders`/`previousOrders` (loaded unfiltered, over the same period).
+  const curOrderById = new Map(currentOrders.map((o) => [o.id, o]));
+  const prevOrderById = new Map(previousOrders.map((o) => [o.id, o]));
+
+  // --- product --- revenue is each item's allocated share of its order's net merchandise
+  // (10.13 verifier fix), never the item's raw `totalPiastres` (no discount applied) — so
+  // this table's rows reconcile to الإيراد.
   const curByVariant = new Map<string, { units: number; revenue: number; productName: string }>();
   for (const it of currentItems) {
     const row = curByVariant.get(it.variantId) ?? { units: 0, revenue: 0, productName: it.productName };
     row.units += it.quantity;
-    row.revenue += it.totalPiastres;
+    row.revenue += allocatedItemRevenue(it, curOrderById);
     curByVariant.set(it.variantId, row);
   }
   const prevByVariant = new Map<string, number>();
   for (const it of previousItems) {
-    prevByVariant.set(it.variantId, (prevByVariant.get(it.variantId) ?? 0) + it.totalPiastres);
+    prevByVariant.set(it.variantId, (prevByVariant.get(it.variantId) ?? 0) + allocatedItemRevenue(it, prevOrderById));
   }
   const productRows: ProductBreakdownRow[] = Array.from(curByVariant.entries())
     .map(([variantId, row]) => ({
@@ -345,16 +422,17 @@ async function buildFullBreakdowns(
   for (const it of previousItems) {
     const cat = categoryByVariant.get(it.variantId);
     const key = cat?.id ?? "uncategorised";
-    prevCategoryRevenue.set(key, (prevCategoryRevenue.get(key) ?? 0) + it.totalPiastres);
+    prevCategoryRevenue.set(key, (prevCategoryRevenue.get(key) ?? 0) + allocatedItemRevenue(it, prevOrderById));
   }
   const categoryRows = attachRevenueDelta(
     Array.from(categoryMap.values()).sort((a, b) => b.revenuePiastres - a.revenuePiastres),
     prevCategoryRevenue
   );
 
-  // --- governorate ---
-  const deliveredOrders = currentOrders.filter((o) => o.status === "DELIVERED");
-  const prevDeliveredOrders = previousOrders.filter((o) => o.status === "DELIVERED");
+  // --- governorate --- cancellation totals over every order in the period, unfiltered by the
+  // set (same funnel-number rule as the headline); revenue/orders scoped to the set.
+  const setOrders = currentOrders.filter(inSet);
+  const prevSetOrders = previousOrders.filter(inSet);
   const govMap = new Map<string, { revenue: number; orders: number; cancelled: number; total: number }>();
   for (const o of currentOrders) {
     const gov = governorateOf(o);
@@ -363,16 +441,16 @@ async function buildFullBreakdowns(
     if (o.status === "CANCELLED") row.cancelled += 1;
     govMap.set(gov, row);
   }
-  for (const o of deliveredOrders) {
+  for (const o of setOrders) {
     const gov = governorateOf(o);
     const row = govMap.get(gov)!;
-    row.revenue += o.totalPiastres;
+    row.revenue += netMerchandisePiastres(o);
     row.orders += 1;
   }
   const prevGovRevenue = new Map<string, number>();
-  for (const o of prevDeliveredOrders) {
+  for (const o of prevSetOrders) {
     const gov = governorateOf(o);
-    prevGovRevenue.set(gov, (prevGovRevenue.get(gov) ?? 0) + o.totalPiastres);
+    prevGovRevenue.set(gov, (prevGovRevenue.get(gov) ?? 0) + netMerchandisePiastres(o));
   }
   const governorateBaseRows = Array.from(govMap.entries())
     .map((entry) => {
@@ -395,16 +473,16 @@ async function buildFullBreakdowns(
 
   // --- payment method ---
   const paymentMap = new Map<string, BaseSimpleRow>();
-  for (const o of deliveredOrders) {
+  for (const o of setOrders) {
     const key = o.paymentMethod;
     const row = paymentMap.get(key) ?? { key, label: key, units: 0, revenuePiastres: 0, orderCount: 0 };
-    row.revenuePiastres += o.totalPiastres;
+    row.revenuePiastres += netMerchandisePiastres(o);
     row.orderCount += 1;
     paymentMap.set(key, row);
   }
   const prevPaymentRevenue = new Map<string, number>();
-  for (const o of prevDeliveredOrders) {
-    prevPaymentRevenue.set(o.paymentMethod, (prevPaymentRevenue.get(o.paymentMethod) ?? 0) + o.totalPiastres);
+  for (const o of prevSetOrders) {
+    prevPaymentRevenue.set(o.paymentMethod, (prevPaymentRevenue.get(o.paymentMethod) ?? 0) + netMerchandisePiastres(o));
   }
   const paymentRows = attachRevenueDelta(
     Array.from(paymentMap.values()).sort((a, b) => b.revenuePiastres - a.revenuePiastres),
@@ -413,10 +491,10 @@ async function buildFullBreakdowns(
 
   // --- day ---
   const dayMap = new Map<string, { revenue: number; orders: number }>();
-  for (const o of deliveredOrders) {
+  for (const o of setOrders) {
     const key = o.createdAt.toISOString().slice(0, 10);
     const row = dayMap.get(key) ?? { revenue: 0, orders: 0 };
-    row.revenue += o.totalPiastres;
+    row.revenue += netMerchandisePiastres(o);
     row.orders += 1;
     dayMap.set(key, row);
   }
@@ -434,16 +512,16 @@ async function buildFullBreakdowns(
       const row = partnerMap.get(key) ?? { revenue: 0, orders: 0, cancelled: 0, total: 0 };
       row.total += 1;
       if (o.status === "CANCELLED") row.cancelled += 1;
-      if (o.status === "DELIVERED") {
-        row.revenue += o.totalPiastres;
+      if (inSet(o)) {
+        row.revenue += netMerchandisePiastres(o);
         row.orders += 1;
       }
       partnerMap.set(key, row);
     }
     const prevPartnerRevenue = new Map<string, number>();
-    for (const o of prevDeliveredOrders) {
+    for (const o of prevSetOrders) {
       const key = o.assignedPartnerId ?? "unassigned";
-      prevPartnerRevenue.set(key, (prevPartnerRevenue.get(key) ?? 0) + o.totalPiastres);
+      prevPartnerRevenue.set(key, (prevPartnerRevenue.get(key) ?? 0) + netMerchandisePiastres(o));
     }
     const partnerIds = Array.from(partnerMap.keys()).filter((k) => k !== "unassigned");
     const partners = partnerIds.length
