@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Download } from "lucide-react";
+import { Download, Printer } from "lucide-react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
@@ -135,6 +135,19 @@ export function SalesReportView({
     window.open(`${apiBase}/sales?${p}`, "_blank");
   };
 
+  // Backlog 10.14 — the «PDF» button, admin only (the network-wide `/admin/reports/*` pages
+  // pass `apiBase="/api/admin/reports"`; every other caller, including the partner's own page
+  // and the admin's per-partner الأداء tab, keeps its DOM unchanged).
+  const isAdminReportsScope = apiBase === "/api/admin/reports";
+  const openPrint = () => {
+    const p = new URLSearchParams({ preset, orders: orderSet });
+    if (preset === "custom" && customRange.from && customRange.to) {
+      p.set("from", customRange.from);
+      p.set("to", customRange.to);
+    }
+    window.open(`/admin/reports/sales/print?${p}`, "_blank", "noopener");
+  };
+
   return (
     <div>
       <PartnerTopbarSlot>
@@ -174,10 +187,18 @@ export function SalesReportView({
             </div>
           }
           toolbar={
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={() => exportCsv(activeTab)}>
-              <Download className="h-3.5 w-3.5" />
-              CSV
-            </Button>
+            <>
+              {isAdminReportsScope && (
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={openPrint}>
+                  <Printer className="h-3.5 w-3.5" />
+                  PDF
+                </Button>
+              )}
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={() => exportCsv(activeTab)}>
+                <Download className="h-3.5 w-3.5" />
+                CSV
+              </Button>
+            </>
           }
         />
 

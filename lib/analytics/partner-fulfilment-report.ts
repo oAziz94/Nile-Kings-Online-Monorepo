@@ -250,7 +250,7 @@ async function loadAuditRows(orderIds: string[]): Promise<FulfilmentAuditRow[]> 
 
 export async function getPartnerFulfilmentReport(
   scope: ReportScope,
-  input: { preset: SalesReportPreset; from?: string; to?: string; page?: number }
+  input: { preset: SalesReportPreset; from?: string; to?: string; page?: number; /** Backlog 10.14 — see `paginate`'s doc comment. */ all?: boolean }
 ): Promise<FulfilmentReportResponse> {
   const period = resolvePeriod(input);
   const page = Math.max(1, input.page ?? 1);
@@ -368,12 +368,12 @@ export async function getPartnerFulfilmentReport(
     { previousKey: "previousCount", deltaKey: "countDelta" }
   );
 
-  const paginate = <T,>(rows: T[]): ReportBreakdownPage<T> => ({
-    rows: rows.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE),
-    page,
-    pageSize: PAGE_SIZE,
-    total: rows.length,
-  });
+  // Backlog 10.14 — `input.all` returns every row as one unpaginated page (the print page has
+  // no pagination control and must show every row of every table).
+  const paginate = <T,>(rows: T[]): ReportBreakdownPage<T> =>
+    input.all
+      ? { rows, page: 1, pageSize: rows.length, total: rows.length }
+      : { rows: rows.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE), page, pageSize: PAGE_SIZE, total: rows.length };
 
   const actions: ReportAction[] = [];
   if (current.overdueRate > 0) {

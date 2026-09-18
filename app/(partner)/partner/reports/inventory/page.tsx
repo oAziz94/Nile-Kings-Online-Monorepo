@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Download, Settings2 } from "lucide-react";
+import { Download, Printer, Settings2 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
 import { Button } from "@/components/ui/button";
@@ -88,6 +88,17 @@ export function InventoryReportView({
     window.open(`${apiBase}/inventory?${p}`, "_blank");
   };
 
+  // Backlog 10.14 — see `SalesReportView`'s doc comment for the admin-only «PDF» button.
+  const isAdminReportsScope = apiBase === "/api/admin/reports";
+  const openPrint = () => {
+    const p = new URLSearchParams({ preset });
+    if (preset === "custom" && customRange.from && customRange.to) {
+      p.set("from", customRange.from);
+      p.set("to", customRange.to);
+    }
+    window.open(`/admin/reports/inventory/print?${p}`, "_blank", "noopener");
+  };
+
   return (
     <div>
       <PartnerTopbarSlot>
@@ -120,6 +131,12 @@ export function InventoryReportView({
                   تعديل الأهداف
                 </Link>
               </Button>
+              {isAdminReportsScope && (
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={openPrint}>
+                  <Printer className="h-3.5 w-3.5" />
+                  PDF
+                </Button>
+              )}
               {!isNetworkScope && (
                 <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={exportReorderCsv}>
                   <Download className="h-3.5 w-3.5" />

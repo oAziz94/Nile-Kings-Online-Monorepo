@@ -3,8 +3,10 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { Printer } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
+import { Button } from "@/components/ui/button";
 import { TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/shared/skeleton";
 import { PartnerTopbarSlot } from "@/components/partner/partner-shell";
@@ -83,6 +85,17 @@ export function FulfilmentReportView({
     enabled: preset !== "custom" || Boolean(customRange.from && customRange.to),
   });
 
+  // Backlog 10.14 — see `SalesReportView`'s doc comment for the admin-only «PDF» button.
+  const isAdminReportsScope = apiBase === "/api/admin/reports";
+  const openPrint = () => {
+    const p = new URLSearchParams({ preset });
+    if (preset === "custom" && customRange.from && customRange.to) {
+      p.set("from", customRange.from);
+      p.set("to", customRange.to);
+    }
+    window.open(`/admin/reports/fulfilment/print?${p}`, "_blank", "noopener");
+  };
+
   return (
     <div>
       <PartnerTopbarSlot>
@@ -103,6 +116,14 @@ export function FulfilmentReportView({
           to={customRange.to}
           onCustomRangeChange={setCustomRange}
           comparisonLabel={data?.comparisonLabel}
+          toolbar={
+            isAdminReportsScope ? (
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={openPrint}>
+                <Printer className="h-3.5 w-3.5" />
+                PDF
+              </Button>
+            ) : undefined
+          }
         />
 
         {isLoading ? (

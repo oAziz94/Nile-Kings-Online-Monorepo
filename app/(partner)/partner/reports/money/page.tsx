@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Download, Users as UsersIcon } from "lucide-react";
+import { Banknote, Download, Printer, Users as UsersIcon } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
 import { Button } from "@/components/ui/button";
@@ -117,6 +117,17 @@ export function MoneyReportView({
     window.open(`${apiBase}/money?export=statement`, "_blank");
   };
 
+  // Backlog 10.14 — see `SalesReportView`'s doc comment for the admin-only «PDF» button.
+  const isAdminReportsScope = apiBase === "/api/admin/reports";
+  const openPrint = () => {
+    const p = new URLSearchParams({ preset });
+    if (preset === "custom" && customRange.from && customRange.to) {
+      p.set("from", customRange.from);
+      p.set("to", customRange.to);
+    }
+    window.open(`/admin/reports/money/print?${p}`, "_blank", "noopener");
+  };
+
   return (
     <div>
       <PartnerTopbarSlot>
@@ -135,12 +146,20 @@ export function MoneyReportView({
           onCustomRangeChange={setCustomRange}
           comparisonLabel={data?.comparisonLabel}
           toolbar={
-            isNetworkScope ? undefined : (
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={exportStatement}>
-                <Download className="h-3.5 w-3.5" />
-                كشف حساب
-              </Button>
-            )
+            <>
+              {isAdminReportsScope && (
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={openPrint}>
+                  <Printer className="h-3.5 w-3.5" />
+                  PDF
+                </Button>
+              )}
+              {!isNetworkScope && (
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={exportStatement}>
+                  <Download className="h-3.5 w-3.5" />
+                  كشف حساب
+                </Button>
+              )}
+            </>
           }
         />
 

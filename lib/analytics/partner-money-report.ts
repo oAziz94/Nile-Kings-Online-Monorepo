@@ -111,7 +111,9 @@ export type MoneyReportResponse = PartnerReportResponse<MoneyReportBreakdowns> &
 };
 
 const PAGE_SIZE = 25;
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
+/** Backlog 10.14 — exported so the print pages' payment breakdown table can reuse the same
+ * labels instead of a second copy (this module's own source of truth). */
+export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   COD: "الدفع عند الاستلام",
   INSTAPAY_PREPAID: "إنستاباي",
   PAYMOB: "بطاقة (Paymob)",
@@ -204,7 +206,7 @@ export async function getPartnerStatementRows(
 
 export async function getPartnerMoneyReport(
   scope: ReportScope,
-  input: { preset: MoneyReportPreset; from?: string; to?: string; page?: number }
+  input: { preset: MoneyReportPreset; from?: string; to?: string; page?: number; /** Backlog 10.14 */ all?: boolean }
 ): Promise<MoneyReportResponse> {
   if (isNetworkScope(scope)) {
     return getNetworkMoneyReport(input);
@@ -224,7 +226,7 @@ export async function getPartnerMoneyReport(
  * across the whole network" has no single honest due date to show as one tile.
  */
 async function getNetworkMoneyReport(
-  input: { preset: MoneyReportPreset; from?: string; to?: string; page?: number }
+  input: { preset: MoneyReportPreset; from?: string; to?: string; page?: number; /** Backlog 10.14 */ all?: boolean }
 ): Promise<MoneyReportResponse> {
   const period = resolvePeriod(input);
   const page = Math.max(1, input.page ?? 1);
@@ -319,12 +321,12 @@ async function getNetworkMoneyReport(
     .map(([weekStart, amountPiastres]) => ({ weekStart, amountPiastres }))
     .sort((a, b) => a.weekStart.localeCompare(b.weekStart));
 
-  const paginate = <T,>(rows: T[]): ReportBreakdownPage<T> => ({
-    rows: rows.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE),
-    page,
-    pageSize: PAGE_SIZE,
-    total: rows.length,
-  });
+  // Backlog 10.14 — `input.all` returns every row as one unpaginated page (the print page has
+  // no pagination control and must show every row of every table).
+  const paginate = <T,>(rows: T[]): ReportBreakdownPage<T> =>
+    input.all
+      ? { rows, page: 1, pageSize: rows.length, total: rows.length }
+      : { rows: rows.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE), page, pageSize: PAGE_SIZE, total: rows.length };
 
   return {
     period,
@@ -346,7 +348,7 @@ async function getNetworkMoneyReport(
 
 async function getPartnerMoneyReportForOne(
   partnerId: string,
-  input: { preset: MoneyReportPreset; from?: string; to?: string; page?: number }
+  input: { preset: MoneyReportPreset; from?: string; to?: string; page?: number; /** Backlog 10.14 */ all?: boolean }
 ): Promise<MoneyReportResponse> {
   const period = resolvePeriod(input);
   const page = Math.max(1, input.page ?? 1);
@@ -533,12 +535,11 @@ async function getPartnerMoneyReportForOne(
     stockReceiptReference: p.stockReceipt?.reference ?? null,
   }));
 
-  const paginate = <T,>(rows: T[]): ReportBreakdownPage<T> => ({
-    rows: rows.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE),
-    page,
-    pageSize: PAGE_SIZE,
-    total: rows.length,
-  });
+  // Backlog 10.14 — see the network report's `paginate` doc comment.
+  const paginate = <T,>(rows: T[]): ReportBreakdownPage<T> =>
+    input.all
+      ? { rows, page: 1, pageSize: rows.length, total: rows.length }
+      : { rows: rows.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE), page, pageSize: PAGE_SIZE, total: rows.length };
 
   const actions: ReportAction[] = [{ label: "كشف حساب كامل بكل الاستلامات والدفعات", exportHref: "statement" }];
 

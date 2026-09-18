@@ -161,14 +161,25 @@ export async function getPartnerSalesFullBreakdown(
   return full[key] ?? [];
 }
 
-function paginate<T>(rows: T[], page: number): ReportBreakdownPage<T> {
+function paginate<T>(rows: T[], page: number, all?: boolean): ReportBreakdownPage<T> {
+  if (all) return { rows, page: 1, pageSize: rows.length, total: rows.length };
   const start = (page - 1) * PAGE_SIZE;
   return { rows: rows.slice(start, start + PAGE_SIZE), page, pageSize: PAGE_SIZE, total: rows.length };
 }
 
 export async function getPartnerSalesReport(
   scope: ReportScope,
-  input: { preset: SalesReportPreset; from?: string; to?: string; page?: number; orderSet?: SalesOrderSet }
+  input: {
+    preset: SalesReportPreset;
+    from?: string;
+    to?: string;
+    page?: number;
+    orderSet?: SalesOrderSet;
+    /** Backlog 10.14 — the print page needs every row of every table, not page 1 (the print
+     * document has no pagination control); every breakdown is returned as one unpaginated
+     * page instead of re-deriving the numbers a second way. */
+    all?: boolean;
+  }
 ): Promise<SalesReportResponse> {
   const orderSet = input.orderSet ?? "accomplished";
   const period = resolvePeriod(input);
@@ -185,12 +196,12 @@ export async function getPartnerSalesReport(
   const series = buildSeries(currentOrders, previousOrders, period, orderSet);
   const full = await buildFullBreakdowns(scope, currentOrders, previousOrders, currentItems, previousItems, orderSet);
   const breakdowns: SalesReportBreakdowns = {
-    byPartner: full.byPartner ? paginate(full.byPartner, page) : null,
-    product: paginate(full.product, page),
-    category: paginate(full.category, page),
-    governorate: paginate(full.governorate, page),
-    payment: paginate(full.payment, page),
-    day: paginate(full.day, page),
+    byPartner: full.byPartner ? paginate(full.byPartner, page, input.all) : null,
+    product: paginate(full.product, page, input.all),
+    category: paginate(full.category, page, input.all),
+    governorate: paginate(full.governorate, page, input.all),
+    payment: paginate(full.payment, page, input.all),
+    day: paginate(full.day, page, input.all),
   };
   const actions = isNetworkScope(scope) ? [] : await buildActions(scope.partnerId, currentOrders, full);
 
@@ -352,6 +363,28 @@ export function allocatedItemRevenue(item: { orderId: string; totalPiastres: num
   return Math.round((item.totalPiastres * netMerchandisePiastres(order)) / order.subtotalPiastres);
 }
 
+/**
+ * PM ruling (10.14 print-page review) — the category breakdown's "الطلبات" column had read 0
+ * on every row since the category breakdown was built (`categoryMap`'s rows were seeded with
+ * `orderCount: 0` and nothing ever incremented it): the same order can contribute items to
+ * several categories, so a category's order count is the number of *distinct orders* with at
+ * least one item in that category, not a per-item tally. Exported (pure, no DB) so it is
+ * unit-tested against hand-built items rather than only exercised end-to-end.
+ */
+export function countDistinctOrdersByKey<T extends { orderId: string }>(
+  items: T[],
+  keyOf: (item: T) => string
+): Map<string, number> {
+  const sets = new Map<string, Set<string>>();
+  for (const it of items) {
+    const key = keyOf(it);
+    const set = sets.get(key) ?? new Set<string>();
+    set.add(it.orderId);
+    sets.set(key, set);
+  }
+  return new Map(Array.from(sets.entries()).map(([key, ids]) => [key, ids.size]));
+}
+
 async function buildFullBreakdowns(
   scope: ReportScope,
   currentOrders: OrderForSales[],
@@ -408,12 +441,13 @@ async function buildFullBreakdowns(
       })
     : [];
   const categoryByVariant = new Map(variants.map((v) => [v.id, v.product.category]));
+  const categoryOrderCounts = countDistinctOrdersByKey(currentItems, (it) => categoryByVariant.get(it.variantId)?.id ?? "uncategorised");
   const categoryMap = new Map<string, BaseSimpleRow>();
   for (const [variantId, row] of curByVariant) {
     const cat = categoryByVariant.get(variantId);
     const key = cat?.id ?? "uncategorised";
     const label = cat?.name ?? "غير مصنف";
-    const existing = categoryMap.get(key) ?? { key, label, units: 0, revenuePiastres: 0, orderCount: 0 };
+    const existing = categoryMap.get(key) ?? { key, label, units: 0, revenuePiastres: 0, orderCount: categoryOrderCounts.get(key) ?? 0 };
     existing.units += row.units;
     existing.revenuePiastres += row.revenue;
     categoryMap.set(key, existing);

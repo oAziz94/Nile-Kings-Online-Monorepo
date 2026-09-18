@@ -5,7 +5,8 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { seedPartnerPair, cleanupPartnerPair, loginAs, type PartnerFixturePair } from "./partner-fixtures";
-import { safeWhere } from "./db-cleanup";
+import { safeWhere, deleteByIds } from "./db-cleanup";
+import { formatMoney2 } from "@/lib/reports/print/build";
 
 /**
  * Backlog 9.6 (التقارير network-wide) coverage. Serial mode, one shared fixture set: admin +
@@ -47,10 +48,17 @@ let pair: PartnerFixturePair;
 let categoryId: string;
 let productId: string;
 let variantId: string;
+let oddPriceProductId: string;
+let oddPriceVariantId: string;
 let receiptId: string;
 const RECEIPT_REFERENCE = `RCPT-${uniqueSuffix}`;
 const allOrderIds: string[] = [];
 const ORDER_UNIT_PIASTRES = 20000;
+// Backlog 10.14 (verifier, third pass) — a unit price that is *not* a round hundred piastres,
+// so the print page's money formatting is proven against a real piastre remainder, not just
+// values that would print correctly even through the old (buggy) whole-pound rounding path.
+const ODD_UNIT_PIASTRES = 19999;
+const ODD_PRODUCT_NAME_SUFFIX = "سعر كسري";
 
 async function loginAsAdmin(page: Page) {
   await page.goto("/login");
@@ -90,6 +98,24 @@ test.beforeAll(async () => {
   });
   variantId = variant.id;
 
+  // A *separate* product (the print product table's row label is the product name only, no
+  // variant differentiator — same as the on-screen tab) so the odd-priced order's row is
+  // findable by a unique product name, not conflated with the round-price fixture above.
+  const oddProduct = await prisma.product.create({
+    data: {
+      categoryId,
+      name: `منتج ${ODD_PRODUCT_NAME_SUFFIX} ${uniqueSuffix}`,
+      slug: `reports-odd-product-${uniqueSuffix}`,
+      active: true,
+      weightGrams: 300,
+    },
+  });
+  oddPriceProductId = oddProduct.id;
+  const oddVariant = await prisma.variant.create({
+    data: { productId: oddPriceProductId, sku: `RPT-ODD-${uniqueSuffix}`, name: "L", colorName: "أخضر", pricePiastres: ODD_UNIT_PIASTRES },
+  });
+  oddPriceVariantId = oddVariant.id;
+
   for (const side of [pair.agent, pair.distributor]) {
     const order = await prisma.order.create({
       data: {
@@ -119,6 +145,37 @@ test.beforeAll(async () => {
     allOrderIds.push(order.id);
   }
 
+  // Backlog 10.14 (verifier, third pass) — one more DELIVERED order, same product, the odd-
+  // priced variant, no discount: its net merchandise (= subtotal, no discount/senior-free) is
+  // exactly 19,999 piastres, so the product breakdown's own row for it must print "199.99 ج.م"
+  // — proof the print page's money formatting survives a real piastre remainder.
+  const oddOrder = await prisma.order.create({
+    data: {
+      userId: customerUserId,
+      status: "DELIVERED",
+      assignedPartnerId: pair.agent.partnerId,
+      subtotalPiastres: ODD_UNIT_PIASTRES,
+      totalPiastres: ODD_UNIT_PIASTRES,
+      shippingAddress: { governorate: "القاهرة", city: "القاهرة", area: "مدينة نصر" },
+      shippingProvider: "Egypt Post",
+      paymentMethod: "COD",
+      items: {
+        create: [
+          {
+            variantId: oddPriceVariantId,
+            productName: oddProduct.name,
+            variantName: `${oddProduct.slug}-${oddVariant.sku}`,
+            sku: oddVariant.sku,
+            quantity: 1,
+            unitPricePiastres: ODD_UNIT_PIASTRES,
+            totalPiastres: ODD_UNIT_PIASTRES,
+          },
+        ],
+      },
+    },
+  });
+  allOrderIds.push(oddOrder.id);
+
   // A FACTORY receipt for the agent, for fix (c)'s "the network receipts table shows the
   // fixture receipt with its partner name" assertion.
   const receipt = await prisma.stockReceipt.create({
@@ -131,8 +188,8 @@ test.afterAll(async () => {
   await prisma.stockReceipt.delete({ where: safeWhere({ id: receiptId }) });
   await prisma.orderAuditLog.deleteMany({ where: { orderId: { in: allOrderIds } } });
   await prisma.order.deleteMany({ where: { id: { in: allOrderIds } } });
-  await prisma.variant.deleteMany({ where: safeWhere({ id: variantId }) });
-  await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
+  await deleteByIds(prisma.variant, [variantId, oddPriceVariantId]);
+  await deleteByIds(prisma.product, [productId, oddPriceProductId]);
   await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
   await cleanupPartnerPair(prisma, pair);
   await prisma.user.deleteMany({ where: { id: { in: [adminUserId, customerUserId] } } });
@@ -381,6 +438,135 @@ test("401 signed-out; 403 for a customer", async ({ browser }) => {
   const customerRes = await customerPage.request.get("/api/admin/reports/sales");
   expect(customerRes.status()).toBe(403);
   await customerContext.close();
+});
+
+// Backlog 10.14 — print-ready PDF page per admin report tab.
+test("10.14: the «PDF» button opens a new page whose URL carries the tab's params", async ({ page, context }) => {
+  await loginAsAdmin(page);
+  await page.goto("/admin/reports/sales");
+  await expect(page.getByRole("heading", { name: "تقرير المبيعات" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".nk-shimmer").first()).toHaveCount(0, { timeout: 30_000 });
+
+  await page.getByRole("button", { name: "النشطة" }).click();
+  await expect(page).toHaveURL(/orders=active/);
+
+  const popupPromise = context.waitForEvent("page");
+  await page.getByRole("button", { name: "PDF" }).click();
+  const popup = await popupPromise;
+  await popup.waitForLoadState();
+  expect(popup.url()).toContain("/admin/reports/sales/print");
+  expect(popup.url()).toContain("preset=30d");
+  expect(popup.url()).toContain("orders=active");
+  await popup.close();
+});
+
+test("10.14: the print page has no PDF button on the partner pages", async ({ page }) => {
+  await loginAs(page, pair, "AGENT");
+  await page.goto("/partner/reports/sales");
+  await expect(page.getByRole("heading", { name: "تقرير المبيعات" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "PDF" })).toHaveCount(0);
+});
+
+test("10.14: the sales print page renders the four tiles and its total row equals the API's headline revenue (preset=30d, the PM's reconciliation check)", async ({ page }) => {
+  await loginAsAdmin(page);
+
+  // Backlog 10.14 PM review (fix 1) — the reconciliation must hold on a period with more than
+  // a page's worth of rows, not just `preset=today` (where the truncation bug happened not to
+  // show, since 30d's product breakdown has more than 25 rows). The headline itself was never
+  // paginated — only the breakdown tables were — so the plain (page-1) API call already gives
+  // the true full-period revenue to reconcile the print page's `all: true` tables against.
+  const apiRes = await page.request.get("/api/admin/reports/sales?preset=30d");
+  const apiJson = await apiRes.json();
+  const byKey = (headline: { key: string; value: number }[]) => Object.fromEntries(headline.map((h) => [h.key, h.value]));
+  const apiRevenuePiastres = byKey(apiJson.data.headline).revenue as number;
+
+  await page.goto("/admin/reports/sales/print?preset=30d&orders=accomplished");
+  await expect(page.locator(".tile")).toHaveCount(4);
+  const revenueTileValue = await page.locator(".tile").first().locator(".tile-value").innerText();
+  // The print page formats money to two decimals ("1,234.56 ج.م"); take the leading numeral
+  // token (comma thousands separator stripped) rather than a blanket "keep digits and dots"
+  // regex, which would also keep the dot inside "ج.م" and produce a trailing-dot NaN.
+  const parseMoneyCell = (text: string) => Number(text.trim().split(/\s/)[0].replace(/,/g, ""));
+  // Backlog 10.14 (verifier, third pass) — exact string equality, not "close to": the fixture
+  // seeded above (a 19,999-piastre order, never a round hundred) guarantees the period's total
+  // revenue carries a real piastre remainder, so a whole-pound-then-".00" bug (the one the
+  // verifier caught live on the money tab) would fail this assertion, not slip through a loose
+  // tolerance. `formatMoney2` is the same function the print page itself calls — this proves
+  // the *page* renders what the (separately unit-tested) formatter produces from the API's own
+  // piastre count, not a second, independent computation.
+  expect(revenueTileValue).toBe(formatMoney2(apiRevenuePiastres));
+  expect(apiRevenuePiastres % 100).not.toBe(0); // the fixture's odd remainder actually landed in this total
+
+  // The product breakdown's total row (columns: المنتج, القطع, الإيراد, حصة الإيراد) sums to
+  // الإيراد within ±1 piastre (10.13's per-item discount allocation can drift by a rounding
+  // piastre) — located by its own heading, since network scope's first table is "حسب
+  // الشريك", not "حسب المنتج". `all: true` upstream means this total is over *every* product
+  // row, not just page 1 — the truncation bug from the first pass is exactly what this guards.
+  const productTable = page.locator(".table-block", { has: page.getByRole("heading", { name: "حسب المنتج" }) });
+  const totalRowText = await productTable.locator("tr.total-row td").nth(2).innerText();
+  const totalRowPiastres = Math.round(parseMoneyCell(totalRowText) * 100);
+  expect(Math.abs(totalRowPiastres - apiRevenuePiastres)).toBeLessThanOrEqual(1);
+
+  // PM review (second pass) — the product table folds past 25 data rows into one "باقي
+  // المنتجات (N)" row, so it never prints more than 25 data rows + 1 rest row + 1 total row,
+  // however many products actually sold in the period (this fixture DB's ~300+). The
+  // reconciliation above already proves the fold doesn't drop any revenue.
+  const productDataRows = productTable.locator("tbody tr:not(.total-row)");
+  const productDataRowCount = await productDataRows.count();
+  expect(productDataRowCount).toBeLessThanOrEqual(26);
+  await expect(productTable.getByText(/^باقي المنتجات \(\d+\)$/)).toBeVisible();
+
+  // Fix 4 — the top product row's share bar renders at full width (100%), not a literal
+  // percent-of-100 (which would leave every real row's bar looking nearly empty).
+  // The browser normalises the inline style's percentage text (e.g. "100.0%" -> "100%"); parse
+  // it back to a number rather than asserting an exact string.
+  const topBarWidth = await productTable.locator("tbody tr").first().locator(".share-bar-fill").evaluate((el) => (el as HTMLElement).style.width);
+  expect(parseFloat(topBarWidth)).toBeCloseTo(100, 0);
+
+  // Fix 3 — no all-zero row anywhere on the page (governorate is the table most likely to
+  // carry one: most governorates have 0 orders/0 revenue in a filtered order set).
+  const govTable = page.locator(".table-block", { has: page.getByRole("heading", { name: "حسب المحافظة" }) });
+  await expect(govTable.getByRole("columnheader", { name: "نسبة الإلغاء" })).toHaveCount(0);
+  const govRows = govTable.locator("tbody tr:not(.total-row)");
+  const govRowCount = await govRows.count();
+  for (let i = 0; i < govRowCount; i++) {
+    const cells = govRows.nth(i).locator("td");
+    const ordersText = (await cells.nth(1).innerText()).trim();
+    const revenueText = (await cells.nth(2).innerText()).trim();
+    expect(ordersText === "0" && parseMoneyCell(revenueText) === 0).toBe(false);
+  }
+
+  // Fix 6 — the payment table uses the Arabic label, never the raw enum value.
+  const paymentTable = page.locator(".table-block", { has: page.getByRole("heading", { name: "حسب طريقة الدفع" }) });
+  await expect(paymentTable.getByText("COD", { exact: true })).toHaveCount(0);
+  await expect(paymentTable.getByText("INSTAPAY_PREPAID", { exact: true })).toHaveCount(0);
+});
+
+test("10.14: preset/tab validation, and a partner session gets 403 on the print route", async ({ page }) => {
+  await loginAsAdmin(page);
+  const badTab = await page.request.get("/admin/reports/bogus/print");
+  expect(badTab.status()).toBe(400);
+  const badPreset = await page.request.get("/admin/reports/sales/print?preset=bogus");
+  expect(badPreset.status()).toBe(400);
+
+  const okRes = await page.request.get("/admin/reports/sales/print?preset=today");
+  expect(okRes.ok()).toBeTruthy();
+  expect(okRes.headers()["content-type"]).toContain("text/html");
+
+  const partnerContext = await page.context().browser()!.newContext();
+  const partnerPage = await partnerContext.newPage();
+  await loginAs(partnerPage, pair, "AGENT");
+  const partnerRes = await partnerPage.request.get("/admin/reports/sales/print?preset=today");
+  expect(partnerRes.status()).toBe(403);
+  await partnerContext.close();
+});
+
+test("10.14: a logged-out request to the print route is a 401, like the admin API routes", async ({ browser }) => {
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+  const res = await guestPage.request.get("/admin/reports/sales/print?preset=today");
+  expect(res.status()).toBe(401);
+  await guestContext.close();
 });
 
 const SCREENSHOT_VIEWPORTS = [
