@@ -104,7 +104,17 @@ export function TrendChart({ series, unit = "piastres" }: { series: ReportSeries
       {hovered && (
         <div
           className="pointer-events-none absolute top-2 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-[11px] shadow-soft"
-          style={{ insetInlineStart: `${(xFor(hoverIndex!) / WIDTH) * 100}%`, transform: "translateX(-50%)" }}
+          // `left`, not `inset-inline-start`: the SVG's x axis is LTR while the page is RTL, so a
+          // logical inset mirrored the tooltip against the pointer (10.15). Clamped at the edges.
+          style={{
+            left: `${(xFor(hoverIndex!) / WIDTH) * 100}%`,
+            transform:
+              xFor(hoverIndex!) / WIDTH < 0.12
+                ? "translateX(0)"
+                : xFor(hoverIndex!) / WIDTH > 0.88
+                  ? "translateX(-100%)"
+                  : "translateX(-50%)",
+          }}
         >
           <p className="font-bold text-ink">{formatDateEn(hovered.x)}</p>
           <p className="text-ink-soft">
