@@ -426,6 +426,12 @@ test("proof of delivery PATCH renders a thumbnail on the detail page", async ({ 
   await expect(page.getByRole("img", { name: "إثبات التسليم" })).toBeVisible({ timeout: 20_000 });
 });
 
+test("10.16 — order items table shows the fixture SKU", async ({ page }) => {
+  await loginAsAdmin(page);
+  await page.goto(`/admin/orders/${filterOrderId}`);
+  await expect(page.getByText(`AO-A-${uniqueSuffix}`, { exact: true }).first()).toBeVisible({ timeout: 20_000 });
+});
+
 test("a ticket reply from the detail is visible in the tickets inbox thread", async ({ page }) => {
   await loginAsAdmin(page);
   await page.goto(`/admin/orders/${filterOrderId}`);

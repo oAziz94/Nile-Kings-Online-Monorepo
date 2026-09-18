@@ -8,6 +8,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { ProductImagePreview } from "@/components/shared/product-image-preview";
+import { ProductIdentity } from "@/components/dashboard/product-identity";
 import { useToast } from "@/hooks/use-toast";
 import { useListUrlState } from "@/hooks/use-list-url-state";
 import { useRowScrollRestore } from "@/hooks/use-row-scroll-restore";
@@ -308,7 +309,9 @@ function AdminProductsPageInner() {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <ProductIdentity name={p.name} identifier={p.slug} />
+                    </TableCell>
                     <TableCell>{p.category.name}</TableCell>
                     <TableCell>{colorCount}</TableCell>
                     <TableCell>{p.variants.length}</TableCell>

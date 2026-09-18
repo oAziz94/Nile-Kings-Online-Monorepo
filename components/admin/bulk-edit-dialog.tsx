@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { ProductIdentity } from "@/components/dashboard/product-identity";
 
 type Category = { id: string; name: string };
 
@@ -27,6 +28,7 @@ type PreviewVariant = { id: string; sku: string; oldBasePricePiastres: number | 
 type PreviewProduct = {
   id: string;
   name: string;
+  slug: string;
   categoryChange: { fromId: string; toId: string } | null;
   activeChange: { from: boolean; to: boolean } | null;
   tagsAfter: string[] | null;
@@ -203,7 +205,7 @@ export function BulkEditDialog({
           <div className="max-h-[50vh] space-y-4 overflow-y-auto py-2">
             {preview.map((p) => (
               <div key={p.id} className="rounded-xl border border-stone-200 p-3">
-                <p className="text-sm font-bold text-ink">{p.name}</p>
+                <ProductIdentity name={p.name} identifier={p.slug} nameClassName="text-sm font-bold text-ink" />
                 <ul className="mt-1 space-y-0.5 text-xs text-ink-soft">
                   {p.categoryChange && <li>الفئة تتغيّر</li>}
                   {p.activeChange && <li>الحالة: {p.activeChange.from ? "نشط" : "معطّل"} ← {p.activeChange.to ? "نشط" : "معطّل"}</li>}

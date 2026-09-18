@@ -6,6 +6,7 @@ import { AlertTriangle, ArrowLeftRight, Boxes, Download, Package, RefreshCw, Upl
 import { useQuery } from "@tanstack/react-query";
 import { ProductImagePreview } from "@/components/shared/product-image-preview";
 import { PanelCard } from "@/components/dashboard/panel-card";
+import { ProductIdentityLine } from "@/components/dashboard/product-identity";
 import { PaginationBar } from "@/components/dashboard/pagination";
 import { SearchInput } from "@/components/dashboard/search-input";
 import { Badge } from "@/components/ui/badge";
@@ -176,6 +177,7 @@ function PartnerStockIndexPageInner() {
           <div>
             <div className="font-bold text-ink">{row.original.name}</div>
             <div className="text-xs text-ink-soft">{row.original.category.name}</div>
+            <ProductIdentityLine identifier={row.original.slug} />
           </div>
         ),
       },

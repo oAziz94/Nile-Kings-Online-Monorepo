@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
   const preview = products.map((p) => ({
     id: p.id,
     name: p.name,
+    slug: p.slug,
     categoryChange: categoryId && categoryId !== p.categoryId ? { fromId: p.categoryId, toId: categoryId } : null,
     activeChange: active !== undefined && active !== p.active ? { from: p.active, to: active } : null,
     tagsAfter:

@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/shared/skeleton";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { ProductIdentity } from "@/components/dashboard/product-identity";
 import { RestockItemLines } from "@/components/partner/restock/item-lines";
 import { RestockRequestCard } from "@/components/partner/restock/request-card";
 import type { RestockRequest } from "@/components/partner/restock/types";
@@ -129,11 +130,16 @@ function StockTable({
           {stock.map((line) => (
             <tr key={line.variant.id} className="border-t border-stone-100">
               <td className="px-3 py-2">
-                <p className="font-bold text-ink">{line.variant.product.name}</p>
-                <p className="text-[11px] text-ink-soft">
-                  {line.variant.sku}
-                  {line.variant.colorName ? ` · ${line.variant.colorName}` : ""}
-                </p>
+                <ProductIdentity
+                  name={
+                    <>
+                      {line.variant.product.name}
+                      {line.variant.colorName ? ` · ${line.variant.colorName}` : ""}
+                    </>
+                  }
+                  identifier={line.variant.sku}
+                  nameClassName="font-bold text-ink"
+                />
               </td>
               <td dir="ltr" className="px-3 py-2 text-right">
                 {formatNumberEn(line.stockAvailable)}

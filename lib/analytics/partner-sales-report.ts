@@ -106,6 +106,10 @@ function governorateOf(order: { shippingAddress: unknown }): string {
 export type ProductBreakdownRow = {
   variantId: string;
   productName: string;
+  /** 10.16 — the product's slug, for the identifier line under the name (product-level
+   * row: this breakdown's "product" is really keyed per variant, but the owner asked for
+   * the slug here, not the SKU). `null` only if the variant's product has since been deleted. */
+  productSlug: string | null;
   units: number;
   revenuePiastres: number;
   previousRevenuePiastres: number;
@@ -417,30 +421,35 @@ async function buildFullBreakdowns(
   for (const it of previousItems) {
     prevByVariant.set(it.variantId, (prevByVariant.get(it.variantId) ?? 0) + allocatedItemRevenue(it, prevOrderById));
   }
-  const productRows: ProductBreakdownRow[] = Array.from(curByVariant.entries())
-    .map(([variantId, row]) => ({
-      variantId,
-      productName: row.productName,
-      units: row.units,
-      revenuePiastres: row.revenue,
-      previousRevenuePiastres: prevByVariant.get(variantId) ?? 0,
-      revenueSharePct: totalRevenue > 0 ? (row.revenue / totalRevenue) * 100 : 0,
-    }))
-    .sort((a, b) => b.revenuePiastres - a.revenuePiastres);
 
   // --- category (via variant -> product -> category); the variant lookup covers both
   // periods' variant ids, since a variant that only sold in the previous period still needs
-  // its category resolved to land in that category's previous-revenue map. ---
+  // its category resolved to land in that category's previous-revenue map. Also carries the
+  // product's slug (10.16), for the product breakdown's identifier line — one query, no
+  // second lookup per row. ---
   const variantIds = Array.from(curByVariant.keys());
   const prevVariantIds = Array.from(new Set(previousItems.map((it) => it.variantId)));
   const allVariantIdsForCategory = Array.from(new Set([...variantIds, ...prevVariantIds]));
   const variants = allVariantIdsForCategory.length
     ? await prisma.variant.findMany({
         where: { id: { in: allVariantIdsForCategory } },
-        select: { id: true, product: { select: { category: { select: { id: true, name: true } } } } },
+        select: { id: true, product: { select: { slug: true, category: { select: { id: true, name: true } } } } },
       })
     : [];
   const categoryByVariant = new Map(variants.map((v) => [v.id, v.product.category]));
+  const slugByVariant = new Map(variants.map((v) => [v.id, v.product.slug]));
+
+  const productRows: ProductBreakdownRow[] = Array.from(curByVariant.entries())
+    .map(([variantId, row]) => ({
+      variantId,
+      productName: row.productName,
+      productSlug: slugByVariant.get(variantId) ?? null,
+      units: row.units,
+      revenuePiastres: row.revenue,
+      previousRevenuePiastres: prevByVariant.get(variantId) ?? 0,
+      revenueSharePct: totalRevenue > 0 ? (row.revenue / totalRevenue) * 100 : 0,
+    }))
+    .sort((a, b) => b.revenuePiastres - a.revenuePiastres);
   const categoryOrderCounts = countDistinctOrdersByKey(currentItems, (it) => categoryByVariant.get(it.variantId)?.id ?? "uncategorised");
   const categoryMap = new Map<string, BaseSimpleRow>();
   for (const [variantId, row] of curByVariant) {

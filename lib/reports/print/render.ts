@@ -16,7 +16,13 @@ export type PrintTile = { label: string; value: string; hint?: string };
  * *width*, already normalised by the caller to the table's own largest row (backlog 10.14
  * PM review — "scale to the largest row so the top row's bar is full width, not to 100%",
  * per the owner's model PDF); `text` is always the real, un-normalised value. */
-export type PrintTableCell = { text: string; sharePct?: number };
+export type PrintTableCell = {
+  text: string;
+  sharePct?: number;
+  /** 10.16 — a second, small, grey line under the cell's text: the variant SKU or product
+   * slug, for a cell that names a product. Never set on a folded "باقي …" row. */
+  sub?: string;
+};
 
 export type PrintTable = {
   title: string;
@@ -60,11 +66,13 @@ function renderTile(t: PrintTile): string {
 }
 
 function renderCell(cell: PrintTableCell): string {
-  if (cell.sharePct === undefined) return `<td>${esc(cell.text)}</td>`;
+  const sub = cell.sub ? `<div class="cell-sub">${esc(cell.sub)}</div>` : "";
+  if (cell.sharePct === undefined) return `<td>${esc(cell.text)}${sub}</td>`;
   const pct = Math.max(0, Math.min(100, cell.sharePct));
   return `<td class="share-cell">
     <div class="share-bar"><div class="share-bar-fill" style="width:${pct.toFixed(1)}%"></div></div>
     <span class="share-text">${esc(cell.text)}</span>
+    ${sub}
   </td>`;
 }
 
@@ -172,6 +180,7 @@ export function renderReportPrintPage(input: PrintPageInput): string {
   .share-bar-fill { position: absolute; inset: 0; background: #b8860b; border-radius: 3px; }
   .share-text { direction: ltr; display: inline-block; }
   .table-note { font-size: 10.5px; color: #6b6558; margin: 4px 0 0; }
+  .cell-sub { font-size: 9.5px; color: #8a8474; margin-top: 1px; direction: ltr; text-align: right; }
   .footnote { font-size: 11px; color: #8a8474; margin-top: 12px; }
 
   /* Page numbers (backlog 10.14, verifier third pass): counter(page)/counter(pages) only

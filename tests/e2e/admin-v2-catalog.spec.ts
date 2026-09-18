@@ -448,6 +448,19 @@ test("screenshots at 1440x900, 1514x681, 1024x768, 390x844: product, products li
   }
 });
 
+test("10.16 — products list row shows the fixture product's slug; product page variant row shows its SKU", async ({ page }) => {
+  await loginAsAdminUi(page);
+  await page.goto(`/admin/products?q=${encodeURIComponent(productName)}`);
+  const row = page.locator(`tr[data-row-id="${productId}"]`);
+  await expect(row).toBeVisible({ timeout: 30_000 });
+  await expect(row).toContainText(productSlug);
+
+  await page.goto(`/admin/products/${productId}`);
+  await expect(page.getByRole("heading", { name: productName })).toBeVisible({ timeout: 20_000 });
+  const firstVariant = await prisma.variant.findFirstOrThrow({ where: { productId }, orderBy: { name: "asc" } });
+  await expect(page.getByText(firstVariant.sku, { exact: true }).first()).toBeVisible();
+});
+
 test("10.12 — the product page's «← المنتجات» button returns to the same list page and scrolls to the product", async ({ page }) => {
   await apiLoginAsAdmin(page);
   await page.goto("/admin/products");

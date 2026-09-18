@@ -542,6 +542,53 @@ test("10.14: the sales print page renders the four tiles and its total row equal
   await expect(paymentTable.getByText("INSTAPAY_PREPAID", { exact: true })).toHaveCount(0);
 });
 
+test("10.16 — حسب المنتج row and the print page show the fixture product's slug", async ({ page }) => {
+  await loginAsAdmin(page);
+  const product = await prisma.product.findUniqueOrThrow({ where: { id: productId }, select: { name: true, slug: true } });
+
+  // The redesign DB is shared with every other suite's "today" fixtures, so the product
+  // breakdown's revenue ranking (page 1 of 25, highest revenue first) can't be relied on to
+  // include ours by coincidence — a deliberately outsized order guarantees it ranks first,
+  // same precedent as the money-formatting fixture's odd remainder. Cleaned up in afterAll
+  // via allOrderIds, exactly like every other fixture order in this file.
+  const rankingOrder = await prisma.order.create({
+    data: {
+      userId: customerUserId,
+      status: "DELIVERED",
+      assignedPartnerId: pair.agent.partnerId,
+      subtotalPiastres: 500_000_000,
+      totalPiastres: 500_000_000,
+      shippingAddress: { governorate: "القاهرة", city: "القاهرة", area: "مدينة نصر" },
+      shippingProvider: "Egypt Post",
+      paymentMethod: "COD",
+      items: {
+        create: [
+          {
+            variantId,
+            productName: product.name,
+            variantName: `${product.slug}-ranking`,
+            sku: `RPT-RANK-${uniqueSuffix}`,
+            quantity: 1,
+            unitPricePiastres: 500_000_000,
+            totalPiastres: 500_000_000,
+          },
+        ],
+      },
+    },
+  });
+  allOrderIds.push(rankingOrder.id);
+
+  await page.goto("/admin/reports/sales?preset=today");
+  await page.getByRole("button", { name: "حسب المنتج" }).click();
+  const onScreenRow = page.getByRole("row").filter({ hasText: product.name });
+  await expect(onScreenRow.first()).toContainText(product.slug, { timeout: 15_000 });
+
+  await page.goto("/admin/reports/sales/print?preset=today&orders=accomplished");
+  const productTable = page.locator(".table-block", { has: page.getByRole("heading", { name: "حسب المنتج" }) });
+  const printRow = productTable.locator("tbody tr").filter({ hasText: product.name });
+  await expect(printRow.locator(".cell-sub")).toHaveText(product.slug);
+});
+
 test("10.14: preset/tab validation, and a partner session gets 403 on the print route", async ({ page }) => {
   await loginAsAdmin(page);
   const badTab = await page.request.get("/admin/reports/bogus/print");

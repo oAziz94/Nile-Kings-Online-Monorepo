@@ -32,9 +32,11 @@ function rowsToCsv(key: string, rows: unknown[]): string {
     return lines.join("\n");
   }
   if (key === "product") {
-    const lines = ["Product,Units,Revenue (piastres),Previous Revenue (piastres),Revenue Share %"];
-    for (const r of rows as { productName: string; units: number; revenuePiastres: number; previousRevenuePiastres: number; revenueSharePct: number }[]) {
-      lines.push([r.productName, r.units, r.revenuePiastres, r.previousRevenuePiastres, r.revenueSharePct.toFixed(1)].map(escapeCsv).join(","));
+    // 10.16 — Slug column added next to the existing Product name column (additive, same
+    // column order as before it).
+    const lines = ["Product,Slug,Units,Revenue (piastres),Previous Revenue (piastres),Revenue Share %"];
+    for (const r of rows as { productName: string; productSlug: string | null; units: number; revenuePiastres: number; previousRevenuePiastres: number; revenueSharePct: number }[]) {
+      lines.push([r.productName, r.productSlug ?? "", r.units, r.revenuePiastres, r.previousRevenuePiastres, r.revenueSharePct.toFixed(1)].map(escapeCsv).join(","));
     }
     return lines.join("\n");
   }
