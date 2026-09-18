@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { apiBadRequest, apiSuccess } from "@/lib/api/response";
 import { getPartnerSalesFullBreakdown, getPartnerSalesReport } from "@/lib/analytics/partner-sales-report";
+import type { SalesOrderSet } from "@/lib/analytics/partner-sales-report";
 import type { ReportScope, SalesReportPreset } from "@/lib/analytics/partner-reports";
 
 /**
@@ -13,6 +14,7 @@ import type { ReportScope, SalesReportPreset } from "@/lib/analytics/partner-rep
 
 const PRESETS: SalesReportPreset[] = ["today", "7d", "30d", "month", "lastMonth", "custom"];
 const BREAKDOWN_KEYS = ["byPartner", "product", "category", "governorate", "payment", "day"] as const;
+const ORDER_SETS: SalesOrderSet[] = ["accomplished", "active"];
 
 function escapeCsv(s: string | number): string {
   const str = String(s);
@@ -72,12 +74,17 @@ export async function handleSalesReport(req: NextRequest, scope: ReportScope): P
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const format = searchParams.get("format");
   const breakdown = searchParams.get("breakdown");
+  const ordersParam = searchParams.get("orders") ?? "accomplished";
+  if (!ORDER_SETS.includes(ordersParam as SalesOrderSet)) {
+    return apiBadRequest(`orders يجب أن يكون أحد: ${ORDER_SETS.join(", ")}`);
+  }
+  const orderSet = ordersParam as SalesOrderSet;
 
   if (format === "csv") {
     if (!breakdown || !BREAKDOWN_KEYS.includes(breakdown as (typeof BREAKDOWN_KEYS)[number])) {
       return apiBadRequest(`breakdown يجب أن يكون أحد: ${BREAKDOWN_KEYS.join(", ")}`);
     }
-    const rows = await getPartnerSalesFullBreakdown(scope, { preset, from, to }, breakdown as (typeof BREAKDOWN_KEYS)[number]);
+    const rows = await getPartnerSalesFullBreakdown(scope, { preset, from, to, orderSet }, breakdown as (typeof BREAKDOWN_KEYS)[number]);
     const csv = rowsToCsv(breakdown, rows);
     const stamp = new Date().toISOString().slice(0, 10);
     return new Response(`﻿${csv}`, {
@@ -89,6 +96,6 @@ export async function handleSalesReport(req: NextRequest, scope: ReportScope): P
     });
   }
 
-  const report = await getPartnerSalesReport(scope, { preset, from, to, page });
+  const report = await getPartnerSalesReport(scope, { preset, from, to, page, orderSet });
   return apiSuccess(report);
 }

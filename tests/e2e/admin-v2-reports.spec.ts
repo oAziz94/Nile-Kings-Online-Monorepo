@@ -189,6 +189,47 @@ test("sales: CSV export 200 with the partner column", async ({ page }) => {
   expect(body).toContain("Partner,Revenue");
 });
 
+test("sales: orders= unknown value is a 400, same as a bad preset", async ({ page }) => {
+  await loginAsAdmin(page);
+  const res = await page.request.get("/api/admin/reports/sales?preset=today&orders=bogus");
+  expect(res.status()).toBe(400);
+});
+
+test("sales: the accomplished/active chip round-trips through the URL, and the CSV link carries orders=", async ({ page }) => {
+  await loginAsAdmin(page);
+  await page.goto("/admin/reports/sales");
+  await expect(page.getByRole("heading", { name: "تقرير المبيعات" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".nk-shimmer").first()).toHaveCount(0, { timeout: 30_000 });
+
+  await expect(page.getByRole("button", { name: "المُنجَزة" })).toHaveAttribute("aria-pressed", "true");
+  // Backlog 10.13 proof — screenshots of both chip states at the two required viewports.
+  for (const vp of [{ w: 1514, h: 681 }, { w: 390, h: 844 }]) {
+    await page.setViewportSize({ width: vp.w, height: vp.h });
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: `screenshots/admin-reports-sales-accomplished-${vp.w}x${vp.h}.png`, fullPage: true });
+  }
+
+  await page.getByRole("button", { name: "النشطة" }).click();
+  await expect(page).toHaveURL(/orders=active/);
+  await expect(page.locator(".nk-shimmer").first()).toHaveCount(0, { timeout: 30_000 });
+  for (const vp of [{ w: 1514, h: 681 }, { w: 390, h: 844 }]) {
+    await page.setViewportSize({ width: vp.w, height: vp.h });
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: `screenshots/admin-reports-sales-active-${vp.w}x${vp.h}.png`, fullPage: true });
+  }
+
+  // The CSV response carries `Content-Disposition: attachment`, so the new tab the export
+  // button opens is a browser download, not a navigated page — Playwright surfaces that as
+  // a `download` event (its `.url()` is the request URL), not a `popup` with a real URL.
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "CSV" }).click();
+  const download = await downloadPromise;
+  expect(download.url()).toContain("orders=active");
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "النشطة" })).toHaveAttribute("aria-pressed", "true", { timeout: 20_000 });
+});
+
 test("fulfilment: network on-time rate for 30d matches the 9.2 اليوم KPI", async ({ page }) => {
   await loginAsAdmin(page);
   const todayRes = await page.request.get("/api/admin/today");

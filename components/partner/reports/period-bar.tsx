@@ -26,6 +26,7 @@ export function PeriodBar<TPreset extends PeriodPreset>({
   onCustomRangeChange,
   comparisonLabel,
   toolbar,
+  scopeControl,
 }: {
   presets: PeriodBarPresetOption<TPreset>[];
   preset: TPreset;
@@ -35,6 +36,9 @@ export function PeriodBar<TPreset extends PeriodPreset>({
   onCustomRangeChange: (range: { from: string; to: string }) => void;
   comparisonLabel?: string;
   toolbar?: React.ReactNode;
+  /** Backlog 10.13 — the sales report's المُنجَزة/النشطة segmented control, rendered inline
+   * in the same row as the preset chips (a separate control, not another preset). */
+  scopeControl?: React.ReactNode;
 }) {
   const isCustom = preset === ("custom" as TPreset);
   return (
@@ -93,6 +97,8 @@ export function PeriodBar<TPreset extends PeriodPreset>({
           />
         </div>
       )}
+
+      {scopeControl}
 
       {comparisonLabel && <span className="text-xs text-ink-soft" dir="ltr" style={{ direction: "rtl" }}>{comparisonLabel}</span>}
 

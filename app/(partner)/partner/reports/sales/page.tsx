@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download } from "lucide-react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
 import { Button } from "@/components/ui/button";
@@ -18,8 +19,19 @@ import { ActionPanel } from "@/components/partner/reports/action-panel";
 import { DeltaCell } from "@/components/partner/reports/delta-cell";
 import { formatNumberEn } from "@/lib/format-en-numbers";
 import { piastresToEgp } from "@/lib/catalog";
+import { cn } from "@/lib/utils";
 import type { SalesReportPreset } from "@/lib/analytics/partner-reports";
-import type { SalesReportResponse } from "@/lib/analytics/partner-sales-report";
+import type { SalesOrderSet, SalesReportResponse } from "@/lib/analytics/partner-sales-report";
+
+const ORDER_SET_OPTIONS: { id: SalesOrderSet; label: string }[] = [
+  { id: "accomplished", label: "المُنجَزة" },
+  { id: "active", label: "النشطة" },
+];
+
+const ORDER_SET_EXPLAINER: Record<SalesOrderSet, string> = {
+  accomplished: "تُحسب الأرقام من الطلبات المُسلَّمة فقط.",
+  active: "تُحسب الأرقام من الطلبات النشطة (مؤكدة حتى تم الشحن).",
+};
 
 /**
  * `/partner/reports/sales` (backlog 5.6a, `ReportSales.dc.html`) — the reports platform's
@@ -79,25 +91,43 @@ export function SalesReportView({
    * so every other caller's rendered DOM is unchanged. */
   initialBreakdownTab?: keyof SalesReportResponse["breakdowns"];
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParamsHook = useSearchParams();
+
   const [preset, setPreset] = React.useState<SalesReportPreset>(initialPreset);
   const [customRange, setCustomRange] = React.useState({ from: initialFrom, to: initialTo });
   const [activeTab, setActiveTab] = React.useState<keyof SalesReportResponse["breakdowns"]>(initialBreakdownTab);
   const [page, setPage] = React.useState(1);
+  // Backlog 10.13 — the accomplished/active order-set chip, kept in the URL like the preset:
+  // seeded from `?orders=` on first render, and every toggle writes it back so it round-trips
+  // through a reload/bookmark, on every route that renders this shared view.
+  const [orderSet, setOrderSetState] = React.useState<SalesOrderSet>(() =>
+    searchParamsHook.get("orders") === "active" ? "active" : "accomplished"
+  );
 
-  const params = new URLSearchParams({ preset, page: String(page) });
+  const setOrderSet = (next: SalesOrderSet) => {
+    setOrderSetState(next);
+    setPage(1);
+    const nextParams = new URLSearchParams(searchParamsHook.toString());
+    nextParams.set("orders", next);
+    router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
+  };
+
+  const params = new URLSearchParams({ preset, page: String(page), orders: orderSet });
   if (preset === "custom" && customRange.from && customRange.to) {
     params.set("from", customRange.from);
     params.set("to", customRange.to);
   }
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ["partner-reports-sales", apiBase, preset, customRange.from, customRange.to, page],
+    queryKey: ["partner-reports-sales", apiBase, preset, customRange.from, customRange.to, page, orderSet],
     queryFn: () => fetchSalesReport(apiBase, params),
     enabled: preset !== "custom" || Boolean(customRange.from && customRange.to),
   });
 
   const exportCsv = (breakdown: string) => {
-    const p = new URLSearchParams({ preset, format: "csv", breakdown });
+    const p = new URLSearchParams({ preset, format: "csv", breakdown, orders: orderSet });
     if (preset === "custom" && customRange.from && customRange.to) {
       p.set("from", customRange.from);
       p.set("to", customRange.to);
@@ -125,6 +155,24 @@ export function SalesReportView({
           to={customRange.to}
           onCustomRangeChange={setCustomRange}
           comparisonLabel={data?.comparisonLabel}
+          scopeControl={
+            <div role="group" aria-label="نطاق الطلبات" className="flex items-center gap-1 rounded-full border border-stone-200 bg-stone-50 p-0.5">
+              {ORDER_SET_OPTIONS.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  aria-pressed={orderSet === o.id}
+                  onClick={() => setOrderSet(o.id)}
+                  className={cn(
+                    "inline-flex h-[26px] items-center rounded-full px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2",
+                    orderSet === o.id ? "bg-white text-lapis-800 shadow-soft" : "text-ink-soft hover:text-ink"
+                  )}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          }
           toolbar={
             <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={() => exportCsv(activeTab)}>
               <Download className="h-3.5 w-3.5" />
@@ -149,6 +197,7 @@ export function SalesReportView({
         ) : (
           <>
             <HeadlineTiles headline={data.headline} higherIsBetter={{ cancellationRate: false }} />
+            <p className="-mt-2 text-xs text-ink-soft">{ORDER_SET_EXPLAINER[orderSet]}</p>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
               <PanelCard title="الإيراد اليومي" description="الخط الباهت هو الفترة السابقة">
