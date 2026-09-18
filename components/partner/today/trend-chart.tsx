@@ -183,6 +183,20 @@ export function TrendChart({
               </>
             )}
           </div>
+          {previous[hoverIndex] && (
+            <div className="text-[11px] font-semibold text-white/70">
+              السابقة:{" "}
+              {metric === "revenue" ? (
+                <>
+                  <span dir="ltr">{formatNumberEn(Math.round(previous[hoverIndex].revenuePiastres / 100))}</span> ج.م
+                </>
+              ) : (
+                <>
+                  <span dir="ltr">{formatNumberEn(previous[hoverIndex].orderCount)}</span> طلب
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
       {lastPoint === undefined && (

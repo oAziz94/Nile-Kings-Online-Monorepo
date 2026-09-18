@@ -34,7 +34,9 @@ export function BreakdownTable<TRow>({
   return (
     <div>
       <div className="overflow-x-auto">
-        <Table>
+        {/* Every cell right-aligned: numeric cells carry dir="ltr" for digit shaping, which
+            would otherwise make their text-align start = left inside an RTL table (10.15). */}
+        <Table className="[&_td]:text-right [&_th]:text-right">
           <TableHeader>
             <TableRow className="bg-stone-50 hover:bg-stone-50">
               {columns.map((c) => (
