@@ -335,6 +335,23 @@ export function attachRevenueDelta(rows: BaseSimpleRow[], previousRevenueByKey: 
   });
 }
 
+/**
+ * PM ruling (10.13 verifier fix) — the product/category breakdowns previously summed
+ * `OrderItem.totalPiastres` (the line's own subtotal share, no discount applied), which no
+ * longer reconciled to الإيراد once that tile moved to net merchandise. An item's revenue is
+ * now the order's net merchandise spread over its items by their share of the order's
+ * subtotal: `round(item.totalPiastres × netMerchandise(order) ÷ order.subtotalPiastres)` (0
+ * when `subtotalPiastres` is 0 — never divide by zero). Exported for a database-free unit
+ * test; per-item rounding can drift the row sum from the headline by up to a few piastres
+ * (documented, not "fixed" further — there is no canonical way to force integer shares of an
+ * integer total to sum exactly without an arbitrary tie-breaker the owner never asked for).
+ */
+export function allocatedItemRevenue(item: { orderId: string; totalPiastres: number }, orderById: Map<string, OrderForSales>): number {
+  const order = orderById.get(item.orderId);
+  if (!order || order.subtotalPiastres === 0) return 0;
+  return Math.round((item.totalPiastres * netMerchandisePiastres(order)) / order.subtotalPiastres);
+}
+
 async function buildFullBreakdowns(
   scope: ReportScope,
   currentOrders: OrderForSales[],
@@ -347,17 +364,25 @@ async function buildFullBreakdowns(
   const inSet = (o: OrderForSales) => statuses.includes(o.status);
   const totalRevenue = currentOrders.filter(inSet).reduce((s, o) => s + netMerchandisePiastres(o), 0);
 
-  // --- product ---
+  // Order lookup for the per-item discount allocation below — `currentItems`/`previousItems`
+  // are already filtered to the chosen order set (`loadOrderItems`), so every item's order is
+  // present in `currentOrders`/`previousOrders` (loaded unfiltered, over the same period).
+  const curOrderById = new Map(currentOrders.map((o) => [o.id, o]));
+  const prevOrderById = new Map(previousOrders.map((o) => [o.id, o]));
+
+  // --- product --- revenue is each item's allocated share of its order's net merchandise
+  // (10.13 verifier fix), never the item's raw `totalPiastres` (no discount applied) — so
+  // this table's rows reconcile to الإيراد.
   const curByVariant = new Map<string, { units: number; revenue: number; productName: string }>();
   for (const it of currentItems) {
     const row = curByVariant.get(it.variantId) ?? { units: 0, revenue: 0, productName: it.productName };
     row.units += it.quantity;
-    row.revenue += it.totalPiastres;
+    row.revenue += allocatedItemRevenue(it, curOrderById);
     curByVariant.set(it.variantId, row);
   }
   const prevByVariant = new Map<string, number>();
   for (const it of previousItems) {
-    prevByVariant.set(it.variantId, (prevByVariant.get(it.variantId) ?? 0) + it.totalPiastres);
+    prevByVariant.set(it.variantId, (prevByVariant.get(it.variantId) ?? 0) + allocatedItemRevenue(it, prevOrderById));
   }
   const productRows: ProductBreakdownRow[] = Array.from(curByVariant.entries())
     .map(([variantId, row]) => ({
@@ -397,7 +422,7 @@ async function buildFullBreakdowns(
   for (const it of previousItems) {
     const cat = categoryByVariant.get(it.variantId);
     const key = cat?.id ?? "uncategorised";
-    prevCategoryRevenue.set(key, (prevCategoryRevenue.get(key) ?? 0) + it.totalPiastres);
+    prevCategoryRevenue.set(key, (prevCategoryRevenue.get(key) ?? 0) + allocatedItemRevenue(it, prevOrderById));
   }
   const categoryRows = attachRevenueDelta(
     Array.from(categoryMap.values()).sort((a, b) => b.revenuePiastres - a.revenuePiastres),

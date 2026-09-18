@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { attachRevenueDelta, buildHeadline, type OrderForSales, type OrderItemForSales } from "./partner-sales-report";
+import { allocatedItemRevenue, attachRevenueDelta, buildHeadline, type OrderForSales, type OrderItemForSales } from "./partner-sales-report";
+import { netMerchandisePiastres } from "./queries";
 
 describe("7.4 — attachRevenueDelta (shared by category/governorate/payment breakdown rows)", () => {
   it("a key present in both periods gets a hand-computed delta; a current-only key compares against 0", () => {
@@ -129,5 +130,53 @@ describe("10.13 — buildHeadline: the accomplished/active order set and net-mer
     const active = buildHeadline(currentOrders, previousOrders, [itemsFor(shippedOrder, 1)], [], "active");
     expect(accomplished.find((h) => h.key === "revenue")?.hint).toBe("بدون الشحن ورسوم الدفع عند الاستلام");
     expect(active.find((h) => h.key === "revenue")?.hint).toBe("بدون الشحن ورسوم الدفع عند الاستلام");
+  });
+});
+
+describe("10.13 verifier fix — allocatedItemRevenue (product/category revenue reconciles to الإيراد)", () => {
+  function orderWith(subtotal: number, discount: number): OrderForSales {
+    return {
+      id: "o1",
+      status: "DELIVERED",
+      totalPiastres: subtotal - discount + 2_500, // a fake shipping/COD surcharge on top.
+      subtotalPiastres: subtotal,
+      discountPiastres: discount,
+      seniorFreeValuePiastres: 0,
+      paymentMethod: "COD",
+      createdAt: new Date("2026-09-10"),
+      shippingAddress: { governorate: "القاهرة" },
+      assignedPartnerId: "p1",
+    };
+  }
+
+  it("splits the order's net merchandise by each item's share of the subtotal: 10,000 subtotal, 1,000 discount, items 6,000/4,000 -> 5,400/3,600, summing to the 9,000 headline", () => {
+    const order = orderWith(10_000, 1_000);
+    const orderById = new Map([[order.id, order]]);
+    const item1Revenue = allocatedItemRevenue({ orderId: order.id, totalPiastres: 6_000 }, orderById);
+    const item2Revenue = allocatedItemRevenue({ orderId: order.id, totalPiastres: 4_000 }, orderById);
+
+    expect(item1Revenue).toBe(5_400);
+    expect(item2Revenue).toBe(3_600);
+    expect(item1Revenue + item2Revenue).toBe(netMerchandisePiastres(order)); // 9,000, exact here.
+  });
+
+  it("per-item rounding may drift the row sum from the headline, but never by more than ±1 piastre: three items of 3,333/3,333/3,334 off a 10,000 subtotal with a 1,000 discount", () => {
+    const order = orderWith(10_000, 1_000);
+    const orderById = new Map([[order.id, order]]);
+    const items = [3_333, 3_333, 3_334].map((totalPiastres) => ({ orderId: order.id, totalPiastres }));
+    const rows = items.map((it) => allocatedItemRevenue(it, orderById));
+    const sum = rows.reduce((a, b) => a + b, 0);
+
+    expect(Math.abs(sum - netMerchandisePiastres(order))).toBeLessThanOrEqual(1);
+  });
+
+  it("a zero-subtotal order (shouldn't happen, but never divide by zero) allocates 0 to every item", () => {
+    const order = orderWith(0, 0);
+    const orderById = new Map([[order.id, order]]);
+    expect(allocatedItemRevenue({ orderId: order.id, totalPiastres: 500 }, orderById)).toBe(0);
+  });
+
+  it("an item whose order isn't in the lookup map allocates 0 (never throws)", () => {
+    expect(allocatedItemRevenue({ orderId: "missing", totalPiastres: 500 }, new Map())).toBe(0);
   });
 });
