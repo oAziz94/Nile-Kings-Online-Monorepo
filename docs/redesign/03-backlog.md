@@ -253,5 +253,25 @@ Standing rules for this section: each finding is one task on its own branch `fin
 
 - **10.18 — Console error "<div> cannot be a descendant of <p>" on the admin orders list** ✅ **Complete** (2026-09-18, v2.4.14) — owner, two Next.js overlay screenshots. PM-direct on `findings/p-nesting`. Cause: the phone card in `app/(admin)/admin/orders/page.tsx` wrapped the "بلا شريك" `StatusPill` (which renders a `<div>`, `components/ui/badge.tsx`) in a `<p>`; HTML forbids block content in a paragraph, the browser rewrites the markup, and React reports the mismatch. Fix: that `<p>` is a `<div>`. PM sweep: every admin page at 1514×681 and 390×844 with console capture — no nesting or hydration message anywhere else (the only other console entry is a 404 image on `/admin/media`, unrelated). admin-v2-orders 18, tsc clean. Rule: a `StatusPill`/`Badge`/`Button` never sits inside a `<p>`; use a `<div>` or `<span>` container.
 
+## Next release — postponed recommendations (owner, 2026-09-19: "postpone the recommendations, let it be in a new release")
+
+PM recommendations given 2026-09-17 after the owner's manual test ("I don't like the products list … how to make admin life easier"; "I am so confused about the reports"). Not bugs; none started; **not part of v2.4.x or the go-live**. When the owner opens the next release, the four marked ★ are the PM's pick to build first.
+
+**Admin products list**
+- ★ N1 — Stock column: network sellable units + the coverage badge (منخفضة / قريبة / جيدة) and a نفد chip; one grouped `PartnerInventory` query, the network-stock tab already runs it.
+- ★ N2 — "يحتاج انتباه" quick filter: no photos, no stock anywhere, a hidden colour that has stock, no price change in a year.
+- N3 — Colours as dots and sizes as a range (S–4XL) instead of counts; a colour with no photo gets a marker.
+- N4 — Sort by name, price, stock, last update, kept in the URL like the filters.
+- N5 — Row actions without opening the page: the active switch on the row, the name as the link; the "فتح" column goes.
+- N6 — Denser rows, sticky header, 50 per page.
+- N7 — "Last changed by whom" from the audit log.
+
+**Reports**
+- ★ N8 — One sentence under each report title saying what it answers and when to use it (wording in the 2026-09-17 PM reply: المبيعات = how much we sold vs the period before; التجهيز = how fast partners confirm and ship against the SLA; المخزون = what the network holds and how long it lasts; المال = what partners collected and owe).
+- ★ N9 — A hover hint on every tile in plain words (e.g. متوسط التغطية: "at the current selling speed, stock lasts this many days").
+- N10 — The "ما يستحق فعلًا" panel carries real recommendations with links instead of "no actions".
+- N11 — Default period per report: sales 30 days, money this month, inventory latest snapshot.
+- N12 — A short "كيف تقرأ التقارير" guide page under التقارير, one paragraph per report with a screenshot.
+
 ## Phase 6 — Performance & cost pass
 Apply `02-proposals.md` performance items (ISR, Redis caching, image pipeline, server-components audit) using the Phase 2 baseline to confirm improvement. Decide on any infra swap here, with data. Not started.
