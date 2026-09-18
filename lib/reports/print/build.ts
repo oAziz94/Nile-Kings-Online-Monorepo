@@ -60,6 +60,12 @@ function cell(text: string): PrintTableCell {
   return { text };
 }
 
+/** 10.16 — a name cell with the identifier (SKU/slug) as a small grey line under it; `sub`
+ * omitted (not just empty-stringed) when there is none, e.g. a folded "باقي …" row. */
+function cellWithSub(text: string, sub: string | null | undefined): PrintTableCell {
+  return sub ? { text, sub } : { text };
+}
+
 /** Backlog 10.14 PM review (fix 4) — the bar's width is the row's share *of the table's own
  * largest row*, so the top row always renders a full-width bar (the owner's model: Cairo's
  * 39.5% bar is the full track), never a literal percent-of-100 that leaves every real-world
@@ -165,6 +171,7 @@ export function buildSalesPrintData(
   const productRows = foldRest(productRowsFull, (rest) => ({
     variantId: REST_KEY,
     productName: `باقي المنتجات (${rest.length})`,
+    productSlug: null,
     units: rest.reduce((s, r) => s + r.units, 0),
     revenuePiastres: rest.reduce((s, r) => s + r.revenuePiastres, 0),
     previousRevenuePiastres: rest.reduce((s, r) => s + r.previousRevenuePiastres, 0),
@@ -179,7 +186,7 @@ export function buildSalesPrintData(
   tables.push({
     title: "حسب المنتج",
     columns: ["المنتج", "القطع", "الإيراد", "حصة الإيراد"],
-    rows: productRows.map((r, i) => [cell(r.productName), cell(formatCount(r.units)), cell(formatMoney2(r.revenuePiastres)), productShareCells[i]]),
+    rows: productRows.map((r, i) => [cellWithSub(r.productName, r.productSlug), cell(formatCount(r.units)), cell(formatMoney2(r.revenuePiastres)), productShareCells[i]]),
     totalRow: [
       "الإجمالي",
       formatCount(productRowsFull.reduce((s, r) => s + r.units, 0)),
@@ -480,7 +487,10 @@ export function buildInventoryPrintData(data: InventoryReportResponse, periodLab
     rows: skuRows.map((r) => {
       const isRest = r.variantId === REST_KEY;
       const base = [
-        cell(isRest ? r.productName : `${r.productName} · ${r.variantName}${r.colorName ? ` · ${r.colorName}` : ""}`),
+        cellWithSub(
+          isRest ? r.productName : `${r.productName} · ${r.variantName}${r.colorName ? ` · ${r.colorName}` : ""}`,
+          isRest ? null : r.sku
+        ),
         cell(formatCount(r.sellable)),
         cell(isRest ? "—" : r.velocityPerWeek.toFixed(1)),
         cell(isRest ? "—" : r.daysOfCover === null ? "∞" : formatCount(Math.round(r.daysOfCover))),

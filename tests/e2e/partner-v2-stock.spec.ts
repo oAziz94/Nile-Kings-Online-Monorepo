@@ -222,6 +222,19 @@ test.describe("stock index: search, thresholds, quick adjust, cover", () => {
     await expect(page.getByText(`منتج المخزون السليم ${RUN_TAG}`)).toHaveCount(0);
   });
 
+  test("10.16 — stock list row shows the product's slug; the variant editor row shows its SKU", async ({ page }) => {
+    await loginAs(page, pair, "AGENT");
+    await page.goto(`/partner/stock?q=${encodeURIComponent(`منتج المخزون السليم ${RUN_TAG}`)}`);
+    await expect(page.getByRole("heading", { name: "المخزون", exact: true })).toBeVisible({ timeout: 15_000 });
+    const row = page.getByRole("row").filter({ hasText: `منتج المخزون السليم ${RUN_TAG}` });
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await expect(row).toContainText(`healthy-${RUN_TAG}`);
+
+    await page.goto(`/partner/stock/products/${healthyProductId}`);
+    await expect(page.getByRole("heading", { name: `منتج المخزون السليم ${RUN_TAG}` })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(`SKU-HEALTHY-${RUN_TAG}`, { exact: true }).first()).toBeVisible();
+  });
+
   test("variant editor blocks a stock value below stockReserved with the exact message", async ({ page }) => {
     await loginAs(page, pair, "AGENT");
     await page.goto(`/partner/stock/products/${reservedProductId}`);

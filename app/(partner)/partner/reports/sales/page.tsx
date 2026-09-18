@@ -15,6 +15,7 @@ import { PeriodBar } from "@/components/partner/reports/period-bar";
 import { HeadlineTiles } from "@/components/partner/reports/headline-tiles";
 import { TrendChart } from "@/components/partner/reports/trend-chart";
 import { BreakdownTable } from "@/components/partner/reports/breakdown-table";
+import { ProductIdentity } from "@/components/dashboard/product-identity";
 import { ActionPanel } from "@/components/partner/reports/action-panel";
 import { DeltaCell } from "@/components/partner/reports/delta-cell";
 import { formatNumberEn } from "@/lib/format-en-numbers";
@@ -278,7 +279,9 @@ export function SalesReportView({
                     onPageChange={setPage}
                     renderRow={(r) => (
                       <>
-                        <TableCell className="font-semibold text-ink">{r.productName}</TableCell>
+                        <TableCell className="font-semibold text-ink">
+                          <ProductIdentity name={r.productName} identifier={r.productSlug} />
+                        </TableCell>
                         <TableCell dir="ltr" className="text-ink">{formatNumberEn(r.units)}</TableCell>
                         <TableCell dir="ltr" className="font-bold text-ink">{formatNumberEn(piastresToEgp(r.revenuePiastres))}</TableCell>
                         <TableCell><DeltaCell current={r.revenuePiastres} previous={r.previousRevenuePiastres} /></TableCell>

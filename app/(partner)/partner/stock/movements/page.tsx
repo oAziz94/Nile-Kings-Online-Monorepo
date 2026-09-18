@@ -10,6 +10,7 @@ import * as React from "react";
 import { AlertTriangle, RefreshCw, Truck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { PaginationBar } from "@/components/dashboard/pagination";
+import { ProductIdentity } from "@/components/dashboard/product-identity";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type ColumnDef } from "@/components/ui/data-table";
@@ -89,12 +90,11 @@ function PartnerStockMovementsTabInner() {
         header: "الصنف",
         enableSorting: false,
         cell: ({ row }) => (
-          <div>
-            <div className="font-bold text-ink">{row.original.product}</div>
-            <div className="text-xs text-ink-soft" dir="ltr">
-              {row.original.variant} · {row.original.sku}
-            </div>
-          </div>
+          <ProductIdentity
+            name={`${row.original.product} · ${row.original.variant}`}
+            identifier={row.original.sku}
+            nameClassName="font-bold text-ink"
+          />
         ),
       },
       {
