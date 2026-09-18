@@ -193,7 +193,15 @@ async function computeNetworkInventoryRows(period: ReturnType<typeof resolvePeri
 
 export async function getPartnerInventoryReport(
   scope: ReportScope,
-  input: { preset: InventoryReportPreset; from?: string; to?: string; page?: number; filter?: InventoryReportFilter }
+  input: {
+    preset: InventoryReportPreset;
+    from?: string;
+    to?: string;
+    page?: number;
+    filter?: InventoryReportFilter;
+    /** Backlog 10.14 — see `skuPage`'s doc comment. */
+    all?: boolean;
+  }
 ): Promise<InventoryReportResponse> {
   const period = resolvePeriod(input);
   const page = Math.max(1, input.page ?? 1);
@@ -306,13 +314,12 @@ export async function getPartnerInventoryReport(
       : 0
     : costRateOf(rows[0] ?? ({} as InventorySkuRow));
   const headline = buildHeadline(rows, totals, headlineCostRateBps, period.days, deadStockDaysForHint, stockOut, snapshot, network);
+  // Backlog 10.14 — `input.all` returns every row as one unpaginated page (the print page has
+  // no pagination control and must show every row of every table).
   const start = (page - 1) * PAGE_SIZE;
-  const skuPage: ReportBreakdownPage<InventorySkuRow> = {
-    rows: filtered.slice(start, start + PAGE_SIZE),
-    page,
-    pageSize: PAGE_SIZE,
-    total: filtered.length,
-  };
+  const skuPage: ReportBreakdownPage<InventorySkuRow> = input.all
+    ? { rows: filtered, page: 1, pageSize: filtered.length, total: filtered.length }
+    : { rows: filtered.slice(start, start + PAGE_SIZE), page, pageSize: PAGE_SIZE, total: filtered.length };
 
   const reorderRows = rows.filter((r) => r.suggestedReorder > 0);
   const reorderList = {

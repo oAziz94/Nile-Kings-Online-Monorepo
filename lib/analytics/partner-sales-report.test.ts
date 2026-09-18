@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allocatedItemRevenue, attachRevenueDelta, buildHeadline, type OrderForSales, type OrderItemForSales } from "./partner-sales-report";
+import { allocatedItemRevenue, attachRevenueDelta, buildHeadline, countDistinctOrdersByKey, type OrderForSales, type OrderItemForSales } from "./partner-sales-report";
 import { netMerchandisePiastres } from "./queries";
 
 describe("7.4 — attachRevenueDelta (shared by category/governorate/payment breakdown rows)", () => {
@@ -178,5 +178,33 @@ describe("10.13 verifier fix — allocatedItemRevenue (product/category revenue 
 
   it("an item whose order isn't in the lookup map allocates 0 (never throws)", () => {
     expect(allocatedItemRevenue({ orderId: "missing", totalPiastres: 500 }, new Map())).toBe(0);
+  });
+});
+
+describe("10.14 (print-page review) — countDistinctOrdersByKey: the category breakdown's الطلبات column", () => {
+  it("counts distinct orders per key, not per item — an order with two items in the same category counts once", () => {
+    const items = [
+      { orderId: "order-1", key: "shirts" },
+      { orderId: "order-1", key: "shirts" }, // same order, second item, same category
+      { orderId: "order-2", key: "shirts" },
+      { orderId: "order-3", key: "pants" },
+    ];
+    const counts = countDistinctOrdersByKey(items, (it) => it.key);
+    expect(counts.get("shirts")).toBe(2);
+    expect(counts.get("pants")).toBe(1);
+  });
+
+  it("an order with items in two categories counts once in each — the same order can appear in more than one category's total", () => {
+    const items = [
+      { orderId: "order-1", key: "shirts" },
+      { orderId: "order-1", key: "pants" },
+    ];
+    const counts = countDistinctOrdersByKey(items, (it) => it.key);
+    expect(counts.get("shirts")).toBe(1);
+    expect(counts.get("pants")).toBe(1);
+  });
+
+  it("no items -> an empty map", () => {
+    expect(countDistinctOrdersByKey([], (it: { key: string }) => it.key).size).toBe(0);
   });
 });

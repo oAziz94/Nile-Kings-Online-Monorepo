@@ -71,7 +71,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ tab:
       return apiBadRequest(`orders يجب أن يكون أحد: ${ORDER_SETS.join(", ")}`);
     }
     const orderSet = ordersParam as SalesOrderSet;
-    const report = await getPartnerSalesReport(scope, { preset: presetParam as SalesReportPreset, from, to, page: 1, orderSet });
+    const report = await getPartnerSalesReport(scope, { preset: presetParam as SalesReportPreset, from, to, page: 1, orderSet, all: true });
     const periodLabel = `الفترة: ${formatDateEn(report.period.current.from)} إلى ${formatDateEn(report.period.current.to)}`;
     const html = renderReportPrintPage(buildSalesPrintData(report, orderSet, periodLabel, generatedAtLabel));
     return htmlResponse(html);
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ tab:
     if (!SALES_PRESETS.includes(presetParam as SalesReportPreset)) {
       return apiBadRequest(`preset يجب أن يكون أحد: ${SALES_PRESETS.join(", ")}`);
     }
-    const report = await getPartnerFulfilmentReport(scope, { preset: presetParam as SalesReportPreset, from, to, page: 1 });
+    const report = await getPartnerFulfilmentReport(scope, { preset: presetParam as SalesReportPreset, from, to, page: 1, all: true });
     const periodLabel = `الفترة: ${formatDateEn(report.period.current.from)} إلى ${formatDateEn(report.period.current.to)}`;
     const html = renderReportPrintPage(buildFulfilmentPrintData(report, periodLabel, generatedAtLabel));
     return htmlResponse(html);
@@ -93,7 +93,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ tab:
     if (!INVENTORY_PRESETS.includes(presetParam as InventoryReportPreset)) {
       return apiBadRequest(`preset يجب أن يكون أحد: ${INVENTORY_PRESETS.join(", ")}`);
     }
-    const report = await getPartnerInventoryReport(scope, { preset: presetParam as InventoryReportPreset, from, to, page: 1, filter: "all" });
+    const report = await getPartnerInventoryReport(scope, { preset: presetParam as InventoryReportPreset, from, to, page: 1, filter: "all", all: true });
     const periodLabel = `الفترة: ${formatDateEn(report.period.current.from)} إلى ${formatDateEn(report.period.current.to)}`;
     const html = renderReportPrintPage(buildInventoryPrintData(report, periodLabel, generatedAtLabel));
     return htmlResponse(html);
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ tab:
   if (!MONEY_PRESETS.includes(presetParam as MoneyReportPreset)) {
     return apiBadRequest(`preset يجب أن يكون أحد: ${MONEY_PRESETS.join(", ")}`);
   }
-  const report = await getPartnerMoneyReport(scope, { preset: presetParam as MoneyReportPreset, from, to, page: 1 });
+  const report = await getPartnerMoneyReport(scope, { preset: presetParam as MoneyReportPreset, from, to, page: 1, all: true });
   const periodLabel = `الفترة: ${formatDateEn(report.period.current.from)} إلى ${formatDateEn(report.period.current.to)}`;
   const html = renderReportPrintPage(buildMoneyPrintData(report, periodLabel, generatedAtLabel));
   return htmlResponse(html);

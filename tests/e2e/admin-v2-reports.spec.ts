@@ -410,16 +410,21 @@ test("10.14: the print page has no PDF button on the partner pages", async ({ pa
   await expect(page.getByRole("button", { name: "PDF" })).toHaveCount(0);
 });
 
-test("10.14: the sales print page renders the four tiles and its total row equals the API's headline revenue", async ({ page }) => {
+test("10.14: the sales print page renders the four tiles and its total row equals the API's headline revenue (preset=30d, the PM's reconciliation check)", async ({ page }) => {
   await loginAsAdmin(page);
 
-  const apiRes = await page.request.get("/api/admin/reports/sales?preset=today");
+  // Backlog 10.14 PM review (fix 1) — the reconciliation must hold on a period with more than
+  // a page's worth of rows, not just `preset=today` (where the truncation bug happened not to
+  // show, since 30d's product breakdown has more than 25 rows). The headline itself was never
+  // paginated — only the breakdown tables were — so the plain (page-1) API call already gives
+  // the true full-period revenue to reconcile the print page's `all: true` tables against.
+  const apiRes = await page.request.get("/api/admin/reports/sales?preset=30d");
   const apiJson = await apiRes.json();
   const byKey = (headline: { key: string; value: number }[]) => Object.fromEntries(headline.map((h) => [h.key, h.value]));
   const apiRevenuePiastres = byKey(apiJson.data.headline).revenue as number;
   const apiRevenueEgp = apiRevenuePiastres / 100;
 
-  await page.goto("/admin/reports/sales/print?preset=today&orders=accomplished");
+  await page.goto("/admin/reports/sales/print?preset=30d&orders=accomplished");
   await expect(page.locator(".tile")).toHaveCount(4);
   const revenueTileValue = await page.locator(".tile").first().locator(".tile-value").innerText();
   // The print page formats money to two decimals ("1,234.56 ج.م"); take the leading numeral
@@ -429,13 +434,39 @@ test("10.14: the sales print page renders the four tiles and its total row equal
   expect(parseMoneyCell(revenueTileValue)).toBeCloseTo(apiRevenueEgp, 1);
 
   // The product breakdown's total row (columns: المنتج, القطع, الإيراد, حصة الإيراد) sums to
-  // الإيراد within the documented rounding drift (10.13's per-item discount allocation can
-  // drift by a few piastres) — located by its own heading, since network scope's first table
-  // is "حسب الشريك", not "حسب المنتج".
+  // الإيراد within ±1 piastre (10.13's per-item discount allocation can drift by a rounding
+  // piastre) — located by its own heading, since network scope's first table is "حسب
+  // الشريك", not "حسب المنتج". `all: true` upstream means this total is over *every* product
+  // row, not just page 1 — the truncation bug from the first pass is exactly what this guards.
   const productTable = page.locator(".table-block", { has: page.getByRole("heading", { name: "حسب المنتج" }) });
   const totalRowText = await productTable.locator("tr.total-row td").nth(2).innerText();
-  const totalRowEgp = parseMoneyCell(totalRowText);
-  expect(Math.abs(totalRowEgp - apiRevenueEgp)).toBeLessThan(1);
+  const totalRowPiastres = Math.round(parseMoneyCell(totalRowText) * 100);
+  expect(Math.abs(totalRowPiastres - apiRevenuePiastres)).toBeLessThanOrEqual(1);
+
+  // Fix 4 — the top product row's share bar renders at full width (100%), not a literal
+  // percent-of-100 (which would leave every real row's bar looking nearly empty).
+  // The browser normalises the inline style's percentage text (e.g. "100.0%" -> "100%"); parse
+  // it back to a number rather than asserting an exact string.
+  const topBarWidth = await productTable.locator("tbody tr").first().locator(".share-bar-fill").evaluate((el) => (el as HTMLElement).style.width);
+  expect(parseFloat(topBarWidth)).toBeCloseTo(100, 0);
+
+  // Fix 3 — no all-zero row anywhere on the page (governorate is the table most likely to
+  // carry one: most governorates have 0 orders/0 revenue in a filtered order set).
+  const govTable = page.locator(".table-block", { has: page.getByRole("heading", { name: "حسب المحافظة" }) });
+  await expect(govTable.getByRole("columnheader", { name: "نسبة الإلغاء" })).toHaveCount(0);
+  const govRows = govTable.locator("tbody tr:not(.total-row)");
+  const govRowCount = await govRows.count();
+  for (let i = 0; i < govRowCount; i++) {
+    const cells = govRows.nth(i).locator("td");
+    const ordersText = (await cells.nth(1).innerText()).trim();
+    const revenueText = (await cells.nth(2).innerText()).trim();
+    expect(ordersText === "0" && parseMoneyCell(revenueText) === 0).toBe(false);
+  }
+
+  // Fix 6 — the payment table uses the Arabic label, never the raw enum value.
+  const paymentTable = page.locator(".table-block", { has: page.getByRole("heading", { name: "حسب طريقة الدفع" }) });
+  await expect(paymentTable.getByText("COD", { exact: true })).toHaveCount(0);
+  await expect(paymentTable.getByText("INSTAPAY_PREPAID", { exact: true })).toHaveCount(0);
 });
 
 test("10.14: preset/tab validation, and a partner session gets 403 on the print route", async ({ page }) => {

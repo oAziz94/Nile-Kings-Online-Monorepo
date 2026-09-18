@@ -12,8 +12,10 @@
 
 export type PrintTile = { label: string; value: string; hint?: string };
 
-/** A percentage column (index into `columns`/each row) gets a thin share bar behind its text —
- * pass the row's share as 0-100 alongside its already-formatted text. */
+/** A percentage/share column gets a thin share bar behind its text. `sharePct` is the bar's
+ * *width*, already normalised by the caller to the table's own largest row (backlog 10.14
+ * PM review — "scale to the largest row so the top row's bar is full width, not to 100%",
+ * per the owner's model PDF); `text` is always the real, un-normalised value. */
 export type PrintTableCell = { text: string; sharePct?: number };
 
 export type PrintTable = {
@@ -33,6 +35,10 @@ export type PrintPageInput = {
   periodLabel: string;
   generatedAtLabel: string;
   tiles: PrintTile[];
+  /** One small line directly under the tiles (backlog 10.14 PM review — e.g. sales' نسبة
+   * الإلغاء, computed over every order regardless of the accomplished/active filter, doesn't
+   * belong in the tile row itself but still needs to be on the page). */
+  subline?: string;
   tables: PrintTable[];
   footnote?: string;
 };
@@ -148,6 +154,7 @@ export function renderReportPrintPage(input: PrintPageInput): string {
   .tile-label { font-size: 11.5px; color: #6b6558; margin: 0 0 4px; }
   .tile-value { font-size: 20px; font-weight: 800; margin: 0; direction: ltr; text-align: right; }
   .tile-hint { font-size: 10.5px; color: #6b6558; margin: 4px 0 0; }
+  .subline { font-size: 11.5px; color: #4a4636; margin: -14px 0 22px; }
   .table-block { margin-bottom: 22px; break-inside: avoid; }
   .table-block h2 { font-size: 14px; font-weight: 800; margin: 0 0 8px; }
   table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
@@ -197,6 +204,8 @@ export function renderReportPrintPage(input: PrintPageInput): string {
   <p class="doc-subtitle">${esc(input.subtitle)}</p>
 
   <div class="tiles">${tiles}</div>
+
+  ${input.subline ? `<p class="subline">${esc(input.subline)}</p>` : ""}
 
   ${tables}
 
