@@ -139,10 +139,7 @@ test.describe("storefront bootstrap — one request replaces four (backlog 6.2)"
     await prisma.$disconnect();
   });
 
-  test("home (/) fires exactly one bootstrap request, no separate governorate/coupon/auth/cart calls", async ({
-    page,
-    baseURL,
-  }) => {
+  test("home (/) fires exactly one bootstrap request, no separate governorate/coupon/auth/cart calls", async ({ page, baseURL }) => {
     await assertOneBootstrapRequest(page, baseURL, "/");
   });
 
@@ -191,10 +188,7 @@ test.describe("bootstrap failure — the guest must never be locked out (verifie
     await expect(nav.getByRole("link", { name: /قطن ملوك النيل/ })).toBeVisible();
   });
 
-  test("bootstrap and governorate both 500: no modal forced open; opening it by hand shows a non-empty list", async ({
-    page,
-    baseURL,
-  }) => {
+  test("bootstrap and governorate both 500: no modal forced open; opening it by hand shows a non-empty list", async ({ page }) => {
     const requests: Request[] = [];
     page.on("request", (req) => requests.push(req));
 
