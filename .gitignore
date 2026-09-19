@@ -54,3 +54,8 @@ docs/redesign/design-canvas/*.html
 
 # seeded design canvases are generated from build.mjs; publish output only
 design-canvas/**/nile-kings-*.html
+
+# one-off deploy/rehearsal env files (never commit)
+.env.deploy
+.env.deploy.*
+.env.rehearsal
