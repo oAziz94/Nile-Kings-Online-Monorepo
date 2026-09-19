@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { ReportTabs } from "@/components/partner/reports/report-tabs";
-import { SalesReportView } from "@/app/(partner)/partner/reports/sales/page";
+import { SalesReportView } from "@/components/partner/reports/sales-report-view";
 
 /**
  * `/admin/reports/sales` (backlog 9.6 (c)) — the network-wide sales report, rendered by the
