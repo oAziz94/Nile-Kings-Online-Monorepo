@@ -1,3 +1,7 @@
+## 2026-09-19 — React stays on 19.2 for now (6.5)
+
+The dependency patch pass bumped Next, Sentry and React within their majors. React 19.3.0 made the store settings save on `/admin/settings` fail reliably: the confirm dialog never opened or the audit line never appeared, on four runs out of four; with React 19.2.8 and the same Next 15.5.25 it passed every time, and Next alone passed too. The cause inside React was not chased. Ruling: pin React and react-dom to 19.2.x until the settings page is retested on a later 19.3 patch; the Next security fixes (15.5.21, 15.5.24 image RCEs) are the point of this pass and ship now. A second finding of the pass: the production build had been broken since 2026-09-14 by named exports in the partner report page files (10.19), unnoticed because implementers are told not to run `next build`; from now on the PM runs `npm run build:redesign` before every version bump.
+
 ## 2026-09-19 — Phase 6 opens: cut what the bill says, not what the code smells like
 
 The owner said "start phase 6". The Phase 2 numbers pick the order: Vercel is ~$40 of the ~$47 monthly total, and two lines make most of it — Web Analytics Events ($10.71, one package we never read) and function invocations plus the CPU they burn ($21.77). Cloudinary's cost is bandwidth. So the phase is five small changes, each aimed at one of those three lines, and a re-measure. No rewrite, no provider swap until the delta is on paper.
