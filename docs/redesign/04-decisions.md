@@ -1,3 +1,15 @@
+## 2026-09-19 — Phase 6 opens: cut what the bill says, not what the code smells like
+
+The owner said "start phase 6". The Phase 2 numbers pick the order: Vercel is ~$40 of the ~$47 monthly total, and two lines make most of it — Web Analytics Events ($10.71, one package we never read) and function invocations plus the CPU they burn ($21.77). Cloudinary's cost is bandwidth. So the phase is five small changes, each aimed at one of those three lines, and a re-measure. No rewrite, no provider swap until the delta is on paper.
+
+Three rulings taken while writing the task list:
+
+- **Governorate → partner resolution goes into the Next Data Cache with a tag, not Redis.** `06-caching-plan.md` (2026-09-09) put it on the Redis list because an admin's rerouting edit must show immediately. `revalidateTag` gives exactly that guarantee at zero Upstash commands and without a second cache layer to keep coherent; `lib/settings.ts` already uses the pattern. The plan's other Redis items are new features (notification counters, abandoned carts, low-stock dedupe), which is Phase 5 work, not performance. Redis stays for what it is good at here: rate limiting and the analytics cache.
+- **One bootstrap request replaces four.** Every storefront page fires `/api/auth/me`, `/api/storefront/governorate`, `/api/promotions/coupon-popup-messages` and `/api/cart` from the layout before any page content. Folding them into one handler is the cheapest cut to invocations available; a server-rendered session in the layout would do the same but would make every route dynamic, including the one ISR page we have (`/categories/[slug]`). The four endpoints stay for their write paths.
+- **No ISR on `/` and the PDP.** Both read the location cookie for partner stock; the expensive query under each is already memoized. ISR would only save the cheap per-visitor stock lookup at the cost of a client fetch for stock, which is a wash on invocations and a loss on first paint.
+
+Also: dependency bumps stay within majors (Next 15.5.x, React 19.x, Prisma 6). Next 16 and Prisma 7 are separate decisions with their own migration notes; not in this phase.
+
 ## 2026-09-18 — A report on paper (10.14, v2.4.10)
 
 The owner brought a PDF made by hand and asked for the same from every admin report tab. The build was right in shape at once and wrong in substance three times, each caught by looking at the page rather than the tests: the product table printed the first screen of rows and called it the total; the category table had always shown zero orders; and every amount was rounded to the pound with a false ".00" behind it. Rulings that came out of it: a printed table shows every row's money in its total, folds past twenty-five rows into one "the rest" row, and drops rows that are all zero; a rate that is not computed over the rows beside it does not print next to them; amounts print to the piastre from the integer, never through a rounding helper; and a print page calls the same functions as the screen, never a second computation. The PDF is the browser's own print of a plain page — no PDF library, no headless browser on the server.
