@@ -11,7 +11,7 @@ Nile Kings Online is the full-stack e-commerce platform powering **Nile Kings Co
 - **Partner registration** — public "become an agent/distributor" request form, with an admin workflow to review, contact, and convert requests into active partners (including linking distributors to agents).
 - **Authentication** — phone-number based accounts with password login, OTP (one-time password) login/verification, and forgot-password flow; JWT session stored in an httpOnly cookie.
 - **Admin dashboard** — management of products/variants, categories, coupons, shipping rules, orders, routed orders, partners & partner inventory, restock requests, rerouting rules, site settings, admins, and clients.
-- **Analytics** — product view and add-to-cart event logging, an admin analytics dashboard, and Meta Pixel / Vercel Analytics integration on the storefront.
+- **Analytics** — product view and add-to-cart event logging, an admin analytics dashboard, and Meta Pixel integration on the storefront.
 - **Order lifecycle & auditing** — order status pipeline (created → confirmed → processing → ready to ship → shipped → delivered / cancelled), audit logs for order and OTP events, and courier export (Egypt Post) tooling.
 - **Image uploads** — Cloudinary-backed uploads for product images and delivery proof-of-drop images.
 - **Transactional email** — partner-request and order notifications via Resend, with an SMTP fallback.
@@ -25,7 +25,6 @@ Nile Kings Online is the full-stack e-commerce platform powering **Nile Kings Co
 - [Radix UI](https://www.radix-ui.com/) primitives (`react-slot`, `react-toast`)
 - `class-variance-authority`, `clsx`, `tailwind-merge` for component styling
 - `lucide-react` icon set
-- `@vercel/analytics`
 
 **Backend**
 - Next.js Route Handlers (App Router `app/api/*`) as the API layer

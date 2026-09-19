@@ -1,5 +1,4 @@
 import Script from "next/script";
-import { Analytics } from "@vercel/analytics/react";
 import { PublicSiteNavbar } from "@/components/shared/public-site-navbar";
 import { Footer } from "@/components/shared/footer";
 import { CartProvider } from "@/contexts/cart-context";
@@ -24,7 +23,6 @@ export default function PublicLayout({
       <GovernorateSelector />
       <CartDrawer />
       <CouponPromoDialog />
-      <Analytics />
       {/* Meta Pixel */}
       <Script
         id="meta-pixel"
