@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { parseJsonResponse } from "@/lib/api/parse-json";
 import { resolveGovernorateForArea } from "@/lib/data/egypt-areas-greater-cairo";
 import { GOVERNORATE_AS_CITY_VALUES } from "@/lib/addresses/completeness";
+import { useStorefrontBootstrap } from "@/components/storefront/storefront-bootstrap-provider";
 import { cn } from "@/lib/utils";
 
 type GovernorateOption = { value: string; label: string };
@@ -44,48 +45,38 @@ const REMOVED_ITEMS_KEY = "nile_removed_cart_items";
 
 export function GovernorateSelector() {
   const { toast } = useToast();
+  const bootstrap = useStorefrontBootstrap();
   const [options, setOptions] = React.useState<GovernorateOption[]>([]);
   const [savedAddress, setSavedAddress] = React.useState<StorefrontAddress | null>(null);
   const [draft, setDraft] = React.useState(emptyDraft);
   const [showMore, setShowMore] = React.useState(false);
-  const [loading, setLoading] = React.useState(true);
+  const [initialized, setInitialized] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [editing, setEditing] = React.useState(false);
 
+  // Initial data comes from the shared bootstrap request (backlog 6.2) instead of this
+  // component's own `/api/storefront/governorate` GET; saving an address still POSTs there.
   React.useEffect(() => {
-    let cancelled = false;
-    fetch("/api/storefront/governorate", { credentials: "include", cache: "no-store" })
-      .then((res) =>
-        parseJsonResponse<{
-          success?: boolean;
-          data?: { address: StorefrontAddress | null; options: GovernorateOption[] };
-        }>(res)
-      )
-      .then((json) => {
-        if (cancelled) return;
-        const address = json?.data?.address ?? null;
-        setOptions(json?.data?.options ?? []);
-        setSavedAddress(address);
-        setDraft({
-          governorate: address?.governorate ?? "",
-          area: address?.area ?? "",
-          city: address?.city ?? "",
-          street: address?.street ?? "",
-          floor: address?.floor ?? "",
-          apartment: address?.apartment ?? "",
-          phone: address?.phone ?? "",
-          label: address?.label ?? "",
-          notes: "",
-        });
-        setEditing(!address);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (bootstrap.status === "loading" || initialized) return;
+    const address = bootstrap.data?.governorate.address ?? null;
+    setOptions(bootstrap.data?.governorate.options ?? []);
+    setSavedAddress(address);
+    setDraft({
+      governorate: address?.governorate ?? "",
+      area: address?.area ?? "",
+      city: address?.city ?? "",
+      street: address?.street ?? "",
+      floor: address?.floor ?? "",
+      apartment: address?.apartment ?? "",
+      phone: address?.phone ?? "",
+      label: address?.label ?? "",
+      notes: "",
+    });
+    setEditing(!address);
+    setInitialized(true);
+  }, [bootstrap.status, bootstrap.data, initialized]);
+
+  const loading = !initialized;
 
   // Show the "items removed" notice left behind by a save that happened just before the
   // hard reload this mount is the result of.

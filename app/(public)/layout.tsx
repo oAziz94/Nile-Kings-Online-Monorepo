@@ -5,6 +5,7 @@ import { CartProvider } from "@/contexts/cart-context";
 import { CartDrawer } from "@/components/cart/cart-drawer";
 import { CouponPromoDialog } from "@/components/promotions/coupon-promo-dialog";
 import { GovernorateSelector } from "@/components/storefront/governorate-selector";
+import { StorefrontBootstrapProvider } from "@/components/storefront/storefront-bootstrap-provider";
 
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "1256853443318259";
 
@@ -14,21 +15,22 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <CartProvider>
-      <div className="flex min-h-screen flex-col font-plex-arabic" dir="rtl">
-        <PublicSiteNavbar />
-        <main className="flex-1 bg-background pt-[60px] lg:pt-[84px]">{children}</main>
-        <Footer />
-      </div>
-      <GovernorateSelector />
-      <CartDrawer />
-      <CouponPromoDialog />
-      {/* Meta Pixel */}
-      <Script
-        id="meta-pixel"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
+    <StorefrontBootstrapProvider>
+      <CartProvider>
+        <div className="flex min-h-screen flex-col font-plex-arabic" dir="rtl">
+          <PublicSiteNavbar />
+          <main className="flex-1 bg-background pt-[60px] lg:pt-[84px]">{children}</main>
+          <Footer />
+        </div>
+        <GovernorateSelector />
+        <CartDrawer />
+        <CouponPromoDialog />
+        {/* Meta Pixel */}
+        <Script
+          id="meta-pixel"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
 !function(f,b,e,v,n,t,s)
 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
 n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -39,18 +41,19 @@ s.parentNode.insertBefore(t,s)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
 fbq('init', '${META_PIXEL_ID}');
 fbq('track', 'PageView');
-          `.trim(),
-        }}
-      />
-      <noscript>
-        <img
-          height="1"
-          width="1"
-          style={{ display: "none" }}
-          src={`https://www.facebook.com/tr?id=${META_PIXEL_ID}&ev=PageView&noscript=1`}
-          alt=""
+            `.trim(),
+          }}
         />
-      </noscript>
-    </CartProvider>
+        <noscript>
+          <img
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            src={`https://www.facebook.com/tr?id=${META_PIXEL_ID}&ev=PageView&noscript=1`}
+            alt=""
+          />
+        </noscript>
+      </CartProvider>
+    </StorefrontBootstrapProvider>
   );
 }
