@@ -85,6 +85,8 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await prisma.adminAuditLog.deleteMany({ where: safeWhere({ entityId: productIdForCleanup }) });
+  // The variant deletes in the second test are audit-logged against the variant ids; the admin is this spec's own fixture.
+  await prisma.adminAuditLog.deleteMany({ where: safeWhere({ actorUserId: adminUserId }) });
   await prisma.variant.deleteMany({ where: safeWhere({ productId: productIdForCleanup }) });
   await prisma.product.deleteMany({ where: safeWhere({ id: productIdForCleanup }) });
   await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
@@ -134,6 +136,15 @@ test("admin product delete makes the PDP 404 on the very next request", async ({
   const pdpRes1 = await page.goto(`/products/${productSlug}`);
   expect(pdpRes1?.status()).toBe(200);
 
+  // A product that still has variants is refused with 409 (Variant.productId is Restrict).
+  const refused = await page.request.delete(`/api/admin/products/${productId}`);
+  expect(refused.status()).toBe(409);
+
+  const variants = await prisma.variant.findMany({ where: safeWhere({ productId }), select: { id: true } });
+  for (const v of variants) {
+    const vRes = await page.request.delete(`/api/admin/variants/${v.id}`);
+    expect(vRes.ok()).toBeTruthy();
+  }
   const deleteRes = await page.request.delete(`/api/admin/products/${productId}`);
   expect(deleteRes.ok()).toBeTruthy();
 

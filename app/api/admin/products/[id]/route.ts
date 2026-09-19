@@ -149,6 +149,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Params }) {
       })
     : null;
   if (hasReservedStock) return apiBadRequest("لا يمكن حذف منتج له كميات محجوزة");
+  // `Variant.productId` is `onDelete: Restrict` (order lines reference variants, so history must
+  // survive). Deleting a product that still has variants used to surface as a Postgres P2003 →
+  // 500; say what to do instead (6.3 verification, 2026-09-19).
+  if (product.variants.length > 0) {
+    return apiConflict("احذف متغيرات المنتج أولًا، أو أوقف تفعيله بدلًا من حذفه");
+  }
   await prisma.product.delete({ where: { id } });
   await logAdminAction(prisma, {
     actor,
