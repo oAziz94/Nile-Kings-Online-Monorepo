@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 import { splitColorKey } from "@/lib/admin/variant-images";
+import { revalidateCatalog } from "@/lib/cache/catalog-tags";
 
 type Params = Promise<{ id: string; colorKey: string }>;
 
@@ -77,6 +78,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     after: { imageAssetId: resolvedAssetId, colorName },
     ip: requestIp(req),
   });
+  revalidateCatalog({ productSlugs: [product.slug] });
 
   return apiSuccess({ productId, colorKey, imageUrl: resolvedUrl, imageAssetId: resolvedAssetId });
 }

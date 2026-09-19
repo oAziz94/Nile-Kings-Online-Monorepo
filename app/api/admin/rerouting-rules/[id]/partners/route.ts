@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
+import { revalidateReroutingRules } from "@/lib/cache/catalog-tags";
 
 type Params = Promise<{ id: string }>;
 
@@ -81,5 +82,6 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
     after: { partnerId: link.partnerId, partnerName: link.partner.name },
     ip: requestIp(req),
   });
+  revalidateReroutingRules();
   return apiSuccess(link);
 }

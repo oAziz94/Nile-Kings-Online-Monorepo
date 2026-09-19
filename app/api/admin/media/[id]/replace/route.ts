@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound, apiInternal } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 import { uploadToCloudinary } from "@/lib/media/cloudinary-upload";
+import { revalidateCatalog } from "@/lib/cache/catalog-tags";
 
 /**
  * POST /api/admin/media/[id]/replace — backlog 9.8a (e)/(f). Body: multipart/form-data
@@ -92,6 +93,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     after: { oldAssetId: oldAsset.id, newAssetId: newAsset.id },
     ip: requestIp(req),
   });
+  // The old asset could back any number of products/variants/gallery images (three `updateMany`
+  // calls above, no per-row slug list cheaply available) — broad catalog invalidation.
+  revalidateCatalog();
 
   return apiSuccess({ oldAssetId: oldAsset.id, newAssetId: newAsset.id, url: newAsset.url });
 }

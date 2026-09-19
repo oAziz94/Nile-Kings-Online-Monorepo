@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { variantSlug, buildVariantSku } from "@/lib/admin/slug";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound, apiConflict } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
+import { revalidateCatalog } from "@/lib/cache/catalog-tags";
 
 type Params = Promise<{ id: string }>;
 
@@ -85,6 +86,7 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
     after: { colorName: name, colorHex: hex, sizes: uniqueSizes, pricePiastres },
     ip: requestIp(req),
   });
+  revalidateCatalog({ productSlugs: [product.slug] });
 
   return apiSuccess(created);
 }

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { CatalogListing } from "@/components/shared/catalog-listing";
 import { LoadingDots } from "@/components/shared/loading-dots";
 import { pageMetadata } from "@/lib/seo";
+import { CATEGORIES_TAG } from "@/lib/cache/catalog-tags";
 
 /** Category name/slug rarely changes and doesn't depend on the visitor, so this page
  *  is ISR-cached instead of force-dynamic — cuts a full function invocation + DB
@@ -20,7 +21,7 @@ const getCategory = unstable_cache(
     });
   },
   ["category-by-slug"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: [CATEGORIES_TAG] }
 );
 
 export async function generateMetadata({

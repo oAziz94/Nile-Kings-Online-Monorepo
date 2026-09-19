@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
+import { revalidateReroutingRules } from "@/lib/cache/catalog-tags";
 
 type Params = Promise<{ id: string; linkId: string }>;
 
@@ -55,6 +56,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       ip: requestIp(req),
     });
   }
+  revalidateReroutingRules();
   return apiSuccess(updated);
 }
 
@@ -84,5 +86,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Params }) {
     before: { partnerId: link.partnerId, partnerName: link.partner.name },
     ip: requestIp(req),
   });
+  revalidateReroutingRules();
   return apiSuccess({ deleted: true });
 }

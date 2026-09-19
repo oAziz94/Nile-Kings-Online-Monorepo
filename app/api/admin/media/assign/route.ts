@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 import { colorKeyOf } from "@/lib/admin/variant-images";
+import { revalidateCatalog } from "@/lib/cache/catalog-tags";
 
 /**
  * POST /api/admin/media/assign — backlog 9.8a (e)/(f). Body `{ assetIds, productId,
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
   if (typeof productId !== "string" || !productId) return apiBadRequest("يجب اختيار منتج");
   if (typeof targetColorKey !== "string" || !targetColorKey) return apiBadRequest("يجب اختيار لون");
 
-  const product = await prisma.product.findUnique({ where: { id: productId }, select: { id: true, name: true } });
+  const product = await prisma.product.findUnique({ where: { id: productId }, select: { id: true, name: true, slug: true } });
   if (!product) return apiNotFound("المنتج غير موجود");
 
   const variants = await prisma.variant.findMany({
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
     after: { count: assetIds.length, colorLabel: colorMatch.colorName ?? "" },
     ip: requestIp(req),
   });
+  revalidateCatalog({ productSlugs: [product.slug] });
 
   return apiSuccess({ productId, colorKey: targetColorKey, count: assetIds.length });
 }

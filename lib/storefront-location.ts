@@ -1,8 +1,10 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
+import { REROUTING_RULES_TAG } from "@/lib/cache/catalog-tags";
 
 /**
  * Holds the customer's full delivery location, not just the governorate — the location
@@ -82,27 +84,41 @@ export async function getStorefrontAddressFromCookies(): Promise<StorefrontAddre
   return parseStorefrontAddressCookie(cookieStore.get(STOREFRONT_LOCATION_COOKIE)?.value);
 }
 
+/**
+ * The `ReroutingRule` lookup itself (governorate → covering partner) has no per-visitor
+ * dependency, so it's cached per normalized governorate — read on nearly every storefront
+ * request otherwise. Invalidated immediately on any rerouting-rule write via `revalidateTag`
+ * (backlog 6.3 — replaces the Redis plan in `06-caching-plan.md`, decision `04-decisions.md`
+ * 2026-09-19). The unauthenticated `null` governorate path short-circuits above the cache, same
+ * as before, so it's never keyed by an empty/invalid string.
+ */
+const getCachedPartnerIdForGovernorate = unstable_cache(
+  async (normalized: string): Promise<string | null> => {
+    const rule = await prisma.reroutingRule.findFirst({
+      where: { governorate: normalized, isActive: true },
+      include: {
+        partners: {
+          where: { isActive: true, partner: { isActive: true } },
+          orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
+          include: { partner: { select: { id: true } } },
+        },
+      },
+    });
+    return rule?.partners[0]?.partner.id ?? null;
+  },
+  ["storefront-rerouting-rule-by-governorate"],
+  { revalidate: 300, tags: [REROUTING_RULES_TAG] }
+);
+
 export async function getStorefrontStockContext(
   governorate: string | null
 ): Promise<StorefrontStockContext> {
   const normalized = normalizeStorefrontGovernorate(governorate);
   if (!normalized) return { governorate: null, partnerId: null };
 
-  const rule = await prisma.reroutingRule.findFirst({
-    where: { governorate: normalized, isActive: true },
-    include: {
-      partners: {
-        where: { isActive: true, partner: { isActive: true } },
-        orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
-        include: { partner: { select: { id: true } } },
-      },
-    },
-  });
+  const partnerId = await getCachedPartnerIdForGovernorate(normalized);
 
-  return {
-    governorate: normalized,
-    partnerId: rule?.partners[0]?.partner.id ?? null,
-  };
+  return { governorate: normalized, partnerId };
 }
 
 /**

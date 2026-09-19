@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 import { planVariantPriceChanges, type BulkPriceRule } from "@/lib/admin/bulk-edit";
+import { revalidateCatalog } from "@/lib/cache/catalog-tags";
 
 /**
  * POST /api/admin/products/bulk/apply — backlog 9.8b bulk edit's confirm. Same body/shape as
@@ -114,6 +115,10 @@ export async function POST(req: NextRequest) {
       after: row.after,
       ip: requestIp(req),
     });
+  }
+
+  if (results.length > 0) {
+    revalidateCatalog({ productSlugs: products.map((p) => p.slug) });
   }
 
   return apiSuccess({ updated: results.length });

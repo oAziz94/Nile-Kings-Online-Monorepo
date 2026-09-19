@@ -8,6 +8,7 @@ import {
   getCurrentStorefrontStockContext,
   getPartnerStockOverrides,
 } from "@/lib/storefront-location";
+import { CATALOG_TAG } from "@/lib/cache/catalog-tags";
 
 const HOME_LIMIT = 8;
 
@@ -165,7 +166,7 @@ const getHomeCatalogData = unstable_cache(
     };
   },
   ["home-catalog-data"],
-  { revalidate: HOME_CATALOG_REVALIDATE_SECONDS }
+  { revalidate: HOME_CATALOG_REVALIDATE_SECONDS, tags: [CATALOG_TAG] }
 );
 
 export async function getHomeData(): Promise<{

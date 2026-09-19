@@ -10,6 +10,7 @@ import {
   getStorefrontGovernorateFromRequest,
   getStorefrontStockContext,
 } from "@/lib/storefront-location";
+import { CATALOG_TAG } from "@/lib/cache/catalog-tags";
 
 const RELATED_LIMIT = 4;
 
@@ -38,7 +39,7 @@ const getRelatedCatalog = unstable_cache(
     return related;
   },
   ["products-related"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: [CATALOG_TAG] }
 );
 
 function toListItem(p: {

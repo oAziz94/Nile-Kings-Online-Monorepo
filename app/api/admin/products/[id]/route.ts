@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/admin/slug";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound, apiConflict } from "@/lib/api/response";
 import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
+import { revalidateCatalog } from "@/lib/cache/catalog-tags";
 
 type Params = Promise<{ id: string }>;
 
@@ -119,6 +120,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     ip: requestIp(req),
   });
 
+  // Revalidate both the old and (if changed) the new slug's PDP cache entry, plus the broad
+  // catalog tag every listing/related/recommendations/filters/home cache carries.
+  revalidateCatalog({ productSlugs: [...new Set([existing.slug, product.slug])] });
+
   return apiSuccess(product);
 }
 
@@ -154,5 +159,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Params }) {
     before: sanitizeForAudit(product, ["variants"]),
     ip: requestIp(req),
   });
+  revalidateCatalog({ productSlugs: [product.slug] });
   return apiSuccess({ deleted: true });
 }

@@ -10,6 +10,7 @@ import {
   getStorefrontGovernorateFromRequest,
   getStorefrontStockContext,
 } from "@/lib/storefront-location";
+import { CATALOG_TAG } from "@/lib/cache/catalog-tags";
 
 const RECOMMENDATIONS_LIMIT = 12;
 
@@ -96,7 +97,7 @@ const getRecommendationsCatalog = unstable_cache(
     };
   },
   ["products-recommendations-catalog"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: [CATALOG_TAG] }
 );
 
 export async function GET(req: NextRequest) {

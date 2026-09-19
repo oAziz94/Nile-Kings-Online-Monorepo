@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/admin/slug";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiConflict } from "@/lib/api/response";
 import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
+import { revalidateCategories } from "@/lib/cache/catalog-tags";
 
 export async function GET() {
   try {
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
     after: sanitizeForAudit(category),
     ip: requestIp(req),
   });
+  revalidateCategories();
 
   return apiSuccess(category);
 }

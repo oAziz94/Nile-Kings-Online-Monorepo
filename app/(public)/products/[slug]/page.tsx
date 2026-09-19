@@ -19,6 +19,7 @@ import {
   getPartnerStockOverrides,
   type StorefrontStockContext,
 } from "@/lib/storefront-location";
+import { CATALOG_TAG, productTag } from "@/lib/cache/catalog-tags";
 
 /** The page still reads the governorate cookie to price/stock per partner, so it can't be
  *  fully static — but the DB round trip below is cached, so that per-request cost is only
@@ -30,8 +31,14 @@ export const dynamic = "force-dynamic";
  * query runs at most once per revalidate window. Partner stock overrides are applied
  * separately, after the cache read, so they always reflect the current visitor.
  */
-const getProductRowCatalog = unstable_cache(
-  async (slug: string) => {
+// The cache is keyed (and tagged) per slug, so it's created inside a function rather than once
+// at module scope — `productTag(slug)` needs the slug to build the per-product tag, and
+// `unstable_cache`'s own key array already needs the slug too. The persistent Data Cache entry
+// is identified by the key array, not by this wrapper's identity, so re-creating the wrapper on
+// every call is safe.
+function getProductRowCatalog(slug: string) {
+  return unstable_cache(
+    async () => {
     // Resolve by variant slug first (productSlug_size_colorHexCode), then by product slug.
     // Hardening approved in `04-decisions.md` 2026-09-12 decision 7 / `products-pdp.md` edge
     // case: the variant-slug path must also require the parent product to be active, otherwise
@@ -98,11 +105,12 @@ const getProductRowCatalog = unstable_cache(
       });
     if (!productRow) return null;
 
-    return { productRow, initialVariantId: variantBySlug?.id ?? null };
-  },
-  ["product-detail-by-slug"],
-  { revalidate: 60 }
-);
+      return { productRow, initialVariantId: variantBySlug?.id ?? null };
+    },
+    ["product-detail-by-slug", slug],
+    { revalidate: 60, tags: [CATALOG_TAG, productTag(slug)] }
+  )();
+}
 
 /** Memoized per-request so generateMetadata and the page share one call. */
 const getProductRow = reactCache(async (slug: string, partnerId: string | null) => {
@@ -247,7 +255,7 @@ const getRelatedCatalog = unstable_cache(
     return ids.map((id) => byId.get(id)).filter((r): r is NonNullable<typeof r> => r != null);
   },
   ["product-detail-related"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: [CATALOG_TAG] }
 );
 
 async function getRelated(slug: string, categoryId: string, stockContext: StorefrontStockContext) {

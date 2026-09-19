@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/admin/slug";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound, apiConflict } from "@/lib/api/response";
 import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
+import { revalidateCategories, revalidateCatalog } from "@/lib/cache/catalog-tags";
 
 type Params = Promise<{ id: string }>;
 
@@ -74,6 +75,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     after: sanitizeForAudit(category),
     ip: requestIp(req),
   });
+  // Renaming/reslugging a category changes the categoryName/categorySlug embedded in every
+  // product-listing/related/recommendations/home item under it, on top of the category caches.
+  revalidateCategories();
+  revalidateCatalog();
 
   return apiSuccess(category);
 }
@@ -102,5 +107,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Params }) {
     before: sanitizeForAudit(cat, ["_count"]),
     ip: requestIp(req),
   });
+  revalidateCategories();
   return apiSuccess({ deleted: true });
 }
