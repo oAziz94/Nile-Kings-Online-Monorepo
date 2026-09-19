@@ -46,10 +46,15 @@ export function Ga4() {
         dangerouslySetInnerHTML={{
           __html: `
 window.dataLayer = window.dataLayer || [];
+// Events queued by trackEvent() before this script ran must follow 'config', not precede it:
+// lift them out, push js + config, then put them back (same array, so a gtag.js that already
+// captured the reference keeps it).
+var queued = window.dataLayer.splice(0, window.dataLayer.length);
 function gtag(){window.dataLayer.push(arguments);}
 window.gtag = gtag;
 gtag('js', new Date());
 gtag('config', '${measurementId}', { send_page_view: false });
+for (var i = 0; i < queued.length; i++) window.dataLayer.push(queued[i]);
           `.trim(),
         }}
       />
