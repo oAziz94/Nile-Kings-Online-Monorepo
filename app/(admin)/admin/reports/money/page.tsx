@@ -1,7 +1,7 @@
 "use client";
 
 import { ReportTabs } from "@/components/partner/reports/report-tabs";
-import { MoneyReportView } from "@/app/(partner)/partner/reports/money/page";
+import { MoneyReportView } from "@/components/partner/reports/money-report-view";
 
 /** `/admin/reports/money` (backlog 9.6 (c)) — see the sales page's sibling. */
 export default function AdminMoneyReportPage() {
