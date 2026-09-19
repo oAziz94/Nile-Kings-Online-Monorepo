@@ -10,6 +10,7 @@ import { parseJsonResponse } from "@/lib/api/parse-json";
 import { resolveGovernorateForArea } from "@/lib/data/egypt-areas-greater-cairo";
 import { GOVERNORATE_AS_CITY_VALUES } from "@/lib/addresses/completeness";
 import { useStorefrontBootstrap } from "@/components/storefront/storefront-bootstrap-provider";
+import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { cn } from "@/lib/utils";
 
 type GovernorateOption = { value: string; label: string };
@@ -54,14 +55,8 @@ export function GovernorateSelector() {
   const [saving, setSaving] = React.useState(false);
   const [editing, setEditing] = React.useState(false);
 
-  // Initial data comes from the shared bootstrap request (backlog 6.2) instead of this
-  // component's own `/api/storefront/governorate` GET; saving an address still POSTs there.
-  React.useEffect(() => {
-    if (bootstrap.status === "loading" || initialized) return;
-    const address = bootstrap.data?.governorate.address ?? null;
-    setOptions(bootstrap.data?.governorate.options ?? []);
-    setSavedAddress(address);
-    setDraft({
+  function draftFromAddress(address: StorefrontAddress | null) {
+    return {
       governorate: address?.governorate ?? "",
       area: address?.area ?? "",
       city: address?.city ?? "",
@@ -71,12 +66,89 @@ export function GovernorateSelector() {
       phone: address?.phone ?? "",
       label: address?.label ?? "",
       notes: "",
-    });
+    };
+  }
+
+  /** A real answer (from the bootstrap or the fallback fetch): render it, and force the modal
+   * open only when there's genuinely no saved address yet (the intended "first-time visitor,
+   * please pick a location" flow) — never as a side effect of a failed fetch. */
+  function applyResolved(address: StorefrontAddress | null, resolvedOptions: GovernorateOption[]) {
+    setOptions(resolvedOptions);
+    setSavedAddress(address);
+    setDraft(draftFromAddress(address));
     setEditing(!address);
     setInitialized(true);
+  }
+
+  /** Both the bootstrap and the fallback fetch failed: never force the modal open on a failure —
+   * the guest must still be able to browse. The pill stays visible in a "pick your location"
+   * prompt state (static `GOVERNORATE_OPTIONS` so the modal is never empty when opened by hand). */
+  function applyFetchFailure() {
+    setOptions(GOVERNORATE_OPTIONS);
+    setSavedAddress(null);
+    setDraft(draftFromAddress(null));
+    setEditing(false);
+    setInitialized(true);
+  }
+
+  // Initial data comes from the shared bootstrap request (backlog 6.2) instead of this
+  // component's own `/api/storefront/governorate` GET; saving an address still POSTs there.
+  // If the bootstrap request itself failed, fall back to this component's own GET — same pattern
+  // `CartProvider` uses for `/api/cart` — before giving up and rendering the failure state above.
+  React.useEffect(() => {
+    if (initialized) return;
+    if (bootstrap.status === "loading") return;
+    if (bootstrap.status === "ready") {
+      applyResolved(bootstrap.data?.governorate.address ?? null, bootstrap.data?.governorate.options ?? []);
+      return;
+    }
+
+    let cancelled = false;
+    fetch("/api/storefront/governorate", { credentials: "include", cache: "no-store" })
+      .then((res) =>
+        parseJsonResponse<{
+          success?: boolean;
+          data?: { address: StorefrontAddress | null; options: GovernorateOption[] };
+        }>(res)
+      )
+      .then((json) => {
+        if (cancelled) return;
+        if (json?.success && json.data) {
+          applyResolved(json.data.address ?? null, json.data.options ?? []);
+        } else {
+          applyFetchFailure();
+        }
+      })
+      .catch(() => {
+        if (!cancelled) applyFetchFailure();
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrap.status, bootstrap.data, initialized]);
 
   const loading = !initialized;
+
+  /** Shared by Escape, a backdrop click, and the إلغاء button: closing the modal always resets
+   * the draft to the last known-good address (or an empty draft when there isn't one) rather than
+   * leaving an in-progress edit lying around for the next open. */
+  function closeEditing() {
+    setDraft(draftFromAddress(savedAddress));
+    setEditing(false);
+  }
+
+  // The forced-open modal must always be dismissable — Escape closes it regardless of *why* it's
+  // open (verifier finding: a failed bootstrap must never lock the guest out of the page).
+  React.useEffect(() => {
+    if (!editing) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") closeEditing();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, savedAddress]);
 
   // Show the "items removed" notice left behind by a save that happened just before the
   // hard reload this mount is the result of.
@@ -173,22 +245,26 @@ export function GovernorateSelector() {
 
   return (
     <>
-      {savedAddress && !editing ? (
+      {!editing ? (
         <button
           type="button"
           onClick={() => setEditing(true)}
           className="fixed bottom-4 start-4 z-[95] flex items-center gap-2 rounded-none border border-[hsl(228_40%_14%)] bg-papyrus px-4 py-2 text-sm font-medium text-[hsl(228_26%_24%)] shadow-[0_10px_30px_-8px_rgba(21,26,46,0.25)] transition-colors hover:bg-[hsl(38_22%_93%)]"
         >
           <MapPin className="h-4 w-4 text-gold-600" />
-          {savedAddress.governorate}
+          {savedAddress ? savedAddress.governorate : "اختر محافظتك"}
         </button>
       ) : null}
 
       {editing ? (
-        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-[hsl(228_40%_9%)]/45 p-4 sm:items-center">
+        <div
+          className="fixed inset-0 z-[120] flex items-end justify-center bg-[hsl(228_40%_9%)]/45 p-4 sm:items-center"
+          onClick={closeEditing}
+        >
           <div
             className="max-h-[90vh] w-full max-w-md overflow-y-auto border border-[hsl(228_16%_82%)] bg-papyrus p-5 text-right shadow-[0_24px_60px_-12px_rgba(21,26,46,0.28)]"
             dir="rtl"
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-[hsl(228_40%_14%)] text-[hsl(228_40%_14%)]">
@@ -307,20 +383,7 @@ export function GovernorateSelector() {
                   type="button"
                   variant="outline"
                   className="flex-1 rounded-none"
-                  onClick={() => {
-                    setDraft({
-                      governorate: savedAddress.governorate,
-                      area: savedAddress.area ?? "",
-                      city: savedAddress.city ?? "",
-                      street: savedAddress.street ?? "",
-                      floor: savedAddress.floor ?? "",
-                      apartment: savedAddress.apartment ?? "",
-                      phone: savedAddress.phone ?? "",
-                      label: savedAddress.label ?? "",
-                      notes: "",
-                    });
-                    setEditing(false);
-                  }}
+                  onClick={closeEditing}
                   disabled={saving}
                 >
                   إلغاء
