@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { ReportTabs, type ReportFamilyId } from "@/components/partner/reports/report-tabs";
-import { SalesReportView } from "@/app/(partner)/partner/reports/sales/page";
-import { FulfilmentReportView } from "@/app/(partner)/partner/reports/fulfilment/page";
-import { InventoryReportView } from "@/app/(partner)/partner/reports/inventory/page";
-import { MoneyReportView } from "@/app/(partner)/partner/reports/money/page";
-import { NetworkReportView } from "@/app/(partner)/partner/reports/network/page";
+import { SalesReportView } from "@/components/partner/reports/sales-report-view";
+import { FulfilmentReportView } from "@/components/partner/reports/fulfilment-report-view";
+import { InventoryReportView } from "@/components/partner/reports/inventory-report-view";
+import { MoneyReportView } from "@/components/partner/reports/money-report-view";
+import { NetworkReportView } from "@/components/partner/reports/network-report-view";
 
 /**
  * الأداء tab on the partner profile (backlog 9.4b) — this partner's own report pages (sales,
