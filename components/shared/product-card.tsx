@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { CatalogImage } from "./catalog-image";
 import { Price } from "./price";
 import { QuickShopModal } from "./quick-shop-modal";
 import { Button } from "@/components/ui/button";
@@ -78,7 +78,7 @@ export function ProductCard({
           href={href}
           className="relative block aspect-[4/5] overflow-hidden bg-[hsl(38_22%_93%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
         >
-          <Image
+          <CatalogImage
             src={displayImage}
             alt={name}
             fill

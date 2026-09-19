@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { CatalogImage } from "@/components/shared/catalog-image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { getOrderStatusLabel, ORDER_STATUS_COLORS } from "@/lib/constants/order-status";
@@ -164,7 +164,7 @@ function Thumb({ imageUrl, size = "md" }: { imageUrl: string | null; size?: "sm"
       style={{ width: dims.w, height: dims.h }}
     >
       {imageUrl ? (
-        <Image src={imageUrl} alt="" width={dims.w} height={dims.h} className="h-full w-full object-cover" />
+        <CatalogImage src={imageUrl} alt="" width={dims.w} height={dims.h} className="h-full w-full object-cover" />
       ) : null}
     </span>
   );

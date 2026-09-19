@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { CatalogImage } from "@/components/shared/catalog-image";
 import { useCart, type CartItem } from "@/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -26,7 +26,7 @@ function CartLineImage({ item }: { item: CartItem }) {
       href={href}
       className="relative block aspect-[4/5] h-[88px] shrink-0 overflow-hidden bg-[hsl(38_22%_93%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 md:h-[120px]"
     >
-      <Image
+      <CatalogImage
         src={item.imageUrl || PLACEHOLDER_IMAGE}
         alt={item.productName}
         fill

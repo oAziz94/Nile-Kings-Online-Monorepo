@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback, type MouseEvent } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { CatalogImage } from "@/components/shared/catalog-image";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/cart-context";
 import { ProductCard } from "@/components/shared/product-card";
@@ -332,7 +332,7 @@ export function ProductPageContent({
                     active ? "border-[hsl(228_40%_14%)]" : "border-[hsl(228_16%_84%)]"
                   )}
                 >
-                  <Image src={url} alt="" fill className="object-cover" sizes="84px" />
+                  <CatalogImage src={url} alt="" fill className="object-cover" sizes="84px" />
                 </button>
               );
             })}
@@ -352,7 +352,7 @@ export function ProductPageContent({
               isTouchPointer && "cursor-pointer"
             )}
           >
-            <Image
+            <CatalogImage
               src={mainImageUrl}
               alt={product.name}
               fill
@@ -606,7 +606,7 @@ export function ProductPageContent({
         <DialogContent className="max-w-3xl overflow-hidden rounded-none border-none bg-transparent p-0 shadow-none">
           <DialogTitle className="sr-only">{product.name}</DialogTitle>
           <div className="relative aspect-[4/5] w-full bg-[hsl(38_22%_93%)]">
-            <Image src={mainImageUrl} alt={product.name} fill className="object-contain" sizes="90vw" />
+            <CatalogImage src={mainImageUrl} alt={product.name} fill className="object-contain" sizes="90vw" />
             <DialogClose asChild>
               <button
                 type="button"
