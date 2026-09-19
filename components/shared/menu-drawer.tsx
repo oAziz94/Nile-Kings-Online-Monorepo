@@ -17,6 +17,11 @@ import { cn } from "@/lib/utils";
  * env-driven contact links as before this task. New: a user card (or login/register) built from
  * `/api/auth/me` + `/api/profile/orders/summary`, a search box, current-pathname highlighting on
  * category children, three account links, and the partner panel restyled to the artboard.
+ *
+ * Backlog 6.2: when `useBootstrapUser` is true (the storefront's `SiteNavbar` always sets it,
+ * forwarding the user it already got from `/api/storefront/bootstrap`), this component never
+ * calls `/api/auth/me` on open and only reads `initialUser` instead — the orders-summary fetch
+ * on open is unchanged either way.
  */
 
 type NavbarUser = { name: string | null; phone: string } | null;
@@ -35,6 +40,12 @@ type MenuDrawerProps = {
   /** Opt-in: focuses the search box the moment the drawer opens (the navbar's mobile search
    * icon uses this — backlog 6.1). */
   focusSearch?: boolean;
+  /** Opt-in (backlog 6.2): when true, this component never calls `/api/auth/me` on open and only
+   * reads `initialUser`, which the caller already has from the shared bootstrap request. */
+  useBootstrapUser?: boolean;
+  /** The bootstrap-sourced user (only read when `useBootstrapUser` is true): `undefined` while
+   * still loading, `null` for a guest. */
+  initialUser?: NavbarUser | undefined;
 };
 
 function MenuAccordionSection({
@@ -174,7 +185,13 @@ function normalizeHref(href: string): string {
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function MenuDrawer({ isOpen, onClose, focusSearch = false }: MenuDrawerProps) {
+export function MenuDrawer({
+  isOpen,
+  onClose,
+  focusSearch = false,
+  useBootstrapUser = false,
+  initialUser,
+}: MenuDrawerProps) {
   const pathname = usePathname() ?? "";
   // Path + query of the page the drawer opened on. Read from `window.location` on open rather
   // than `useSearchParams()`, which would force a Suspense boundary on every public page.
@@ -210,6 +227,12 @@ export function MenuDrawer({ isOpen, onClose, focusSearch = false }: MenuDrawerP
 
   React.useEffect(() => {
     if (!isOpen) return;
+    if (useBootstrapUser) {
+      // Already resolved by the caller from the shared bootstrap request (backlog 6.2) — no
+      // fetch here at all.
+      if (initialUser !== undefined) setUser(initialUser);
+      return;
+    }
     let cancelled = false;
     fetch("/api/auth/me", { credentials: "include" })
       .then(async (res) => {
@@ -226,7 +249,7 @@ export function MenuDrawer({ isOpen, onClose, focusSearch = false }: MenuDrawerP
     return () => {
       cancelled = true;
     };
-  }, [isOpen]);
+  }, [isOpen, useBootstrapUser, initialUser]);
 
   React.useEffect(() => {
     if (!isOpen || !user) return;

@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useStorefrontBootstrap } from "@/components/storefront/storefront-bootstrap-provider";
 
 /** Session-only: promo can show again after the browser session ends. */
 const STORAGE_KEY = "nk_coupon_promo_dismissed_session";
@@ -16,47 +17,45 @@ const STORAGE_KEY = "nk_coupon_promo_dismissed_session";
 type PromoMessage = { id: string; message: string };
 
 export function CouponPromoDialog() {
+  const bootstrap = useStorefrontBootstrap();
   const [open, setOpen] = React.useState(false);
   const [messages, setMessages] = React.useState<PromoMessage[]>([]);
   const shownIdsRef = React.useRef<string[]>([]);
+  const processedRef = React.useRef(false);
 
+  // Messages come from the shared bootstrap request (backlog 6.2) instead of this component's
+  // own `/api/promotions/coupon-popup-messages` fetch.
   React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
+    if (bootstrap.status === "loading" || processedRef.current) return;
+    processedRef.current = true;
+    try {
+      const rawList = bootstrap.data?.couponMessages?.messages ?? [];
+      const list: PromoMessage[] = rawList.filter(
+        (m: unknown) =>
+          m != null &&
+          typeof m === "object" &&
+          "id" in m &&
+          "message" in m &&
+          typeof (m as PromoMessage).id === "string" &&
+          typeof (m as PromoMessage).message === "string"
+      );
+      let dismissed: string[] = [];
       try {
-        const res = await fetch("/api/promotions/coupon-popup-messages", { cache: "no-store" });
-        const json = await res.json();
-        if (!json?.success || !Array.isArray(json.data?.messages)) return;
-        const list: PromoMessage[] = json.data.messages.filter(
-          (m: unknown) =>
-            m != null &&
-            typeof m === "object" &&
-            "id" in m &&
-            "message" in m &&
-            typeof (m as PromoMessage).id === "string" &&
-            typeof (m as PromoMessage).message === "string"
-        );
-        let dismissed: string[] = [];
-        try {
-          dismissed = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? "[]");
-          if (!Array.isArray(dismissed)) dismissed = [];
-        } catch {
-          dismissed = [];
-        }
-        const dismissedSet = new Set(dismissed.filter((x): x is string => typeof x === "string"));
-        const next = list.filter((m) => m.message.trim() && !dismissedSet.has(m.id));
-        if (cancelled || next.length === 0) return;
-        shownIdsRef.current = next.map((m) => m.id);
-        setMessages(next);
-        setOpen(true);
+        dismissed = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? "[]");
+        if (!Array.isArray(dismissed)) dismissed = [];
       } catch {
-        /* ignore */
+        dismissed = [];
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      const dismissedSet = new Set(dismissed.filter((x): x is string => typeof x === "string"));
+      const next = list.filter((m) => m.message.trim() && !dismissedSet.has(m.id));
+      if (next.length === 0) return;
+      shownIdsRef.current = next.map((m) => m.id);
+      setMessages(next);
+      setOpen(true);
+    } catch {
+      /* ignore */
+    }
+  }, [bootstrap.status, bootstrap.data]);
 
   const persistDismiss = React.useCallback(() => {
     try {

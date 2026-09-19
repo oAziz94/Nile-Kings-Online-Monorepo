@@ -38,10 +38,16 @@ import { cn } from "@/lib/utils";
  *   never read from `useCart()` in here, because this component also mounts inside `(auth)`,
  *   where `CartProvider` is not in the tree — reading the context here would throw there.
  * - `accountMenu` — when true, the account control becomes real: logged-out renders the same
- *   `/login` link, logged-in fetches `/api/auth/me` and swaps it for a `DropdownMenu` matching
- *   the pre-redesign `Header`'s items/hrefs (حسابي → /profile/account, طلباتي → /profile/orders,
- *   عناويني → /profile/addresses, تسجيل الخروج → POST /api/auth/logout + router.refresh()).
- *   Defaults to false so `(auth)` keeps rendering the plain `/login` link unchanged.
+ *   `/login` link, logged-in swaps it for a `DropdownMenu` matching the pre-redesign `Header`'s
+ *   items/hrefs (حسابي → /profile/account, طلباتي → /profile/orders, عناويني → /profile/addresses,
+ *   تسجيل الخروج → POST /api/auth/logout + router.refresh()). Defaults to false so `(auth)` keeps
+ *   rendering the plain `/login` link unchanged.
+ * - `useBootstrapUser`/`bootstrapUser` — backlog 6.2: `PublicSiteNavbar` already has the current
+ *   user from the shared `/api/storefront/bootstrap` request and passes it down here instead of
+ *   letting this component fetch `/api/auth/me` itself. `bootstrapUser` is `undefined` while the
+ *   bootstrap request is still in flight and `null` for a guest. `(auth)` never sets
+ *   `useBootstrapUser`, so it keeps firing its own `/api/auth/me` fetch (unused today since it
+ *   never sets `accountMenu` either, but kept as the safe default for any other future caller).
  */
 
 export type SiteNavbarSection = "account" | "cart" | "wishlist";
@@ -113,6 +119,8 @@ export function SiteNavbar({
   current,
   cartCount,
   accountMenu = false,
+  useBootstrapUser = false,
+  bootstrapUser,
   search = false,
   sticky = false,
   transparent = false,
@@ -123,6 +131,12 @@ export function SiteNavbar({
   cartCount?: number;
   /** Opt-in: turns the account control into a real logged-in/out control with a dropdown. */
   accountMenu?: boolean;
+  /** Opt-in (backlog 6.2): when true, this component never calls `/api/auth/me` itself and only
+   * ever takes the user from `bootstrapUser`. See file header. */
+  useBootstrapUser?: boolean;
+  /** The bootstrap-sourced user: `undefined` while still loading, `null` for a guest. Only read
+   * when `useBootstrapUser` is true. */
+  bootstrapUser?: NavbarUser | undefined;
   /**
    * Opt-in: the product search (inline field on lg+, icon that opens the drawer below). The
    * storefront turns it on; (auth) keeps the identity bar exactly as shipped — user direction
@@ -173,7 +187,16 @@ export function SiteNavbar({
   const summaryFetchedRef = useRef(false);
 
   useEffect(() => {
-    if (!accountMenu || fetchedRef.current) return;
+    if (!accountMenu) return;
+    if (useBootstrapUser) {
+      // The bootstrap request already carries the user (backlog 6.2) — no fetch here at all.
+      if (bootstrapUser !== undefined) {
+        setUser(bootstrapUser);
+        fetchedRef.current = true;
+      }
+      return;
+    }
+    if (fetchedRef.current) return;
     fetchedRef.current = true;
     fetch("/api/auth/me", { credentials: "include" })
       .then(async (res) => {
@@ -185,7 +208,7 @@ export function SiteNavbar({
         setUser({ name: data.data?.name ?? null, phone: data.data?.phone ?? "" });
       })
       .catch(() => setUser(null));
-  }, [accountMenu]);
+  }, [accountMenu, useBootstrapUser, bootstrapUser]);
 
   // The open-order count only makes sense for a real, logged-in customer, and only when the
   // account menu is actually rendered — no point paying for the round trip on (auth).
@@ -455,6 +478,8 @@ export function SiteNavbar({
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
         focusSearch={drawerFocusSearch}
+        useBootstrapUser={accountMenu && useBootstrapUser}
+        initialUser={accountMenu && useBootstrapUser ? user : undefined}
       />
     </>
   );

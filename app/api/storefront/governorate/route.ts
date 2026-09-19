@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
 import { apiBadRequest, apiSuccess } from "@/lib/api/response";
-import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
+import { getGovernorateBootstrapData } from "@/lib/storefront/bootstrap/governorate";
 import {
   normalizeStorefrontGovernorate,
-  getStorefrontAddressFromCookies,
   STOREFRONT_LOCATION_COOKIE,
   type StorefrontAddress,
 } from "@/lib/storefront-location";
@@ -20,8 +19,8 @@ function readOptionalString(value: unknown): string | null {
 }
 
 export async function GET() {
-  const address = await getStorefrontAddressFromCookies();
-  return apiSuccess({ address, options: GOVERNORATE_OPTIONS });
+  const data = await getGovernorateBootstrapData();
+  return apiSuccess(data);
 }
 
 export async function POST(req: NextRequest) {

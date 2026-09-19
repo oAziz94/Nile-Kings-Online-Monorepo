@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useState } from "react";
 import { parseJsonResponse } from "@/lib/api/parse-json";
+import { useStorefrontBootstrap } from "@/components/storefront/storefront-bootstrap-provider";
 
 export type CartItem = {
   id: string;
@@ -48,6 +49,7 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const bootstrap = useStorefrontBootstrap();
   const [cart, setCart] = useState<Cart | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,10 +77,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Initial load (backlog 6.2): take the first cart read from the shared bootstrap request
+  // instead of firing our own `/api/cart` — every later refresh (add/remove item, governorate
+  // change, drawer open) still goes through `refreshCart()` above, unchanged. If the bootstrap
+  // request itself failed, fall back to fetching `/api/cart` directly so the cart still loads.
   React.useEffect(() => {
-    refreshCart();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (bootstrap.status === "ready") {
+      if (bootstrap.data?.cart) {
+        setCart(bootstrap.data.cart);
+        setHasError(false);
+      } else {
+        setCart(null);
+        setHasError(true);
+      }
+      setIsLoading(false);
+      setHasLoaded(true);
+    } else if (bootstrap.status === "error") {
+      refreshCart();
+    }
+  }, [bootstrap.status, bootstrap.data, refreshCart]);
 
   const openDrawer = useCallback(() => {
     setIsDrawerOpen(true);

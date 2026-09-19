@@ -191,6 +191,16 @@ export async function getCartPayload(cartId: string): Promise<CartPayload | null
   };
 }
 
+/**
+ * The current visitor's cart, resolved end to end (create-if-missing + payload). Shared by
+ * `GET /api/cart` and `GET /api/storefront/bootstrap` (backlog 6.2) so both return the exact same
+ * shape from one query path.
+ */
+export async function getCurrentCartPayload(): Promise<CartPayload | null> {
+  const { cartId } = await getOrCreateCart();
+  return getCartPayload(cartId);
+}
+
 /** Max quantity allowed for a variant from active partner inventory. */
 export async function getMaxQuantityForVariant(variantId: string): Promise<number> {
   const v = await prisma.variant.findUnique({
