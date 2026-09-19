@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { CatalogImage } from "@/components/shared/catalog-image";
 import { useCart } from "@/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -108,7 +108,7 @@ export function CartDrawer() {
                       className="relative aspect-[4/5] h-20 shrink-0 overflow-hidden bg-[hsl(38_22%_93%)]"
                       onClick={closeDrawer}
                     >
-                      <Image
+                      <CatalogImage
                         src={item.imageUrl || PLACEHOLDER_IMAGE}
                         alt={item.productName}
                         fill

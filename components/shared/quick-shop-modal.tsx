@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { CatalogImage } from "./catalog-image";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/cart-context";
 import {
@@ -219,7 +219,7 @@ export function QuickShopModal({
           <div className="space-y-4 p-4 pt-3" dir="rtl">
             <div className="flex gap-3">
               <div className="relative aspect-[4/5] w-24 shrink-0 overflow-hidden bg-[hsl(38_22%_93%)]">
-                <Image
+                <CatalogImage
                   src={mainImageUrl}
                   alt={product.name}
                   fill

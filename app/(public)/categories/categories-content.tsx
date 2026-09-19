@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { CatalogImage } from "@/components/shared/catalog-image";
 import { Package, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/shared/skeleton";
@@ -100,7 +100,7 @@ export function CategoriesContent() {
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-[hsl(38_22%_90%)]">
                   {image ? (
-                    <Image
+                    <CatalogImage
                       src={image}
                       alt={c.name}
                       fill

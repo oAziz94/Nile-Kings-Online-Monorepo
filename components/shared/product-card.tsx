@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { CatalogImage } from "./catalog-image";
 import { Price } from "./price";
 import { QuickShopModal } from "./quick-shop-modal";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,14 @@ export interface ProductCardProps {
   compact?: boolean;
   /** Category chip (top-inline-start on the image) — rendered only when given. */
   categoryLabel?: string;
+  /**
+   * `next/image` `sizes` override for the card's image — defaults to the grid's own
+   * viewport-relative sizing. A fixed-width consumer (e.g. `CollectionRail`'s rail cards)
+   * passes the card's real rendered width per breakpoint instead, so the Cloudinary loader
+   * (backlog 6.4) requests a width close to what's actually displayed rather than always
+   * the largest device size (backlog 6.4 rework, verifier finding).
+   */
+  sizes?: string;
 }
 
 /**
@@ -54,6 +62,7 @@ export function ProductCard({
   className,
   compact = false,
   categoryLabel,
+  sizes = "(max-width: 768px) 50vw, 25vw",
 }: ProductCardProps) {
   const [hoveredImageUrl, setHoveredImageUrl] = useState<string | null>(null);
   const [quickShopOpen, setQuickShopOpen] = useState(false);
@@ -78,12 +87,12 @@ export function ProductCard({
           href={href}
           className="relative block aspect-[4/5] overflow-hidden bg-[hsl(38_22%_93%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
         >
-          <Image
+          <CatalogImage
             src={displayImage}
             alt={name}
             fill
             className="object-cover"
-            sizes="(max-width: 768px) 50vw, 25vw"
+            sizes={sizes}
           />
           {categoryLabel && (
             <span className="absolute start-2 top-2 bg-papyrus px-2 py-1 text-[11px] font-medium text-[hsl(228_26%_24%)]">
