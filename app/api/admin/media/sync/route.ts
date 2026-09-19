@@ -6,6 +6,7 @@ import { getSiteSetting, setSiteSetting } from "@/lib/settings";
 import { listCloudinaryResourcesPage, isCloudinaryConfigured } from "@/lib/media/cloudinary-admin";
 import { computeAdoptionMatches, missingFromSeen, type CloudinaryResource } from "@/lib/media/sync";
 import type { NextRequest } from "next/server";
+import { revalidateCatalog } from "@/lib/cache/catalog-tags";
 
 /**
  * POST /api/admin/media/sync — backlog 9.8a (d), reconcile with Cloudinary.
@@ -159,6 +160,13 @@ export async function POST(req: NextRequest) {
   ]);
   const adopted = productMatches.length + variantMatches.length + variantImageMatches.length;
   const imported = progress.importedSoFar;
+
+  // Adoption can set `Product.heroAssetId`/`Variant.imageAssetId`/`VariantImage.assetId`, all of
+  // which feed the storefront's product images — broad catalog invalidation when it changed
+  // anything (imports/missing marks alone don't touch a live product's fields).
+  if (productMatches.length > 0 || variantMatches.length > 0 || variantImageMatches.length > 0) {
+    revalidateCatalog();
+  }
 
   const now = new Date();
   await setSiteSetting("mediaLastSyncAt", now.toISOString());

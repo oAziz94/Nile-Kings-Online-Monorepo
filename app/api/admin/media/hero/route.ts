@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
+import { revalidateCatalog } from "@/lib/cache/catalog-tags";
 
 /**
  * POST /api/admin/media/hero — backlog 9.8a (e)/(f). Body `{ assetId, productId }`: sets
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
     after: sanitizeForAudit({ heroAssetId: updated.heroAssetId, imageUrl: updated.imageUrl }),
     ip: requestIp(req),
   });
+  revalidateCatalog({ productSlugs: [product.slug] });
 
   return apiSuccess({ productId, assetId: asset.id, imageUrl: asset.url });
 }

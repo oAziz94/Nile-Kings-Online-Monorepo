@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
+import { revalidateReroutingRules } from "@/lib/cache/catalog-tags";
 
 export async function GET(req: NextRequest) {
   try {
@@ -68,5 +69,6 @@ export async function POST(req: NextRequest) {
     after: { isActive: rule.isActive },
     ip: requestIp(req),
   });
+  revalidateReroutingRules();
   return apiSuccess(rule);
 }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { variantSlug, buildVariantSku, STANDARD_SIZE_RUN } from "@/lib/admin/slug";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound, apiConflict, apiInternal } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
+import { revalidateCatalog } from "@/lib/cache/catalog-tags";
 
 type Params = Promise<{ id: string }>;
 
@@ -87,6 +88,7 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
       after: { sizesGenerated: toCreate },
       ip: requestIp(req),
     });
+    revalidateCatalog({ productSlugs: [product.slug] });
     return apiSuccess(created);
   }
 
@@ -127,6 +129,7 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
       after: { sku: variant.sku, size: variant.name, colorName: variant.colorName, pricePiastres: variant.pricePiastres },
       ip: requestIp(req),
     });
+    revalidateCatalog({ productSlugs: [product.slug] });
     return apiSuccess(variant);
   } catch (err) {
     const message = err instanceof Error ? err.message : "فشل إنشاء المتغير";

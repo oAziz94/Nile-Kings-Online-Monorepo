@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
+import { revalidateReroutingRules } from "@/lib/cache/catalog-tags";
 
 type Params = Promise<{ id: string }>;
 
@@ -77,6 +78,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       ip: requestIp(req),
     });
   }
+  if (data.isActive !== undefined) revalidateReroutingRules();
   return apiSuccess(rule);
 }
 
@@ -93,5 +95,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
   const existing = await prisma.reroutingRule.findUnique({ where: { id } });
   if (!existing) return apiNotFound("القاعدة غير موجودة");
   await prisma.reroutingRule.delete({ where: { id } });
+  revalidateReroutingRules();
   return apiSuccess({ deleted: true });
 }

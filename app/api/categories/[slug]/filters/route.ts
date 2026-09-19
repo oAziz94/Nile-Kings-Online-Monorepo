@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiNotFound } from "@/lib/api/response";
 import { piastresToEgp } from "@/lib/catalog";
+import { CATALOG_TAG, CATEGORIES_TAG } from "@/lib/cache/catalog-tags";
 
 /** Category filter facets (sizes/price range/stock) rarely change; cached per category slug. */
 const getCategoryFilters = unstable_cache(
@@ -36,7 +37,7 @@ const getCategoryFilters = unstable_cache(
     return { variants, hasInStock };
   },
   ["category-filters"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: [CATALOG_TAG, CATEGORIES_TAG] }
 );
 
 export async function GET(

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { variantSlug, buildVariantSku } from "@/lib/admin/slug";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound, apiConflict } from "@/lib/api/response";
 import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
+import { revalidateCatalog } from "@/lib/cache/catalog-tags";
 
 type Params = Promise<{ id: string }>;
 
@@ -87,6 +88,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     after: sanitizeForAudit(variant),
     ip: requestIp(req),
   });
+  revalidateCatalog({ productSlugs: [existing.product.slug] });
 
   return apiSuccess(variant);
 }
@@ -102,7 +104,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Params }) {
     throw e;
   }
   const { id } = await params;
-  const v = await prisma.variant.findUnique({ where: { id } });
+  const v = await prisma.variant.findUnique({ where: { id }, include: { product: { select: { slug: true } } } });
   if (!v) return apiNotFound("المتغير غير موجود");
   // Stock (including reservations) lives only in PartnerInventory now — check across every
   // partner's row for this variant, never a variant-level field.
@@ -118,8 +120,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Params }) {
     entityType: "variant",
     entityId: id,
     entityLabel: v.sku,
-    before: sanitizeForAudit(v),
+    before: sanitizeForAudit(v, ["product"]),
     ip: requestIp(req),
   });
+  revalidateCatalog({ productSlugs: [v.product.slug] });
   return apiSuccess({ deleted: true });
 }

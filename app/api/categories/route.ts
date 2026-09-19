@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { apiSuccess } from "@/lib/api/response";
+import { CATEGORIES_TAG } from "@/lib/cache/catalog-tags";
 
 const DEFAULT_LIMIT = 24;
 const MAX_LIMIT = 48;
@@ -22,7 +23,7 @@ const getCategoriesPage = unstable_cache(
     ]);
   },
   ["categories-page"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: [CATEGORIES_TAG] }
 );
 
 export async function GET(req: NextRequest) {

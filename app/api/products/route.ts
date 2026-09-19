@@ -12,6 +12,7 @@ import {
   getStorefrontStockContext,
 } from "@/lib/storefront-location";
 import { getProductIdsRankedByRecentSales } from "@/lib/products/ranked-listing";
+import { CATALOG_TAG } from "@/lib/cache/catalog-tags";
 
 function parseQuery(req: NextRequest): ProductsQuery {
   const { searchParams } = new URL(req.url);
@@ -111,7 +112,7 @@ const getProductsPage = unstable_cache(
     return { products, totalCount };
   },
   ["products-listing"],
-  { revalidate: 60 }
+  { revalidate: 60, tags: [CATALOG_TAG] }
 );
 
 export async function GET(req: NextRequest) {

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { apiSuccess } from "@/lib/api/response";
+import { CATALOG_TAG } from "@/lib/cache/catalog-tags";
 
 /** Category list + available sizes for a category rarely change; cached per categorySlug. */
 const getFilters = unstable_cache(
@@ -26,7 +27,7 @@ const getFilters = unstable_cache(
     ]);
   },
   ["products-filters"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: [CATALOG_TAG] }
 );
 
 export async function GET(req: NextRequest) {

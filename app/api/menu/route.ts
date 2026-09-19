@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { apiSuccess } from "@/lib/api/response";
 import type { MenuSection } from "@/lib/menu-config";
+import { MENU_TAG } from "@/lib/cache/catalog-tags";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,7 @@ const getMenuSections = unstable_cache(
     });
   },
   ["storefront-menu-sections"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: [MENU_TAG] }
 );
 
 /** GET /api/menu — returns menu sections with الكل, الاكثر مبيعا, and distinct tags from products in each category. */

@@ -5,6 +5,7 @@ import { variantSlug, buildVariantSku } from "@/lib/admin/slug";
 import { apiSuccess, apiUnauthorized, apiForbidden, apiNotFound, apiConflict } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 import { splitColorKey } from "@/lib/admin/variant-images";
+import { revalidateCatalog } from "@/lib/cache/catalog-tags";
 
 type Params = Promise<{ id: string; colorKey: string }>;
 
@@ -57,6 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       after: { active: nextActive, colorName: currentName },
       ip: requestIp(req),
     });
+    revalidateCatalog({ productSlugs: [product.slug] });
   }
 
   if (typeof nextColorName === "string" || typeof nextColorHex === "string" || nextColorHex === null) {
@@ -97,6 +99,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       after: { colorName: newName, colorHex: newHex },
       ip: requestIp(req),
     });
+    revalidateCatalog({ productSlugs: [product.slug] });
 
     return apiSuccess({ productId, colorKey: newColorKey });
   }

@@ -6,6 +6,7 @@ import { slugify } from "@/lib/admin/slug";
 import { sortVariants } from "@/lib/admin/variant-sort";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiConflict } from "@/lib/api/response";
 import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
+import { revalidateCatalog } from "@/lib/cache/catalog-tags";
 
 export async function GET(req: NextRequest) {
   try {
@@ -121,6 +122,8 @@ export async function POST(req: NextRequest) {
     after: sanitizeForAudit(product, ["category", "variants"]),
     ip: requestIp(req),
   });
+
+  revalidateCatalog({ productSlugs: [product.slug] });
 
   return apiSuccess(product);
 }
