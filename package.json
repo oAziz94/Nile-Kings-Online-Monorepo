@@ -23,7 +23,8 @@
     "dev:redesign": "dotenv -e .env.redesign -- next dev --turbopack",
     "db:push:redesign": "dotenv -e .env.redesign -- prisma db push",
     "db:migrate:redesign": "dotenv -e .env.redesign -- prisma migrate dev",
-    "db:studio:redesign": "dotenv -e .env.redesign -- prisma studio"
+    "db:studio:redesign": "dotenv -e .env.redesign -- prisma studio",
+    "build:redesign": "prisma generate && dotenv -e .env.redesign -- next build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
