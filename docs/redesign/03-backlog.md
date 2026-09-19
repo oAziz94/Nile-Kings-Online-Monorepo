@@ -272,6 +272,7 @@ PM recommendations given 2026-09-17 after the owner's manual test ("I don't like
 - N10 — The "ما يستحق فعلًا" panel carries real recommendations with links instead of "no actions".
 - N11 — Default period per report: sales 30 days, money this month, inventory latest snapshot.
 - N12 — A short "كيف تقرأ التقارير" guide page under التقارير, one paragraph per report with a screenshot.
+- N13 — `GovernorateSelector` form labels are plain text, not `htmlFor`-linked to their `<select>`/`<input>` (6.2 verifier, 2026-09-19; pre-existing).
 
 ## Phase 6 — Performance & cost pass (started 2026-09-19, owner: "start phase 6")
 
