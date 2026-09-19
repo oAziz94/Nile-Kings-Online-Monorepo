@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from "react";
 import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
+import { trackEvent } from "@/lib/analytics/ga4-client";
 
 /**
  * Backlog 6.7 — GA4 on the storefront. Renders nothing when the measurement ID isn't set
@@ -10,17 +11,18 @@ import { usePathname, useSearchParams } from "next/navigation";
  * `send_page_view: false` on config + our own `page_view` effect below is deliberate: it fires
  * once on mount and again on every client-side navigation (App Router doesn't reload the GA
  * script on route change, so the library's own automatic pageview never fires past the first
- * load without this).
+ * load without this). Uses `trackEvent` (queues onto `dataLayer`, doesn't gate on `gtag` already
+ * existing) rather than calling `window.gtag` directly — a cold first load's `page_view` must
+ * not depend on the `afterInteractive` scripts below having finished yet.
  */
 function PageViewTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (typeof window === "undefined" || typeof window.gtag !== "function") return;
     const query = searchParams.toString();
     const page_path = query ? `${pathname}?${query}` : pathname;
-    window.gtag("event", "page_view", { page_path });
+    trackEvent("page_view", { page_path });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams.toString()]);
 

@@ -132,7 +132,64 @@ async function resolveVariant(page: Page) {
   }
 }
 
+/** A real in-stock product slug, resolved directly from the listing API — never hardcoded. */
+async function findInStockProductSlug(page: Page): Promise<{ slug: string; name: string }> {
+  const listRes = await page.request.get("/api/products?inStock=true&limit=48");
+  expect(listRes.ok()).toBeTruthy();
+  const products = ((await listRes.json()).data?.products ?? []) as { slug: string; name: string }[];
+  for (const p of products) {
+    const res = await page.request.get(`/api/products/${encodeURIComponent(p.slug)}`);
+    if (!res.ok()) continue;
+    const detail = ((await res.json()).data ?? null) as ApiProduct | null;
+    if (detail?.variants.some((v) => v.stockAvailable > 0)) return { slug: p.slug, name: p.name };
+  }
+  throw new Error("No in-stock product available in the redesign DB for this test.");
+}
+
 test.describe.configure({ mode: "serial" });
+
+// Verifier finding (2026-09-19): `view_item`/`page_view` must fire on a *cold* first load of a
+// page too — a shopper arriving from Google, an ad, a shared link, or a plain refresh never goes
+// through a prior client-side navigation where `gtag.js` had time to load first. These use a
+// fresh `page.goto()` per test (no earlier navigation in the same page), so they'd have failed
+// against the old `typeof window.gtag === "function"` gate in `trackEvent`.
+test.describe("GA4 — cold loads (page.goto straight onto the page, no prior client navigation)", () => {
+  test("a cold load of / fires page_view for /", async ({ page, baseURL }) => {
+    await stubGa4Network(page);
+    await setStorefrontLocation(page, baseURL);
+    await page.goto("/");
+    await expect(page.getByRole("banner")).toBeVisible();
+    await expect
+      .poll(async () => (await readGa4Events(page)).some((e) => e.name === "page_view" && e.params.page_path === "/"))
+      .toBe(true);
+  });
+
+  test("a cold load of a PDP fires page_view for that path and view_item with the item payload", async ({
+    page,
+    baseURL,
+  }) => {
+    await stubGa4Network(page);
+    await setStorefrontLocation(page, baseURL);
+    const { slug, name } = await findInStockProductSlug(page);
+
+    await page.goto(`/products/${slug}`);
+    await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+
+    await expect
+      .poll(async () =>
+        (await readGa4Events(page)).some(
+          (e) => e.name === "page_view" && typeof e.params.page_path === "string" && (e.params.page_path as string).startsWith(`/products/${slug}`)
+        )
+      )
+      .toBe(true);
+
+    const viewItem = (await readGa4Events(page)).find((e) => e.name === "view_item");
+    expect(viewItem, "expected view_item on a cold PDP load").toBeTruthy();
+    const items = viewItem!.params.items as { item_id: string; item_name: string }[];
+    expect(items[0].item_id).toBeTruthy();
+    expect(items[0].item_name).toBe(name);
+  });
+});
 
 test.describe("GA4 — page_view, view_item, add_to_cart on a home -> PDP -> add-to-cart walk", () => {
   test("home fires page_view; a client navigation to the PDP fires a second page_view + view_item; adding to cart fires add_to_cart", async ({
