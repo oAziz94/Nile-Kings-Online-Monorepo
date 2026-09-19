@@ -20,6 +20,13 @@ import { ShoppingCart, X, ExternalLink, Minus, Plus } from "lucide-react";
 import { discountPercentFromPrices } from "@/lib/catalog";
 import type { ProductDetail } from "@/lib/catalog";
 import { useVariantSelection, VARIANT_SELECTION_MESSAGES } from "@/hooks/use-variant-selection";
+import { trackEvent, ga4Item } from "@/lib/analytics/ga4-client";
+
+function ga4VariantLabel(v: { colorName?: string | null; name?: string | null } | null | undefined) {
+  if (!v) return undefined;
+  const parts = [v.colorName, v.name].filter((p): p is string => !!p && p.trim().length > 0);
+  return parts.length > 0 ? parts.join(" / ") : undefined;
+}
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&h=800&fit=crop";
@@ -123,6 +130,24 @@ export function QuickShopModal({
 
   const mainImageUrl = displayVariantForImage?.imageUrl?.trim() || product?.imageUrl?.trim() || PLACEHOLDER_IMAGE;
 
+  const trackAddToCart = (v: { sku: string; priceEgp: number; colorName?: string | null; name?: string | null }, qty: number) => {
+    if (!product) return;
+    trackEvent("add_to_cart", {
+      currency: "EGP",
+      value: v.priceEgp * qty,
+      items: [
+        ga4Item({
+          sku: v.sku,
+          name: product.name,
+          category: product.categoryName,
+          variant: ga4VariantLabel(v),
+          priceEgp: v.priceEgp,
+          quantity: qty,
+        }),
+      ],
+    });
+  };
+
   const handleAddToCart = async () => {
     if (!product) return;
     const result = validate();
@@ -141,6 +166,7 @@ export function QuickShopModal({
       const json = await res.json();
       if (res.ok) {
         if (json?.data) setCart(json.data);
+        trackAddToCart(selectedVariant, quantity);
         toast({ title: ARABIC.added });
         openDrawer();
         onOpenChange(false);
@@ -175,6 +201,7 @@ export function QuickShopModal({
       if (res.ok) {
         const json = await res.json();
         if (json?.data) setCart(json.data);
+        trackAddToCart(selectedVariant, quantity);
         onOpenChange(false);
         window.location.href = "/cart";
       } else {

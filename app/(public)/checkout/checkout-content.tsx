@@ -41,6 +41,44 @@ import {
   type CheckoutSummaryResponse,
   type SavedAddress,
 } from "@/components/checkout/types";
+import { trackEvent, ga4Item } from "@/lib/analytics/ga4-client";
+import type { CartItem } from "@/contexts/cart-context";
+
+function ga4ItemsFromCart(items: CartItem[]) {
+  return items.map((item) =>
+    ga4Item({
+      sku: item.sku,
+      name: item.productName,
+      variant: [item.colorName, item.size].filter((p): p is string => !!p && p.trim().length > 0).join(" / ") || undefined,
+      priceEgp: item.priceEgp,
+      quantity: item.quantity,
+    })
+  );
+}
+
+/**
+ * GA4 `purchase` — fired right when `place-order` succeeds (this is the storefront's order
+ * confirmation moment: a toast + redirect for COD, the success modal for InstaPay; there is no
+ * separate confirmation route). Guarded per order id in `sessionStorage` so a reload/re-render
+ * of this same success handler (or, defensively, a double-invocation) never double-counts a sale.
+ */
+function firePurchaseOnce(orderId: string, summary: CheckoutSummaryResponse, items: CartItem[]) {
+  const key = `ga4_purchase_${orderId}`;
+  try {
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+  } catch {
+    /* sessionStorage unavailable — fire once best-effort anyway */
+  }
+  const valueEgp = Math.round((summary.subtotal - summary.couponDiscount - summary.seniorFreeValue) / 100);
+  trackEvent("purchase", {
+    transaction_id: orderId,
+    currency: "EGP",
+    value: valueEgp,
+    shipping: Math.round(summary.shippingFee / 100),
+    items: ga4ItemsFromCart(items),
+  });
+}
 
 export function CheckoutContent() {
   const router = useRouter();
@@ -71,6 +109,20 @@ export function CheckoutContent() {
   const [successModalOpen, setSuccessModalOpen] = useState(false);
 
   const instapayDetails = getInstapayDetailsForPartner(summary?.partnerName);
+
+  // GA4 begin_checkout — fires once, when the checkout page first has a non-empty cart to show
+  // (backlog 6.7). Guarded by a ref so re-renders (address edits, coupon changes) don't refire.
+  const beginCheckoutFired = React.useRef(false);
+  useEffect(() => {
+    if (beginCheckoutFired.current) return;
+    if (!cart || cart.items.length === 0) return;
+    beginCheckoutFired.current = true;
+    trackEvent("begin_checkout", {
+      currency: "EGP",
+      value: cart.subtotalEgp,
+      items: ga4ItemsFromCart(cart.items),
+    });
+  }, [cart]);
 
   useEffect(() => {
     if (!instaPayModalOpen) return;
@@ -309,6 +361,7 @@ export function CheckoutContent() {
         return;
       }
       if (res.ok && json?.success && json.data?.orderId) {
+        if (summary) firePurchaseOnce(json.data.orderId, summary, cart?.items ?? []);
         toast({ title: "تم إنشاء الطلب بنجاح", variant: "success" });
         await refreshCart();
         router.push("/profile/orders");
@@ -348,6 +401,7 @@ export function CheckoutContent() {
         return;
       }
       if (res.ok && json?.success && json.data?.orderId) {
+        firePurchaseOnce(json.data.orderId, summary, cart?.items ?? []);
         setInstaPayModalOpen(false);
         setSuccessModalOpen(true);
         // Do NOT refreshCart() here — it would clear cart and trigger empty-cart view before user clicks تم. Refresh after redirect in تم handler.

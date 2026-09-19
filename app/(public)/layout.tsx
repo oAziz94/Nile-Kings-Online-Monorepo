@@ -6,6 +6,7 @@ import { CartDrawer } from "@/components/cart/cart-drawer";
 import { CouponPromoDialog } from "@/components/promotions/coupon-promo-dialog";
 import { GovernorateSelector } from "@/components/storefront/governorate-selector";
 import { StorefrontBootstrapProvider } from "@/components/storefront/storefront-bootstrap-provider";
+import { Ga4 } from "@/components/storefront/ga4";
 
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "1256853443318259";
 
@@ -25,6 +26,7 @@ export default function PublicLayout({
         <GovernorateSelector />
         <CartDrawer />
         <CouponPromoDialog />
+        <Ga4 />
         {/* Meta Pixel */}
         <Script
           id="meta-pixel"

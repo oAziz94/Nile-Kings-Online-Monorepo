@@ -1,0 +1,66 @@
+"use client";
+
+import { Suspense, useEffect } from "react";
+import Script from "next/script";
+import { usePathname, useSearchParams } from "next/navigation";
+import { trackEvent } from "@/lib/analytics/ga4-client";
+
+/**
+ * Backlog 6.7 — GA4 on the storefront. Renders nothing when the measurement ID isn't set
+ * (localhost, the test branch), so no request ever leaves the page in those environments.
+ * `send_page_view: false` on config + our own `page_view` effect below is deliberate: it fires
+ * once on mount and again on every client-side navigation (App Router doesn't reload the GA
+ * script on route change, so the library's own automatic pageview never fires past the first
+ * load without this). Uses `trackEvent` (queues onto `dataLayer`, doesn't gate on `gtag` already
+ * existing) rather than calling `window.gtag` directly — a cold first load's `page_view` must
+ * not depend on the `afterInteractive` scripts below having finished yet.
+ */
+function PageViewTracker() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const query = searchParams.toString();
+    const page_path = query ? `${pathname}?${query}` : pathname;
+    trackEvent("page_view", { page_path });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, searchParams.toString()]);
+
+  return null;
+}
+
+export function Ga4() {
+  const measurementId = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID;
+  if (!measurementId) return null;
+
+  return (
+    <>
+      <Script
+        id="ga4-lib"
+        strategy="afterInteractive"
+        src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`}
+      />
+      <Script
+        id="ga4-init"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `
+window.dataLayer = window.dataLayer || [];
+// Events queued by trackEvent() before this script ran must follow 'config', not precede it:
+// lift them out, push js + config, then put them back (same array, so a gtag.js that already
+// captured the reference keeps it).
+var queued = window.dataLayer.splice(0, window.dataLayer.length);
+function gtag(){window.dataLayer.push(arguments);}
+window.gtag = gtag;
+gtag('js', new Date());
+gtag('config', '${measurementId}', { send_page_view: false });
+for (var i = 0; i < queued.length; i++) window.dataLayer.push(queued[i]);
+          `.trim(),
+        }}
+      />
+      <Suspense fallback={null}>
+        <PageViewTracker />
+      </Suspense>
+    </>
+  );
+}

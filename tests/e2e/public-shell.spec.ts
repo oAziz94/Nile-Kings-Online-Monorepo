@@ -87,3 +87,28 @@ test("at phone width the governorate pill never covers the footer's last line (b
   // the reserved band must put the pill entirely below the line.
   expect(pillBox.y).toBeGreaterThanOrEqual(lineBox.y + lineBox.height);
 });
+
+test("backlog 6.7 — with NEXT_PUBLIC_GA4_MEASUREMENT_ID unset (this spec's ordinary webServer), no request to googletagmanager.com leaves the page", async ({
+  page,
+  baseURL,
+}) => {
+  // Only meaningful against a server that actually has the var unset (every CI/normal run —
+  // `playwright.config.ts`'s own `webServer` never sets it). `ga4.spec.ts` hand-starts a
+  // separate server with the var set to exercise the opposite case, and when this file is run
+  // against that same hand-started server (backlog 6.7's verification step), the server itself
+  // — not this test process's own env — decides whether the tag is present; probe the served
+  // HTML directly rather than trusting `process.env` here.
+  const html = await (await page.request.get("/")).text();
+  test.skip(html.includes("googletagmanager.com"), "GA4 var is set for this server run");
+  await setStorefrontLocation(page, baseURL);
+  const gtmRequests: string[] = [];
+  page.on("request", (req) => {
+    if (req.url().includes("googletagmanager.com")) gtmRequests.push(req.url());
+  });
+  await page.goto("/");
+  await expect(page.getByRole("banner")).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  expect(gtmRequests).toHaveLength(0);
+  const hasGtag = await page.evaluate(() => typeof window.gtag === "function");
+  expect(hasGtag).toBe(false);
+});

@@ -21,6 +21,14 @@ import {
   VARIANT_SELECTION_MESSAGES,
   colorKey,
 } from "@/hooks/use-variant-selection";
+import { trackEvent, ga4Item } from "@/lib/analytics/ga4-client";
+
+/** Size/colour label for GA4's `item_variant`, or undefined when neither is known yet. */
+function ga4VariantLabel(v: { colorName?: string | null; name?: string | null } | null | undefined) {
+  if (!v) return undefined;
+  const parts = [v.colorName, v.name].filter((p): p is string => !!p && p.trim().length > 0);
+  return parts.length > 0 ? parts.join(" / ") : undefined;
+}
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&h=800&fit=crop";
@@ -124,7 +132,21 @@ export function ProductPageContent({
         sessionId: typeof window !== "undefined" ? "session-" + Date.now() : undefined,
       }),
     }).catch(() => {});
-  }, [product.id, selectedVariant?.id]);
+    const price = selectedVariant?.priceEgp ?? product.priceEgp;
+    trackEvent("view_item", {
+      currency: "EGP",
+      value: price,
+      items: [
+        ga4Item({
+          sku: selectedVariant?.sku ?? product.slug,
+          name: product.name,
+          category: product.categoryName,
+          variant: ga4VariantLabel(selectedVariant),
+          priceEgp: price,
+        }),
+      ],
+    });
+  }, [product.id, product.slug, product.name, product.categoryName, product.priceEgp, selectedVariant]);
 
   useEffect(() => {
     logView();
@@ -260,6 +282,20 @@ export function ProductPageContent({
             sessionId: typeof window !== "undefined" ? "session-" + Date.now() : undefined,
           }),
         }).catch(() => {});
+        trackEvent("add_to_cart", {
+          currency: "EGP",
+          value: v.priceEgp * quantity,
+          items: [
+            ga4Item({
+              sku: v.sku,
+              name: product.name,
+              category: product.categoryName,
+              variant: ga4VariantLabel(v),
+              priceEgp: v.priceEgp,
+              quantity,
+            }),
+          ],
+        });
         if (intent === "buy") {
           window.location.href = "/cart";
           return;

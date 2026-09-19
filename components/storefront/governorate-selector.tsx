@@ -12,6 +12,7 @@ import { GOVERNORATE_AS_CITY_VALUES } from "@/lib/addresses/completeness";
 import { useStorefrontBootstrap } from "@/components/storefront/storefront-bootstrap-provider";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics/ga4-client";
 
 type GovernorateOption = { value: string; label: string };
 
@@ -222,6 +223,7 @@ export function GovernorateSelector() {
         data?: { governorate: string; removedItems?: RemovedCartItem[] };
       }>(res);
       if (res.ok && json?.success && json.data?.governorate) {
+        trackEvent("select_governorate", { governorate: json.data.governorate });
         if (json.data.removedItems?.length) {
           try {
             sessionStorage.setItem(REMOVED_ITEMS_KEY, JSON.stringify(json.data.removedItems));
