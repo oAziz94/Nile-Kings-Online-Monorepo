@@ -130,7 +130,13 @@ export function CollectionRail({ id, title, viewAllHref, prevLabel, nextLabel, p
       >
         {products.map((p) => (
           <div key={p.id} className="w-[200px] shrink-0 [scroll-snap-align:start] lg:w-[312px]">
-            <ProductCard {...toCardProps(p, compact)} className="h-full" />
+            {/* Fixed-width rail card (not the viewport-relative grid) — backlog 6.4 rework:
+                without this, ProductCard's grid-default `sizes` told the Cloudinary loader
+                the image could render at up to 25vw of a wide viewport, so it always
+                requested the largest device width (w_3840) even though the card is only
+                200/312px wide. `w-[200px]`/`lg:w-[312px]` above must stay in sync with
+                this string. */}
+            <ProductCard {...toCardProps(p, compact)} className="h-full" sizes="(min-width: 1024px) 312px, 200px" />
           </div>
         ))}
       </div>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import { CatalogImage } from "@/components/shared/catalog-image";
 import { Price } from "@/components/shared/price";
 import { friendlyVariantLabel } from "@/lib/cart/variant-label";
 import type { CartItem } from "@/contexts/cart-context";
@@ -22,7 +22,7 @@ export function OrderReview({ items }: { items: CartItem[] }) {
               href={href}
               className="relative block aspect-[4/5] h-14 w-14 shrink-0 overflow-hidden bg-[hsl(38_22%_93%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
             >
-              <Image
+              <CatalogImage
                 src={item.imageUrl || PLACEHOLDER_IMAGE}
                 alt={item.productName}
                 fill
