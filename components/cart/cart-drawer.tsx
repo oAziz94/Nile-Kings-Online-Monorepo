@@ -112,7 +112,7 @@ export function CartDrawer() {
                         src={item.imageUrl || PLACEHOLDER_IMAGE}
                         alt={item.productName}
                         fill
-                        fit="auto"
+                        fit="balanced"
                         sizes="80px"
                       />
                     </Link>
