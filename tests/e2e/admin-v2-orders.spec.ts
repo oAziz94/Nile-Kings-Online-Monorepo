@@ -215,6 +215,26 @@ test("stage counts and the بلا شريك stage list the unassigned fixture", a
   await expect(page.locator(`table [data-row-id="${unassignedOrderId}"]`)).toBeVisible({ timeout: 20_000 });
 });
 
+test("10.29 — the order date column replaces القطع, منذ still renders", async ({ page }) => {
+  await loginAsAdmin(page);
+  await page.setViewportSize({ width: 1514, height: 681 });
+  await page.goto("/admin/orders?stage=UNASSIGNED");
+  const table = page.locator("table").first();
+  await expect(table.getByRole("columnheader", { name: "القطع" })).toHaveCount(0);
+  await expect(table.getByRole("columnheader", { name: "التاريخ" })).toBeVisible({ timeout: 20_000 });
+  await expect(table.getByRole("columnheader", { name: "منذ" })).toBeVisible();
+
+  const row = page.locator(`table [data-row-id="${unassignedOrderId}"]`);
+  await expect(row).toBeVisible({ timeout: 20_000 });
+  await expect(row).toContainText(/\d{2}\/\d{2}\/\d{4}/);
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: "test-results/10.29/admin-orders-list-1514x681.png", fullPage: true });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: "test-results/10.29/admin-orders-list-390x844.png", fullPage: true });
+});
+
 test("the partner filter narrows to that partner's orders", async ({ page }) => {
   await loginAsAdmin(page);
   const res = await page.request.get(`/api/admin/orders?partner=${pair.agent.partnerId}&limit=100`);

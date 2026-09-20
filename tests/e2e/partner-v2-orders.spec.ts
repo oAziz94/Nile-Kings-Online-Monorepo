@@ -139,6 +139,26 @@ test.afterAll(async () => {
   await prisma.$disconnect();
 });
 
+test("10.29 — the order date column replaces القطع, منذ still renders", async ({ page }) => {
+  await loginAs(page, pair, "AGENT");
+  await page.setViewportSize({ width: 1514, height: 681 });
+  await page.goto(`/partner/orders?q=${uniqueSuffix}`);
+  const table = page.locator("table").first();
+  await expect(table.getByRole("columnheader", { name: "القطع" })).toHaveCount(0);
+  await expect(table.getByRole("columnheader", { name: "التاريخ" })).toBeVisible({ timeout: 15_000 });
+  await expect(table.getByRole("columnheader", { name: "منذ" })).toBeVisible();
+
+  const row = page.locator(`tr[data-row-id="${orderFreshId}"]`);
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await expect(row).toContainText(/\d{2}\/\d{2}\/\d{4}/);
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: "test-results/10.29/partner-orders-list-1514x681.png", fullPage: true });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: "test-results/10.29/partner-orders-list-390x844.png", fullPage: true });
+});
+
 test("stage tabs filter and round-trip through the URL", async ({ page }) => {
   await loginAs(page, pair, "AGENT");
   await page.goto(`/partner/orders?q=${uniqueSuffix}`);

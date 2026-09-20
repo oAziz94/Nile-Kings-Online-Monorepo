@@ -31,7 +31,7 @@ import {
   ORDER_STATUS_LABELS as STATUS_LABELS,
   ORDER_STATUSES,
 } from "@/lib/constants/order-status";
-import { formatNumberEn } from "@/lib/format-en-numbers";
+import { formatDateEnCairo, formatNumberEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -423,9 +423,17 @@ function AdminOrdersPageInner() {
           ),
       },
       {
-        id: "itemCount",
-        header: "القطع",
-        cell: ({ row }) => <span dir="ltr">{row.original.itemCount}</span>,
+        id: "createdAt",
+        header: "التاريخ",
+        cell: ({ row }) => {
+          const { date, time } = formatDateEnCairo(row.original.createdAt);
+          return (
+            <span dir="ltr" className="tabular-nums">
+              <span className="block">{date}</span>
+              <span className="block text-xs text-ink-soft">{time}</span>
+            </span>
+          );
+        },
       },
       {
         id: "total",
@@ -720,6 +728,11 @@ function AdminOrdersPageInner() {
                     </div>
                     <div className="mt-2 flex items-center justify-between text-sm">
                       <span className="font-extrabold tabular-nums">{egp(o.totalPiastres)}</span>
+                      <span dir="ltr" className="text-ink-soft tabular-nums">
+                        {formatDateEnCairo(o.createdAt).date}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-end text-xs">
                       <span className="text-ink-soft">{relativeSince(o.statusSince)}</span>
                     </div>
                     <div className="mt-3 flex gap-2">
