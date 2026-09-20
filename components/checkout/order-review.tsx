@@ -26,7 +26,7 @@ export function OrderReview({ items }: { items: CartItem[] }) {
                 src={item.imageUrl || PLACEHOLDER_IMAGE}
                 alt={item.productName}
                 fill
-                fit="auto"
+                fit="balanced"
                 sizes="56px"
               />
             </Link>

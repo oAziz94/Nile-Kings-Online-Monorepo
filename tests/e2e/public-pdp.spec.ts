@@ -93,6 +93,11 @@ async function resolveVariant(page: Page) {
 // bulk/pattern delete.
 const GALLERY_PRODUCT_SLUG = "nk-7777";
 const GALLERY_COLOR_KEY = "wisteria|#C9A0DC";
+// Backlog 10.25 raised the strip's `lg:max-h` cap to follow the (now much taller) main frame
+// height — 6 thumbnails (the count this array had under 10.20) now fit inside that taller cap
+// without scrolling at 1514×681, which used to be the whole point of this fixture. Two more
+// (duplicate) rows push the strip's content past the new cap again so the "more thumbnails than
+// fit, scrolls instead of growing past it" behaviour still has something real to assert.
 const GALLERY_PHOTOS = [
   "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773321245/nile-kings/products/xtznkqr6zj5zi799utum.jpg",
   "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773324600/nile-kings/products/xiwrxjqselhf0oiw5atg.jpg",
@@ -100,6 +105,8 @@ const GALLERY_PHOTOS = [
   "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773322074/nile-kings/products/fcae3x6eppamqsxxcg1j.jpg",
   "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773325414/nile-kings/products/ldtrwaucuo1zaooqacur.jpg",
   "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773321245/nile-kings/products/xtznkqr6zj5zi799utum.jpg",
+  "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773324600/nile-kings/products/xiwrxjqselhf0oiw5atg.jpg",
+  "https://res.cloudinary.com/dw2yigxcp/image/upload/v1773323682/nile-kings/products/t8hu6dvlmjpcttwqegcd.jpg",
 ];
 // nk-7777's "sky blue" colour already has its own distinct photo (no seeding needed) — used for
 // the 10.2 hover/keyboard preview tests so they're independent of the seeded gallery above.
@@ -308,10 +315,14 @@ test.describe("Public PDP (backlog 4.9)", () => {
     await expect(frame).toBeVisible();
     const frameBox = await frame.boundingBox();
     expect(frameBox).not.toBeNull();
-    // Whole photo visible: its bottom edge is above the viewport bottom, not clipped/cut off.
-    expect(frameBox!.y + frameBox!.height).toBeLessThanOrEqual(681);
-    // Backlog 10.5 — back to the photo's own 4:5 portrait ratio, uncropped (supersedes 10.3's 5:4
-    // landscape crop; the owner disliked the crop).
+    // Backlog 10.25 (owner, 2026-09-20) supersedes 10.5's height-based cap here: the frame is
+    // sized from the viewport width (`min(42vw,640px)`) instead of a `100dvh` cap, so at this
+    // wide/short viewport (1514×681) the frame is now taller than the viewport and the page
+    // scrolls to reach the buy box — explicitly accepted in the backlog entry. The frame's own
+    // box stays the fixed 4:5 ratio and is at least 600px wide per 10.25's exit criterion.
+    expect(frameBox!.width).toBeGreaterThanOrEqual(600);
+    // Backlog 10.5 — the frame stays the photo's own 4:5 portrait ratio, uncropped (supersedes
+    // 10.3's 5:4 landscape crop; the owner disliked the crop).
     expect(Math.abs(frameBox!.width / frameBox!.height - 0.8)).toBeLessThan(0.02);
 
     await expect(page.locator("h1")).toBeVisible();
@@ -326,7 +337,8 @@ test.describe("Public PDP (backlog 4.9)", () => {
     expect(scrollWidth).toBeLessThanOrEqual(1514);
 
     // Base proof screenshot, at the top of the page (before any accordion interaction scrolls
-    // it) — whole photo, title and price all in view without scrolling.
+    // it) — title and price in view; the frame itself may run past the fold at this wide/short
+    // viewport (10.25).
     await page.waitForLoadState("networkidle");
     await page.screenshot({ path: "screenshots/pdp-10.5-1514x681.png" });
 
@@ -349,13 +361,16 @@ test.describe("Public PDP (backlog 4.9)", () => {
     }
     const shippingText = buyBoxColumn.getByText("يُحسب عند الدفع", { exact: false });
     await expect(shippingText).toBeVisible();
-    // Backlog 10.5(d) — the panel's prose is capped at 60ch so no line runs the full column
-    // width on a wide screen.
+    // Backlog 10.5(d) — the panel's prose is capped at 60ch so no line runs past that measure on
+    // a wide screen. Backlog 10.25 narrowed the buy-box column itself (the frame now claims more
+    // of the row's width), so at 1514×681 the column can now be at or under 60ch — the cap is
+    // still present (`maxWidth !== "none"`, checked above) and never exceeded (`<=`), it just no
+    // longer necessarily makes the text narrower than its own column.
     const shippingMaxWidth = await shippingText.evaluate((el) => getComputedStyle(el).maxWidth);
     expect(shippingMaxWidth).not.toBe("none");
     const columnWidth = (await buyBoxColumn.boundingBox())!.width;
     const shippingWidth = (await shippingText.boundingBox())!.width;
-    expect(shippingWidth).toBeLessThan(columnWidth);
+    expect(shippingWidth).toBeLessThanOrEqual(columnWidth);
     // Scroll the expanded panel into view so this proof screenshot actually shows the line
     // length, not just the (already-fitting) top of the page.
     await shippingText.scrollIntoViewIfNeeded();
@@ -393,10 +408,17 @@ test.describe("Public PDP (backlog 4.9)", () => {
       )
       .toBe(GALLERY_PHOTOS.length);
     const [scrollHeight, clientHeight] = await thumbList.evaluate((el) => [el.scrollHeight, el.clientHeight]);
+    // The strip's own `lg:max-h` cap is doing its job: content taller than the cap scrolls
+    // instead of growing past it (unchanged intent from 10.5; 10.25 only moved what the cap
+    // follows — see the `GALLERY_PHOTOS` comment above).
     expect(scrollHeight).toBeGreaterThan(clientHeight);
     const thumbBox = await thumbList.boundingBox();
     expect(thumbBox).not.toBeNull();
-    expect(thumbBox!.y + thumbBox!.height).toBeLessThanOrEqual(681);
+    // Backlog 10.25 — like the main frame above, the strip's height now follows the frame's own
+    // (viewport-width-derived) height rather than a `100dvh` cap, so at this wide/short viewport
+    // it too can run past the fold; only its own capped height (`clientHeight`, asserted via the
+    // scroll check above) is guaranteed, not that its bottom edge stays on screen.
+    expect(Math.round(thumbBox!.height)).toBeCloseTo(Math.round(clientHeight), 0);
     await page.waitForLoadState("networkidle");
     await page.screenshot({ path: "screenshots/pdp-10.5-1514x681-scrollable-thumbnails.png" });
 
@@ -407,7 +429,16 @@ test.describe("Public PDP (backlog 4.9)", () => {
       await page.waitForLoadState("networkidle");
       const box = await frame.boundingBox();
       expect(box).not.toBeNull();
-      expect(box!.y + box!.height).toBeLessThanOrEqual(vp.height);
+      // Backlog 10.25 — at `lg`+ widths the frame is sized from the viewport width, not a
+      // `100dvh` cap, so on several of these desktop viewports (not just 1514×681) it now runs
+      // past the fold; scrolling to it is explicitly accepted in the backlog entry. Below `lg`
+      // (the two mobile viewports at the end of this list) the height-capped, always-fits-above-
+      // the-fold behaviour is unchanged, so that guarantee is still checked there.
+      if (vp.width >= 1024) {
+        expect(box!.width).toBeGreaterThan(0);
+      } else {
+        expect(box!.y + box!.height).toBeLessThanOrEqual(vp.height);
+      }
       expect(Math.abs(box!.width / box!.height - 0.8)).toBeLessThan(0.02);
       await expect(page.locator("h1")).toBeVisible();
       await page.screenshot({ path: `screenshots/pdp-10.5-${vp.width}x${vp.height}.png` });
@@ -436,16 +467,23 @@ test.describe("Public PDP (backlog 4.9)", () => {
     await page.screenshot({ path: "screenshots/pdp-10.3-zoom-rest-1514x681.png" });
 
     const box = frameBoxBefore!;
+    // Backlog 10.25 — the frame is now sized from the viewport width, not a `100dvh` cap, so at
+    // this wide/short viewport it can be (and here is) taller than the viewport itself; only the
+    // portion from its top down to the viewport's bottom edge is ever reachable by the mouse
+    // without scrolling. Both test points stay inside that visible slice instead of assuming the
+    // whole frame (in particular its bottom-right corner) is on screen.
+    const visibleHeight = Math.min(box.height, 681 - box.y);
 
     // Cursor near the top-left corner of the frame reveals the collar (background-position near 0% 0%).
-    await page.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.1);
+    await page.mouse.move(box.x + box.width * 0.1, box.y + visibleHeight * 0.1);
     await expect(zoomLayer).toHaveCSS("opacity", "1");
     const posTopLeft = await zoomLayer.evaluate((el) => getComputedStyle(el).backgroundPosition);
     await page.waitForLoadState("networkidle");
     await page.screenshot({ path: "screenshots/pdp-10.3-zoom-top-left-1514x681.png" });
 
-    // Cursor near the bottom-right corner reveals the hem (background-position near 100% 100%).
-    await page.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.9);
+    // A second point well within the same visible slice, far enough from the first to reveal a
+    // different part of the photo (background-position moves).
+    await page.mouse.move(box.x + box.width * 0.9, box.y + visibleHeight * 0.9);
     const posBottomRight = await zoomLayer.evaluate((el) => getComputedStyle(el).backgroundPosition);
     await page.waitForLoadState("networkidle");
     await page.screenshot({ path: "screenshots/pdp-10.3-zoom-bottom-right-1514x681.png" });

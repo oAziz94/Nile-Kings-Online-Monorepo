@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, type MouseEvent, type SyntheticEvent } from "react";
 import Link from "next/link";
 import { CatalogImage } from "@/components/shared/catalog-image";
 import { useToast } from "@/hooks/use-toast";
@@ -206,6 +206,28 @@ export function ProductPageContent({
 
   const mainImageUrl = previewImageUrl ?? gallery[galleryIndex] ?? gallery[0] ?? PLACEHOLDER_IMAGE;
 
+  // Backlog 10.25 — the frame is always 4:5, so the "balanced" fit's displayed-content scale
+  // relative to the frame reduces to a closed form of the photo's own aspect ratio alone (see
+  // `catalog-image.tsx`: displayed width / frame width = sqrt(photoAspect / frameAspect)). The
+  // hover zoom below needs that same ratio to keep its magnified base matching what the frame
+  // actually renders (spec: "the desktop hover zoom keeps its base as the frame's rendered
+  // content"), so it's tracked here from the main image's own `onLoad`, independent of
+  // `CatalogImage`'s internal state (that state updates on the next render, too late to read
+  // synchronously in this same load event).
+  const FRAME_ASPECT = 4 / 5;
+  const [mainPhotoAspect, setMainPhotoAspect] = useState<number | null>(null);
+  useEffect(() => {
+    setMainPhotoAspect(null);
+  }, [mainImageUrl]);
+  const handleMainImageLoad = useCallback((e: SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    if (naturalWidth > 0 && naturalHeight > 0) setMainPhotoAspect(naturalWidth / naturalHeight);
+  }, []);
+  const zoomBackgroundSize =
+    mainPhotoAspect != null
+      ? `${(2 * Math.sqrt(mainPhotoAspect / FRAME_ASPECT) * 100).toFixed(2)}% auto`
+      : "200% auto";
+
   // A short crossfade on every main-photo change (gallery nav, colour select, hover/focus
   // preview) — `motion-reduce:transition-none` above disables the transition itself for
   // `prefers-reduced-motion`, this just skips the opacity dip so there's no reduced-motion flash.
@@ -351,7 +373,10 @@ export function ProductPageContent({
           <div
             role="list"
             aria-label="صور المنتج"
-            className="flex max-h-[70dvh] flex-col gap-2.5 overflow-y-auto lg:max-h-[calc(100dvh-116px)]"
+            // Backlog 10.25: the strip's max-height follows the main frame's own height
+            // (`min(42vw,640px)` wide, 4:5 → *1.25 for height) instead of the removed
+            // viewport-height cap; below lg unchanged.
+            className="flex max-h-[70dvh] flex-col gap-2.5 overflow-y-auto lg:max-h-[min(52.5vw,800px)]"
           >
             {gallery.map((url, i) => {
               const active = i === galleryIndex;
@@ -368,12 +393,22 @@ export function ProductPageContent({
                     active ? "border-[hsl(228_40%_14%)]" : "border-[hsl(228_16%_84%)]"
                   )}
                 >
-                  <CatalogImage src={url} alt="" fill fit="contain" sizes="84px" />
+                  <CatalogImage src={url} alt="" fill fit="balanced" sizes="84px" />
                 </button>
               );
             })}
           </div>
-          <div className="flex min-w-0 justify-start">
+          {/* Backlog 10.25 — this wrapper used to carry `min-w-0` (a common grid/flex fix to stop
+              a track growing to fit intrinsically-sized content). With the frame's old
+              height-derived width it never mattered; with the new `lg:w-[min(42vw,640px)]` it
+              actively broke the fix below (`min-w-0` tells the browser to ignore this subtree's
+              content size when sizing the surrounding grid tracks, so the outer
+              `auto`/`minmax(0,560px)` columns settled on the *pre-`min-w-0`-removed* narrow width
+              and the frame itself only reached ~550px at 1514×681 — dropped so the tracks size to
+              the frame's real specified width instead, letting the buy-box column give up space
+              to it (verified: frame reaches 635.875px at 1514×681, buy-box column still 464px,
+              container still exactly fills its width — no dead space, no page-width overflow). */}
+          <div className="flex justify-start">
           <div
             data-testid="pdp-main-frame"
             onMouseEnter={handleFrameMouseEnter}
@@ -382,9 +417,11 @@ export function ProductPageContent({
             onClick={handleFrameClick}
             className={cn(
               // Below lg the frame fills the single column up to the height cap; at lg+ the column
-              // is `auto`, so the frame needs a definite width: the height cap × 4/5, never more
-              // than 42vw so the buy box keeps room on a short, narrow desktop window.
-              "relative aspect-[4/5] w-full max-w-[calc(70dvh*0.8)] overflow-hidden bg-[hsl(38_22%_93%)] lg:w-[min(calc((100dvh-116px)*0.8),42vw)] lg:max-w-none",
+              // is `auto`, so the frame needs a definite width. Backlog 10.25: the owner rejected
+              // the height-based cap at lg+ (it produced a ~452px frame at 1514×681 regardless of
+              // screen width) — sized from the viewport width instead, capped so it never crowds
+              // the buy box on a very wide screen.
+              "relative aspect-[4/5] w-full max-w-[calc(70dvh*0.8)] overflow-hidden bg-[hsl(38_22%_93%)] lg:w-[min(42vw,640px)] lg:max-w-none",
               isTouchPointer && "cursor-pointer"
             )}
           >
@@ -392,7 +429,8 @@ export function ProductPageContent({
               src={mainImageUrl}
               alt={product.name}
               fill
-              fit="contain"
+              fit="balanced"
+              onLoad={handleMainImageLoad}
               className={cn(
                 "transition-opacity duration-150 motion-reduce:transition-none",
                 imageFading ? "opacity-0" : "opacity-100"
@@ -401,12 +439,15 @@ export function ProductPageContent({
               priority
               unoptimized={mainImageUrl.startsWith("data:")}
             />
-            {/* Backlog 10.3, unchanged by 10.5 — desktop-only 2x zoom, the magnified region
-                tracking the cursor. The zoom base is the whole photo (10.5: now the same 4:5 the
-                frame itself shows, since the frame crops nothing any more), so panning toward an
-                edge still pans the zoom normally; leaving the frame restores the plain view. Pointer-only,
-                never focusable, so nothing keyboard-reachable before is lost — see the hidden
-                "عرض الصورة كاملة" control below for the keyboard/screen-reader path. */}
+            {/* Backlog 10.3, updated by 10.25 — desktop-only 2x zoom, the magnified region tracking
+                the cursor. The zoom's base must match the frame's own rendered content, not the raw
+                photo: under the "balanced" fit the displayed content's scale relative to the frame
+                is `sqrt(photoAspect / frameAspect)` (see `mainPhotoAspect`/`zoomBackgroundSize`
+                above — closed form because the frame is always 4:5), so `backgroundSize` uses that
+                ratio ×2 instead of a flat 200%. Panning toward an edge still pans the zoom
+                normally; leaving the frame restores the plain view. Pointer-only, never focusable,
+                so nothing keyboard-reachable before is lost — see the hidden "عرض الصورة كاملة"
+                control below for the keyboard/screen-reader path. */}
             <div
               aria-hidden="true"
               className={cn(
@@ -415,7 +456,7 @@ export function ProductPageContent({
               )}
               style={{
                 backgroundImage: `url(${mainImageUrl})`,
-                backgroundSize: "200%",
+                backgroundSize: zoomBackgroundSize,
                 backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
               }}
             />
@@ -642,8 +683,8 @@ export function ProductPageContent({
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
         <DialogContent className="max-w-3xl overflow-hidden rounded-none border-none bg-transparent p-0 shadow-none">
           <DialogTitle className="sr-only">{product.name}</DialogTitle>
-          <div className="relative aspect-[4/5] w-full bg-[hsl(38_22%_93%)]">
-            <CatalogImage src={mainImageUrl} alt={product.name} fill fit="contain" sizes="90vw" />
+          <div className="relative aspect-[4/5] w-full overflow-hidden bg-[hsl(38_22%_93%)]">
+            <CatalogImage src={mainImageUrl} alt={product.name} fill fit="balanced" sizes="90vw" />
             <DialogClose asChild>
               <button
                 type="button"

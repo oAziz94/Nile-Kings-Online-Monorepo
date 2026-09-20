@@ -30,7 +30,7 @@ function CartLineImage({ item }: { item: CartItem }) {
         src={item.imageUrl || PLACEHOLDER_IMAGE}
         alt={item.productName}
         fill
-        fit="auto"
+        fit="balanced"
         sizes="120px"
       />
     </Link>
