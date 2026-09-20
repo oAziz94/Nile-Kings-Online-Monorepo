@@ -261,6 +261,22 @@ test("admin order detail: three line items render the expected thumbnail sources
   await expect(rowC.locator('[aria-hidden="true"]')).toBeVisible();
 });
 
+test("admin order detail: the editable \"تعديل بنود الطلب\" table also renders the three thumbnail sources", async ({ page }) => {
+  await loginAsAdmin(page);
+  await page.goto(`/admin/orders/${orderId}`);
+  await expect(page.getByText("الشريك المنفّذ")).toBeVisible({ timeout: 20_000 });
+
+  const editableTable = page.getByText("تعديل بنود الطلب", { exact: true }).locator("xpath=following::table[1]");
+  const rowA = editableTable.locator("tbody tr").filter({ hasText: variantAName });
+  const rowB = editableTable.locator("tbody tr").filter({ hasText: variantBName });
+  const rowC = editableTable.locator("tbody tr").filter({ hasText: variantCName });
+
+  await expect(rowA.locator("img")).toHaveAttribute("src", VARIANT_IMAGE_URL);
+  await expect(rowB.locator("img")).toHaveAttribute("src", PRODUCT_IMAGE_URL);
+  await expect(rowC.locator("img")).toHaveCount(0);
+  await expect(rowC.locator('[aria-hidden="true"]')).toBeVisible();
+});
+
 test("admin order detail: click opens the dialog, Escape / X / outside-click each close it", async ({ page }) => {
   await loginAsAdmin(page);
   await page.goto(`/admin/orders/${orderId}`);
@@ -316,6 +332,27 @@ test("partner order detail (agent): same three-src assertion and one open/close"
 test("admin picking-list print page: thumbnails render under print media", async ({ page }) => {
   await loginAsAdmin(page);
   await page.goto(`/admin/orders/picking?ids=${orderId}`);
+  await expect(page.locator("table")).toBeVisible({ timeout: 20_000 });
+  await page.emulateMedia({ media: "print" });
+
+  const rowA = page.locator("table tbody tr").filter({ hasText: variantASku });
+  const rowB = page.locator("table tbody tr").filter({ hasText: variantBSku });
+  const rowC = page.locator("table tbody tr").filter({ hasText: variantCSku });
+
+  await expect(rowA.locator("img")).toBeVisible();
+  await expect(rowA.locator("img")).toHaveAttribute("src", VARIANT_IMAGE_URL);
+  await expect(rowB.locator("img")).toBeVisible();
+  await expect(rowB.locator("img")).toHaveAttribute("src", PRODUCT_IMAGE_URL);
+  await expect(rowC.locator("img")).toHaveCount(0);
+  await expect(rowC.locator('[aria-hidden="true"]')).toBeVisible();
+
+  // Not clickable on the print page.
+  await expect(rowA.getByRole("button")).toHaveCount(0);
+});
+
+test("partner pick-list print page: thumbnails render under print media", async ({ page }) => {
+  await loginAs(page, pair, "AGENT");
+  await page.goto(`/partner/orders/pick-list?ids=${orderId}`);
   await expect(page.locator("table")).toBeVisible({ timeout: 20_000 });
   await page.emulateMedia({ media: "print" });
 

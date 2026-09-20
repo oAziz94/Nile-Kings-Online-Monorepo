@@ -2,6 +2,7 @@ import { AlertTriangle } from "lucide-react";
 import { requirePartner } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { formatDateEn } from "@/lib/format-en-numbers";
+import { ProductImagePlaceholder } from "@/components/shared/product-image-preview";
 
 /**
  * "طباعة قائمة التجهيز" (backlog 5.3) — print-only pick list for a bulk selection from
@@ -62,7 +63,15 @@ export default async function PickListPage({
     orderBy: { createdAt: "asc" },
     include: {
       user: { select: { name: true, phone: true } },
-      items: { select: { productName: true, variantName: true, sku: true, quantity: true } },
+      items: {
+        select: {
+          productName: true,
+          variantName: true,
+          sku: true,
+          quantity: true,
+          variant: { select: { imageUrl: true, product: { select: { imageUrl: true } } } },
+        },
+      },
     },
   });
 
@@ -117,25 +126,40 @@ export default async function PickListPage({
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-stone-200 text-right text-xs font-extrabold text-ink-soft">
+                <th className="py-2">الصورة</th>
                 <th className="py-2">المنتج</th>
                 <th className="py-2">SKU</th>
                 <th className="py-2">الكمية</th>
               </tr>
             </thead>
             <tbody>
-              {order.items.map((item, idx) => (
-                <tr key={idx} className="border-b border-stone-100">
-                  <td className="py-2 font-bold text-ink">
-                    {item.productName} – {item.variantName}
-                  </td>
-                  <td dir="ltr" className="py-2 text-xs text-ink-soft">
-                    {item.sku}
-                  </td>
-                  <td dir="ltr" className="py-2 tabular-nums">
-                    {item.quantity}
-                  </td>
-                </tr>
-              ))}
+              {order.items.map((item, idx) => {
+                const imageUrl = item.variant.imageUrl ?? item.variant.product.imageUrl ?? null;
+                return (
+                  <tr key={idx} className="border-b border-stone-100">
+                    <td className="py-2">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={item.productName}
+                          className="h-10 w-10 rounded-md border border-stone-200 object-cover"
+                        />
+                      ) : (
+                        <ProductImagePlaceholder size={40} className="rounded-md border border-stone-200" />
+                      )}
+                    </td>
+                    <td className="py-2 font-bold text-ink">
+                      {item.productName} – {item.variantName}
+                    </td>
+                    <td dir="ltr" className="py-2 text-xs text-ink-soft">
+                      {item.sku}
+                    </td>
+                    <td dir="ltr" className="py-2 tabular-nums">
+                      {item.quantity}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </section>

@@ -177,6 +177,7 @@ export function OrderItemsTable({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>الصورة</TableHead>
                 <TableHead>المنتج / المتغير</TableHead>
                 <TableHead>الكمية</TableHead>
                 <TableHead>إجراء</TableHead>
@@ -185,6 +186,19 @@ export function OrderItemsTable({
             <TableBody>
               {editableItems.map((item) => (
                 <TableRow key={item.variantId}>
+                  <TableCell>
+                    {item.imageUrl ? (
+                      <ProductImagePreview
+                        src={item.imageUrl}
+                        title={item.productName}
+                        modalTitle={`${item.productName} – ${item.variantName}`}
+                        size={48}
+                        className="overflow-hidden rounded-xl"
+                      />
+                    ) : (
+                      <ProductImagePlaceholder size={48} />
+                    )}
+                  </TableCell>
                   <TableCell>{item.productName} – {item.variantName}</TableCell>
                   <TableCell>
                     <input
