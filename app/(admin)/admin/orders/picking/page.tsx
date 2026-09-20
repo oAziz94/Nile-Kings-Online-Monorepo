@@ -1,6 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { ProductImagePlaceholder } from "@/components/shared/product-image-preview";
 
 /**
  * "قائمة التجهيز" bulk print (backlog 9.3 b) — the admin equivalent of the partner's
@@ -32,7 +33,15 @@ export default async function AdminPickingListPage({
   const orders = await prisma.order.findMany({
     where: { id: { in: ids } },
     include: {
-      items: { select: { productName: true, variantName: true, sku: true, quantity: true } },
+      items: {
+        select: {
+          productName: true,
+          variantName: true,
+          sku: true,
+          quantity: true,
+          variant: { select: { imageUrl: true, product: { select: { imageUrl: true } } } },
+        },
+      },
     },
   });
 
@@ -50,7 +59,14 @@ export default async function AdminPickingListPage({
 
   const bySku = new Map<
     string,
-    { sku: string; productName: string; variantName: string; quantity: number; orderNumbers: Set<string> }
+    {
+      sku: string;
+      productName: string;
+      variantName: string;
+      quantity: number;
+      orderNumbers: Set<string>;
+      imageUrl: string | null;
+    }
   >();
   for (const order of orders) {
     for (const item of order.items) {
@@ -65,6 +81,7 @@ export default async function AdminPickingListPage({
           variantName: item.variantName,
           quantity: item.quantity,
           orderNumbers: new Set([order.id.slice(0, 8)]),
+          imageUrl: item.variant.imageUrl ?? item.variant.product.imageUrl ?? null,
         });
       }
     }
@@ -83,6 +100,7 @@ export default async function AdminPickingListPage({
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-stone-200 text-right text-xs font-extrabold text-ink-soft">
+            <th className="py-2">الصورة</th>
             <th className="py-2">SKU</th>
             <th className="py-2">المنتج</th>
             <th className="py-2">الكمية الإجمالية</th>
@@ -92,6 +110,17 @@ export default async function AdminPickingListPage({
         <tbody>
           {rows.map((row) => (
             <tr key={row.sku} className="border-b border-stone-100">
+              <td className="py-2">
+                {row.imageUrl ? (
+                  <img
+                    src={row.imageUrl}
+                    alt={row.productName}
+                    className="h-10 w-10 rounded-md border border-stone-200 object-cover"
+                  />
+                ) : (
+                  <ProductImagePlaceholder size={40} className="rounded-md border border-stone-200" />
+                )}
+              </td>
               <td dir="ltr" className="py-2 text-xs text-ink-soft">{row.sku}</td>
               <td className="py-2 font-bold text-ink">{row.productName} – {row.variantName}</td>
               <td dir="ltr" className="py-2 tabular-nums font-extrabold">{row.quantity}</td>
