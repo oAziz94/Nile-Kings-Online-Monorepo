@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Amiri, Archivo, Cairo, IBM_Plex_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -38,10 +38,16 @@ const archivo = Archivo({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  ...baseMetadata(),
-  title: "قطن ملوك النيل",
-  description: "متجر قطن ملوك النيل أونلاين - تسوق من أفضل المنتجات مع توصيل لجميع المحافظات",
+// `baseMetadata()` already sets `title: { default: SITE_NAME, template }` and the matching
+// description — backlog 10.30 found (and fixed) a bug here: these two fields used to be
+// re-declared as plain strings *after* the `...baseMetadata()` spread, which overwrote the
+// title template object with a bare string and silently broke every child page's `%s ·
+// قطن ملوك النيل` templating (admin/partner/auth/storefront titles all rendered untemplated).
+export const metadata: Metadata = baseMetadata();
+
+/** Papyrus tone (hsl(38 22% 93%)) — no PWA manifest, just the browser chrome colour (10.30). */
+export const viewport: Viewport = {
+  themeColor: "#F1EEE9",
 };
 
 export default function RootLayout({

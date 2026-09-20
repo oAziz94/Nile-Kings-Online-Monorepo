@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser, requirePartner, userHasAdminAccess } from "@/lib/auth/session";
 import { ForgotPasswordForm } from "./forgot-password-form";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "استعادة كلمة المرور" };
 
 export default async function ForgotPasswordPage() {
   // Same "already logged in" redirect guard as /login and /register — forgot-password.md

@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { AlertTriangle } from "lucide-react";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { ProductImagePlaceholder } from "@/components/shared/product-image-preview";
+
+export const metadata: Metadata = { title: "قائمة التجهيز" };
 
 /**
  * "قائمة التجهيز" bulk print (backlog 9.3 b) — the admin equivalent of the partner's

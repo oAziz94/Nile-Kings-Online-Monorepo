@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser, requirePartner, userHasAdminAccess } from "@/lib/auth/session";
 import { LoginForm } from "./login-form";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "تسجيل الدخول" };
 
 export default async function LoginPage() {
   const user = await getCurrentUser();
