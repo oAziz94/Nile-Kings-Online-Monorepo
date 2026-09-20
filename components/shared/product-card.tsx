@@ -91,7 +91,7 @@ export function ProductCard({
             src={displayImage}
             alt={name}
             fill
-            className="object-cover"
+            fit="auto"
             sizes={sizes}
           />
           {categoryLabel && (
