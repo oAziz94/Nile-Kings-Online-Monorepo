@@ -368,7 +368,7 @@ export function ProductPageContent({
                     active ? "border-[hsl(228_40%_14%)]" : "border-[hsl(228_16%_84%)]"
                   )}
                 >
-                  <CatalogImage src={url} alt="" fill className="object-cover" sizes="84px" />
+                  <CatalogImage src={url} alt="" fill fit="contain" sizes="84px" />
                 </button>
               );
             })}
@@ -392,8 +392,9 @@ export function ProductPageContent({
               src={mainImageUrl}
               alt={product.name}
               fill
+              fit="contain"
               className={cn(
-                "object-cover transition-opacity duration-150 motion-reduce:transition-none",
+                "transition-opacity duration-150 motion-reduce:transition-none",
                 imageFading ? "opacity-0" : "opacity-100"
               )}
               sizes="(max-width: 1024px) 100vw, 50vw"
@@ -642,7 +643,7 @@ export function ProductPageContent({
         <DialogContent className="max-w-3xl overflow-hidden rounded-none border-none bg-transparent p-0 shadow-none">
           <DialogTitle className="sr-only">{product.name}</DialogTitle>
           <div className="relative aspect-[4/5] w-full bg-[hsl(38_22%_93%)]">
-            <CatalogImage src={mainImageUrl} alt={product.name} fill className="object-contain" sizes="90vw" />
+            <CatalogImage src={mainImageUrl} alt={product.name} fill fit="contain" sizes="90vw" />
             <DialogClose asChild>
               <button
                 type="button"

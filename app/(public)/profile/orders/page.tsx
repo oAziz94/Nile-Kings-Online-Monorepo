@@ -164,7 +164,7 @@ function Thumb({ imageUrl, size = "md" }: { imageUrl: string | null; size?: "sm"
       style={{ width: dims.w, height: dims.h }}
     >
       {imageUrl ? (
-        <CatalogImage src={imageUrl} alt="" width={dims.w} height={dims.h} className="h-full w-full object-cover" />
+        <CatalogImage src={imageUrl} alt="" width={dims.w} height={dims.h} fit="auto" className="h-full w-full" />
       ) : null}
     </span>
   );

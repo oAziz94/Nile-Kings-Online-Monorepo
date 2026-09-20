@@ -250,7 +250,7 @@ export function QuickShopModal({
                   src={mainImageUrl}
                   alt={product.name}
                   fill
-                  className="object-cover"
+                  fit="auto"
                   sizes="96px"
                 />
               </div>
