@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { OrderMoneyBox, type OrderMoneyBoxProps } from "@/components/orders/order-money-box";
+import { ProductImagePlaceholder, ProductImagePreview } from "@/components/shared/product-image-preview";
 
 export type OrderItemRow = {
   id: string;
@@ -37,6 +38,8 @@ export type OrderItemRow = {
   /** Present on the admin detail only — lets `getSize` apply the kids size relabelling
    * (`getDisplaySizeLabel`/`isKidsCategory`); the partner page never sets this. */
   categorySlug?: string;
+  /** Variant image, falling back to the product image — `null` when neither exists (10.21). */
+  imageUrl?: string | null;
 };
 
 export type EditableOrderItem = {
@@ -125,6 +128,7 @@ export function OrderItemsTable({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>الصورة</TableHead>
                 <TableHead>المنتج</TableHead>
                 <TableHead>المقاس · اللون</TableHead>
                 <TableHead>SKU</TableHead>
@@ -136,6 +140,19 @@ export function OrderItemsTable({
             <TableBody>
               {items.map((item) => (
                 <TableRow key={item.id}>
+                  <TableCell>
+                    {item.imageUrl ? (
+                      <ProductImagePreview
+                        src={item.imageUrl}
+                        title={item.productName}
+                        modalTitle={`${item.productName} – ${item.variantName}`}
+                        size={48}
+                        className="overflow-hidden rounded-xl"
+                      />
+                    ) : (
+                      <ProductImagePlaceholder size={48} />
+                    )}
+                  </TableCell>
                   <TableCell className="font-bold">{item.productName}</TableCell>
                   <TableCell className="text-ink-soft">
                     {getSize(item)} · {getColor(item)}
@@ -160,6 +177,7 @@ export function OrderItemsTable({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>الصورة</TableHead>
                 <TableHead>المنتج / المتغير</TableHead>
                 <TableHead>الكمية</TableHead>
                 <TableHead>إجراء</TableHead>
@@ -168,6 +186,19 @@ export function OrderItemsTable({
             <TableBody>
               {editableItems.map((item) => (
                 <TableRow key={item.variantId}>
+                  <TableCell>
+                    {item.imageUrl ? (
+                      <ProductImagePreview
+                        src={item.imageUrl}
+                        title={item.productName}
+                        modalTitle={`${item.productName} – ${item.variantName}`}
+                        size={48}
+                        className="overflow-hidden rounded-xl"
+                      />
+                    ) : (
+                      <ProductImagePlaceholder size={48} />
+                    )}
+                  </TableCell>
                   <TableCell>{item.productName} – {item.variantName}</TableCell>
                   <TableCell>
                     <input

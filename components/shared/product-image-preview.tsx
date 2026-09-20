@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { ImageOff, X } from "lucide-react";
 
 /**
  * Clickable product thumbnail that opens a full-view modal with the image,
@@ -14,14 +14,20 @@ export function ProductImagePreview({
   code,
   size = 48,
   className = "",
+  modalTitle,
 }: {
   src: string;
   title: string;
   code?: string | null;
   size?: number;
   className?: string;
+  /** Alt text / caption used inside the dialog only (defaults to `title`) — lets a caller
+   * label the thumbnail with just the product name while the enlarged image also names the
+   * variant (e.g. "قميص – أحمر، L"). */
+  modalTitle?: string;
 }) {
   const [open, setOpen] = React.useState(false);
+  const dialogTitle = modalTitle ?? title;
 
   React.useEffect(() => {
     if (!open) return;
@@ -62,9 +68,9 @@ export function ProductImagePreview({
               >
                 <X className="h-4 w-4" />
               </button>
-              <img src={src} alt={title} className="mx-auto max-h-[70vh] w-auto rounded-xl object-contain" />
+              <img src={src} alt={dialogTitle} className="mx-auto max-h-[70vh] w-auto rounded-xl object-contain" />
               <div className="mt-3 text-center">
-                <p className="font-semibold text-foreground">{title}</p>
+                <p className="font-semibold text-foreground">{dialogTitle}</p>
                 {code && <p className="text-sm text-muted-foreground">{code}</p>}
               </div>
             </div>
@@ -72,5 +78,21 @@ export function ProductImagePreview({
           document.body
         )}
     </>
+  );
+}
+
+/**
+ * Neutral, non-interactive placeholder for a line item with no variant/product image at all
+ * (10.21) — same footprint as `ProductImagePreview` so it drops into the same table cell.
+ */
+export function ProductImagePlaceholder({ size = 48, className = "" }: { size?: number; className?: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`flex items-center justify-center rounded-xl bg-papyrus text-stone-400 ${className}`}
+      style={{ width: size, height: size }}
+    >
+      <ImageOff className="h-1/2 w-1/2" />
+    </div>
   );
 }
