@@ -31,3 +31,32 @@ export function formatDateEnShort(date: Date | string): string {
     day: "numeric",
   });
 }
+
+const CAIRO_TZ = "Africa/Cairo";
+
+const cairoDateSlashFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: CAIRO_TZ,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
+const cairoTimeFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: CAIRO_TZ,
+  hour12: false,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/**
+ * Order-list date cell (backlog 10.29): the Cairo-local calendar date as `dd/mm/yyyy`
+ * and the 24h time as `HH:mm`, both with English (Latin) digits. Two separate strings
+ * so the caller can render them on two lines (date, then a muted time line).
+ */
+export function formatDateEnCairo(date: Date | string): { date: string; time: string } {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return {
+    date: cairoDateSlashFormatter.format(d),
+    time: cairoTimeFormatter.format(d),
+  };
+}
