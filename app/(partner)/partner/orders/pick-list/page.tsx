@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { AlertTriangle } from "lucide-react";
 import { requirePartner } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { ProductImagePlaceholder } from "@/components/shared/product-image-preview";
+
+export const metadata: Metadata = { title: "قائمة التجهيز" };
 
 /**
  * "طباعة قائمة التجهيز" (backlog 5.3) — print-only pick list for a bulk selection from

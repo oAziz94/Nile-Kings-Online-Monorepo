@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser, requirePartner, userHasAdminAccess } from "@/lib/auth/session";
 import { RegisterForm } from "./register-form";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "إنشاء حساب" };
 
 export default async function RegisterPage() {
   // Same "already logged in" redirect guard as /login (login.md's guard did not previously

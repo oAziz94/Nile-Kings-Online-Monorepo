@@ -32,7 +32,7 @@ function appUrl(path = ""): string {
 export function baseMetadata(): Metadata {
   return {
     metadataBase: new URL(appUrl()),
-    title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
+    title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
     description: DEFAULT_DESCRIPTION,
     openGraph: {
       type: "website",
