@@ -1,3 +1,9 @@
+## 2026-09-20 — 10.29 order date replaces piece count on order lists; 10.30 favicon and `page · surface` tab titles
+
+**Owner:** drop القطع from the orders lists and show the date instead; add a favicon; tab titles "descriptive but still minimal". Answers to the PM's questions: admin + partner lists; order creation date with time, `منذ` stays; lapis crown on papyrus as the single favicon; title shape `<page> · <surface>`.
+
+**Decisions.** Date cell = `dd/mm/yyyy` + `HH:mm` Cairo time, Latin digits, via `formatDateEnCairo` (Intl, `lib/format-en-numbers.ts`); the piece count stays on the order detail. Titles: root template `%s · قطن ملوك النيل`; admin `%s · لوحة الإدارة`; partner `%s · لوحة الشريك`; every dashboard page title equals its nav label, `/new` pages `<label> · جديد`, `[id]` pages the record identifier via `generateMetadata` in a sibling server `layout.tsx` (client pages cannot export metadata; no page was converted). Rule learned: Next's `title.template` propagates one layout level only — any intermediate layout that sets a title must restate the template. Icons are file-based (`app/icon.png`, `apple-icon.png`, `favicon.ico`), generated from `public/brand/logo-lapis-mark.png` at 78% of a papyrus `#F1EEE9` square; the generator script is not kept.
+
 ## 2026-09-20 — 10.25: 10.20's letterboxing reverted to a balanced fit; desktop PDP frame sized from width
 
 **Owner, on seeing 10.20 live:** "10.20 is a real failure … get back to a standard PDP size … zoom out the image to better fit inside the standard frame without 100% fitting … the frame width is too small." The 4:5 frame had not changed; `object-contain` made landscape photos fill ~60% of it between papyrus bars, and the desktop frame was capped by viewport height (~452px wide at 1514×681).
