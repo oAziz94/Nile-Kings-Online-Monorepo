@@ -1,3 +1,7 @@
+## 2026-09-21 — 10.32: GA4 events had never left the browser
+
+**Owner:** GA4 counts active users and events but no key events. **Finding:** `trackEvent` pushed plain arrays onto `window.dataLayer`; gtag.js drains only `arguments` objects, so every custom event since 6.7 (view_item, add_to_cart, begin_checkout, purchase, page_view, select_governorate) was dropped — the counts the owner saw were Google's automatic events. Proven on the live site (array push → nothing; `gtag()` → `/g/collect`). **Decision:** `trackEvent` pushes a real `arguments` object through an inner `function`; the queue-before-load design stays. **Rule:** any analytics helper that bypasses `gtag()` must be proven with a real collect request, not by inspecting `dataLayer` — the 6.7 verification checked order, not delivery.
+
 ## 2026-09-20 — 10.29 order date replaces piece count on order lists; 10.30 favicon and `page · surface` tab titles
 
 **Owner:** drop القطع from the orders lists and show the date instead; add a favicon; tab titles "descriptive but still minimal". Answers to the PM's questions: admin + partner lists; order creation date with time, `منذ` stays; lapis crown on papyrus as the single favicon; title shape `<page> · <surface>`.
