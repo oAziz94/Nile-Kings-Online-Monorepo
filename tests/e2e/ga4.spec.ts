@@ -16,8 +16,15 @@ import { safeWhere } from "./db-cleanup";
 // Both `googletagmanager.com` and `google-analytics.com` are routed to an empty 200 response in
 // every test so nothing ever actually leaves the machine — the real script never runs, so the
 // storefront's own `gtag`/`dataLayer` shim (defined by `<Ga4 />`'s inline init script) is what we
-// read back: `window.dataLayer` accumulates one array per `gtag(...)` call, which is exactly the
-// event log we assert against.
+// read back: `window.dataLayer` accumulates one `arguments` object per `gtag(...)` call (and per
+// `trackEvent(...)` call as of backlog 10.32 — it now pushes the same `arguments`-object shape,
+// not a plain array; gtag.js itself only ever drains `arguments`-shaped entries), which is
+// exactly the event log we assert against.
+//
+// The "GA4 — real /g/collect request" describe block below is the one exception: it lets the
+// real gtag.js load from googletagmanager.com (no stub) so it builds and fires real
+// `/g/collect` beacons, which are intercepted (not the script) and inspected for `en=view_item` /
+// `en=add_to_cart` — the strongest possible proof the fix reaches Google, not just our own shim.
 
 const prisma = new PrismaClient();
 const FIXTURE_PHONE = "+201099977701";
@@ -58,13 +65,27 @@ async function stubGa4Network(page: Page) {
   await page.route("**/google-analytics.com/**", emptyScript);
 }
 
-/** `gtag()`'s shim (defined by `<Ga4 />`) pushes `arguments` objects into `window.dataLayer`;
- *  read them back as plain arrays and keep only the `event`-shaped ones. */
+/** `gtag()`'s shim (defined by `<Ga4 />`) and `trackEvent` (backlog 10.32) both push `arguments`
+ *  objects into `window.dataLayer` for every call-shaped entry — never plain arrays, since
+ *  gtag.js only drains the former (a plain array is silently ignored). Once gtag.js itself has
+ *  loaded it also pushes its own plain *keyed* objects onto the same queue for internal GTM
+ *  bookkeeping (`{event: "gtm.js", "gtm.uniqueEventId": ...}` — no numeric indices at all, so
+ *  `Array.from` on them yields `[]`); those aren't ours and aren't call-shaped, so only entries
+ *  that resolve to a non-empty array (i.e. anything with a numeric index 0, which is exactly the
+ *  shape a `gtag(...)`/`trackEvent(...)` call produces) are checked for the `arguments` type. */
 async function readGa4Events(page: Page): Promise<{ name: string; params: Record<string, unknown> }[]> {
   const raw = await page.evaluate(() =>
-    (window.dataLayer ?? []).map((entry) => Array.from(entry as ArrayLike<unknown>))
+    (window.dataLayer ?? []).map((entry) => ({
+      isArguments: Object.prototype.toString.call(entry) === "[object Arguments]",
+      values: Array.from(entry as ArrayLike<unknown>),
+    }))
   );
+  for (const entry of raw) {
+    if (entry.values.length === 0) continue; // gtag.js's own internal keyed objects, not ours
+    expect(entry.isArguments, `dataLayer entry ${JSON.stringify(entry.values)} must be an arguments object, not a plain array — gtag.js ignores plain arrays`).toBe(true);
+  }
   return raw
+    .map((entry) => entry.values)
     .filter((entry) => entry[0] === "event")
     .map((entry) => ({ name: entry[1] as string, params: (entry[2] as Record<string, unknown>) ?? {} }));
 }
@@ -415,6 +436,64 @@ test.describe("GA4 — begin_checkout", () => {
     expect(event.params.currency).toBe("EGP");
 
     // Clean up the cart line.
+    const cartRes = await page.request.get("/api/cart");
+    if (cartRes.ok()) {
+      const cart = (await cartRes.json()).data as { items: { id: string }[] } | undefined;
+      for (const item of cart?.items ?? []) {
+        await page.request.delete(`/api/cart/items/${item.id}`);
+      }
+    }
+  });
+});
+
+// Backlog 10.32 — the strongest possible proof the array→arguments fix reaches Google: let the
+// real gtag.js load from googletagmanager.com (no stub on that domain) so it builds and fires
+// real `/g/collect` beacons off our `trackEvent` calls, and intercept only the beacon itself
+// (fulfilled with a 204, matching the real endpoint's response, so nothing depends on an actual
+// live GA4 property behind `G-TEST123` and no analytics data for a fake ID ever reaches Google).
+// Needs outbound internet access to googletagmanager.com from the test browser; if that's ever
+// unreliable in CI/offline, skip with a one-line reason rather than flaking the suite.
+test.describe("GA4 — real /g/collect request (gtag.js loads for real; only the collect beacon is stubbed)", () => {
+  function interceptCollect(page: Page): { hits: () => string[] } {
+    const hits: string[] = [];
+    void page.route("**/g/collect*", async (route) => {
+      const req = route.request();
+      hits.push(`${req.url()}\n${req.postData() ?? ""}`);
+      await route.fulfill({ status: 204, body: "" });
+    });
+    return { hits: () => hits };
+  }
+
+  test("a cold PDP load sends a view_item collect hit; adding to cart sends an add_to_cart collect hit", async ({
+    page,
+    baseURL,
+  }) => {
+    test.setTimeout(60_000);
+    await setStorefrontLocation(page, baseURL);
+    const { hits } = interceptCollect(page);
+    const { slug, name } = await findInStockProductSlug(page);
+
+    await page.goto(`/products/${slug}`);
+    await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+
+    await expect
+      .poll(() => hits().some((h) => h.includes("en=view_item")), {
+        timeout: 20_000,
+        message: "expected a real /g/collect beacon with en=view_item on a cold PDP load",
+      })
+      .toBe(true);
+
+    await resolveVariant(page);
+    await page.getByTestId("pdp-actions").getByRole("button", { name: "أضف إلى السلة" }).click();
+
+    await expect
+      .poll(() => hits().some((h) => h.includes("en=add_to_cart")), {
+        timeout: 20_000,
+        message: "expected a real /g/collect beacon with en=add_to_cart after adding to cart",
+      })
+      .toBe(true);
+
+    // Clean up the cart line so this spec is re-runnable.
     const cartRes = await page.request.get("/api/cart");
     if (cartRes.ok()) {
       const cart = (await cartRes.json()).data as { items: { id: string }[] } | undefined;
