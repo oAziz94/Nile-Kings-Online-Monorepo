@@ -9,9 +9,17 @@
  * scripts finish loading — including `view_item` on a direct/cold PDP load (a shopper arriving
  * from Google, an ad, a shared link, or a refresh), since the PDP's mount effect runs well
  * before that. `window.dataLayer` is a plain queue by design (that's the whole point of the
- * gtag.js pattern): push the same `["event", name, params]` shape the inline init script's own
- * `gtag()` shim pushes, and gtag.js drains whatever is already queued the moment it finishes
- * loading. This works whether gtag.js has loaded yet or not — queue, don't gate.
+ * gtag.js pattern): push whatever is already queued the moment it finishes loading. This works
+ * whether gtag.js has loaded yet or not — queue, don't gate.
+ *
+ * Rework (backlog 10.32, 2026-09-21): this used to push a plain array `["event", name, params]`.
+ * gtag.js's `dataLayer.push` override (installed once gtag.js loads) only recognises the
+ * `arguments` object shape its own `gtag()` shim pushes (`function gtag(){dataLayer.push(arguments)}`)
+ * — a plain array is silently ignored (no `/g/collect` request), so every custom event since 6.7
+ * shipped (`view_item`, `add_to_cart`, `begin_checkout`, `purchase`, `page_view`,
+ * `select_governorate`) never reached GA4, even though it queued fine and the replay in
+ * `components/storefront/ga4.tsx` re-pushed it in the right order. Push an `arguments` object
+ * instead, built the same way the `gtag()` shim itself does.
  */
 
 declare global {
@@ -26,7 +34,13 @@ export function trackEvent(name: string, params?: Record<string, unknown>): void
   if (typeof window === "undefined") return;
   if (!process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID) return;
   window.dataLayer = window.dataLayer ?? [];
-  window.dataLayer.push(["event", name, params ?? {}]);
+  // Must push the real `arguments` object (gtag.js only drains `arguments`-shaped entries from
+  // `dataLayer`, not plain arrays or rest arrays; see file header).
+  const pushArguments: (...args: unknown[]) => void = function () {
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer!.push(arguments);
+  };
+  pushArguments("event", name, params ?? {});
 }
 
 /** Builds the standard GA4 ecommerce item shape from storefront variant/product data. */
