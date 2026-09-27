@@ -174,27 +174,23 @@ test("الأمان: OTP rules save and reload", async ({ page }) => {
   await expect(page.getByLabel("صلاحية الرمز")).toHaveValue("7");
 });
 
-test("الإشعارات: alert-prefs toggle persists", async ({ page }) => {
+test("الإشعارات: alert-prefs API still persists (UI removed by 10.35, notifications v1)", async ({ page }) => {
+  // The six-toggle "الإشعارات" group was removed from `/admin/settings` by backlog 10.35
+  // (replaced by the notifications bell + `/admin/notifications`); `GET/PATCH
+  // /api/admin/settings/alert-prefs` stay untouched in the schema/API for a later cleanup, so
+  // this asserts the API round-trip directly instead of driving the deleted UI.
   await loginAsAdmin(page);
 
   const before = await (await page.request.get("/api/admin/settings/alert-prefs")).json();
   const wasOn = Boolean(before.data.partnerOutOfStock);
-  const expectAfterToggle = wasOn ? "false" : "true";
 
-  await page.goto("/admin/settings");
-  // Verifier fix (9.7 review): every `role="switch"` has an accessible name now — target it
-  // by that name instead of an xpath following-sibling walk.
-  const toggle = page.getByRole("switch", { name: "صنف نافد عند شريك" });
-  await expect(toggle).toHaveAttribute("aria-checked", String(wasOn));
-  await toggle.click();
-  const notifCard = page.locator("text=الإشعارات").first().locator("xpath=ancestor::div[contains(@class,'shadow-soft')]").first();
-  await notifCard.getByRole("button", { name: "حفظ" }).click();
-  await expect(page.getByText("تم حفظ الإشعارات").first()).toBeVisible({ timeout: 10_000 });
-  await page.reload();
-  await expect(page.getByRole("switch", { name: "صنف نافد عند شريك" })).toHaveAttribute("aria-checked", expectAfterToggle);
+  const patchRes = await page.request.patch("/api/admin/settings/alert-prefs", {
+    data: { ...before.data, partnerOutOfStock: !wasOn },
+  });
+  expect(patchRes.ok()).toBeTruthy();
 
-  // PM ruling (9.7 review): the previous-value line under an alert-prefs field too.
-  await expect(page.getByText(/السابق .* · .* · أنت/).first()).toBeVisible({ timeout: 10_000 });
+  const after = await (await page.request.get("/api/admin/settings/alert-prefs")).json();
+  expect(Boolean(after.data.partnerOutOfStock)).toBe(!wasOn);
 });
 
 test("401/403: a signed-out request and a customer session are both rejected", async ({ page, browser }) => {

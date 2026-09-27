@@ -2,8 +2,11 @@
 
 /**
  * `/admin/settings` (backlog 9.7 (b)), rebuilt per `Settings.dc.html` (generator block 13):
- * a two-column grid (one column below `lg`) of four independently-saved groups — المتجر,
- * الشركاء · افتراضيات الشبكة, الأمان, الإشعارات. A confirm dialog guards anything in المتجر
+ * a two-column grid (one column below `lg`) of independently-saved groups — المتجر,
+ * الشركاء · افتراضيات الشبكة, الأمان. The fourth group (الإشعارات — the six alert toggles)
+ * was removed by backlog 10.35: notifications v1 replaced them with the bell + history page;
+ * `GET/PATCH /api/admin/settings/alert-prefs` and the `SiteSetting` row stay untouched for a
+ * later cleanup, only this page's UI for them is gone. A confirm dialog guards anything in المتجر
  * that changes a customer's price (COD fee, senior promo — both do, so both are guarded).
  * Every field with audit history shows `SettingPreviousValue`'s "السابق … · … · أنت" line.
  *
@@ -15,7 +18,7 @@
  * caption cites).
  */
 import * as React from "react";
-import { Bell, Percent, Shield, Store, Users } from "lucide-react";
+import { Percent, Shield, Store, Users } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
 import { Button } from "@/components/ui/button";
@@ -451,102 +454,12 @@ function SecurityGroup() {
   );
 }
 
-// ---------- الإشعارات ----------
-
-const ALERT_TOGGLES: { key: string; label: string; defaultOn: boolean }[] = [
-  { key: "unassignedOrderOverHour", label: "طلب بلا شريك لأكثر من ساعة", defaultOn: true },
-  { key: "orderOverdueSla", label: "طلب تجاوز مهلة الشريك", defaultOn: true },
-  { key: "newTicket", label: "سؤال عميل جديد", defaultOn: true },
-  { key: "newPartnerRequest", label: "طلب شراكة جديد", defaultOn: true },
-  { key: "partnerInstallmentDue", label: "قسط شريك استحق", defaultOn: true },
-  { key: "partnerOutOfStock", label: "صنف نافد عند شريك", defaultOn: false },
-];
-
-function NotificationsGroup() {
-  const { toast } = useToast();
-  const [prefs, setPrefs] = React.useState<Record<string, boolean> | null>(null);
-  const [saving, setSaving] = React.useState(false);
-  const [historyKey, setHistoryKey] = React.useState(0);
-
-  const load = React.useCallback(() => {
-    fetch("/api/admin/settings/alert-prefs", { credentials: "include" })
-      .then((r) => r.json())
-      .then((json) => {
-        if (json?.success && json.data) setPrefs(json.data);
-      });
-  }, []);
-
-  React.useEffect(() => {
-    load();
-  }, [load]);
-
-  const save = async () => {
-    if (!prefs) return;
-    setSaving(true);
-    try {
-      const res = await fetch("/api/admin/settings/alert-prefs", {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(prefs),
-      });
-      const json = await res.json();
-      if (json?.success) {
-        toast({ title: "تم حفظ الإشعارات" });
-        setPrefs(json.data);
-        setHistoryKey((k) => k + 1);
-      } else {
-        toast({ title: json?.error?.message ?? "فشل الحفظ", variant: "destructive" });
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (!prefs) return <PanelCard title="الإشعارات" icon={<Bell className="h-4 w-4" />}><p className="text-sm text-ink-soft">جاري التحميل…</p></PanelCard>;
-
-  return (
-    <PanelCard
-      title="الإشعارات"
-      description="ما يصلك أنت — لا علاقة له بتنبيهات الشركاء"
-      icon={<Bell className="h-4 w-4 text-lapis-800" />}
-      toolbar={
-        <Button type="button" size="sm" className="rounded-full" onClick={save} disabled={saving}>
-          حفظ
-        </Button>
-      }
-    >
-      <div>
-        {ALERT_TOGGLES.map((t) => (
-          <div key={t.key} className="border-t border-stone-100 py-2 first:border-0">
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] text-ink">{t.label}</span>
-              <Toggle
-                label={t.label}
-                on={prefs[t.key] ?? t.defaultOn}
-                onToggle={() => setPrefs((p) => ({ ...(p ?? {}), [t.key]: !(p?.[t.key] ?? t.defaultOn) }))}
-              />
-            </div>
-            <SettingPreviousValue
-              key={`${t.key}-${historyKey}`}
-              entityType="settings"
-              entityId="alert-prefs"
-              field={t.key}
-              format={(v) => (v ? "مفعّل" : "معطّل")}
-            />
-          </div>
-        ))}
-      </div>
-    </PanelCard>
-  );
-}
-
 export default function AdminSettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
         title="الإعدادات"
-        description="أربع مجموعات · حفظ لكل مجموعة · كل تغيير في السجل بقيمته السابقة"
+        description="ثلاث مجموعات · حفظ لكل مجموعة · كل تغيير في السجل بقيمته السابقة"
         badge={
           <span className="inline-flex items-center gap-1 rounded-full bg-lapis-50 px-2.5 py-0.5 text-xs font-bold text-lapis-800">
             <Percent className="h-3 w-3" />
@@ -558,7 +471,6 @@ export default function AdminSettingsPage() {
         <StoreGroup />
         <NetworkDefaultsGroup />
         <SecurityGroup />
-        <NotificationsGroup />
       </div>
     </div>
   );
