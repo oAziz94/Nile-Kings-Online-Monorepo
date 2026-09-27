@@ -259,3 +259,60 @@ test("10.34 — order.created, order.assigned, order.cancelled_by_partner and ti
   const adminUnreadOnly = (await adminUnreadOnlyRes.json()).data as { items: { id: string }[] };
   expect(adminUnreadOnly.items.some((it) => it.id === adminNotificationId)).toBe(false);
 });
+
+// Rework (verifier, pre-merge): `orderBy: { createdAt: "desc" }` alone gives no stable order
+// for two rows sharing the exact same `createdAt` (bulk-assign notifies several partners
+// inside one transaction, all with the same `createdAt`) — a plain cursor built on that
+// ordering can repeat or skip a tied row across two paginated calls. `route.ts` now orders by
+// `[{ createdAt: "desc" }, { id: "desc" }]`, a full order, so the cursor's position is
+// unambiguous regardless of ties.
+test("10.34 rework — cursor pagination is stable across identical createdAt values", async ({ request }) => {
+  const tieCreatedAt = new Date("2024-01-01T00:00:00.000Z");
+  const seededIds: string[] = [];
+  try {
+    for (let i = 0; i < 3; i++) {
+      const row = await prisma.notification.create({
+        data: {
+          userId: customerUserId,
+          kind: "ticket.created",
+          title: `تعارض ترتيب متطابق الوقت ${i} — ${uniqueSuffix}`,
+          href: "/profile/orders",
+          createdAt: tieCreatedAt,
+        },
+      });
+      seededIds.push(row.id);
+    }
+
+    // This customer has exactly these 3 notification rows (nothing else notifies a customer
+    // in this release) — so filter=all with no other filter is scoped to exactly this set.
+    await apiLogin(request, CUSTOMER_PHONE, PASSWORD);
+
+    const page1Res = await request.get("/api/notifications?filter=all&limit=2");
+    expect(page1Res.ok()).toBeTruthy();
+    const page1 = (await page1Res.json()).data as { items: { id: string }[]; nextCursor: string | null };
+    expect(page1.items).toHaveLength(2);
+    expect(page1.nextCursor).toBeTruthy();
+
+    const page2Res = await request.get(`/api/notifications?filter=all&limit=2&cursor=${page1.nextCursor}`);
+    expect(page2Res.ok()).toBeTruthy();
+    const page2 = (await page2Res.json()).data as { items: { id: string }[]; nextCursor: string | null };
+    expect(page2.items).toHaveLength(1);
+    expect(page2.nextCursor).toBeNull();
+
+    const page1Ids = page1.items.map((it) => it.id);
+    const page2Ids = page2.items.map((it) => it.id);
+
+    // Disjoint — no row repeated across the two pages.
+    expect(page1Ids.some((id) => page2Ids.includes(id))).toBe(false);
+    // Covers exactly the 3 seeded rows — none skipped, none duplicated, nothing extra.
+    expect(new Set([...page1Ids, ...page2Ids])).toEqual(new Set(seededIds));
+
+    // Repeating page 1 verbatim returns the identical set — the ordering is deterministic,
+    // not merely "happened to work once".
+    const page1AgainRes = await request.get("/api/notifications?filter=all&limit=2");
+    const page1Again = (await page1AgainRes.json()).data as { items: { id: string }[] };
+    expect(page1Again.items.map((it) => it.id)).toEqual(page1Ids);
+  } finally {
+    await deleteByIds(prisma.notification, seededIds);
+  }
+});

@@ -30,7 +30,13 @@ export async function GET(req: NextRequest) {
   const [rows, unreadCount] = await Promise.all([
     prisma.notification.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      // `id` as a tiebreaker (backlog 10.34 rework) — two rows for one user can share the exact
+      // same `createdAt` (bulk-assign notifies several partners inside one transaction), and
+      // `createdAt` alone gives Postgres no stable ordering for those ties, so the same row can
+      // be repeated or skipped across two paginated calls. Cursor pagination is only correct
+      // once `orderBy` is a full order — `cursor: { id }, skip: 1` below then unambiguously
+      // means "everything after this exact row in this exact order", tie or not.
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     }),
