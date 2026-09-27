@@ -36,6 +36,7 @@ import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/shared/skeleton";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { useEdgeScrollFade } from "@/hooks/use-edge-scroll-fade";
 
 export type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 
@@ -143,6 +144,10 @@ export function DataTable<TData extends Record<string, unknown>>({
     getSortedRowModel: getSortedRowModel(),
   });
 
+  // Backlog 10.33: same horizontal-scroller treatment as `components/ui/table.tsx` — see
+  // that file's comment for the measured root cause and the RTL `scrollLeft` handling.
+  const { ref: scrollRef, hasMoreEnd } = useEdgeScrollFade<HTMLDivElement>();
+
   if (loading) {
     return (
       <div className={cn("overflow-hidden rounded-xl border border-stone-200 bg-white", className)}>
@@ -167,71 +172,97 @@ export function DataTable<TData extends Record<string, unknown>>({
   }
 
   return (
-    <div className={cn("overflow-x-auto rounded-xl border border-stone-200 bg-white", className)}>
-      <table className="w-full border-collapse text-right">
-        <thead className="sticky top-0 z-10 bg-stone-100">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                const canSort = header.column.getCanSort();
-                const sortDir = header.column.getIsSorted();
-                return (
-                  <th
-                    key={header.id}
-                    className="px-4 py-3 text-xs font-extrabold text-ink-soft"
-                    aria-sort={
-                      sortDir === "asc" ? "ascending" : sortDir === "desc" ? "descending" : "none"
-                    }
-                  >
-                    {header.isPlaceholder ? null : canSort ? (
-                      <button
-                        type="button"
-                        onClick={header.column.getToggleSortingHandler()}
-                        className="flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-1"
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {sortDir === "asc" ? (
-                          <ArrowUp className="h-3 w-3" />
-                        ) : sortDir === "desc" ? (
-                          <ArrowDown className="h-3 w-3" />
-                        ) : (
-                          <ChevronsUpDown className="h-3 w-3 opacity-40" />
-                        )}
-                      </button>
-                    ) : (
-                      flexRender(header.column.columnDef.header, header.getContext())
-                    )}
-                  </th>
-                );
-              })}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => {
-            const extraProps = getRowProps?.(row.original as TData);
-            return (
-            <tr
-              key={row.id}
-              data-row-id={getRowId ? getRowId(row.original as TData) : undefined}
-              onClick={onRowClick ? () => onRowClick(row.original as TData) : undefined}
-              {...extraProps}
-              className={cn(
-                "border-t border-stone-200",
-                onRowClick && "cursor-pointer hover:bg-stone-50",
-                extraProps?.className
-              )}
-            >
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="px-4 py-3.5 text-sm text-ink">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className={cn("relative rounded-xl border border-stone-200 bg-white", className)}>
+      <div
+        ref={scrollRef}
+        className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+      >
+        <table
+          className={cn(
+            "w-full min-w-max border-collapse text-right",
+            // `bg-inherit` (not a hardcoded color) — the sticky cell must always match
+            // whatever its own `<tr>` is painted with (10.33 rework): the header row's own
+            // explicit `bg-stone-100` below, the body row's own explicit `bg-white`, and its
+            // opaque `hover:bg-stone-50` — so hovering a row never seams the sticky cell
+            // against the rest of it. Every row this selector targets must have an opaque
+            // (never `/alpha`) background for the inheritance to stay opaque while scrolled.
+            "[&_tr>*:first-child]:sticky [&_tr>*:first-child]:start-0 [&_tr>*:first-child]:z-[1] [&_tr>*:first-child]:bg-inherit"
+          )}
+        >
+          <thead className="sticky top-0 z-10 bg-stone-100">
+            {table.getHeaderGroups().map((headerGroup) => (
+              // `bg-stone-100` explicit on the `<tr>` itself (not just the `<thead>`) — the
+              // sticky-start first `<th>`'s `bg-inherit` needs its own row's computed
+              // background, not the ancestor `<thead>`'s.
+              <tr key={headerGroup.id} className="bg-stone-100">
+                {headerGroup.headers.map((header) => {
+                  const canSort = header.column.getCanSort();
+                  const sortDir = header.column.getIsSorted();
+                  return (
+                    <th
+                      key={header.id}
+                      className="px-4 py-3 text-xs font-extrabold text-ink-soft"
+                      aria-sort={
+                        sortDir === "asc" ? "ascending" : sortDir === "desc" ? "descending" : "none"
+                      }
+                    >
+                      {header.isPlaceholder ? null : canSort ? (
+                        <button
+                          type="button"
+                          onClick={header.column.getToggleSortingHandler()}
+                          className="flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-1"
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {sortDir === "asc" ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : sortDir === "desc" ? (
+                            <ArrowDown className="h-3 w-3" />
+                          ) : (
+                            <ChevronsUpDown className="h-3 w-3 opacity-40" />
+                          )}
+                        </button>
+                      ) : (
+                        flexRender(header.column.columnDef.header, header.getContext())
+                      )}
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row) => {
+              const extraProps = getRowProps?.(row.original as TData);
+              return (
+                <tr
+                  key={row.id}
+                  data-row-id={getRowId ? getRowId(row.original as TData) : undefined}
+                  onClick={onRowClick ? () => onRowClick(row.original as TData) : undefined}
+                  {...extraProps}
+                  className={cn(
+                    "border-t border-stone-200 bg-white",
+                    onRowClick && "cursor-pointer hover:bg-stone-50",
+                    extraProps?.className
+                  )}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-4 py-3.5 text-sm text-ink">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-y-0 end-0 w-8 rounded-e-xl bg-gradient-to-l from-white to-transparent transition-opacity rtl:bg-gradient-to-r",
+          hasMoreEnd ? "opacity-100" : "opacity-0"
+        )}
+      />
     </div>
   );
 }

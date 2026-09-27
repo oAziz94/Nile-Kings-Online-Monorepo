@@ -438,8 +438,8 @@ export default function PartnerOrderDetailPage() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start">
-        <div className="space-y-4">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start">
+        <div className="min-w-0 space-y-4">
           <OrderItemsTable
             items={order.items}
             money={{
@@ -504,7 +504,7 @@ export default function PartnerOrderDetailPage() {
           </PanelCard>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <OrderCustomerCard
             name={order.user?.name ?? null}
             phone={order.user?.phone ?? ""}
