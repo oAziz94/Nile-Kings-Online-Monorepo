@@ -48,6 +48,17 @@ type AuditRow = {
 };
 
 type PaymentAttemptRow = { orderId: string; status: string };
+type PartnerRow = { id: string; name: string };
+type UserRow = { id: string; role: string };
+type NotificationRow = {
+  userId: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  href: string;
+  entityType: string | null;
+  entityId: string | null;
+};
 
 type IncDec = { increment?: number; decrement?: number };
 type OrderUpdateData = {
@@ -69,6 +80,9 @@ class FakeDb {
   ledger: LedgerRow[] = [];
   audit: AuditRow[] = [];
   paymentAttempts: PaymentAttemptRow[] = [];
+  partners: PartnerRow[] = [];
+  users: UserRow[] = [];
+  notifications: NotificationRow[] = [];
   private seq = 0;
 
   seedOrder(order: Partial<OrderRow> & { id: string; assignedPartnerId: string }) {
@@ -159,6 +173,29 @@ class FakeDb {
     },
   };
 
+  partner = {
+    findUnique: async ({ where }: { where: { id: string } }) => {
+      return this.partners.find((p) => p.id === where.id) ?? null;
+    },
+  };
+
+  user = {
+    findMany: async ({ where }: { where: { role: string } }) => {
+      return this.users.filter((u) => u.role === where.role).map((u) => ({ id: u.id }));
+    },
+  };
+
+  notification = {
+    createMany: async ({ data }: { data: NotificationRow[] }) => {
+      this.notifications.push(...data);
+      return { count: data.length };
+    },
+  };
+
+  adminAuditLog = {
+    create: async ({ data }: { data: unknown }) => data,
+  };
+
   paymentAttempt = {
     updateMany: async ({
       where,
@@ -228,6 +265,9 @@ beforeEach(() => {
   fakeDb.ledger = [];
   fakeDb.audit = [];
   fakeDb.paymentAttempts = [];
+  fakeDb.partners = [];
+  fakeDb.users = [];
+  fakeDb.notifications = [];
 });
 
 describe("transitionPartnerOrderStatus — generic status change", () => {
@@ -396,6 +436,61 @@ describe("transitionPartnerOrderStatus — cancellation", () => {
     const order = await transitionPartnerOrderStatus({ partnerId: PARTNER, orderId: ORDER_1, nextStatus: "CANCELLED" });
     expect(order.status).toBe("CANCELLED");
     expect(fakeDb.audit).toHaveLength(0);
+  });
+});
+
+// Backlog 10.34 (c/f) — `order.cancelled_by_partner` fires exactly once, to every admin,
+// only when the actor cancelling is the partner (not an admin's own PATCH → CANCELLED).
+describe("transitionPartnerOrderStatus — order.cancelled_by_partner notification", () => {
+  it("notifies every admin, once, when a PARTNER actor cancels", async () => {
+    fakeDb.seedOrder({ id: ORDER_1, assignedPartnerId: PARTNER, status: "CREATED" });
+    fakeDb.partners = [{ id: PARTNER, name: "وكيل الاختبار" }];
+    fakeDb.users = [
+      { id: "admin_1", role: "ADMIN" },
+      { id: "admin_2", role: "ADMIN" },
+      { id: "customer_1", role: "CUSTOMER" },
+    ];
+
+    await transitionPartnerOrderStatus({
+      partnerId: PARTNER,
+      orderId: ORDER_1,
+      nextStatus: "CANCELLED",
+      actor: { userId: "partner_user_1", phone: "+201000000000", role: "PARTNER" },
+    });
+
+    expect(fakeDb.notifications).toHaveLength(2);
+    expect(fakeDb.notifications.map((n) => n.userId).sort()).toEqual(["admin_1", "admin_2"]);
+    for (const row of fakeDb.notifications) {
+      expect(row.kind).toBe("order.cancelled_by_partner");
+      expect(row.title).toContain("وكيل الاختبار");
+      expect(row.title).toContain(ORDER_1.slice(0, 8));
+      expect(row.href).toBe(`/admin/orders/${ORDER_1}`);
+    }
+  });
+
+  it("does not notify when the actor is ADMIN (an admin cancelling their own order is a different write point)", async () => {
+    fakeDb.seedOrder({ id: ORDER_1, assignedPartnerId: PARTNER, status: "CREATED" });
+    fakeDb.partners = [{ id: PARTNER, name: "وكيل الاختبار" }];
+    fakeDb.users = [{ id: "admin_1", role: "ADMIN" }];
+
+    await transitionPartnerOrderStatus({
+      partnerId: PARTNER,
+      orderId: ORDER_1,
+      nextStatus: "CANCELLED",
+      actor: { userId: "admin_user_1", phone: "+201000000001", role: "ADMIN" },
+    });
+
+    expect(fakeDb.notifications).toHaveLength(0);
+  });
+
+  it("does not notify when there is no actor at all (bulk-status caller with no actor passed)", async () => {
+    fakeDb.seedOrder({ id: ORDER_1, assignedPartnerId: PARTNER, status: "CREATED" });
+    fakeDb.partners = [{ id: PARTNER, name: "وكيل الاختبار" }];
+    fakeDb.users = [{ id: "admin_1", role: "ADMIN" }];
+
+    await transitionPartnerOrderStatus({ partnerId: PARTNER, orderId: ORDER_1, nextStatus: "CANCELLED" });
+
+    expect(fakeDb.notifications).toHaveLength(0);
   });
 });
 

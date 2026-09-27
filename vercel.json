@@ -8,6 +8,7 @@
     }
   },
   "crons": [
-    { "path": "/api/cron/stock-snapshot", "schedule": "5 22 * * *" }
+    { "path": "/api/cron/stock-snapshot", "schedule": "5 22 * * *" },
+    { "path": "/api/cron/notifications-prune", "schedule": "10 22 * * *" }
   ]
 }

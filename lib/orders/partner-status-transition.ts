@@ -34,6 +34,7 @@ import {
 } from "@/lib/inventory/partner-inventory";
 import { logOrderCancelled, logOrderConfirmed, logOrderStatusChange } from "@/lib/audit/order-audit";
 import { logAdminAction } from "@/lib/audit/admin-audit";
+import { notify } from "@/lib/notifications/notify";
 import type { SessionUser } from "@/lib/auth/session";
 
 export const ORDER_STATUSES = [
@@ -190,6 +191,18 @@ export async function transitionPartnerOrderStatus(params: {
             before: { status: existing.status },
             after: { status: "CANCELLED" },
             ip: null,
+          });
+        }
+        // Backlog 10.34 (c) — admins are notified only when the partner is the one cancelling
+        // (an admin's own PATCH → CANCELLED, elsewhere in the codebase, is not this write point).
+        if (actor?.role === "PARTNER") {
+          const partner = await tx.partner.findUnique({ where: { id: partnerId }, select: { name: true } });
+          await notify(tx, {
+            audience: "admins",
+            kind: "order.cancelled_by_partner",
+            title: `${partner?.name ?? "الشريك"} ألغى الطلب #${existing.id.slice(0, 8)}`,
+            href: `/admin/orders/${existing.id}`,
+            entity: { type: "order", id: existing.id },
           });
         }
         return tx.order.update({ where: { id: orderId }, data, include: orderInclude });
