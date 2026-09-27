@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/response";
 import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 import { ORDER_TICKET_SUBJECTS } from "@/lib/constants/order-ticket";
+import { notify } from "@/lib/notifications/notify";
 import type { OrderTicketSubject } from "@prisma/client";
 
 const BODY_MIN = 10;
@@ -108,6 +109,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           authorUserId: user.userId,
           body: rawBody,
         },
+      });
+      // Backlog 10.34 (c) — every new ticket notifies admins, once, on the ticket's creation.
+      await notify(tx, {
+        audience: "admins",
+        kind: "ticket.created",
+        title: `سؤال جديد على الطلب #${id.slice(0, 8)}`,
+        href: `/admin/order-tickets/${created.id}`,
+        entity: { type: "ticket", id: created.id },
       });
       return tx.orderTicket.findUniqueOrThrow({
         where: { id: created.id },

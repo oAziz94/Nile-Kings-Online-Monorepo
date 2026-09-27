@@ -15,6 +15,9 @@ import {
 import { logOrderCreated, logOrderConfirmed } from "@/lib/audit/order-audit";
 import { buildCheckoutSummary, buildCheckoutSummaryFromLines } from "./summary";
 import { PHASE1_SHIPPING_PROVIDER_DISPLAY } from "@/lib/services/shipping";
+import { notify } from "@/lib/notifications/notify";
+import { piastresToEgp } from "@/lib/catalog";
+import { formatNumberEn } from "@/lib/format-en-numbers";
 import type { CheckoutAddress } from "./types";
 import type { SummaryLineInput } from "./summary";
 
@@ -301,6 +304,19 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
         await logOrderCreated(tx, order.id);
         if (immediateConfirm) await logOrderConfirmed(tx, order.id);
+
+        // Backlog 10.34 (b/c) — admins are notified of every new order, including admin-created
+        // ones (the admin who created it is still an admin who should see it in their list; no
+        // actor-exclusion here, unlike a typical "don't notify yourself" rule).
+        await notify(tx, {
+          audience: "admins",
+          kind: "order.created",
+          title: `طلب جديد #${order.id.slice(0, 8)} · ${input.address.governorate} · ${formatNumberEn(
+            piastresToEgp(summary.finalTotal)
+          )} ج.م`,
+          href: `/admin/orders/${order.id}`,
+          entity: { type: "order", id: order.id },
+        });
 
         if (immediateConfirm) {
           await commitPartnerReservation(tx, selectedPartner.partnerId, stockLines, order.id, stockActorNotes);

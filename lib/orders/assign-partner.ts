@@ -21,6 +21,7 @@ import {
 } from "@/lib/inventory/partner-inventory";
 import { logOrderPartnerAssigned } from "@/lib/audit/order-audit";
 import { logAdminAction } from "@/lib/audit/admin-audit";
+import { notify } from "@/lib/notifications/notify";
 import type { StockLine } from "@/lib/services/stock";
 
 export class AssignPartnerError extends Error {
@@ -85,7 +86,7 @@ export async function assignOrderToPartner(
 
   const partner = await tx.partner.findUnique({
     where: { id: partnerId },
-    select: { id: true, governorate: true, isActive: true },
+    select: { id: true, governorate: true, isActive: true, userId: true },
   });
   if (!partner) throw new AssignPartnerError("الشريك غير موجود", 400);
 
@@ -156,6 +157,23 @@ export async function assignOrderToPartner(
   });
 
   await logOrderPartnerAssigned(tx, orderId, oldPartnerId, partnerId);
+
+  // Backlog 10.34 (c) — the newly-assigned partner's user, on assign and on reassign alike
+  // (this is the one write point in `docs/redesign/03-backlog.md`'s spec; it does not
+  // distinguish the two branches above).
+  if (partner.userId) {
+    const address = order.shippingAddress as { area?: string; city?: string } | null;
+    const area = address?.area || address?.city || partner.governorate;
+    const pieceCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
+    await notify(tx, {
+      audience: { userId: partner.userId },
+      kind: "order.assigned",
+      title: `طلب جديد #${orderId.slice(0, 8)} · ${area} · ${pieceCount} قطع`,
+      href: `/partner/orders/${orderId}`,
+      entity: { type: "order", id: orderId },
+    });
+  }
+
   await logAdminAction(tx, {
     actor,
     action: decision.kind === "reassign" ? "reassign" : "assign",

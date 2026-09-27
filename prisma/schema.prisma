@@ -62,6 +62,7 @@ model User {
   partner            Partner?
   orderTickets       OrderTicket[]
   uploadedMediaAssets MediaAsset[]
+  notifications      Notification[]
 
   @@index([phone])
   @@index([role])
@@ -1036,4 +1037,24 @@ model RoutedOrder {
   @@index([partnerId])
   @@index([status])
   @@index([createdAt])
+}
+
+// Notifications v1 (backlog 10.34) — one row per recipient, written once by lib/notifications/notify.ts
+// from the four write points (order created, order assigned, partner cancellation, ticket created).
+// Kinds are the string union NotificationKind in lib/notifications/kinds.ts.
+model Notification {
+  id         String    @id @default(cuid())
+  userId     String
+  kind       String
+  title      String
+  body       String?
+  href       String
+  entityType String?
+  entityId   String?
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
 }
