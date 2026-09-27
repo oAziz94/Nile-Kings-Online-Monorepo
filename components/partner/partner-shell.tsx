@@ -8,7 +8,7 @@ import {
   PARTNER_MOBILE_TABS,
   getPartnerNavForRole,
 } from "@/components/partner/partner-nav-config";
-import { PartnerAlertsBell } from "@/components/partner/partner-alerts-bell";
+import { NotificationsBell } from "@/components/dashboard/notifications-bell";
 import {
   DashboardShell,
   DashboardTopbarSlot,
@@ -55,10 +55,12 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
       menuButtonLabel="فتح قائمة لوحة الشريك"
       navId="partner-desktop-nav"
       chromeAttr="data-partner-chrome"
-      mobileTopbarEnd={<PartnerAlertsBell className="shrink-0 rounded-full border border-stone-200" />}
+      mobileTopbarEnd={
+        <NotificationsBell historyHref="/partner/notifications" className="shrink-0 rounded-full border border-stone-200" />
+      }
       topbarEnd={
         <>
-          <PartnerAlertsBell />
+          <NotificationsBell historyHref="/partner/notifications" />
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-ink">
             <Store className="h-[18px] w-[18px]" strokeWidth={2} />
           </span>

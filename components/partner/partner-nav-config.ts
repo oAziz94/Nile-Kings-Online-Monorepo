@@ -13,6 +13,7 @@
 import type { ComponentType, SVGProps } from "react";
 import {
   BarChart3,
+  Bell,
   Boxes,
   LayoutDashboard,
   Truck,
@@ -62,6 +63,13 @@ export const PARTNER_NAV_SECTIONS: readonly PartnerNavSection[] = [
     label: "التقارير",
     items: [
       { href: "/partner/reports/sales", label: "التقارير", icon: BarChart3, roles: ["AGENT", "DISTRIBUTOR"] },
+    ],
+  },
+  {
+    id: "notifications",
+    label: "الإشعارات",
+    items: [
+      { href: "/partner/notifications", label: "الإشعارات", icon: Bell, roles: ["AGENT", "DISTRIBUTOR"] },
     ],
   },
 ] as const;

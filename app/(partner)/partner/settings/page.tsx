@@ -4,13 +4,12 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertTriangle, Banknote, Bell, Boxes, MapPin, RefreshCw, Settings as SettingsIcon, Truck } from "lucide-react";
+import { AlertTriangle, Banknote, Boxes, MapPin, RefreshCw, Settings as SettingsIcon, Truck } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
 import { Skeleton } from "@/components/shared/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -26,8 +25,11 @@ import { cn } from "@/lib/utils";
 /**
  * `/partner/settings` (backlog 4.17, rebuilt to `Settings.dc.html` per backlog 5.1) —
  * sectioned page, one save button per section (react-hook-form + Zod per section):
- * working profile, stock thresholds, alerts, service areas, handover method, plus a
- * read-only "حسابك مع المصنع" block. `costRateBps` is never sent from here (rule 18).
+ * working profile, stock thresholds, service areas, handover method, plus a read-only
+ * "حسابك مع المصنع" block. `costRateBps` is never sent from here (rule 18). The alerts
+ * section (backlog 4.17) was removed by 10.35: notifications v1 replaced the bell's computed
+ * alert toggles with real per-event rows; `Partner.alertPrefs` and the settings API's field
+ * stay untouched in the schema for a later cleanup, only this page's UI for them is gone.
  */
 
 const WORKING_DAYS: { code: string; label: string }[] = [
@@ -44,13 +46,6 @@ const HANDOVER_OPTIONS: { value: HandoverMethod; label: string; description: str
   { value: "COURIER", label: "شركة شحن", description: "يُستلم من عندك ويُشحن" },
   { value: "PICKUP", label: "استلام من المحل", description: "العميل يأتي إليك" },
   { value: "OWN_DELIVERY", label: "توصيل خاص", description: "مندوبك يوصّل بنفسه" },
-];
-
-const ALERT_KINDS: { key: string; label: string }[] = [
-  { key: "new_order", label: "طلب جديد مُسند إليك" },
-  { key: "overdue", label: "طلب تجاوز مهلة التأكيد أو الشحن" },
-  { key: "low_stock", label: "صنف نزل تحت الحد" },
-  { key: "restock", label: "نشاط طلبات التوريد" },
 ];
 
 function ErrorBlock({ onRetry, isFetching }: { onRetry: () => void; isFetching?: boolean }) {
@@ -502,62 +497,6 @@ function InventoryReportSettingsSection() {
   );
 }
 
-function AlertsSection() {
-  const { toast } = useToast();
-  const { data, isLoading, isError, refetch, isFetching } = usePartnerSettings();
-  const update = useUpdatePartnerSettings();
-  const [prefs, setPrefs] = React.useState<Record<string, boolean>>({});
-  const [dirty, setDirty] = React.useState(false);
-
-  React.useEffect(() => {
-    if (data) {
-      setPrefs(Object.fromEntries(ALERT_KINDS.map((k) => [k.key, data.alertPrefs?.[k.key] ?? true])));
-      setDirty(false);
-    }
-  }, [data]);
-
-  const save = async () => {
-    try {
-      await update.mutateAsync({ alertPrefs: prefs });
-      toast({ title: "تم حفظ التنبيهات" });
-      setDirty(false);
-    } catch (error) {
-      toast({ title: "تعذر الحفظ", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
-    }
-  };
-
-  return (
-    <PanelCard layout="split" title="التنبيهات" description="ما يظهر في الجرس وفي «اليوم». كل التنبيهات داخل البوابة فقط." icon={<Bell className="h-4 w-4 text-ink-soft" />}>
-      {isLoading ? (
-        <Skeleton className="h-32 w-full rounded-2xl" />
-      ) : isError ? (
-        <ErrorBlock onRetry={() => refetch()} isFetching={isFetching} />
-      ) : (
-        <div className="space-y-3">
-          {ALERT_KINDS.map((k) => (
-            <div key={k.key} className="flex items-center justify-between gap-3 border-t border-stone-100 pt-3 first:border-t-0 first:pt-0">
-              <label htmlFor={`alert-${k.key}`} className="text-sm font-semibold text-ink">
-                {k.label}
-              </label>
-              <Switch
-                id={`alert-${k.key}`}
-                checked={prefs[k.key] ?? true}
-                onCheckedChange={(checked) => {
-                  setPrefs((prev) => ({ ...prev, [k.key]: checked }));
-                  setDirty(true);
-                }}
-              />
-            </div>
-          ))}
-          <Button type="button" size="sm" onClick={save} disabled={update.isPending || !dirty}>
-            {update.isPending ? "جاري الحفظ…" : "حفظ"}
-          </Button>
-        </div>
-      )}
-    </PanelCard>
-  );
-}
-
 function AccountWithFactorySection() {
   const { data, isLoading, isError, refetch, isFetching } = usePartnerSettings();
   return (
@@ -763,7 +702,6 @@ export default function PartnerSettingsPage() {
         <WorkingProfileSection />
         <ThresholdsSection />
         <InventoryReportSettingsSection />
-        <AlertsSection />
         <AccountWithFactorySection />
         <ServiceAreasSection />
         <HandoverSection />

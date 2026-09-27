@@ -15,6 +15,7 @@
  */
 import {
   BarChart3,
+  Bell,
   Folder,
   Handshake,
   History,
@@ -70,6 +71,7 @@ export const ADMIN_NAV_SECTIONS: readonly ShellNavSection[] = [
     items: [
       { href: "/admin/reports/sales", label: "التقارير", icon: BarChart3 },
       { href: "/admin/audit", label: "السجل", icon: History },
+      { href: "/admin/notifications", label: "الإشعارات", icon: Bell },
       { href: "/admin/settings", label: "الإعدادات", icon: Settings },
     ],
   },
