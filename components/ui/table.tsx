@@ -1,18 +1,52 @@
+"use client";
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useEdgeScrollFade } from "@/hooks/use-edge-scroll-fade";
 
+/**
+ * Backlog 10.33: on phones this wrapper is the horizontal scroller for every dashboard
+ * table built from these primitives (partner/admin only — never used on the storefront).
+ * Root cause measured at 390 wide: the `<table>` had no `min-w`, so its columns squeezed to
+ * fit `w-full` instead of the wrapper ever needing to scroll — `overflow-auto` alone was a
+ * no-op. `min-w-max` keeps every column at its natural (content) width; the wrapper scrolls
+ * with touch tuned (`overscroll-behavior-x: contain` stops the swipe from bubbling into the
+ * page's own scroll), and an inline-end edge fade (via `useEdgeScrollFade`) shows only while
+ * more columns are hidden. The first column of every row is sticky with its own opaque
+ * `bg-white` (dashboard tables all sit on a white card) so it stays opaque over the columns
+ * passing underneath while swiping.
+ */
 const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
-    <table
-      ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
-      {...props}
-    />
-  </div>
-));
+>(({ className, ...props }, ref) => {
+  const { ref: scrollRef, hasMoreEnd } = useEdgeScrollFade<HTMLDivElement>();
+  return (
+    <div className="relative w-full">
+      <div
+        ref={scrollRef}
+        className="w-full overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+      >
+        <table
+          ref={ref}
+          className={cn(
+            "w-full min-w-max caption-bottom text-sm",
+            "[&_tr>*:first-child]:sticky [&_tr>*:first-child]:start-0 [&_tr>*:first-child]:z-[1] [&_tr>*:first-child]:bg-white",
+            className
+          )}
+          {...props}
+        />
+      </div>
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-y-0 end-0 w-8 bg-gradient-to-l from-white to-transparent transition-opacity rtl:bg-gradient-to-r",
+          hasMoreEnd ? "opacity-100" : "opacity-0"
+        )}
+      />
+    </div>
+  );
+});
 Table.displayName = "Table";
 
 const TableHeader = React.forwardRef<

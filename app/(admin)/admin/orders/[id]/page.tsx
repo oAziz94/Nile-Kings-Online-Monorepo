@@ -763,8 +763,8 @@ export default function AdminOrderDetailPage() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start">
-        <div className="space-y-4">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start">
+        <div className="min-w-0 space-y-4">
           <OrderItemsTable
             items={order.items}
             getSize={adminGetSize}
@@ -905,7 +905,7 @@ export default function AdminOrderDetailPage() {
           </PanelCard>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <PanelCard title="الشريك المنفّذ" icon={<Truck className="h-5 w-5 text-lapis-800" />}>
             {order.assignedPartner ? (
               <div className="space-y-3 text-sm">
