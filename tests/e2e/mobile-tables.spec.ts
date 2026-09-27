@@ -202,6 +202,60 @@ async function assertTableSwipesAndPageDoesNotOverflow(page: Page) {
   expect(pageOverflow, "document.documentElement must not overflow horizontally").toBe(true);
 }
 
+/**
+ * 10.33 rework (coordinator follow-up): the sticky first cell used to carry its own
+ * hardcoded `bg-white`, seaming visibly against the row's `hover:bg-muted/50`/`hover:bg-stone-50`
+ * tint. Both `components/ui/table.tsx` and `components/ui/data-table.tsx` now give the
+ * sticky cell `bg-inherit` and put the real (opaque) background on the `<tr>` itself, so
+ * hovering the row repaints the sticky cell identically. A "normal" `<td>`/`<th>` never sets
+ * its own `background-color` (it always shows the row's paint through — that's exactly why
+ * the sticky cell needed the fix; a normal cell's own computed `background-color` is
+ * `rgba(0, 0, 0, 0)` regardless of the row's state), so the meaningful comparison is between
+ * the sticky cell's computed color and the *row*'s — confirms they're identical at rest and
+ * on hover, and that hover actually changes the color (i.e. the hover class took effect).
+ */
+async function assertStickyCellInheritsRowHover(page: Page) {
+  const table = page.locator("table").first();
+  await expect(table).toBeVisible({ timeout: 20_000 });
+  const firstRow = table.locator("tbody tr").first();
+
+  // Read the row's and the sticky cell's `background-color` in one synchronous evaluation
+  // (not two round-trips) — both classes carry `transition-colors`, so two sequential reads
+  // could otherwise catch two different animation frames and report a false mismatch.
+  const readBoth = () =>
+    firstRow.evaluate((row) => {
+      const cell = row.firstElementChild as HTMLElement;
+      return {
+        row: getComputedStyle(row).backgroundColor,
+        cell: getComputedStyle(cell).backgroundColor,
+      };
+    });
+
+  const rest = await readBoth();
+  expect(rest.cell, "sticky cell must match its row's background-color at rest").toBe(rest.row);
+  const restCellColor = rest.cell;
+
+  await firstRow.hover();
+  // Let the `transition-colors` (Tailwind default 150ms) finish before reading it back.
+  await page.waitForTimeout(300);
+
+  const hover = await readBoth();
+  const hoverRowColor = hover.row;
+  const hoverCellColor = hover.cell;
+  expect(hoverCellColor, "sticky cell must match its row's background-color on hover").toBe(hoverRowColor);
+  // Some tables (e.g. `/partner/stock`, whose rows aren't clickable — no `onRowClick`) never
+  // get a `hover:` class at all, so rest and hover are legitimately identical there; only
+  // assert the tint actually changed where the row *is* clickable (has a hover class to begin
+  // with) — the seam check above is the one that matters everywhere.
+  const isClickableRow = await firstRow.evaluate((el) => getComputedStyle(el).cursor === "pointer");
+  if (isClickableRow) {
+    expect(hoverCellColor, "hover must actually change the color from rest on a clickable row").not.toBe(restCellColor);
+  }
+  console.log(
+    `[10.33] hover colours — rest: ${restCellColor} (row ${rest.row}), hover: ${hoverCellColor} (row ${hoverRowColor}), clickable: ${isClickableRow}`
+  );
+}
+
 test("partner order detail: items table swipes, page does not overflow, first column sticky (Pixel 5, 390×844)", async ({ browser }) => {
   const context = await browser.newContext({ ...devices["Pixel 5"] });
   const page = await context.newPage();
@@ -216,6 +270,18 @@ test("partner order detail: items table swipes, page does not overflow, first co
   await expect(page.getByText(`القطع (3)`)).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(200);
   await page.screenshot({ path: "test-results/10.33/partner-order-detail-390x844-before.png", fullPage: false });
+
+  // Mid-scroll: the sticky first column (image) must stay fully opaque over the columns
+  // passing underneath it, not just at rest or fully scrolled (coordinator follow-up).
+  const midScrollWrapper = page.locator("table").first().locator("xpath=..");
+  await midScrollWrapper.evaluate((el) => {
+    el.scrollLeft = -(el.scrollWidth - el.clientWidth) / 2;
+  });
+  await page.waitForTimeout(100);
+  await page.screenshot({ path: "test-results/10.33/partner-order-detail-390x844-mid-scroll.png", fullPage: false });
+  await midScrollWrapper.evaluate((el) => {
+    el.scrollLeft = 0;
+  });
 
   await assertTableSwipesAndPageDoesNotOverflow(page);
 
@@ -280,6 +346,7 @@ test("desktop (1514×681) is unchanged: partner detail, admin detail, partner st
   await page.waitForTimeout(200);
   let overflow = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1);
   expect(overflow).toBe(true);
+  await assertStickyCellInheritsRowHover(page);
   await page.screenshot({ path: "test-results/10.33/partner-order-detail-1514x681.png", fullPage: true });
 
   await page.goto("/partner/stock");
@@ -287,6 +354,7 @@ test("desktop (1514×681) is unchanged: partner detail, admin detail, partner st
   await page.waitForTimeout(200);
   overflow = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1);
   expect(overflow).toBe(true);
+  await assertStickyCellInheritsRowHover(page);
   await page.screenshot({ path: "test-results/10.33/partner-stock-1514x681.png", fullPage: true });
 
   // Switching from the agent to the admin session: clear the agent's cookies first — reusing
@@ -300,5 +368,6 @@ test("desktop (1514×681) is unchanged: partner detail, admin detail, partner st
   await page.waitForTimeout(200);
   overflow = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1);
   expect(overflow).toBe(true);
+  await assertStickyCellInheritsRowHover(page);
   await page.screenshot({ path: "test-results/10.33/admin-order-detail-1514x681.png", fullPage: true });
 });

@@ -12,9 +12,18 @@ import { useEdgeScrollFade } from "@/hooks/use-edge-scroll-fade";
  * no-op. `min-w-max` keeps every column at its natural (content) width; the wrapper scrolls
  * with touch tuned (`overscroll-behavior-x: contain` stops the swipe from bubbling into the
  * page's own scroll), and an inline-end edge fade (via `useEdgeScrollFade`) shows only while
- * more columns are hidden. The first column of every row is sticky with its own opaque
- * `bg-white` (dashboard tables all sit on a white card) so it stays opaque over the columns
- * passing underneath while swiping.
+ * more columns are hidden. The first column of every row is sticky with `bg-inherit` — not
+ * its own hardcoded color — so it always matches whatever the row itself is painted with
+ * (base `bg-white` on `TableRow`, `hover:bg-stone-50` on hover, `data-[state=selected]:bg-muted`
+ * when selected, or a caller's own row-tint override) and stays opaque over the columns
+ * passing underneath while swiping. This depends on `TableRow`'s background always being an
+ * opaque color (never a `/alpha` one) — a translucent row background would compute to the
+ * same translucent value on the sticky cell via `inherit`, which is fine when the row isn't
+ * scrolled, but would let scrolled-past columns show through the sticky cell's tint. Backlog
+ * 10.33 rework: hover used to be `hover:bg-muted/50` (translucent) with the sticky cell's own
+ * separate opaque `bg-white`, which matched at rest but visibly seamed on hover (row tinted,
+ * sticky cell didn't) — fixed by making the row's own background carry the real state and
+ * having the sticky cell mirror it exactly, instead of asserting its own competing color.
  */
 const Table = React.forwardRef<
   HTMLTableElement,
@@ -31,7 +40,7 @@ const Table = React.forwardRef<
           ref={ref}
           className={cn(
             "w-full min-w-max caption-bottom text-sm",
-            "[&_tr>*:first-child]:sticky [&_tr>*:first-child]:start-0 [&_tr>*:first-child]:z-[1] [&_tr>*:first-child]:bg-white",
+            "[&_tr>*:first-child]:sticky [&_tr>*:first-child]:start-0 [&_tr>*:first-child]:z-[1] [&_tr>*:first-child]:bg-inherit",
             className
           )}
           {...props}
@@ -91,7 +100,13 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b border-border transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      // `bg-white` is an explicit, opaque base (not the previous transparent default) —
+      // the sticky first-column cell (10.33) inherits this via `bg-inherit`, so it must
+      // always be a real, opaque color for that inheritance to look right and stay opaque
+      // over scrolled content. Hover is `bg-stone-50` (opaque), not the old `bg-muted/50`
+      // (translucent) — a translucent hover tint would have inherited into the sticky cell
+      // as the same translucent value, which is fine at rest but wrong while mid-scroll.
+      "border-b border-border bg-white transition-colors hover:bg-stone-50 data-[state=selected]:bg-muted",
       className
     )}
     {...props}

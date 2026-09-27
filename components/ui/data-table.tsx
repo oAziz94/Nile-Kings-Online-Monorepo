@@ -180,16 +180,21 @@ export function DataTable<TData extends Record<string, unknown>>({
         <table
           className={cn(
             "w-full min-w-max border-collapse text-right",
-            "[&_tr>*:first-child]:sticky [&_tr>*:first-child]:start-0 [&_tr>*:first-child]:z-[1]",
-            // Own opaque background per section — the thead's own `bg-stone-100` and the
-            // tbody rows' white card — so the sticky cell doesn't show passing columns
-            // through it, and the header's sticky-top × sticky-start corner stays opaque too.
-            "[&_thead_tr>*:first-child]:bg-stone-100 [&_tbody_tr>*:first-child]:bg-white"
+            // `bg-inherit` (not a hardcoded color) — the sticky cell must always match
+            // whatever its own `<tr>` is painted with (10.33 rework): the header row's own
+            // explicit `bg-stone-100` below, the body row's own explicit `bg-white`, and its
+            // opaque `hover:bg-stone-50` — so hovering a row never seams the sticky cell
+            // against the rest of it. Every row this selector targets must have an opaque
+            // (never `/alpha`) background for the inheritance to stay opaque while scrolled.
+            "[&_tr>*:first-child]:sticky [&_tr>*:first-child]:start-0 [&_tr>*:first-child]:z-[1] [&_tr>*:first-child]:bg-inherit"
           )}
         >
           <thead className="sticky top-0 z-10 bg-stone-100">
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
+              // `bg-stone-100` explicit on the `<tr>` itself (not just the `<thead>`) — the
+              // sticky-start first `<th>`'s `bg-inherit` needs its own row's computed
+              // background, not the ancestor `<thead>`'s.
+              <tr key={headerGroup.id} className="bg-stone-100">
                 {headerGroup.headers.map((header) => {
                   const canSort = header.column.getCanSort();
                   const sortDir = header.column.getIsSorted();
@@ -235,7 +240,7 @@ export function DataTable<TData extends Record<string, unknown>>({
                   onClick={onRowClick ? () => onRowClick(row.original as TData) : undefined}
                   {...extraProps}
                   className={cn(
-                    "border-t border-stone-200",
+                    "border-t border-stone-200 bg-white",
                     onRowClick && "cursor-pointer hover:bg-stone-50",
                     extraProps?.className
                   )}
