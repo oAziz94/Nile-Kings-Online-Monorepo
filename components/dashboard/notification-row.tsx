@@ -41,7 +41,8 @@ export function NotificationRow({
       href={notification.href}
       onClick={() => onClick?.(notification)}
       className={cn(
-        "flex items-start gap-3 rounded-lg px-3 py-2.5 text-right transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500",
+        // 12px vertical padding (py-3), per the design-system row spec.
+        "flex items-start gap-3 rounded-lg px-3 py-3 text-right transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500",
         unread && "bg-lapis-50/50"
       )}
     >
@@ -54,7 +55,13 @@ export function NotificationRow({
         <Icon className="h-4 w-4" strokeWidth={2} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className={cn("block text-sm", unread ? "font-extrabold text-ink" : "font-semibold text-ink")}>
+        {/* Title clamped to two lines so a long one never pushes the row's height open. */}
+        <span
+          className={cn(
+            "line-clamp-2 block text-sm",
+            unread ? "font-extrabold text-ink" : "font-semibold text-ink"
+          )}
+        >
           {notification.title}
         </span>
         {notification.body && (

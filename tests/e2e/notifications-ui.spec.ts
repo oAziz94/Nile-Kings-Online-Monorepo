@@ -277,6 +277,30 @@ test("screenshots: popover and history page, both surfaces, both viewports", asy
     // is empty by now, which is a true but uninteresting screenshot; "الكل" still has rows.
     await page.getByRole("tab", { name: "الكل" }).click();
     await expect(page.getByText(`طلب جديد #TESTORD${uniqueSuffix}0`)).toBeVisible();
+
+    // Verifier fix (10.35 rework) — prove the popover is opaque and correctly sized at this
+    // viewport, not just eyeball the screenshot.
+    const popover = page.getByTestId("notifications-popover");
+    const bg = await popover.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(bg).toBe("rgb(255, 255, 255)");
+    const box = await popover.boundingBox();
+    console.log(`[10.35] popover at ${vp.width}×${vp.height}: background=${bg} width=${box?.width}`);
+    if (vp.width < 640) {
+      // w-[calc(100vw-24px)] — never wider than the viewport minus a 12px gutter each side.
+      expect(box!.width).toBeLessThanOrEqual(vp.width - 24 + 1);
+      expect(box!.width).toBeGreaterThan(vp.width - 24 - 5);
+    } else {
+      expect(box!.width).toBeCloseTo(400, 0);
+    }
+
+    // Radix fades the content in (`data-[state=open]:animate-in fade-in-0`) — the computed
+    // `background-color` above is already the final opaque value regardless, but a screenshot
+    // taken mid-fade still renders the page behind it blended through the partial opacity.
+    // Wait for the animation to finish before capturing.
+    await expect
+      .poll(async () => popover.evaluate((el) => getComputedStyle(el).opacity))
+      .toBe("1");
+
     await page.screenshot({ path: path.join(dir, `admin-bell-popover-${vp.name}.png`) });
     await page.keyboard.press("Escape");
 
@@ -293,6 +317,10 @@ test("screenshots: popover and history page, both surfaces, both viewports", asy
     await page.waitForLoadState("networkidle");
     await bellButton(page).click();
     await expect(page.getByText(`طلب جديد #TESTPART${uniqueSuffix}1`)).toBeVisible();
+    const partnerPopover = page.getByTestId("notifications-popover");
+    await expect
+      .poll(async () => partnerPopover.evaluate((el) => getComputedStyle(el).opacity))
+      .toBe("1");
     await page.screenshot({ path: path.join(dir, `partner-bell-popover-${vp.name}.png`) });
     await page.keyboard.press("Escape");
 

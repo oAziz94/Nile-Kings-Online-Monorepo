@@ -107,7 +107,19 @@ export function NotificationsBell({ historyHref, className }: { historyHref: str
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[360px] p-0" dir="rtl">
+      <PopoverContent
+        align="end"
+        collisionPadding={12}
+        data-testid="notifications-popover"
+        className={cn(
+          // Phone: never wider than the viewport minus a 12px gutter each side; sm+ (≥640px):
+          // a fixed 400px. Opaque white + border + shadow-soft on this element itself (the one
+          // Radix positions), not a nested wrapper — verifier fix (10.35 rework): the dashboard
+          // cards behind it were showing through at 390 wide before this.
+          "w-[calc(100vw-24px)] rounded-xl border border-stone-200 bg-white p-0 shadow-soft sm:w-[400px]"
+        )}
+        dir="rtl"
+      >
         <Tabs value={tab} onValueChange={(v) => setTab(v as "unread" | "all")}>
           <div className="flex items-center justify-between border-b border-stone-200 px-3 pt-3">
             <TabsList>
@@ -116,7 +128,9 @@ export function NotificationsBell({ historyHref, className }: { historyHref: str
             </TabsList>
           </div>
 
-          <TabsContent value="unread" className="m-0 max-h-[360px] overflow-y-auto p-2">
+          {/* List area scrolls on its own; the tabs header above and the mark-all/history
+              footer below stay put outside this region (verifier fix, 10.35 rework). */}
+          <TabsContent value="unread" className="m-0 max-h-[min(60vh,480px)] overflow-y-auto p-2">
             <NotificationsBody
               isLoading={unreadQuery.isLoading}
               isError={unreadQuery.isError}
@@ -125,7 +139,7 @@ export function NotificationsBell({ historyHref, className }: { historyHref: str
               emptyLabel="لا توجد إشعارات غير مقروءة"
             />
           </TabsContent>
-          <TabsContent value="all" className="m-0 max-h-[360px] overflow-y-auto p-2">
+          <TabsContent value="all" className="m-0 max-h-[min(60vh,480px)] overflow-y-auto p-2">
             <NotificationsBody
               isLoading={allQuery.isLoading}
               isError={allQuery.isError}
