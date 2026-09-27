@@ -1,3 +1,7 @@
+## 2026-09-27 — 10.33: dashboard tables swipe sideways on phones (owner: partners could not see order details)
+
+**Rule for every dashboard table:** the shared `Table`/`DataTable` wrapper is the horizontal scroller; the `<table>` keeps its natural width (`min-w-max`), never `w-full` alone (that squeezes columns and silently kills scrolling); first column sticky at inline-start with `bg-inherit` and the row carrying an opaque background (hover colours must be opaque, not `/50` alpha, or the sticky cell seams); an inline-end fade while more is hidden; `html { overflow-x: clip }` from 4.15 stays. Owner chose swipe over cards or hidden columns. Order lists keep their existing phone cards.
+
 ## 2026-09-21 — 10.32: GA4 events had never left the browser
 
 **Owner:** GA4 counts active users and events but no key events. **Finding:** `trackEvent` pushed plain arrays onto `window.dataLayer`; gtag.js drains only `arguments` objects, so every custom event since 6.7 (view_item, add_to_cart, begin_checkout, purchase, page_view, select_governorate) was dropped — the counts the owner saw were Google's automatic events. Proven on the live site (array push → nothing; `gtag()` → `/g/collect`). **Decision:** `trackEvent` pushes a real `arguments` object through an inner `function`; the queue-before-load design stays. **Rule:** any analytics helper that bypasses `gtag()` must be proven with a real collect request, not by inspecting `dataLayer` — the 6.7 verification checked order, not delivery.
