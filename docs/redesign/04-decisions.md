@@ -1,3 +1,22 @@
+## 2026-09-29 — Production migrations: legacy stock columns dropped, Notification table created
+
+Owner created a fresh Neon backup branch (`ep-cold-king-agwdflk7`, first mistakenly placed in `.env.deploy` — the PM's host assertion caught it before any command ran) and then put the production string in. PM stripped `-pooler`, asserted `ep-hidden-butterfly-agp3sg0e`, took counts, ran `prisma migrate deploy` (applied `20260914120000_drop_variant_legacy_stock` and `20260927150000_notifications`), took counts again, deleted `.env.deploy`.
+
+| | before | after |
+|---|---|---|
+| Users | 2299 | 2299 |
+| Orders | 1307 | 1307 |
+| OrderItems | 5053 | 5053 |
+| Products | 327 | 327 |
+| Variants | 3297 | 3297 |
+| PartnerInventory | 2077 | 2077 |
+| InventoryLedger | 12940 | 12940 |
+| Order subtotal sum (piastres) | 87,246,000 | 87,246,000 |
+| Variant.stockAvailable/stockReserved | present | dropped |
+| Notification table | absent | present |
+
+Then the owner pushed v2.4.27 (`redesign` → `main`). Next: reset the `redesign` test branch from production (also clears the 10.36 drift if the partial index comes across as-is); cutover backup branches can be deleted after ~2026-10-20.
+
 ## 2026-09-27 — Notifications v1 (10.34/10.35): stored rows, four events, in-app only
 
 **Owner:** "very very simple today, but I don't need it very very complicated." Decisions after the ChatGPT debate and the PM's questions: core four events (admin: order created, partner cancelled, customer question; partner: order assigned), in-app only (WhatsApp deferred), popover + history page, admin bell becomes notifications only (queue counts stay on اليوم), partner computed alerts (low stock, restock, overdue) leave the bell. **Architecture:** one `Notification` row per recipient written by `notify(tx, …)` inside the emitting transaction; no queue, no outbox, no priorities, no digests. **Rules:** (1) `notify()` is DB-only and stays in the transaction; anything with external I/O (WhatsApp, push) runs after commit as a separate delivery row. (2) Every list with a cursor orders by a unique tiebreak. (3) Kinds live in `lib/notifications/kinds.ts` with their Arabic label and icon; adding an event = one kind + one `notify()` call at the write point.
