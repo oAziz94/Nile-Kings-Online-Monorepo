@@ -50,12 +50,16 @@ export function useNotificationsUnreadCount() {
 
 /** The popover's latest rows (limit 15, no pagination) or the history page's cursor-paginated
  * list. `cursor` undefined/omitted for the first page. */
-export function useNotificationsList(filter: "unread" | "all", limit = 15) {
+export function useNotificationsList(filter: "unread" | "all", limit = 15, enabled = true) {
   return useQuery({
     queryKey: ["notifications", "list", filter, limit],
     queryFn: () =>
       fetchJson<NotificationsListResponse>(`/api/notifications?filter=${filter}&limit=${limit}`),
-    staleTime: 15_000,
+    // Backlog 10.39 — a list shown on demand (the bell popover) must be fresh every time it is
+    // shown; the bell passes `enabled = open` and invalidates on open, so cached data is only
+    // a placeholder while the refetch is in flight.
+    staleTime: 0,
+    enabled,
   });
 }
 

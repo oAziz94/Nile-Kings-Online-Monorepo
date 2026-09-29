@@ -131,6 +131,40 @@ test.afterAll(async () => {
   await prisma.$disconnect();
 });
 
+test("10.39 — reopening the bell shows a row created after the first open, without a reload", async ({ page }) => {
+  await loginAsAdmin(page);
+  const bell = bellButton(page);
+
+  // First open: caches the list.
+  await bell.click();
+  await expect(page.getByText(`طلب جديد #TESTORD${uniqueSuffix}0`)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("tab", { name: "الكل" })).toBeHidden();
+
+  // A new notification lands while the popover is closed (the live glitch: badge polls, list didn't).
+  const lateTitle = `طلب جديد #TESTLATE${uniqueSuffix} · الجيزة · 300 ج.م`;
+  await prisma.notification.create({
+    data: {
+      userId: adminUserId,
+      kind: "order.created",
+      title: lateTitle,
+      body: null,
+      href: `/admin/orders/notif-late-${uniqueSuffix}`,
+      entityType: "order",
+      entityId: `notif-late-${uniqueSuffix}`,
+      createdAt: new Date(),
+    },
+  });
+
+  // Reopen without reloading: the list must be fetched fresh and include the new row.
+  await bell.click();
+  await expect(page.getByText(lateTitle)).toBeVisible({ timeout: 10_000 });
+  await page.keyboard.press("Escape");
+
+  // Remove it again so the seeded counts the following tests assert on are unchanged.
+  await prisma.notification.deleteMany({ where: safeWhere({ userId: adminUserId, entityId: `notif-late-${uniqueSuffix}` }) });
+});
+
 test("admin bell: badge matches unread count, popover lists seeded rows", async ({ page }) => {
   await loginAsAdmin(page);
 

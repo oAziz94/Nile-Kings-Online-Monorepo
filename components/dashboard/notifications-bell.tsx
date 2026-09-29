@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Bell } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/shared/skeleton";
@@ -67,9 +68,20 @@ export function NotificationsBell({ historyHref, className }: { historyHref: str
   const { data: countData } = useNotificationsUnreadCount();
   const unreadCount = countData?.unreadCount ?? 0;
 
-  const unreadQuery = useNotificationsList("unread", 15);
-  const allQuery = useNotificationsList("all", 15);
+  // Backlog 10.39 — both lists are only fetched while the popover is open, and every open
+  // refetches (`refetchOnMount: "always"` + the queries mounting fresh via `enabled`), so the
+  // list is never a stale cache from a previous open. The badge count keeps its own 30 s poll.
+  const unreadQuery = useNotificationsList("unread", 15, open);
+  const allQuery = useNotificationsList("all", 15, open);
   const markRead = useMarkNotificationsRead();
+  const queryClient = useQueryClient();
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (next) {
+      queryClient.invalidateQueries({ queryKey: ["notifications", "list"] });
+    }
+  };
 
   const handleRowClick = (notification: NotificationRowData) => {
     if (notification.readAt === null) {
@@ -86,7 +98,7 @@ export function NotificationsBell({ historyHref, className }: { historyHref: str
     unreadCount > 99 ? "99+" : String(unreadCount);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
           type="button"
