@@ -21,7 +21,7 @@ import {
 } from "@/lib/inventory/partner-inventory";
 import { logOrderPartnerAssigned } from "@/lib/audit/order-audit";
 import { logAdminAction } from "@/lib/audit/admin-audit";
-import { notify } from "@/lib/notifications/notify";
+import { notifyOrderAssigned } from "@/lib/notifications/events";
 import type { StockLine } from "@/lib/services/stock";
 
 export class AssignPartnerError extends Error {
@@ -158,19 +158,20 @@ export async function assignOrderToPartner(
 
   await logOrderPartnerAssigned(tx, orderId, oldPartnerId, partnerId);
 
-  // Backlog 10.34 (c) — the newly-assigned partner's user, on assign and on reassign alike
-  // (this is the one write point in `docs/redesign/03-backlog.md`'s spec; it does not
-  // distinguish the two branches above).
-  if (partner.userId) {
+  // Backlog 10.34 (c) / 10.38 — the newly-assigned partner's user, on assign and on reassign
+  // alike (this is the one write point in `docs/redesign/03-backlog.md`'s spec; it does not
+  // distinguish the two branches above). Shared with the two other assignment paths through
+  // `notifyOrderAssigned`.
+  {
     const address = order.shippingAddress as { area?: string; city?: string } | null;
     const area = address?.area || address?.city || partner.governorate;
     const pieceCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
-    await notify(tx, {
-      audience: { userId: partner.userId },
-      kind: "order.assigned",
-      title: `طلب جديد #${orderId.slice(0, 8)} · ${area} · ${pieceCount} قطع`,
-      href: `/partner/orders/${orderId}`,
-      entity: { type: "order", id: orderId },
+    await notifyOrderAssigned(tx, {
+      orderId,
+      partnerId,
+      shortId: orderId.slice(0, 8),
+      area,
+      itemCount: pieceCount,
     });
   }
 

@@ -6,6 +6,7 @@ import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { seedPartnerPair, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
 import { deleteByIds, safeWhere } from "./db-cleanup";
+import { ROUTING_TEST_GOVERNORATE } from "./test-env";
 
 /**
  * Backlog 10.34 — notifications data + events. Seeds an admin, a partner pair (`seedPartnerPair`)
@@ -14,12 +15,21 @@ import { deleteByIds, safeWhere } from "./db-cleanup";
  * asserts the four write points each fired exactly once to the right recipient(s) via
  * `GET /api/notifications`, that `POST /api/notifications/read` flips `unreadCount`, and that a
  * partner cannot mark an admin's row read. Serial mode, one shared fixture set.
+ *
+ * Backlog 10.38 — also asserts the storefront checkout auto-assign case. Every real governorate's
+ * `ReroutingRule` is off-limits (`04-decisions.md` / `03-backlog.md` 9.5a's standing rule) except
+ * `ROUTING_TEST_GOVERNORATE` (`test-env.ts`'s reserved routing test governorate, normally ruleless),
+ * so this test creates its own rule there through the real admin API (`revalidateReroutingRules()`
+ * busts `getCachedPartnerIdForGovernorate`'s cache) with one fixture partner, ships the order to
+ * that governorate, and deletes the rule in `afterAll` — restoring the "no rule" state, same
+ * convention as `admin-v2-routing.spec.ts`'s own use of this governorate. القاهرة (used only for
+ * the fixture pair's own `Partner.governorate` field, not any `ReroutingRule`) is never touched.
  */
 test.describe.configure({ mode: "serial" });
 test.setTimeout(90_000);
 
 const prisma = new PrismaClient();
-const GOVERNORATE = "القاهرة";
+const GOVERNORATE = ROUTING_TEST_GOVERNORATE;
 const uniqueSuffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
 function scryptAsync(password: string, salt: string): Promise<Buffer> {
@@ -50,9 +60,18 @@ let pair: PartnerFixturePair;
 let categoryId: string;
 let productId: string;
 let variantId: string;
-let cairoPartnerId: string; // whichever real partner القاهرة's ReroutingRule already routes to
 let orderId: string;
 let ticketId: string;
+
+// Backlog 10.38 — a dedicated fixture partner+user is the sole partner of a brand-new
+// `ReroutingRule` this test creates for `ROUTING_TEST_GOVERNORATE` (below), so the storefront
+// checkout auto-assigns to it deterministically; the admin's reassignment in step 2 moves the
+// order to `pair.agent` instead, so this partner is never touched again after checkout and its
+// notification count is a clean "did checkout notify exactly once" signal.
+let autoAssignUserId: string;
+let autoAssignPartnerId: string;
+let autoAssignRuleId: string;
+let autoAssignRuleLinkId: string;
 
 /** Logs in via the real API (not the UI form) and returns a request context carrying the
  * session cookie — every subsequent call from that context is authenticated as this user. */
@@ -91,34 +110,39 @@ test.beforeAll(async () => {
   });
   variantId = variant.id;
 
-  // Real checkout routes through القاهرة's existing ReroutingRule (seeded once per governorate,
-  // per test-env.ts's doc comment) — not the fixture pair. Stock that real partner directly so
-  // the storefront checkout call actually succeeds, and clean it up by variantId afterward
-  // (this variant is freshly created, so that filter can never touch anyone else's stock).
-  const rule = await prisma.reroutingRule.findFirst({
-    where: { governorate: GOVERNORATE, isActive: true },
-    include: {
-      partners: {
-        where: { isActive: true, partner: { isActive: true } },
-        orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
-        select: { partnerId: true },
-      },
-    },
-  });
-  const resolvedPartnerId = rule?.partners[0]?.partnerId;
-  if (!resolvedPartnerId) {
-    throw new Error(`No active ReroutingRule/partner found for ${GOVERNORATE} — cannot seed a real checkout.`);
-  }
-  cairoPartnerId = resolvedPartnerId;
-
-  await prisma.partnerInventory.create({
-    data: { partnerId: cairoPartnerId, variantId, stockAvailable: 50, stockReserved: 0 },
-  });
-
   // The admin later reassigns the order to the fixture agent partner (step 2 below) — it needs
-  // its own stock of this same variant for that reassignment to commit cleanly.
+  // its own stock of this same variant for that reassignment to commit cleanly. `pair.agent`'s
+  // own `governorate` field is القاهرة (seedPartnerPair's default) — that's just a label on the
+  // Partner row, not a ReroutingRule, so it's never at odds with the "never touch القاهرة's
+  // rule" restriction.
   await prisma.partnerInventory.create({
     data: { partnerId: pair.agent.partnerId, variantId, stockAvailable: 50, stockReserved: 0 },
+  });
+
+  // Backlog 10.38 — the auto-assign fixture partner+user. Defensive: ROUTING_TEST_GOVERNORATE
+  // should have no rule going in (test-env.ts's own doc, and admin-v2-routing.spec.ts's own
+  // defensive check) — clear out anything a previously-crashed run left behind before this
+  // test creates its own rule on it in the test body (step 0, through the real admin API).
+  await prisma.reroutingRule.deleteMany({ where: { governorate: ROUTING_TEST_GOVERNORATE } });
+
+  const autoAssignPhone = `+2010${TIMESTAMP_TAIL}2`;
+  const autoAssignUser = await prisma.user.create({
+    data: { phone: autoAssignPhone, role: "CUSTOMER", passwordHash },
+  });
+  autoAssignUserId = autoAssignUser.id;
+  const autoAssignPartner = await prisma.partner.create({
+    data: {
+      userId: autoAssignUserId,
+      partnerType: "AGENT",
+      name: `شريك التوجيه التلقائي ${uniqueSuffix}`,
+      governorate: ROUTING_TEST_GOVERNORATE,
+      phone: autoAssignPhone,
+      isActive: true,
+    },
+  });
+  autoAssignPartnerId = autoAssignPartner.id;
+  await prisma.partnerInventory.create({
+    data: { partnerId: autoAssignPartnerId, variantId, stockAvailable: 50, stockReserved: 0 },
   });
 });
 
@@ -136,13 +160,36 @@ test.afterAll(async () => {
   await deleteByIds(prisma.product, [productId]);
   await deleteByIds(prisma.category, [categoryId]);
   await cleanupPartnerPair(prisma, pair);
-  await deleteByIds(prisma.user, [adminUserId, customerUserId]);
+  // The 10.38 auto-assign fixture — the rule-link row, then the rule itself (restoring
+  // ROUTING_TEST_GOVERNORATE to "no rule" for the next run, same convention
+  // admin-v2-routing.spec.ts's own afterAll follows), then the partner and its user.
+  await deleteByIds(prisma.reroutingRulePartner, [autoAssignRuleLinkId]);
+  await deleteByIds(prisma.reroutingRule, [autoAssignRuleId]);
+  await deleteByIds(prisma.partner, [autoAssignPartnerId]);
+  await deleteByIds(prisma.user, [adminUserId, customerUserId, autoAssignUserId]);
   await prisma.$disconnect();
 });
 
 test("10.34 — order.created, order.assigned, order.cancelled_by_partner and ticket.created each fire exactly once, to the right recipients", async ({
   request,
 }) => {
+  // 0. Backlog 10.38 — create this test's own `ReroutingRule` on `ROUTING_TEST_GOVERNORATE`
+  // (never القاهرة or any other real governorate) with the auto-assign fixture partner as its
+  // only partner, through the real admin API so its `revalidateReroutingRules()` busts
+  // `getCachedPartnerIdForGovernorate`'s cache before checkout runs. Deleted in `afterAll`.
+  await apiLogin(request, ADMIN_PHONE, PASSWORD);
+  const createRuleRes = await request.post("/api/admin/rerouting-rules", {
+    data: { governorate: ROUTING_TEST_GOVERNORATE, isActive: true },
+  });
+  expect(createRuleRes.ok()).toBeTruthy();
+  autoAssignRuleId = (await createRuleRes.json()).data.id as string;
+
+  const addPartnerRes = await request.post(`/api/admin/rerouting-rules/${autoAssignRuleId}/partners`, {
+    data: { partnerId: autoAssignPartnerId },
+  });
+  expect(addPartnerRes.ok()).toBeTruthy();
+  autoAssignRuleLinkId = (await addPartnerRes.json()).data.id as string;
+
   // 1. Customer places a real order through the storefront checkout API.
   await apiLogin(request, CUSTOMER_PHONE, PASSWORD);
   const govRes = await request.post("/api/storefront/governorate", { data: { governorate: GOVERNORATE } });
@@ -155,8 +202,8 @@ test("10.34 — order.created, order.assigned, order.cancelled_by_partner and ti
     data: {
       address: {
         governorate: GOVERNORATE,
-        city: "مدينة نصر",
-        area: "الحي السابع",
+        city: "الخارجة",
+        area: "الحي الأول",
         street: `شارع الاختبار ${uniqueSuffix}`,
         phone: "01000000000",
       },
@@ -168,12 +215,33 @@ test("10.34 — order.created, order.assigned, order.cancelled_by_partner and ti
   orderId = placed.orderId;
   expect(orderId).toBeTruthy();
 
+  // 1b. Backlog 10.38 — the storefront checkout call above auto-assigned the order to
+  // `autoAssignPartnerId` at creation (`place-order.ts`'s `selectedPartner`, resolved through
+  // the priority-0 rule link seeded in `beforeAll`); that partner's user must already have
+  // exactly one `order.assigned` row for this order, before any admin action (the route also
+  // runs `assignOrderToGovernorate` right after `placeOrder`, which for an order that already
+  // has an `assignedPartnerId` must only record a `RoutedOrder` and must not notify again).
+  const order = await prisma.order.findUnique({ where: { id: orderId }, select: { assignedPartnerId: true } });
+  expect(order?.assignedPartnerId).toBe(autoAssignPartnerId);
+  const autoAssignNotifiedAfterCheckout = await prisma.notification.findMany({
+    where: { userId: autoAssignUserId, kind: "order.assigned", entityId: orderId },
+  });
+  expect(autoAssignNotifiedAfterCheckout).toHaveLength(1);
+
   // 2. Admin assigns the order to the fixture agent partner (order.assigned).
   await apiLogin(request, ADMIN_PHONE, PASSWORD);
   const assignRes = await request.post(`/api/admin/orders/${orderId}/assign`, {
     data: { partnerId: pair.agent.partnerId },
   });
   expect(assignRes.ok()).toBeTruthy();
+
+  // 2b. Reassigning to the fixture agent partner must not add a second `order.assigned` row
+  // for the previously-assigned auto-assign partner (checked above) — the reassign path only
+  // notifies the newly-assigned partner.
+  const autoAssignNotifiedAfterReassign = await prisma.notification.findMany({
+    where: { userId: autoAssignUserId, kind: "order.assigned", entityId: orderId },
+  });
+  expect(autoAssignNotifiedAfterReassign).toHaveLength(1);
 
   // 3. The agent partner cancels (order.cancelled_by_partner).
   await apiLogin(request, pair.agent.phone, pair.password);
