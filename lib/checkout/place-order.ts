@@ -16,6 +16,7 @@ import { logOrderCreated, logOrderConfirmed } from "@/lib/audit/order-audit";
 import { buildCheckoutSummary, buildCheckoutSummaryFromLines } from "./summary";
 import { PHASE1_SHIPPING_PROVIDER_DISPLAY } from "@/lib/services/shipping";
 import { notify } from "@/lib/notifications/notify";
+import { notifyOrderAssigned } from "@/lib/notifications/events";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatNumberEn } from "@/lib/format-en-numbers";
 import type { CheckoutAddress } from "./types";
@@ -317,6 +318,23 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
           href: `/admin/orders/${order.id}`,
           entity: { type: "order", id: order.id },
         });
+
+        // Backlog 10.38 — checkout picks and locks in a fulfilling partner right here
+        // (`selectedPartner`, above); that partner must be notified now, not left for
+        // `assignOrderToGovernorate` (called after this transaction commits), which only
+        // records a `RoutedOrder` for an order that already has an `assignedPartnerId` and
+        // must not notify again.
+        {
+          const pieceCount = orderLines.reduce((sum, line) => sum + line.quantity, 0);
+          const area = input.address.area || input.address.city || selectedPartner.originGovernorate;
+          await notifyOrderAssigned(tx, {
+            orderId: order.id,
+            partnerId: selectedPartner.partnerId,
+            shortId: order.id.slice(0, 8),
+            area,
+            itemCount: pieceCount,
+          });
+        }
 
         if (immediateConfirm) {
           await commitPartnerReservation(tx, selectedPartner.partnerId, stockLines, order.id, stockActorNotes);

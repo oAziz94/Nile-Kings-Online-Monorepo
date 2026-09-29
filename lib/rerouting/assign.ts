@@ -4,6 +4,7 @@
  */
 
 import { prisma } from "@/lib/db";
+import { notifyOrderAssigned } from "@/lib/notifications/events";
 
 export type AssignResult =
   | { assigned: true; routedOrderId: string; partnerId: string }
@@ -19,6 +20,7 @@ export async function assignOrderToGovernorate(orderId: string): Promise<AssignR
     where: { id: orderId },
     include: {
       assignedPartner: { select: { id: true } },
+      items: { select: { quantity: true } },
     },
   });
 
@@ -26,8 +28,10 @@ export async function assignOrderToGovernorate(orderId: string): Promise<AssignR
     throw new Error(`Order not found: ${orderId}`);
   }
 
-  const addr = order.shippingAddress as { governorate?: string } | null;
+  const addr = order.shippingAddress as { governorate?: string; city?: string; area?: string } | null;
   const governorate = (addr?.governorate ?? "").toString().trim();
+  const area = addr?.area || addr?.city || governorate;
+  const itemCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
 
   // Authoritative: place-order already picked and locked in a fulfilling partner (the one
   // whose stock the customer saw while browsing/cart). Route to that partner directly instead
@@ -119,6 +123,19 @@ export async function assignOrderToGovernorate(orderId: string): Promise<AssignR
       where: { id: rule.id },
       data: { lastAssignedPartnerId: selectedPartnerId },
     });
+
+    // Backlog 10.38 — this branch is the one place that assigns a partner to an order that
+    // had none (place-order already notified its own `assignedPartnerId`, above); notify only
+    // when this call actually created the `RoutedOrder` (the `existing` early return above
+    // skips this — that order was already assigned and already notified).
+    await notifyOrderAssigned(tx, {
+      orderId,
+      partnerId: selectedPartnerId,
+      shortId: orderId.slice(0, 8),
+      area,
+      itemCount,
+    });
+
     return { routedOrderId: routed.id, partnerId: selectedPartnerId };
   });
 
