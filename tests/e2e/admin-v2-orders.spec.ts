@@ -418,10 +418,21 @@ test("an unassigned order's items can be edited and it can be cancelled with no 
 
 test("cancel with reason releases the reservation and stores the reason", async ({ page }) => {
   await loginAsAdmin(page);
+
+  // Sentry JAVASCRIPT-NEXTJS-2 (backlog 10.41): the order page re-hydrates from every PATCH
+  // response, so each one must carry the timeline array like GET does. Plain-update path first.
+  const notes = await page.request.patch(`/api/admin/orders/${unassignedOrderId}`, {
+    data: { adminNotes: "ملاحظة اختبار 10.41" },
+  });
+  expect(notes.ok()).toBeTruthy();
+  expect(Array.isArray((await notes.json()).data.auditLog)).toBe(true);
+
   const res = await page.request.patch(`/api/admin/orders/${unassignedOrderId}`, {
     data: { status: "CANCELLED", cancellationReason: "العميل غيّر رأيه" },
   });
   expect(res.ok()).toBeTruthy();
+  // Cancel path.
+  expect(Array.isArray((await res.json()).data.auditLog)).toBe(true);
 
   const order = await prisma.order.findUniqueOrThrow({ where: { id: unassignedOrderId } });
   expect(order.status).toBe("CANCELLED");

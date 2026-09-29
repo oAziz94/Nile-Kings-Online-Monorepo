@@ -68,9 +68,9 @@ export function NotificationsBell({ historyHref, className }: { historyHref: str
   const { data: countData } = useNotificationsUnreadCount();
   const unreadCount = countData?.unreadCount ?? 0;
 
-  // Backlog 10.39 — both lists are only fetched while the popover is open, and every open
-  // refetches (`refetchOnMount: "always"` + the queries mounting fresh via `enabled`), so the
-  // list is never a stale cache from a previous open. The badge count keeps its own 30 s poll.
+  // Backlog 10.39/10.40 — both lists are only fetched while the popover is open, and every
+  // open invalidates everything under ["notifications"] (lists and the badge count), so what
+  // the bell shows is never a cache from before the click. All queries are live (see hook).
   const unreadQuery = useNotificationsList("unread", 15, open);
   const allQuery = useNotificationsList("all", 15, open);
   const markRead = useMarkNotificationsRead();
@@ -79,7 +79,7 @@ export function NotificationsBell({ historyHref, className }: { historyHref: str
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
     if (next) {
-      queryClient.invalidateQueries({ queryKey: ["notifications", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     }
   };
 

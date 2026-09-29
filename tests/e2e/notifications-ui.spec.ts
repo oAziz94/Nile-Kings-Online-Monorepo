@@ -165,6 +165,72 @@ test("10.39 — reopening the bell shows a row created after the first open, wit
   await prisma.notification.deleteMany({ where: safeWhere({ userId: adminUserId, entityId: `notif-late-${uniqueSuffix}` }) });
 });
 
+// Backlog 10.40 — the owner still had to reload after 10.39: the badge only polled (paused while
+// the tab was hidden, no refetch on return), opening the bell refreshed the list but not the
+// badge, and the history page fetched once. Each test below expects the update within 5 s,
+// well under the 20 s poll, so it can only pass through the focus / open refetch paths.
+async function insertLateRow(tag: string) {
+  const entityId = `notif-live-${tag}-${uniqueSuffix}`;
+  const title = `طلب جديد #TESTLIVE${tag}${uniqueSuffix} · الجيزة · 300 ج.م`;
+  await prisma.notification.create({
+    data: { userId: adminUserId, kind: "order.created", title, body: null, href: `/admin/orders/${entityId}`, entityType: "order", entityId },
+  });
+  return { entityId, title };
+}
+async function removeLateRow(entityId: string) {
+  await prisma.notification.deleteMany({ where: safeWhere({ userId: adminUserId, entityId }) });
+}
+async function simulateTabReturn(page: Page) {
+  await page.evaluate(() => {
+    document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+    window.dispatchEvent(new Event("focus"));
+  });
+}
+
+test("10.40 — returning to the tab refreshes the badge without a reload", async ({ page }) => {
+  await loginAsAdmin(page);
+  const bell = bellButton(page);
+  await expect(bell).toHaveAttribute("aria-label", `الإشعارات (${ADMIN_UNREAD_COUNT} غير مقروء)`);
+
+  const late = await insertLateRow("focus");
+  try {
+    await simulateTabReturn(page);
+    await expect(bell).toHaveAttribute("aria-label", `الإشعارات (${ADMIN_UNREAD_COUNT + 1} غير مقروء)`, { timeout: 5_000 });
+  } finally {
+    await removeLateRow(late.entityId);
+  }
+});
+
+test("10.40 — opening the bell refreshes the badge and shows the new row", async ({ page }) => {
+  await loginAsAdmin(page);
+  const bell = bellButton(page);
+  await expect(bell).toHaveAttribute("aria-label", `الإشعارات (${ADMIN_UNREAD_COUNT} غير مقروء)`);
+
+  const late = await insertLateRow("open");
+  try {
+    await bell.click();
+    await expect(page.getByText(late.title)).toBeVisible({ timeout: 5_000 });
+    await expect(bell).toHaveAttribute("aria-label", `الإشعارات (${ADMIN_UNREAD_COUNT + 1} غير مقروء)`, { timeout: 5_000 });
+    await page.keyboard.press("Escape");
+  } finally {
+    await removeLateRow(late.entityId);
+  }
+});
+
+test("10.40 — the history page shows a new row without a reload", async ({ page }) => {
+  await loginAsAdmin(page);
+  await page.goto("/admin/notifications");
+  await expect(page.getByText(`طلب جديد #TESTORD${uniqueSuffix}0`)).toBeVisible();
+
+  const late = await insertLateRow("history");
+  try {
+    await simulateTabReturn(page);
+    await expect(page.getByText(late.title)).toBeVisible({ timeout: 5_000 });
+  } finally {
+    await removeLateRow(late.entityId);
+  }
+});
+
 test("admin bell: badge matches unread count, popover lists seeded rows", async ({ page }) => {
   await loginAsAdmin(page);
 

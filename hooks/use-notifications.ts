@@ -5,7 +5,7 @@
  * `GET /api/notifications/unread-count` and `POST /api/notifications/read`. Shared by both
  * dashboards (the routes are session-scoped, see `app/api/notifications/route.ts`).
  */
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NotificationKind } from "@/lib/notifications/kinds";
 
 export type NotificationRow = {
@@ -37,29 +37,53 @@ async function fetchJson<T>(url: string): Promise<T> {
   return json.data;
 }
 
-/** The bell's 30s poll — hits the lightweight count-only endpoint. `refetchIntervalInBackground`
- * defaults to `false`, so this pauses while the tab is hidden (backlog 10.35's "while the tab is
- * visible"). */
+/**
+ * Backlog 10.40 — every notifications query is "live": never considered fresh, polled every
+ * 20 s while the tab is visible, and refetched the moment the tab regains focus. The app-wide
+ * QueryClient turns `refetchOnWindowFocus` off, which is why the badge stayed stale when the
+ * owner came back to a background tab (polling pauses while hidden and only resumed on the
+ * next tick, up to 30 s later).
+ */
+const LIVE_QUERY = {
+  staleTime: 0,
+  refetchInterval: 20_000,
+  refetchIntervalInBackground: false,
+  refetchOnWindowFocus: true,
+} as const;
+
+/** The bell badge — the lightweight count-only endpoint. */
 export function useNotificationsUnreadCount() {
   return useQuery({
     queryKey: ["notifications", "unread-count"],
     queryFn: () => fetchJson<{ unreadCount: number }>("/api/notifications/unread-count"),
-    refetchInterval: 30_000,
+    ...LIVE_QUERY,
   });
 }
 
-/** The popover's latest rows (limit 15, no pagination) or the history page's cursor-paginated
- * list. `cursor` undefined/omitted for the first page. */
+/** The popover's latest rows (limit 15, no pagination). The bell passes `enabled = open`
+ * (backlog 10.39), so the list only exists while the popover is open, and invalidates on open,
+ * so it is fetched fresh every time. */
 export function useNotificationsList(filter: "unread" | "all", limit = 15, enabled = true) {
   return useQuery({
     queryKey: ["notifications", "list", filter, limit],
     queryFn: () =>
       fetchJson<NotificationsListResponse>(`/api/notifications?filter=${filter}&limit=${limit}`),
-    // Backlog 10.39 — a list shown on demand (the bell popover) must be fresh every time it is
-    // shown; the bell passes `enabled = open` and invalidates on open, so cached data is only
-    // a placeholder while the refetch is in flight.
-    staleTime: 0,
+    ...LIVE_QUERY,
     enabled,
+  });
+}
+
+/** Backlog 10.40 — the الإشعارات history page: cursor pages, live like the bell. */
+export function useNotificationsHistory(filter: "unread" | "all", limit = 20) {
+  return useInfiniteQuery({
+    queryKey: ["notifications", "history", filter, limit],
+    queryFn: ({ pageParam }) =>
+      fetchJson<NotificationsListResponse>(
+        `/api/notifications?filter=${filter}&limit=${limit}${pageParam ? `&cursor=${pageParam}` : ""}`
+      ),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor,
+    ...LIVE_QUERY,
   });
 }
 

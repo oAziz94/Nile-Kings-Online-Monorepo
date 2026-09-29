@@ -5,71 +5,53 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { NotificationRow } from "@/components/dashboard/notification-row";
-import { useMarkNotificationsRead, type NotificationRow as NotificationRowData } from "@/hooks/use-notifications";
-
-type ApiEnvelope<T> = { data?: T; error?: { message?: string } };
-type ListResponse = { items: NotificationRowData[]; unreadCount: number; nextCursor: string | null };
+import {
+  useMarkNotificationsRead,
+  useNotificationsHistory,
+  type NotificationRow as NotificationRowData,
+} from "@/hooks/use-notifications";
 
 /**
  * `/admin/notifications` and `/partner/notifications` (backlog 10.35) — same row component as
- * the bell popover, filter unread/all, cursor pagination ("عرض المزيد"), empty state. Plain
- * fetch + local state (not react-query), matching `/admin/audit`'s history-list pattern; the
- * bell is the one place that needs react-query's polling/cache-sharing.
+ * the bell popover, filter unread/all, cursor pagination ("عرض المزيد"), empty state.
+ * Backlog 10.40: moved from a one-off fetch onto the live react-query hook, so a notification
+ * that arrives while this page is open appears without a reload (20 s poll + refetch on tab
+ * focus), and read state stays in sync with the bell through the shared ["notifications"] key.
  */
 export function NotificationsHistory() {
   const [filter, setFilter] = React.useState<"unread" | "all">("all");
-  const [rows, setRows] = React.useState<NotificationRowData[]>([]);
-  const [nextCursor, setNextCursor] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [loadingMore, setLoadingMore] = React.useState(false);
+  const history = useNotificationsHistory(filter);
   const markRead = useMarkNotificationsRead();
 
-  const load = React.useCallback((f: "unread" | "all") => {
-    setLoading(true);
-    fetch(`/api/notifications?filter=${f}&limit=20`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((json: ApiEnvelope<ListResponse>) => {
-        if (json?.data) {
-          setRows(json.data.items);
-          setNextCursor(json.data.nextCursor);
+  const rows = React.useMemo(() => {
+    const seen = new Set<string>();
+    const out: NotificationRowData[] = [];
+    for (const page of history.data?.pages ?? []) {
+      for (const item of page.items) {
+        if (!seen.has(item.id)) {
+          seen.add(item.id);
+          out.push(item);
         }
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  React.useEffect(() => {
-    load(filter);
-  }, [filter, load]);
-
-  const loadMore = async () => {
-    if (!nextCursor) return;
-    setLoadingMore(true);
-    try {
-      const res = await fetch(`/api/notifications?filter=${filter}&limit=20&cursor=${nextCursor}`, {
-        credentials: "include",
-      });
-      const json = (await res.json()) as ApiEnvelope<ListResponse>;
-      if (json?.data) {
-        setRows((prev) => [...prev, ...json.data!.items]);
-        setNextCursor(json.data.nextCursor);
       }
-    } finally {
-      setLoadingMore(false);
     }
+    return out;
+  }, [history.data]);
+  const loading = history.isLoading;
+  const loadingMore = history.isFetchingNextPage;
+  const nextCursor = history.hasNextPage;
+
+  const loadMore = () => {
+    if (history.hasNextPage && !history.isFetchingNextPage) void history.fetchNextPage();
   };
 
   const handleRowClick = (notification: NotificationRowData) => {
     if (notification.readAt === null) {
       markRead.mutate({ ids: [notification.id] });
-      setRows((prev) =>
-        prev.map((r) => (r.id === notification.id ? { ...r, readAt: new Date().toISOString() } : r))
-      );
     }
   };
 
   const handleMarkAll = async () => {
     await markRead.mutateAsync({ all: true });
-    load(filter);
   };
 
   return (

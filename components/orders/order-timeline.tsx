@@ -56,7 +56,9 @@ export type OrderTimelineProps = {
 
 export function OrderTimeline({ auditLog, adminAuditLog, sla, awaitingConfirmLabel }: OrderTimelineProps) {
   const rows: TimelineRow[] = [
-    ...auditLog.map((entry) => ({ id: entry.id, text: describeOrderAuditEntry(entry), createdAt: entry.createdAt })),
+    // `?? []` — defence in depth for Sentry JAVASCRIPT-NEXTJS-2: a missing log must render an
+    // empty timeline, never crash the whole order page.
+    ...(auditLog ?? []).map((entry) => ({ id: entry.id, text: describeOrderAuditEntry(entry), createdAt: entry.createdAt })),
     ...(adminAuditLog ?? []).map((entry) => ({
       id: entry.id,
       text: `${entry.actorName} — ${entry.sentence}`,

@@ -502,7 +502,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       { maxWait: 15_000, timeout: 60_000 }
     );
     await auditOrderWrite("cancel", order);
-    return apiSuccess(mapOrderDetailApiRow(order));
+    return apiSuccess(await withOrderTimeline(mapOrderDetailApiRow(order)));
   }
 
   if (itemEditChangesStock) {
@@ -537,7 +537,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
         { maxWait: 15_000, timeout: 60_000 }
       );
       await auditOrderWrite("items_edit", order);
-      return apiSuccess(mapOrderDetailApiRow(order));
+      return apiSuccess(await withOrderTimeline(mapOrderDetailApiRow(order)));
     } catch (e) {
       if (e instanceof InsufficientPartnerStockError) {
         return apiBadRequest("كمية غير متوفرة في المخزون لتعديل الطلب بهذه الأصناف");
@@ -563,7 +563,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
         { maxWait: 15_000, timeout: 60_000 }
       );
       await auditOrderWrite("status_change", order);
-      return apiSuccess(mapOrderDetailApiRow(order));
+      return apiSuccess(await withOrderTimeline(mapOrderDetailApiRow(order)));
     } catch (e) {
       if (e instanceof InsufficientPartnerStockError) {
         return apiBadRequest("كمية غير متوفرة في المخزون لتأكيد الطلب");
@@ -581,5 +581,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     include: orderDetailInclude,
   });
   await auditOrderWrite(nextStatus ? "status_change" : body.adminNotes !== undefined ? "notes" : "update", order);
-  return apiSuccess(mapOrderDetailApiRow(order));
+  // Sentry JAVASCRIPT-NEXTJS-2 (backlog 10.41): every PATCH response carries the timeline like
+  // GET does — the page re-hydrates from this response and OrderTimeline crashed without it.
+  return apiSuccess(await withOrderTimeline(mapOrderDetailApiRow(order)));
 }
