@@ -90,3 +90,34 @@ Confirmed: genuinely negligible usage, free tier, effectively zero risk of hitti
 ## What this means for the "open to swapping providers" decision
 
 **Correction to the earlier draft of this doc**: real numbers show Vercel is not a "check later" item — it's already the dominant cost (~$40/period vs. Neon's ~$6.59 and Cloudinary/Upstash's ~$0), and two already-approved Phase 6 items (dropping Vercel Analytics; the server-components/redundant-fetch audit) map directly onto its two biggest line items. No provider swap looks warranted right now — the right move is executing the Phase 6 items already on the list and re-measuring, since a meaningful chunk of today's ~$40/period looks self-inflicted (redundant fetches, a redundant analytics package) rather than a real traffic ceiling. Re-run this baseline after Phase 6 lands to see the actual delta before considering any swap.
+
+## 6.6 re-measure — 2026-10-01 (cycle Sep 3 – Oct 3, Vercel; last 30 days, Cloudinary)
+
+**Caveat first:** this cycle is not a clean before/after. The owner ran a very successful ad campaign in the first week of September (Vercel daily spend $4–16 on Sep 4–11); the old site became very slow under that load (functions in iad1, DB in Frankfurt — see 04-decisions 2026-09-29) and traffic fell away; the v2 cutover followed on Sep 20. So the totals below mix "campaign on the old site" with "lower traffic on the new site", and the only clean comparison is the **daily run-rate since Sep 12: ≈ $0.30–0.50/day** (≈ $12/month, inside the $20 Pro credit). The real test of v2's cost per visitor is the next campaign, now on fra1.
+
+| Line item | Baseline (Sep 9 read) | Sep 3 – Oct 3 | Note |
+|---|---|---|---|
+| CDN Requests | — (not billed then) | 18.75M / 10M incl. → $22.44 | campaign week; billed only above 10M |
+| Fluid Active CPU | 131 h → $16.81 | 159 h → $20.57 | almost all in the campaign week |
+| Fluid Provisioned Memory | 505 GB-h → $5.36 | 658 GB-h → $7.00 | |
+| Function Invocations | 8.26M → $4.96 | 9.6M → $5.76 | |
+| Fast Origin Transfer | 21 GB → $1.39 | 29 GB → $1.86 | |
+| Image Optimization Transformation | 3.91K → $0.23 | 6.01K → $0.35 | ≈ $0.06 per 1K — cheap |
+| Image Opt. Cache Writes / Reads | 31.6K / 277K → $0.24 | 53K / 454K → $0.39 | |
+| Web Analytics Events | 356.89K → $10.71 | not in the table (package removed in Phase 6) | saving confirmed |
+| Fast Data Transfer | 236 GB / 1 TB | 270 GB / 1 TB | $0 |
+| **Total** | ≈ $40 | $20 credit + **$51.01** on-demand | |
+
+**Cloudinary (free plan, 25 credits/month):**
+
+| | Baseline | Last 30 days |
+|---|---|---|
+| Bandwidth | 5.92 GB | **35.16 GB** |
+| Transformations | 21 | **10,556** |
+| Image impressions | ~2K/day | **20–30K/day from Sep 19** |
+| Storage | 0.46 GB | 1.36 GB |
+| Credits | 6.4 / 25 | **≈ 47 / 25** — "outgrown the Free plan" banner |
+
+**Finding:** the Cloudinary jump is at the cutover, not at the campaign. Backlog 6.4 pointed `next/image` at Cloudinary directly (`cloudinaryLoader`: `f_auto,q_auto,c_limit,w_<n>`), expecting to cut both Vercel image cost and Cloudinary bandwidth. The first held; the second was wrong: Vercel's optimizer fetched each photo from Cloudinary once per size and served it from its own cache, so Cloudinary only ever paid for origin fetches. Now every impression is Cloudinary bandwidth. Vercel's image lines at this traffic cost ≈ $0.75/month; Cloudinary's next plan is $89/month, and a free account at ~2× its limit risks delivery being throttled. **Decision:** revert to Vercel-cached delivery with Cloudinary as origin, but cap the origin (`c_limit,w_1600,q_auto`) so each fetch is small, and set `images.minimumCacheTTL` to 31 days — backlog 10.42.
+
+**Provider-swap question:** still no. Vercel is ≈ $20 flat at current traffic; the campaign week cost ≈ $50 on top, which is the cost of success and would be partly offset next time by fra1 (fewer long-running functions). Neon ≈ $6.6, Upstash $0, Cloudinary back to free once 10.42 lands.
