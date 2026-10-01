@@ -4,28 +4,33 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import { test, expect, type Page } from "@playwright/test";
 
-// Backlog 6.4 — Cloudinary delivery through a `next/image` loader. Reads a real, active
-// product whose image is a Cloudinary URL from the redesign DB (never invents fixture data,
-// never seeds/deletes rows) and asserts the rendered <img src> was rewritten by
-// `cloudinaryLoader` instead of round-tripping through Next's own `/_next/image` optimizer.
+// Backlog 6.4 / 10.42 — catalog image delivery. Reads a real, active product whose image is a
+// Cloudinary URL from the redesign DB (never invents fixture data, never seeds/delete rows) and
+// asserts the rendered <img src> goes through Next's `/_next/image` optimizer (Vercel-cached —
+// 6.4 delivered straight from Cloudinary, which billed every impression as Cloudinary bandwidth)
+// with a Cloudinary origin capped by `cloudinaryOriginSrc` (`f_webp,q_auto,c_limit,w_1600`).
 
 const prisma = new PrismaClient();
 
 // Next's default `deviceSizes` + `imageSizes` union (next.config.ts sets neither, so these
-// are the framework defaults) — the width the loader is asked for must be one of these.
+// are the framework defaults) — the width the optimizer is asked for must be one of these.
 const NEXT_IMAGE_WIDTHS = new Set([16, 32, 48, 64, 96, 128, 256, 384, 640, 750, 828, 1080, 1200, 1920, 2048, 3840]);
+
+/** Parses a `/_next/image?url=…&w=…&q=…` src into its Cloudinary origin and requested width. */
+function parseOptimizedSrc(src: string): { origin: string; width: number } {
+  const url = new URL(src, "http://localhost");
+  expect(url.pathname).toBe("/_next/image");
+  const origin = url.searchParams.get("url");
+  const width = Number(url.searchParams.get("w"));
+  expect(origin).toBeTruthy();
+  return { origin: origin as string, width };
+}
 
 function assertCloudinaryOptimizedSrc(src: string | null) {
   expect(src).toBeTruthy();
-  const url = src as string;
-  expect(url).toContain("res.cloudinary.com");
-  expect(url).toContain("f_auto");
-  expect(url).toContain("q_auto");
-  expect(url).toContain("c_limit");
-  expect(url).not.toContain("/_next/image");
-  const widthMatch = /(?:^|,|\/)w_(\d+)/.exec(url);
-  expect(widthMatch).toBeTruthy();
-  const width = Number(widthMatch?.[1]);
+  const { origin, width } = parseOptimizedSrc(src as string);
+  expect(origin).toContain("res.cloudinary.com");
+  expect(origin).toContain("/f_webp,q_auto,c_limit,w_1600/");
   expect(NEXT_IMAGE_WIDTHS.has(width)).toBe(true);
 }
 
@@ -117,12 +122,12 @@ async function addFirstBuyableVariantToCart(page: Page) {
   await page.getByRole("button", { name: "أضف إلى السلة" }).first().click();
 }
 
-test.describe("Cloudinary loader (backlog 6.4)", () => {
+test.describe("Catalog image delivery (backlog 6.4 / 10.42)", () => {
   test.afterAll(async () => {
     await prisma.$disconnect();
   });
 
-  test("PDP main image is served through the Cloudinary loader", async ({ page }) => {
+  test("PDP main image is served through the Vercel optimizer from a capped Cloudinary origin", async ({ page }) => {
     const slug = await findCloudinaryProductSlug();
     await page.goto(`/products/${slug}`);
     const mainImage = page.getByTestId("pdp-main-frame").locator("img").first();
@@ -131,7 +136,7 @@ test.describe("Cloudinary loader (backlog 6.4)", () => {
     assertCloudinaryOptimizedSrc(src);
   });
 
-  test("home page's first product card image is served through the Cloudinary loader", async ({ page }) => {
+  test("home page's first product card image is served through the Vercel optimizer from a capped Cloudinary origin", async ({ page }) => {
     // Confirms at least one Cloudinary product exists in the DB, then checks the home page's
     // product cards directly — the hero and category tiles are static `/brand/*` assets, so
     // this walks the `/products/<slug>` card links (not `main img`) to find the first one
@@ -154,7 +159,7 @@ test.describe("Cloudinary loader (backlog 6.4)", () => {
     assertCloudinaryOptimizedSrc(matched);
   });
 
-  test("mini-cart drawer thumbnail is served through the Cloudinary loader after adding from the PDP", async ({
+  test("mini-cart drawer thumbnail is served through the Vercel optimizer from a capped Cloudinary origin after adding from the PDP", async ({
     page,
   }) => {
     // A few sequential lookups (in-stock list, per-slug detail) ahead of the real add-to-cart UI
@@ -200,10 +205,8 @@ test.describe("Cloudinary loader (backlog 6.4)", () => {
     await expect(railImage).toBeVisible();
     await railImage.scrollIntoViewIfNeeded();
     const src = await railImage.evaluate((el: HTMLImageElement) => el.currentSrc || el.src);
-    expect(src).toContain("res.cloudinary.com");
-    const widthMatch = /(?:^|,|\/)w_(\d+)/.exec(src);
-    expect(widthMatch).toBeTruthy();
-    const width = Number(widthMatch?.[1]);
+    const { origin, width } = parseOptimizedSrc(src);
+    expect(origin).toContain("res.cloudinary.com");
     expect(width).toBeLessThanOrEqual(640);
   });
 });

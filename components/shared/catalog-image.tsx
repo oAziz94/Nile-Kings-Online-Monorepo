@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type SyntheticEvent } from "react";
 import Image, { type ImageProps } from "next/image";
-import { cloudinaryLoader } from "@/lib/images/cloudinary-loader";
+import { cloudinaryOriginSrc } from "@/lib/images/cloudinary-loader";
 import { cn } from "@/lib/utils";
 
 export interface CatalogImageProps extends ImageProps {
@@ -31,15 +31,18 @@ export const BALANCE_EXPONENT = 0.5;
 
 /**
  * Thin `next/image` wrapper for catalog/product/category images sourced
- * from the database (backlog 6.4). Routes Cloudinary URLs through
- * `cloudinaryLoader` so they're delivered at the rendered width in an
- * auto-negotiated format instead of the original file; every other prop
- * passes straight through to `next/image`.
+ * from the database (backlog 6.4). Since backlog 10.42 Cloudinary URLs go through
+ * Vercel's image optimizer like any other remote image (`/_next/image?url=…&w=…`), with
+ * the origin capped by `cloudinaryOriginSrc` (`f_webp,q_auto,c_limit,w_1600`) so Vercel's one
+ * fetch per size is small and every later impression is a Vercel cache hit, not Cloudinary
+ * bandwidth (02-infra-baseline.md, 6.6 re-measure). Every other prop passes straight
+ * through to `next/image`.
  *
  * Static brand assets (`/brand/*`) and the navbar logo stay on plain
  * `next/image` — they don't come from Cloudinary.
  */
-export function CatalogImage({ src, alt, fit = "cover", className, style, onLoad, ...props }: CatalogImageProps) {
+export function CatalogImage({ src: rawSrc, alt, fit = "cover", className, style, onLoad, ...props }: CatalogImageProps) {
+  const src = typeof rawSrc === "string" ? cloudinaryOriginSrc(rawSrc) : rawSrc;
   const isDataUri = typeof src === "string" && src.startsWith("data:");
   const [autoFit, setAutoFit] = useState<"cover" | "contain">("cover");
   // `null` = not loaded yet (renders as cover); once loaded, the geometric-mean scale factor
@@ -96,7 +99,6 @@ export function CatalogImage({ src, alt, fit = "cover", className, style, onLoad
         className,
         resolvedFit === "contain" || balancedLoaded ? "object-contain" : "object-cover"
       )}
-      loader={cloudinaryLoader}
       unoptimized={isDataUri || props.unoptimized}
     />
   );

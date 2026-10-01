@@ -111,7 +111,12 @@ const GALLERY_PHOTOS = [
 // nk-7777's "sky blue" colour already has its own distinct photo (no seeding needed) — used for
 // the 10.2 hover/keyboard preview tests so they're independent of the seeded gallery above.
 const HOVER_COLOR_NAME = "sky blue";
-const HOVER_COLOR_IMAGE_FRAGMENT = "xiwrxjqselhf0oiw5atg";
+// Backlog 10.42 (PM, 2026-10-01): nk-7777 was re-photographed in the redesign DB on 2026-09-20
+// (every colour got new Cloudinary uploads, wisteria included), so the hover photo's public id
+// and the pre-seed wisteria gallery count are read from the DB in `beforeAll` instead of being
+// hardcoded — the three 10.2/10.5 tests had been failing on that drift since then.
+let HOVER_COLOR_IMAGE_FRAGMENT = "";
+let expectedGalleryCount = 0;
 
 // Backlog 10.4 — PM fix (standing rule: "never mutate rows your fixtures did not create").
 // Zeroing a REAL product's PartnerInventory rows and restoring them in a `finally` risked
@@ -293,6 +298,19 @@ test.describe("Public PDP (backlog 4.9)", () => {
     if (!product) {
       throw new Error(`Fixture product ${GALLERY_PRODUCT_SLUG} not found in the redesign DB.`);
     }
+    const hoverVariant = await prisma.variant.findFirst({
+      where: { productId: product.id, colorName: HOVER_COLOR_NAME, imageUrl: { not: null } },
+      select: { imageUrl: true },
+    });
+    const hoverPublicId = /\/([^/.]+)\.[a-z]+$/i.exec(hoverVariant?.imageUrl ?? "")?.[1];
+    if (!hoverPublicId) {
+      throw new Error(`Fixture colour "${HOVER_COLOR_NAME}" on ${GALLERY_PRODUCT_SLUG} has no imageUrl in the redesign DB.`);
+    }
+    HOVER_COLOR_IMAGE_FRAGMENT = hoverPublicId;
+    const preexistingWisteriaRows = await prisma.variantImage.count({
+      where: { productId: product.id, colorKey: GALLERY_COLOR_KEY },
+    });
+    expectedGalleryCount = preexistingWisteriaRows + GALLERY_PHOTOS.length;
     for (let i = 0; i < GALLERY_PHOTOS.length; i++) {
       const row = await prisma.variantImage.create({
         data: { productId: product.id, colorKey: GALLERY_COLOR_KEY, url: GALLERY_PHOTOS[i], sortOrder: i },
@@ -397,7 +415,7 @@ test.describe("Public PDP (backlog 4.9)", () => {
       .poll(
         async () => {
           const n = await thumbList.getByRole("listitem").count();
-          if (n !== GALLERY_PHOTOS.length) {
+          if (n !== expectedGalleryCount) {
             await page.waitForTimeout(5_000);
             await page.reload({ waitUntil: "networkidle" });
             await page.getByRole("radio", { name: "wisteria" }).click();
@@ -406,7 +424,7 @@ test.describe("Public PDP (backlog 4.9)", () => {
         },
         { timeout: 90_000, intervals: [1_000], message: "PDP data cache still serving the pre-seed gallery" }
       )
-      .toBe(GALLERY_PHOTOS.length);
+      .toBe(expectedGalleryCount);
     const [scrollHeight, clientHeight] = await thumbList.evaluate((el) => [el.scrollHeight, el.clientHeight]);
     // The strip's own `lg:max-h` cap is doing its job: content taller than the cap scrolls
     // instead of growing past it (unchanged intent from 10.5; 10.25 only moved what the cap

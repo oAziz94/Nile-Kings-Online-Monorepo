@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
       { protocol: "https", hostname: "res.cloudinary.com", pathname: "/**" },
     ],
+    // Backlog 10.42 — catalog photos are immutable Cloudinary assets (a replaced photo gets a
+    // new public id/version), so Vercel may keep an optimized copy for 31 days instead of the
+    // 60 s default: fewer origin fetches from Cloudinary, fewer billable transformations.
+    minimumCacheTTL: 31 * 24 * 60 * 60,
   },
   eslint: {
     // eslint.config.mjs (added in backlog 4.2) was this repo's first-ever ESLint config;
