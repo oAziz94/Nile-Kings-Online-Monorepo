@@ -7,6 +7,10 @@ export const ALJAMAL_HOME_PARTNER_NAME = "AlJamal Home";
 export const ALJAMAL_HOME_INSTAPAY_IPA = "elhussein11@instapay";
 export const ALJAMAL_HOME_INSTAPAY_QR_IMAGE = "/instapay-qr-aljamal.jpeg";
 
+export const MOHAMED_OMRAN_PARTNER_NAME = "محمد عمران";
+export const MOHAMED_OMRAN_INSTAPAY_IPA = "mohamed.omran.eg385@instapay";
+export const MOHAMED_OMRAN_INSTAPAY_QR_IMAGE = "/instapay-qr-mohamed.jpeg";
+
 /** Resolve the InstaPay address + QR image to show, based on which partner the order is routed to. */
 export function getInstapayDetailsForPartner(partnerName: string | null | undefined): {
   ipa: string;
@@ -14,6 +18,9 @@ export function getInstapayDetailsForPartner(partnerName: string | null | undefi
 } {
   if (partnerName === ALJAMAL_HOME_PARTNER_NAME) {
     return { ipa: ALJAMAL_HOME_INSTAPAY_IPA, qrImage: ALJAMAL_HOME_INSTAPAY_QR_IMAGE };
+  }
+  if (partnerName === MOHAMED_OMRAN_PARTNER_NAME) {
+    return { ipa: MOHAMED_OMRAN_INSTAPAY_IPA, qrImage: MOHAMED_OMRAN_INSTAPAY_QR_IMAGE };
   }
   return { ipa: INSTAPAY_IPA, qrImage: INSTAPAY_QR_IMAGE };
 }
