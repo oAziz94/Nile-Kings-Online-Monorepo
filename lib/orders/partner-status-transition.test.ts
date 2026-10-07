@@ -597,3 +597,17 @@ describe("lockOrderAtStatus / releaseReservationForCancellation — shared by th
     expect(inv).toMatchObject({ stockAvailable: 10, stockReserved: 0 });
   });
 });
+
+describe("transitionPartnerOrderStatus — moving back to CREATED", () => {
+  it("refuses SHIPPED -> CREATED and leaves status, stock and audit untouched", async () => {
+    fakeDb.seedOrder({ id: ORDER_1, assignedPartnerId: PARTNER, status: "SHIPPED" });
+
+    await expect(
+      transitionPartnerOrderStatus({ partnerId: PARTNER, orderId: ORDER_1, nextStatus: "CREATED" })
+    ).rejects.toMatchObject({ status: 400 });
+
+    expect(fakeDb.orders.find((o) => o.id === ORDER_1)!.status).toBe("SHIPPED");
+    expect(fakeDb.audit).toHaveLength(0);
+    expect(fakeDb.ledger).toHaveLength(0);
+  });
+});

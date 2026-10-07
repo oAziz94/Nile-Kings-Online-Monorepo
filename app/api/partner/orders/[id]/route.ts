@@ -125,6 +125,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return apiBadRequest("لا توجد حقول للتحديث");
     }
 
+    if (nextStatus === "CREATED" && existing.status !== "CREATED") {
+      return apiBadRequest("لا يمكن إرجاع الطلب إلى حالة قيد الإنشاء");
+    }
+
     const transitioningToCancelled = nextStatus === "CANCELLED" && existing.status !== "CANCELLED";
     const leavingCreated =
       existing.status === "CREATED" &&

@@ -122,6 +122,18 @@ export async function releaseReservationForCancellation(
   }
 }
 
+/**
+ * CREATED means "stock reserved, not yet committed". Moving a confirmed-or-later order back to
+ * CREATED does not re-reserve its stock, so the order can never leave CREATED again
+ * (`commitPartnerReservation` finds nothing reserved). Two orders got stuck this way on
+ * 2026-10-04 (SHIPPED → CREATED, meant to be DELIVERED), so the move is refused outright.
+ */
+export function assertNotBackToCreated(currentStatus: OrderStatus, nextStatus?: string): void {
+  if (nextStatus === "CREATED" && currentStatus !== "CREATED") {
+    throw new PartnerOrderTransitionError("لا يمكن إرجاع الطلب إلى حالة قيد الإنشاء");
+  }
+}
+
 export async function transitionPartnerOrderStatus(params: {
   partnerId: string;
   orderId: string;
@@ -150,6 +162,7 @@ export async function transitionPartnerOrderStatus(params: {
   if (!existing) {
     throw new PartnerOrderTransitionError("الطلب غير موجود", 404);
   }
+  assertNotBackToCreated(existing.status, nextStatus);
 
   const transitioningToCancelled = nextStatus === "CANCELLED" && existing.status !== "CANCELLED";
   const leavingCreated =
