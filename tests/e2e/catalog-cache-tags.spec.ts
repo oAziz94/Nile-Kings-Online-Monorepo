@@ -5,6 +5,7 @@ loadRedesignTestEnv();
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { safeWhere } from "./db-cleanup";
+import { setStorefrontLocationViaApi } from "./storefront-location";
 
 /**
  * Backlog 6.3 — `revalidateTag` on the catalog caches. Proves that an admin write is visible on
@@ -50,6 +51,11 @@ const ORIGINAL_NAME = `منتج اختبار الكاش ${uniqueSuffix}`;
 const RENAMED_NAME = `منتج اختبار الكاش (معدّل) ${uniqueSuffix}`;
 
 test.describe.configure({ mode: "serial" });
+
+// 10.46: the location modal is locked until a location exists, so set one first.
+test.beforeEach(async ({ page }) => {
+  await setStorefrontLocationViaApi(page);
+});
 test.setTimeout(60_000);
 
 test.beforeAll(async () => {

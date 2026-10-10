@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { setStorefrontLocationViaApi } from "./storefront-location";
 
 // Backlog 4.15 (Legal: /terms, /privacy) regression coverage — same one-happy-path-per-screen
 // pattern as tests/e2e/public-shell.spec.ts. Both pages are fully static (no data fetching, no
@@ -41,6 +42,11 @@ const PRIVACY_HEADINGS = [
   "تحديثات سياسة الخصوصية",
   "التواصل معنا",
 ];
+
+// 10.46: the location modal is locked until a location exists, so set one first.
+test.beforeEach(async ({ page }) => {
+  await setStorefrontLocationViaApi(page);
+});
 
 test("/terms renders all 15 section headings", async ({ page }) => {
   await page.goto("/terms");

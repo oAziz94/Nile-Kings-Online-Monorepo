@@ -5,6 +5,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { deleteByIds } from "./db-cleanup";
+import { setStorefrontLocationViaApi } from "./storefront-location";
 
 /**
  * Backlog 10.30 — favicon + descriptive tab titles.
@@ -16,6 +17,11 @@ import { deleteByIds } from "./db-cleanup";
  * only read to build the expected title, never modified.
  */
 test.describe.configure({ mode: "serial" });
+
+// 10.46: the location modal is locked until a location exists, so set one first.
+test.beforeEach(async ({ page }) => {
+  await setStorefrontLocationViaApi(page);
+});
 test.setTimeout(60_000);
 
 const prisma = new PrismaClient();
