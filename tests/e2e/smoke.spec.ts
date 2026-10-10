@@ -1,10 +1,16 @@
 import { test, expect } from "@playwright/test";
+import { setStorefrontLocationViaApi } from "./storefront-location";
 
 // Phase 3.6 reference pattern: one happy-path smoke test per verified screen,
 // added at ui-verifier sign-off time (see docs/redesign/04-decisions.md
 // 2026-09-09 "Regression coverage persists past verification"). These two
 // cover the only screens rebuilt so far at the foundation stage — home and
 // login — as the template future Phase 4 tasks copy from, not full coverage.
+
+// 10.46: the location modal is locked until a location exists, so set one first.
+test.beforeEach(async ({ page }) => {
+  await setStorefrontLocationViaApi(page);
+});
 
 test("home page loads and shows the hero", async ({ page }) => {
   await page.goto("/");

@@ -188,36 +188,23 @@ test.describe("bootstrap failure — the guest must never be locked out (verifie
     await expect(nav.getByRole("link", { name: /قطن ملوك النيل/ })).toBeVisible();
   });
 
-  test("bootstrap and governorate both 500: no modal forced open; opening it by hand shows a non-empty list", async ({ page }) => {
-    const requests: Request[] = [];
-    page.on("request", (req) => requests.push(req));
-
+  test("bootstrap and governorate both 500: the modal opens LOCKED with the static 27-governorate list (10.46)", async ({ page }) => {
     await page.route("**/api/storefront/bootstrap", fulfill500);
     await page.route("**/api/storefront/governorate", fulfill500);
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    // No modal forced open, and the page is still usable.
-    await expect(page.getByRole("heading", { name: "عنوان التوصيل" })).toHaveCount(0);
-    await expect(page.getByRole("banner")).toBeVisible();
-
-    // The pill is still there, in its "pick your location" prompt state, so the guest can open
-    // the modal by hand whenever they want.
-    const pill = page.getByRole("button", { name: "اختر محافظتك" });
-    await expect(pill).toBeVisible();
-    await pill.click();
-
-    // Opened by hand: a real, non-empty governorate list (the static fallback), not an empty one.
-    await expect(page.getByRole("heading", { name: "عنوان التوصيل" })).toBeVisible();
-    const select = page.locator("select");
-    await expect(select).toBeVisible();
-    const optionCount = await select.locator("option").count();
-    expect(optionCount).toBeGreaterThan(1); // placeholder + at least one real governorate
-
-    // Dismissable: Escape closes it without navigating away.
+    // 10.46 reverses the 6.2-era choice: a failed bootstrap no longer lets the guest browse
+    // without a location. The dialog is forced open and cannot be dismissed.
+    const dialog = page.getByRole("dialog", { name: "عنوان التوصيل" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAttribute("data-locked", "true");
+    await expect(dialog.getByRole("button", { name: "إلغاء" })).toHaveCount(0);
     await page.keyboard.press("Escape");
-    await expect(page.getByRole("heading", { name: "عنوان التوصيل" })).toHaveCount(0);
-    await expect(pill).toBeVisible();
+    await expect(dialog).toBeVisible();
+
+    // Real, non-empty list: the static fallback (placeholder + 27 governorates).
+    await expect(dialog.locator("select option")).toHaveCount(28);
   });
 });
 

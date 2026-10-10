@@ -4,6 +4,7 @@ import * as React from "react";
 import { MapPin, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { parseJsonResponse } from "@/lib/api/parse-json";
@@ -81,14 +82,14 @@ export function GovernorateSelector() {
     setInitialized(true);
   }
 
-  /** Both the bootstrap and the fallback fetch failed: never force the modal open on a failure —
-   * the guest must still be able to browse. The pill stays visible in a "pick your location"
-   * prompt state (static `GOVERNORATE_OPTIONS` so the modal is never empty when opened by hand). */
+  /** Both the bootstrap and the fallback fetch failed (10.46): the visitor is never let through
+   * to the storefront without a location, so the locked modal opens with the static
+   * `GOVERNORATE_OPTIONS` (27 governorates) instead of leaving only the pill. */
   function applyFetchFailure() {
     setOptions(GOVERNORATE_OPTIONS);
     setSavedAddress(null);
     setDraft(draftFromAddress(null));
-    setEditing(false);
+    setEditing(true);
     setInitialized(true);
   }
 
@@ -131,25 +132,17 @@ export function GovernorateSelector() {
 
   const loading = !initialized;
 
-  /** Shared by Escape, a backdrop click, and the إلغاء button: closing the modal always resets
-   * the draft to the last known-good address (or an empty draft when there isn't one) rather than
-   * leaving an in-progress edit lying around for the next open. */
+  /** Locked (10.46): with no saved address the modal cannot be dismissed at all — only a
+   * successful save (followed by the hard reload) gets the visitor out. */
+  const locked = !savedAddress;
+
+  /** Shared by Escape, a backdrop click, and the إلغاء button (all only reachable when a saved
+   * address exists): closing the modal resets the draft to the last known-good address. */
   function closeEditing() {
+    if (locked) return;
     setDraft(draftFromAddress(savedAddress));
     setEditing(false);
   }
-
-  // The forced-open modal must always be dismissable — Escape closes it regardless of *why* it's
-  // open (verifier finding: a failed bootstrap must never lock the guest out of the page).
-  React.useEffect(() => {
-    if (!editing) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") closeEditing();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing, savedAddress]);
 
   // Show the "items removed" notice left behind by a save that happened just before the
   // hard reload this mount is the result of.
@@ -243,7 +236,16 @@ export function GovernorateSelector() {
     }
   }
 
-  if (loading) return null;
+  if (loading) {
+    // No browsable gap before the modal appears: opaque overlay until the location state resolves.
+    return (
+      <div
+        aria-busy="true"
+        data-testid="location-loading-overlay"
+        className="fixed inset-0 z-[120] bg-papyrus"
+      />
+    );
+  }
 
   return (
     <>
@@ -258,25 +260,32 @@ export function GovernorateSelector() {
         </button>
       ) : null}
 
-      {editing ? (
-        <div
-          className="fixed inset-0 z-[120] flex items-end justify-center bg-[hsl(228_40%_9%)]/45 p-4 sm:items-center"
-          onClick={closeEditing}
+      <Dialog
+        open={editing}
+        onOpenChange={(open) => {
+          if (!open) closeEditing();
+        }}
+        closeOnOverlayClick={!locked}
+      >
+        <DialogContent
+          dir="rtl"
+          overlayClassName="z-[119] bg-[hsl(228_40%_9%)]/45"
+          data-testid="location-modal"
+          data-locked={locked ? "true" : "false"}
+          className="top-auto bottom-4 z-[120] block max-h-[90vh] w-[calc(100%-2rem)] max-w-md translate-y-0 rounded-none border-[hsl(228_16%_82%)] bg-papyrus p-5 text-right shadow-[0_24px_60px_-12px_rgba(21,26,46,0.28)] sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2"
         >
-          <div
-            className="max-h-[90vh] w-full max-w-md overflow-y-auto border border-[hsl(228_16%_82%)] bg-papyrus p-5 text-right shadow-[0_24px_60px_-12px_rgba(21,26,46,0.28)]"
-            dir="rtl"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div>
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-[hsl(228_40%_14%)] text-[hsl(228_40%_14%)]">
                 <MapPin className="h-5 w-5" />
               </span>
               <div>
-                <h2 className="font-amiri text-lg font-bold text-[hsl(228_40%_14%)]">عنوان التوصيل</h2>
-                <p className="mt-1 text-sm leading-6 text-[hsl(228_18%_45%)]">
+                <DialogTitle className="font-amiri text-lg font-bold leading-normal tracking-normal text-[hsl(228_40%_14%)]">
+                  عنوان التوصيل
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-sm leading-6 text-[hsl(228_18%_45%)]">
                   سنعرض توفر المقاسات حسب مخزون الوكيل المسؤول عن منطقتك.
-                </p>
+                </DialogDescription>
               </div>
             </div>
 
@@ -401,8 +410,8 @@ export function GovernorateSelector() {
               </Button>
             </div>
           </div>
-        </div>
-      ) : null}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
