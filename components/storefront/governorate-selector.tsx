@@ -301,10 +301,12 @@ export function GovernorateSelector() {
 
             <div className="mt-5 space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-[hsl(228_26%_24%)]">المحافظة *</label>
+                <label htmlFor="storefront-governorate" className="mb-2 block text-sm font-medium text-[hsl(228_26%_24%)]">المحافظة *</label>
                 <Select
+                  id="storefront-governorate"
                   value={draft.governorate}
                   onChange={(e) => setGovernorate(e.target.value)}
+                  data-testid="governorate-select"
                   className="h-11 rounded-none"
                 >
                   <option value="">اختر المحافظة</option>
@@ -317,12 +319,12 @@ export function GovernorateSelector() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-[hsl(228_26%_24%)]">المنطقة *</label>
+                <label htmlFor="storefront-area" className="mb-2 block text-sm font-medium text-[hsl(228_26%_24%)]">المنطقة *</label>
                 <Select
+                  id="storefront-area"
                   value={areaField.selectValue}
                   onChange={(e) => areaField.onSelect(e.target.value)}
                   disabled={areaField.disabled}
-                  aria-label="المنطقة"
                   data-testid="area-select"
                   className="h-11 rounded-none"
                 >
