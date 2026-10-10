@@ -269,7 +269,11 @@ export function GovernorateSelector() {
       >
         <DialogContent
           dir="rtl"
-          overlayClassName="z-[119] bg-[hsl(228_40%_9%)]/45"
+          // `bg-[hsl(…)]/45` never compiled to a rule (verifier, 10.46) — the backdrop was fully
+          // transparent, which matters now that the page behind is inert. Plain black/50 is the
+          // Dialog primitive's own default; restated here because the arbitrary z-index class
+          // replaces the whole overlay className.
+          overlayClassName="z-[119] bg-black/50"
           data-testid="location-modal"
           data-locked={locked ? "true" : "false"}
           className="top-auto bottom-4 z-[120] block max-h-[90vh] w-[calc(100%-2rem)] max-w-md translate-y-0 rounded-none border-[hsl(228_16%_82%)] bg-papyrus p-5 text-right shadow-[0_24px_60px_-12px_rgba(21,26,46,0.28)] sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2"

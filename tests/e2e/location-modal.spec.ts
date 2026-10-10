@@ -9,8 +9,12 @@ const dialog = (page: Page) => page.getByRole("dialog", { name: "عنوان ال
 
 async function expectLocked(page: Page) {
   const d = dialog(page);
-  await expect(d).toBeVisible();
-  await expect(d).toHaveAttribute("aria-modal", "true").catch(() => undefined);
+  // 15 s, not the 5 s default: on the dev server a cold route compile (/cart, /categories) can
+  // delay the bootstrap response the dialog waits on (flaked 2/10 under two workers otherwise).
+  await expect(d).toBeVisible({ timeout: 15_000 });
+  // Radix sets role="dialog" and aria-hides the rest of the page; it does not emit a literal
+  // aria-modal attribute, so assert what it really does (verifier, 10.46).
+  await expect(d).toHaveAttribute("role", "dialog");
   await expect(d).toHaveAttribute("data-locked", "true");
   await expect(d.getByRole("button", { name: "إلغاء" })).toHaveCount(0);
   return d;
@@ -38,7 +42,8 @@ test.describe("fresh visitor (no location cookie)", () => {
   test("a product page is locked too", async ({ page }) => {
     const res = await page.request.get("/api/products?limit=1");
     const json = await res.json();
-    const slug = json?.data?.items?.[0]?.slug ?? json?.data?.[0]?.slug ?? "nk-8888";
+    const slug = json?.data?.products?.[0]?.slug;
+    expect(slug, "/api/products returned no product").toBeTruthy();
     await page.goto(`/products/${slug}`);
     await expectLocked(page);
   });
