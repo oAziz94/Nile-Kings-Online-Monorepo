@@ -1,3 +1,4 @@
+import { correctGovernorateForArea } from "@/lib/data/egypt-areas";
 import { NextRequest } from "next/server";
 import { requireCustomer } from "@/lib/auth/session";
 import { buildCheckoutSummary } from "@/lib/checkout/summary";
@@ -63,7 +64,8 @@ export async function POST(req: NextRequest) {
   const summary = await buildCheckoutSummary({
     userId: user.userId,
     address: {
-      governorate: String(address.governorate).trim(),
+      // Never trust the client's correction alone (10.48): a known area of another governorate wins.
+      governorate: correctGovernorateForArea(String(address.governorate).trim(), String(address.area)),
       city: String(address.city).trim(),
       area: String(address.area).trim(),
       street: String(address.street).trim(),

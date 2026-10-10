@@ -1,5 +1,7 @@
 /** Shared checkout types — split out of the old 986-line single-file page (backlog 4.12). */
 
+import { correctGovernorateForArea } from "@/lib/data/egypt-areas";
+
 export type CheckoutSummaryResponse = {
   subtotal: number;
   couponDiscount: number;
@@ -54,7 +56,7 @@ export const emptyAddress: AddressFormValues = {
 
 export function addressToPayload(addr: AddressFormValues) {
   return {
-    governorate: addr.governorate,
+    governorate: correctGovernorateForArea(addr.governorate, addr.area),
     city: addr.city.trim(),
     area: addr.area || null,
     street: addr.street,

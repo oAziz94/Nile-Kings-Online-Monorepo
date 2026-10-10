@@ -20,6 +20,7 @@ import {
 import { Sheet, SheetContent, SheetCloseButton, SheetTitle } from "@/components/ui/sheet";
 import { parseJsonResponse } from "@/lib/api/parse-json";
 import { isSavedAddressIncomplete } from "@/lib/addresses/completeness";
+import { correctGovernorateForArea } from "@/lib/data/egypt-areas";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { AddressCard } from "@/components/profile/address-card";
@@ -173,7 +174,7 @@ export default function ProfileAddressesPage() {
     submittingRef.current = true;
     const body = {
       label: values.label || null,
-      governorate: values.governorate,
+      governorate: correctGovernorateForArea(values.governorate, values.area),
       city: values.city.trim(),
       area: values.area || null,
       street: values.street,
@@ -259,7 +260,7 @@ export default function ProfileAddressesPage() {
       className="flex min-h-0 flex-1 flex-col"
     >
       <div className="min-h-0 flex-1 overflow-y-auto p-6 lg:p-8">
-        <AddressFormFields idPrefix="address" register={form.register} />
+        <AddressFormFields idPrefix="address" register={form.register} watch={form.watch} setValue={form.setValue} />
       </div>
       <div className="flex gap-3 border-t border-[hsl(228_16%_84%)] p-6 lg:p-8 lg:pt-[22px]">
         <Button type="submit" disabled={isSubmitting} className={cn(inkButtonClass, "flex-1 lg:flex-none")}>

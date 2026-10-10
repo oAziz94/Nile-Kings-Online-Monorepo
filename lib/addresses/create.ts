@@ -5,6 +5,7 @@
  * (lib/addresses/merge-guest-address.ts) — kept in one place instead of duplicated.
  */
 
+import { correctGovernorateForArea } from "@/lib/data/egypt-areas";
 import type { SavedAddress } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
@@ -51,7 +52,7 @@ export async function createSavedAddress(
     data: {
       userId,
       label: input.label?.trim() || null,
-      governorate: input.governorate.trim(),
+      governorate: correctGovernorateForArea(input.governorate.trim(), input.area),
       city: input.city.trim(),
       area: input.area?.trim() || null,
       street: input.street.trim(),

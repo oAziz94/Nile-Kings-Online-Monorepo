@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireCustomer } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiNotFound } from "@/lib/api/response";
+import { correctGovernorateForArea } from "@/lib/data/egypt-areas";
 import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 
 const addressBodySchema = {
@@ -86,6 +87,14 @@ export async function PATCH(
     data.phone = normalizedPhone;
   }
   if (body.isDefault !== undefined) data.isDefault = isDefault;
+
+  // 10.48: server-side silent correction on the effective governorate/area pair.
+  if (body.governorate !== undefined || body.area !== undefined) {
+    const effectiveGov = (data.governorate as string | undefined) ?? existing.governorate;
+    const effectiveArea = (data.area as string | null | undefined) ?? existing.area;
+    const corrected = correctGovernorateForArea(effectiveGov, effectiveArea);
+    if (corrected !== effectiveGov) data.governorate = corrected;
+  }
 
   const updated = await prisma.savedAddress.update({
     where: { id },

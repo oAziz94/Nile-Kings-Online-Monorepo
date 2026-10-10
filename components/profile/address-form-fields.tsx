@@ -1,11 +1,17 @@
 "use client";
 
 import * as React from "react";
-import type { UseFormRegister } from "react-hook-form";
+import type { UseFormRegister, UseFormSetValue, UseFormWatch } from "react-hook-form";
 import { Phone, ChevronDown, Check } from "lucide-react";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { cn } from "@/lib/utils";
 import type { AddressFormValues } from "./address-types";
+import {
+  AREA_OTHER_LABEL,
+  AREA_OTHER_VALUE,
+  AREA_PLACEHOLDER,
+  useAreaField,
+} from "@/components/shared/use-area-field";
 
 const fieldBoxClass =
   "flex h-12 items-center gap-2.5 border border-[hsl(228_16%_84%)] bg-white px-3.5 focus-within:border-gold-500 focus-within:shadow-[0_0_0_2px_rgba(184,144,47,.14)]";
@@ -48,10 +54,24 @@ function Field({
 export function AddressFormFields({
   idPrefix,
   register,
+  watch,
+  setValue,
 }: {
   idPrefix: string;
   register: UseFormRegister<AddressFormValues>;
+  watch: UseFormWatch<AddressFormValues>;
+  setValue: UseFormSetValue<AddressFormValues>;
 }) {
+  const governorate = watch("governorate");
+  const area = watch("area");
+  const areaField = useAreaField({
+    governorate,
+    area,
+    onChange: (patch) => {
+      if (patch.area !== undefined) setValue("area", patch.area, { shouldDirty: true });
+      if (patch.governorate !== undefined) setValue("governorate", patch.governorate, { shouldDirty: true });
+    },
+  });
   const ids = {
     label: `${idPrefix}-label`,
     governorate: `${idPrefix}-governorate`,
@@ -97,9 +117,40 @@ export function AddressFormFields({
       </Field>
 
       <Field id={ids.area} label="المنطقة">
-        <div className={fieldBoxClass}>
-          <input id={ids.area} className={bareInputClass} {...register("area")} />
+        <div className={cn(fieldBoxClass, "relative pl-9")}>
+          <select
+            id={ids.area}
+            dir="rtl"
+            value={areaField.selectValue}
+            onChange={(e) => areaField.onSelect(e.target.value)}
+            disabled={areaField.disabled}
+            data-testid="area-select"
+            className="h-full w-full flex-1 cursor-pointer appearance-none border-0 bg-transparent px-0 font-plex-arabic text-[15px] text-[hsl(228_40%_14%)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <option value="">{AREA_PLACEHOLDER}</option>
+            {areaField.options.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+            <option value={AREA_OTHER_VALUE}>{AREA_OTHER_LABEL}</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute left-3.5 h-4 w-4 text-[hsl(228_18%_55%)]" strokeWidth={1.3} />
         </div>
+        {areaField.isOther ? (
+          <div className={fieldBoxClass}>
+            <input
+              id={`${ids.area}-other`}
+              aria-label="اسم المنطقة"
+              placeholder="اكتب اسم المنطقة"
+              data-testid="area-other-input"
+              className={bareInputClass}
+              value={area}
+              onChange={(e) => areaField.onText(e.target.value)}
+              onBlur={areaField.onTextBlur}
+            />
+          </div>
+        ) : null}
       </Field>
 
       <Field id={ids.street} label="العنوان بالتفصيل" span hint="الشارع ورقم المبنى والدور والشقة.">
