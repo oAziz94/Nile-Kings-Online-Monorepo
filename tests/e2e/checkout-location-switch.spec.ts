@@ -292,6 +292,12 @@ test("an item the new partner lacks is removed, the notice is shown, and no orde
   // The page reloads with the removed-items notice naming Y.
   await expect(page.getByText("تم حذف بعض الأصناف من السلة").first()).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(productYName).first()).toBeVisible();
+  // The typed address survived the reload (verifier finding): the form is still open with it.
+  await expect(page.getByLabel("المحافظة *")).toHaveValue(ADDRESS_GOV);
+  await expect(page.getByLabel("العنوان بالتفصيل *")).toHaveValue(ADDRESS.street);
+  // The notice is dismissible by its visible name.
+  await page.getByRole("button", { name: "حسناً" }).click();
+  await expect(page.getByTestId("checkout-removed-items")).toHaveCount(0);
   expect(await prisma.order.count({ where: { userId } })).toBe(ordersBefore);
 
   const cart = (await (await page.request.get("/api/cart")).json()).data as { items: { variantId: string }[] };

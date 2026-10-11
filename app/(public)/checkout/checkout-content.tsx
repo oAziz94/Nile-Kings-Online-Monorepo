@@ -94,6 +94,8 @@ function firePurchaseOnce(orderId: string, summary: CheckoutSummaryResponse, ite
  * renders it as a persistent inline notice instead (PM, verifier run 2026-10-11).
  */
 const CHECKOUT_REMOVED_ITEMS_KEY = "nile_checkout_removed_items";
+/** The typed (unsaved) address, carried across that same reload so the customer never retypes it. */
+const CHECKOUT_DRAFT_ADDRESS_KEY = "nile_checkout_draft_address";
 type RemovedCartItem = { productName: string; variantName: string };
 
 export function CheckoutContent() {
@@ -265,6 +267,7 @@ export function CheckoutContent() {
       // makes every stock number fresh; the inline notice above the form names what was removed.
       try {
         sessionStorage.setItem(CHECKOUT_REMOVED_ITEMS_KEY, JSON.stringify(pruned));
+        if (useNewAddress) sessionStorage.setItem(CHECKOUT_DRAFT_ADDRESS_KEY, JSON.stringify(addr));
       } catch {
         /* sessionStorage unavailable */
       }
@@ -337,8 +340,24 @@ export function CheckoutContent() {
     fetch("/api/profile/addresses", { credentials: "include" })
       .then((res) => parseJsonResponse<{ success?: boolean; data?: SavedAddress[] }>(res))
       .then((json) => {
-        if (json?.success && json.data?.length) {
-          setSavedAddresses(json.data);
+        if (json?.success && json.data?.length) setSavedAddresses(json.data);
+        // 10.49 — a typed address survives the prune reload: restore it and keep the new-address
+        // form open instead of falling back to the default saved address.
+        let draft: AddressFormValues | null = null;
+        try {
+          const raw = sessionStorage.getItem(CHECKOUT_DRAFT_ADDRESS_KEY);
+          if (raw) {
+            sessionStorage.removeItem(CHECKOUT_DRAFT_ADDRESS_KEY);
+            draft = JSON.parse(raw) as AddressFormValues;
+          }
+        } catch {
+          /* sessionStorage unavailable or malformed payload */
+        }
+        if (draft && typeof draft.governorate === "string") {
+          setAddress({ ...emptyAddress, ...draft });
+          setSelectedAddressId(null);
+          setUseNewAddress(true);
+        } else if (json?.success && json.data?.length) {
           const defaultAddr = json.data.find((a) => a.isDefault) ?? json.data[0];
           setSelectedAddressId(defaultAddr.id);
           setPendingCity(defaultAddr.city?.trim() ?? "");
@@ -605,14 +624,9 @@ export function CheckoutContent() {
                   راجع الإجمالي الجديد ثم أكّد الطلب.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setRemovedItems([])}
-                aria-label="إغلاق التنبيه"
-                className="shrink-0 text-xs font-bold underline underline-offset-2"
-              >
+              <Button type="button" variant="outline" size="sm" className="shrink-0 rounded-none" onClick={() => setRemovedItems([])}>
                 حسناً
-              </button>
+              </Button>
             </div>
           )}
           {showLocationWarning && addressGovernorate && storefrontGovernorate && (
