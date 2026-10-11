@@ -20,7 +20,7 @@ import {
 } from "@/lib/addresses/completeness";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag } from "lucide-react";
+import { AlertTriangle, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 
 import { SectionHeading } from "@/components/checkout/section-heading";
@@ -42,6 +42,12 @@ import {
   type CheckoutSummaryResponse,
   type SavedAddress,
 } from "@/components/checkout/types";
+import {
+  canonicalGovernorate,
+  isLocationMismatch,
+  locationMismatchWarning,
+  readStorefrontGovernorateFromBrowser,
+} from "@/lib/checkout/location-mismatch";
 import { trackEvent, ga4Item } from "@/lib/analytics/ga4-client";
 import type { CartItem } from "@/contexts/cart-context";
 
@@ -81,6 +87,17 @@ function firePurchaseOnce(orderId: string, summary: CheckoutSummaryResponse, ite
   });
 }
 
+/**
+ * Handoff across the reload that follows a checkout-triggered location switch (10.49). A
+ * checkout-specific key, not the location modal's `nile_removed_cart_items`: the modal shows a
+ * 5-second toast, which is too brief for a message that changed the order total — checkout
+ * renders it as a persistent inline notice instead (PM, verifier run 2026-10-11).
+ */
+const CHECKOUT_REMOVED_ITEMS_KEY = "nile_checkout_removed_items";
+/** The typed (unsaved) address, carried across that same reload so the customer never retypes it. */
+const CHECKOUT_DRAFT_ADDRESS_KEY = "nile_checkout_draft_address";
+type RemovedCartItem = { productName: string; variantName: string };
+
 export function CheckoutContent() {
   const router = useRouter();
   const { cart, refreshCart } = useCart();
@@ -108,6 +125,26 @@ export function CheckoutContent() {
   const [instaPayConfirmLoading, setInstaPayConfirmLoading] = useState(false);
   const [instapayTransferHref, setInstapayTransferHref] = useState("#");
   const [successModalOpen, setSuccessModalOpen] = useState(false);
+
+  /** Storefront location governorate (cookie) — read client-side; null until mounted. */
+  const [storefrontGovernorate, setStorefrontGovernorate] = useState<string | null>(null);
+  /** True once checkout switched the storefront location, so the exit navigation is a full load (the nav pill is client state). */
+  const locationSwitchedRef = React.useRef(false);
+  /** Items the location switch removed just before this mount's reload — shown until dismissed. */
+  const [removedItems, setRemovedItems] = useState<RemovedCartItem[]>([]);
+  useEffect(() => {
+    setStorefrontGovernorate(readStorefrontGovernorateFromBrowser());
+    try {
+      const raw = sessionStorage.getItem(CHECKOUT_REMOVED_ITEMS_KEY);
+      if (raw) {
+        sessionStorage.removeItem(CHECKOUT_REMOVED_ITEMS_KEY);
+        const items = JSON.parse(raw) as RemovedCartItem[];
+        if (Array.isArray(items) && items.length > 0) setRemovedItems(items);
+      }
+    } catch {
+      /* sessionStorage unavailable or malformed payload */
+    }
+  }, []);
 
   const instapayDetails = getInstapayDetailsForPartner(summary?.partnerName);
 
@@ -163,6 +200,99 @@ export function CheckoutContent() {
 
   const currentAddress = resolveCheckoutAddress();
 
+  const addressGovernorate = currentAddress ? canonicalGovernorate(currentAddress.governorate) : null;
+  const showLocationWarning =
+    !!addressGovernorate && !!storefrontGovernorate && isLocationMismatch(addressGovernorate, storefrontGovernorate);
+
+  /** Fetches the summary for an address right now (no debounce) — used after a location switch. */
+  async function fetchSummaryNow(addr: AddressFormValues): Promise<CheckoutSummaryResponse | null> {
+    try {
+      const res = await fetch("/api/checkout/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: addressToPayload(addr),
+          couponCode: appliedCouponCode.trim() || null,
+          paymentMethod,
+        }),
+      });
+      const json = await parseJsonResponse<{ success?: boolean; data?: CheckoutSummaryResponse }>(res);
+      return json?.success && json.data ? json.data : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Backlog 10.49 — make the storefront location match the delivery address before an order
+   * (or the InstaPay amount) is committed. Returns "ready" when the caller may continue, "stop"
+   * when the flow must end here (error toast shown, or items were removed and the page reloads
+   * to show the notice with the new total).
+   */
+  async function ensureLocationMatchesAddress(addr: AddressFormValues): Promise<"ready" | "stop"> {
+    const target = canonicalGovernorate(addr.governorate);
+    const current = readStorefrontGovernorateFromBrowser();
+    if (!target) {
+      toast({ title: "محافظة عنوان التوصيل غير صالحة", variant: "destructive" });
+      return "stop";
+    }
+    if (!isLocationMismatch(target, current)) return "ready";
+
+    // Same endpoint as the location modal: sets the cookie and prunes cart items the new
+    // partner has no stock for. Governorate/area/city only, so no saved address is created.
+    let pruned: RemovedCartItem[] = [];
+    try {
+      const res = await fetch("/api/storefront/governorate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          governorate: target,
+          area: addr.area?.trim() || null,
+          city: addr.city?.trim() || null,
+        }),
+      });
+      const json = await parseJsonResponse<{ success?: boolean; data?: { removedItems?: unknown[] } }>(res);
+      if (!res.ok || !json?.success) throw new Error("switch failed");
+      pruned = (json.data?.removedItems as RemovedCartItem[] | undefined) ?? [];
+    } catch {
+      toast({ title: "تعذر تحويل طلبك للوكيل المناسب، حاول مرة أخرى", variant: "destructive" });
+      return "stop";
+    }
+    locationSwitchedRef.current = true;
+    setStorefrontGovernorate(target);
+
+    if (pruned.length > 0) {
+      // Stop: the customer confirms again against the reduced cart and its new total. The reload
+      // makes every stock number fresh; the inline notice above the form names what was removed.
+      try {
+        sessionStorage.setItem(CHECKOUT_REMOVED_ITEMS_KEY, JSON.stringify(pruned));
+        if (useNewAddress) sessionStorage.setItem(CHECKOUT_DRAFT_ADDRESS_KEY, JSON.stringify(addr));
+      } catch {
+        /* sessionStorage unavailable */
+      }
+      window.location.reload();
+      return "stop";
+    }
+
+    await refreshCart();
+    const fresh = await fetchSummaryNow(addr);
+    if (!fresh) {
+      toast({ title: "تعذر تحديث ملخص الطلب بعد تحويله للوكيل", variant: "destructive" });
+      return "stop";
+    }
+    setSummary(fresh);
+    return "ready";
+  }
+
+  const leaveAfterOrder = () => {
+    if (locationSwitchedRef.current) window.location.assign("/profile/orders");
+    else {
+      router.push("/profile/orders");
+      router.refresh();
+    }
+  };
+
   async function persistSavedAddressCity(addressId: string, city: string): Promise<boolean> {
     const res = await fetch(`/api/profile/addresses/${addressId}`, {
       method: "PATCH",
@@ -210,8 +340,24 @@ export function CheckoutContent() {
     fetch("/api/profile/addresses", { credentials: "include" })
       .then((res) => parseJsonResponse<{ success?: boolean; data?: SavedAddress[] }>(res))
       .then((json) => {
-        if (json?.success && json.data?.length) {
-          setSavedAddresses(json.data);
+        if (json?.success && json.data?.length) setSavedAddresses(json.data);
+        // 10.49 — a typed address survives the prune reload: restore it and keep the new-address
+        // form open instead of falling back to the default saved address.
+        let draft: AddressFormValues | null = null;
+        try {
+          const raw = sessionStorage.getItem(CHECKOUT_DRAFT_ADDRESS_KEY);
+          if (raw) {
+            sessionStorage.removeItem(CHECKOUT_DRAFT_ADDRESS_KEY);
+            draft = JSON.parse(raw) as AddressFormValues;
+          }
+        } catch {
+          /* sessionStorage unavailable or malformed payload */
+        }
+        if (draft && typeof draft.governorate === "string") {
+          setAddress({ ...emptyAddress, ...draft });
+          setSelectedAddressId(null);
+          setUseNewAddress(true);
+        } else if (json?.success && json.data?.length) {
           const defaultAddr = json.data.find((a) => a.isDefault) ?? json.data[0];
           setSelectedAddressId(defaultAddr.id);
           setPendingCity(defaultAddr.city?.trim() ?? "");
@@ -345,12 +491,15 @@ export function CheckoutContent() {
       toast({ title: "انتظر تحميل الملخص أو تحقق من العنوان", variant: "destructive" });
       return;
     }
-    if (paymentMethod === "INSTAPAY_PREPAID") {
-      setInstaPayModalOpen(true);
-      return;
-    }
     setPlaceLoading(true);
     try {
+      // Before anything is committed (and before the InstaPay amount is shown): align the
+      // storefront location/partner and stock with the delivery address.
+      if ((await ensureLocationMatchesAddress(addr)) === "stop") return;
+      if (paymentMethod === "INSTAPAY_PREPAID") {
+        setInstaPayModalOpen(true);
+        return;
+      }
       if (selectedSavedAddress && isSavedAddressIncomplete(selectedSavedAddress)) {
         const ok = await persistSavedAddressCity(selectedSavedAddress.id, addr.city);
         if (!ok) return;
@@ -365,8 +514,7 @@ export function CheckoutContent() {
         if (summary) firePurchaseOnce(json.data.orderId, summary, cart?.items ?? []);
         toast({ title: "تم إنشاء الطلب بنجاح", variant: "success" });
         await refreshCart();
-        router.push("/profile/orders");
-        router.refresh();
+        leaveAfterOrder();
       } else {
         toast({ title: json?.error?.message ?? "فشل إنشاء الطلب", variant: "destructive" });
       }
@@ -462,6 +610,35 @@ export function CheckoutContent() {
 
       {authChecked && !isGuest && !showEmptyCartView && cart && (
         <form onSubmit={handlePlaceOrder} className="mt-8 grid gap-10 lg:grid-cols-[7fr_4fr] lg:gap-16">
+          {removedItems.length > 0 && (
+            <div
+              role="alert"
+              data-testid="checkout-removed-items"
+              className="flex items-start gap-3 border border-carnelian-500 bg-danger-bg p-4 text-sm text-danger-text lg:col-span-2"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="font-bold">تم حذف بعض الأصناف من السلة</p>
+                <p className="mt-1">
+                  غير متوفرة لدى الوكيل في محافظة التوصيل: {removedItems.map((i) => i.productName).join("، ")}.
+                  راجع الإجمالي الجديد ثم أكّد الطلب.
+                </p>
+              </div>
+              <Button type="button" variant="outline" size="sm" className="shrink-0 rounded-none" onClick={() => setRemovedItems([])}>
+                حسناً
+              </Button>
+            </div>
+          )}
+          {showLocationWarning && addressGovernorate && storefrontGovernorate && (
+            <div
+              role="status"
+              data-testid="location-switch-warning"
+              className="flex items-start gap-3 border border-gold-500 bg-gold-500/10 p-4 text-sm text-[hsl(228_40%_14%)] lg:col-span-2"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+              <p>{locationMismatchWarning(addressGovernorate, storefrontGovernorate)}</p>
+            </div>
+          )}
           <div className="space-y-10">
             {/* 01 — Delivery address */}
             <section>
@@ -565,8 +742,7 @@ export function CheckoutContent() {
         onDone={() => {
           setSuccessModalOpen(false);
           refreshCart(); // update cart (now empty) before leaving
-          router.push("/profile/orders");
-          router.refresh();
+          leaveAfterOrder();
         }}
       />
     </div>

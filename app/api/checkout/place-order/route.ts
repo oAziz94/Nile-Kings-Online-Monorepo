@@ -7,6 +7,7 @@ import { PAYMENT_METHODS } from "@/lib/checkout/types";
 import { assignOrderToGovernorate } from "@/lib/rerouting/assign";
 import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 import { getCurrentStorefrontStockContext } from "@/lib/storefront-location";
+import { isLocationMismatch, LOCATION_MISMATCH_CODE } from "@/lib/checkout/location-mismatch";
 
 const addressSchema = {
   governorate: (v: unknown) => typeof v === "string" && v.trim().length > 0,
@@ -64,7 +65,8 @@ async function postHandler(req: Request) {
     return apiBadRequest("طريقة الدفع مطلوبة (COD أو PAYMOB أو InstaPay)");
   }
 
-  // Authoritative partner: resolved from the customer's chosen delivery governorate (cookie),
+  // Authoritative partner: resolved from the storefront location (cookie) governorate, which 10.49
+  // guarantees equals the address governorate (LOCATION_MISMATCH below). Original note:
   // same one whose stock was shown throughout browsing/cart — never from the shipping
   // address's governorate, which may point elsewhere (e.g. shipping to a relative in another
   // governorate). Both the preferred-partner lookup and its no-partner-selected fallback below
@@ -73,6 +75,15 @@ async function postHandler(req: Request) {
   if (!stockContext.governorate) {
     return apiBadRequest("اختر محافظة التوصيل من أعلى الصفحة أولاً", {
       code: "GOVERNORATE_NOT_SELECTED",
+    });
+  }
+
+  // Backlog 10.49 guard: the partner is resolved from the cookie governorate, so an address in
+  // another governorate must never be placed against it. The checkout page switches the
+  // location first; a stale client (old tab, direct API call) is refused here instead.
+  if (isLocationMismatch(String(address.governorate), stockContext.governorate)) {
+    return apiBadRequest("عنوان التوصيل في محافظة غير محافظة المتجر الحالية. حدّث الصفحة وأعد المحاولة.", {
+      code: LOCATION_MISMATCH_CODE,
     });
   }
 
