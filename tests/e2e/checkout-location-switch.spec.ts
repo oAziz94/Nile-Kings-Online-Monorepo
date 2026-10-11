@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, request as playwrightRequest, type Page } from "@playwright/test";
 import { loadRedesignTestEnv } from "./test-env";
 loadRedesignTestEnv();
 
@@ -24,6 +24,12 @@ const STOREFRONT_GOV = "القاهرة";
 const ADDRESS_GOV = "الوادي الجديد";
 const FIXTURE_PHONE = "+201099912346";
 const FIXTURE_PASSWORD = "CheckoutSwitch123!";
+// Fixture admin, used only to clear the storefront's 5-minute "governorate → partner" cache
+// (`getCachedPartnerIdForGovernorate`, tag REROUTING_RULES_TAG) after this spec creates and
+// before it deletes its الوادي الجديد rule — only the admin routing API revalidates that tag, so a
+// rule created straight through Prisma can be shadowed by a stale partner from an earlier run.
+const ADMIN_PHONE = "+201099912347";
+const ADMIN_PASSWORD = "CheckoutSwitchAdmin123!";
 const ADDRESS = {
   city: "الخارجة",
   area: "الخارجة",
@@ -38,7 +44,17 @@ function scryptAsync(password: string, salt: string): Promise<Buffer> {
 }
 
 let userId = "";
+let adminUserId = "";
 let categoryId = "";
+
+/** Logged-in admin API context, for the two cache-revalidating routing calls. */
+async function adminApi() {
+  const baseURL = test.info().project.use.baseURL as string;
+  const ctx = await playwrightRequest.newContext({ baseURL });
+  const login = await ctx.post("/api/auth/login", { data: { phone: ADMIN_PHONE, password: ADMIN_PASSWORD } });
+  expect(login.ok(), "fixture admin login").toBeTruthy();
+  return ctx;
+}
 let productXId = "";
 let productYId = "";
 let variantXId = "";
@@ -62,6 +78,18 @@ test.beforeAll(async () => {
   });
   userId = user.id;
   await prisma.savedAddress.deleteMany({ where: safeWhere({ userId }) });
+  const adminSalt = crypto.randomBytes(16).toString("hex");
+  const admin = await prisma.user.upsert({
+    where: { phone: ADMIN_PHONE },
+    create: {
+      phone: ADMIN_PHONE,
+      role: "ADMIN",
+      name: "مسؤول اختبار 10.49",
+      passwordHash: `${adminSalt}:${(await scryptAsync(ADMIN_PASSWORD, adminSalt)).toString("hex")}`,
+    },
+    update: {},
+  });
+  adminUserId = admin.id;
 
   const category = await prisma.category.create({
     data: { name: `فئة 10.49 ${suffix}`, slug: `loc-switch-cat-${suffix}`, sortOrder: 0 },
@@ -138,6 +166,13 @@ test.beforeAll(async () => {
     data: { partnerId: fixturePartnerId, variantId: variantXId, stockAvailable: 10, stockReserved: 0 },
   });
   inventoryIds.push(xRow.id);
+
+  // Clear the cached partner lookup for الوادي الجديد (see ADMIN_PHONE): a no-op isActive PATCH
+  // through the admin API calls revalidateReroutingRules().
+  const api = await adminApi();
+  const bust = await api.patch(`/api/admin/rerouting-rules/${ruleId}`, { data: { isActive: true } });
+  expect(bust.ok(), "revalidate rerouting cache after creating the fixture rule").toBeTruthy();
+  await api.dispose();
 });
 
 test.afterAll(async () => {
@@ -149,7 +184,19 @@ test.afterAll(async () => {
   }
   if (inventoryIds.length > 0) await prisma.partnerInventory.deleteMany({ where: { id: { in: inventoryIds } } });
   if (rulePartnerId) await prisma.reroutingRulePartner.deleteMany({ where: safeWhere({ id: rulePartnerId }) });
-  if (ruleId) await prisma.reroutingRule.deleteMany({ where: safeWhere({ id: ruleId }) });
+  if (ruleId) {
+    // Delete through the admin API so the partner-lookup cache is cleared for the next spec that
+    // creates its own الوادي الجديد rule; fall back to Prisma if the API is unreachable.
+    try {
+      const api = await adminApi();
+      await api.delete(`/api/admin/rerouting-rules/${ruleId}`);
+      await api.dispose();
+    } catch {
+      /* fall through to the direct delete */
+    }
+    await prisma.reroutingRule.deleteMany({ where: safeWhere({ id: ruleId }) });
+  }
+  if (adminUserId) await prisma.user.deleteMany({ where: safeWhere({ id: adminUserId, phone: ADMIN_PHONE }) });
   if (fixturePartnerId) await prisma.partner.deleteMany({ where: safeWhere({ id: fixturePartnerId }) });
   for (const id of [productXId, productYId]) {
     if (!id) continue;
@@ -184,7 +231,8 @@ async function fillAddress(page: Page) {
   await page.getByLabel("المحافظة *").selectOption(ADDRESS_GOV);
   await page.getByLabel("المدينة *").fill(ADDRESS.city);
   await page.getByLabel("هاتف التوصيل *").fill(ADDRESS.phone);
-  await page.getByLabel("المنطقة *").fill(ADDRESS.area);
+  // 10.48: المنطقة is a dropdown; الخارجة is on the الوادي الجديد list.
+  await page.getByLabel("المنطقة *").selectOption({ label: ADDRESS.area });
   await page.getByLabel("العنوان بالتفصيل *").fill(ADDRESS.street);
 }
 
@@ -216,7 +264,9 @@ test("cookie القاهرة + address الوادي الجديد: warning, then t
   const confirm = page.getByRole("button", { name: "تأكيد الطلب" });
   await expect(confirm).toBeEnabled({ timeout: 10_000 });
   await confirm.click();
-  await expect(page.getByText("تم إنشاء الطلب بنجاح").first()).toBeVisible({ timeout: 20_000 });
+  // After a switch the page leaves with a full navigation (`window.location.assign`), so the
+  // success toast is not a reliable signal — the orders page is.
+  await page.waitForURL(/\/profile\/orders/, { timeout: 30_000 });
 
   const order = await prisma.order.findFirst({ where: { userId }, orderBy: { createdAt: "desc" } });
   expect(order?.assignedPartnerId).toBe(fixturePartnerId);

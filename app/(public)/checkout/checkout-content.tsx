@@ -87,8 +87,14 @@ function firePurchaseOnce(orderId: string, summary: CheckoutSummaryResponse, ite
   });
 }
 
-/** Same key the location modal reads on mount to show its "items removed" notice (10.49 reuses it). */
-const REMOVED_ITEMS_KEY = "nile_removed_cart_items";
+/**
+ * Handoff across the reload that follows a checkout-triggered location switch (10.49). A
+ * checkout-specific key, not the location modal's `nile_removed_cart_items`: the modal shows a
+ * 5-second toast, which is too brief for a message that changed the order total — checkout
+ * renders it as a persistent inline notice instead (PM, verifier run 2026-10-11).
+ */
+const CHECKOUT_REMOVED_ITEMS_KEY = "nile_checkout_removed_items";
+type RemovedCartItem = { productName: string; variantName: string };
 
 export function CheckoutContent() {
   const router = useRouter();
@@ -122,8 +128,20 @@ export function CheckoutContent() {
   const [storefrontGovernorate, setStorefrontGovernorate] = useState<string | null>(null);
   /** True once checkout switched the storefront location, so the exit navigation is a full load (the nav pill is client state). */
   const locationSwitchedRef = React.useRef(false);
+  /** Items the location switch removed just before this mount's reload — shown until dismissed. */
+  const [removedItems, setRemovedItems] = useState<RemovedCartItem[]>([]);
   useEffect(() => {
     setStorefrontGovernorate(readStorefrontGovernorateFromBrowser());
+    try {
+      const raw = sessionStorage.getItem(CHECKOUT_REMOVED_ITEMS_KEY);
+      if (raw) {
+        sessionStorage.removeItem(CHECKOUT_REMOVED_ITEMS_KEY);
+        const items = JSON.parse(raw) as RemovedCartItem[];
+        if (Array.isArray(items) && items.length > 0) setRemovedItems(items);
+      }
+    } catch {
+      /* sessionStorage unavailable or malformed payload */
+    }
   }, []);
 
   const instapayDetails = getInstapayDetailsForPartner(summary?.partnerName);
@@ -220,7 +238,7 @@ export function CheckoutContent() {
 
     // Same endpoint as the location modal: sets the cookie and prunes cart items the new
     // partner has no stock for. Governorate/area/city only, so no saved address is created.
-    let removedItems: unknown[] = [];
+    let pruned: RemovedCartItem[] = [];
     try {
       const res = await fetch("/api/storefront/governorate", {
         method: "POST",
@@ -234,7 +252,7 @@ export function CheckoutContent() {
       });
       const json = await parseJsonResponse<{ success?: boolean; data?: { removedItems?: unknown[] } }>(res);
       if (!res.ok || !json?.success) throw new Error("switch failed");
-      removedItems = json.data?.removedItems ?? [];
+      pruned = (json.data?.removedItems as RemovedCartItem[] | undefined) ?? [];
     } catch {
       toast({ title: "تعذر تحويل طلبك للوكيل المناسب، حاول مرة أخرى", variant: "destructive" });
       return "stop";
@@ -242,11 +260,11 @@ export function CheckoutContent() {
     locationSwitchedRef.current = true;
     setStorefrontGovernorate(target);
 
-    if (removedItems.length > 0) {
+    if (pruned.length > 0) {
       // Stop: the customer confirms again against the reduced cart and its new total. The reload
-      // makes the location modal's removed-items notice (and every stock number) fresh.
+      // makes every stock number fresh; the inline notice above the form names what was removed.
       try {
-        sessionStorage.setItem(REMOVED_ITEMS_KEY, JSON.stringify(removedItems));
+        sessionStorage.setItem(CHECKOUT_REMOVED_ITEMS_KEY, JSON.stringify(pruned));
       } catch {
         /* sessionStorage unavailable */
       }
@@ -573,6 +591,30 @@ export function CheckoutContent() {
 
       {authChecked && !isGuest && !showEmptyCartView && cart && (
         <form onSubmit={handlePlaceOrder} className="mt-8 grid gap-10 lg:grid-cols-[7fr_4fr] lg:gap-16">
+          {removedItems.length > 0 && (
+            <div
+              role="alert"
+              data-testid="checkout-removed-items"
+              className="flex items-start gap-3 border border-carnelian-500 bg-danger-bg p-4 text-sm text-danger-text lg:col-span-2"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="font-bold">تم حذف بعض الأصناف من السلة</p>
+                <p className="mt-1">
+                  غير متوفرة لدى الوكيل في محافظة التوصيل: {removedItems.map((i) => i.productName).join("، ")}.
+                  راجع الإجمالي الجديد ثم أكّد الطلب.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRemovedItems([])}
+                aria-label="إغلاق التنبيه"
+                className="shrink-0 text-xs font-bold underline underline-offset-2"
+              >
+                حسناً
+              </button>
+            </div>
+          )}
           {showLocationWarning && addressGovernorate && storefrontGovernorate && (
             <div
               role="status"
