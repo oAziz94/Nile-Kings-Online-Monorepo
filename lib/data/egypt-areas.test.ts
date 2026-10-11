@@ -4,6 +4,7 @@ import {
   AREA_HOMONYMS,
   EGYPT_AREAS,
   canonicalAreaName,
+  correctGovernorateForArea,
   getAreasForGovernorate,
   isKnownAreaOf,
   normalizeAreaName,
@@ -85,5 +86,27 @@ describe("canonicalAreaName / isKnownAreaOf", () => {
     expect(isKnownAreaOf("القاهرة", "بيلا")).toBe(false);
     expect(isKnownAreaOf("القاهرة", "المطرية")).toBe(true);
     expect(isKnownAreaOf("الدقهلية", "المطرية")).toBe(true);
+  });
+});
+
+describe("correctGovernorateForArea (server-side correction, 10.48)", () => {
+  it("overwrites the governorate when the area belongs to exactly one other governorate", () => {
+    expect(correctGovernorateForArea("القاهرة", "الدقي")).toBe("الجيزة");
+    expect(correctGovernorateForArea("القاهرة", "الدقى")).toBe("الجيزة");
+    expect(correctGovernorateForArea("الإسكندرية", "بيلا")).toBe("كفر الشيخ");
+  });
+
+  it("leaves a matching, unknown or empty area untouched", () => {
+    expect(correctGovernorateForArea("كفر الشيخ", "بيلا")).toBe("كفر الشيخ");
+    expect(correctGovernorateForArea("القاهرة", "حي غير معروف")).toBe("القاهرة");
+    expect(correctGovernorateForArea("القاهرة", "")).toBe("القاهرة");
+    expect(correctGovernorateForArea("القاهرة", null)).toBe("القاهرة");
+  });
+
+  it("never corrects a homonym", () => {
+    for (const area of AREA_HOMONYMS) {
+      expect(correctGovernorateForArea("القاهرة", area)).toBe("القاهرة");
+      expect(correctGovernorateForArea("الجيزة", area)).toBe("الجيزة");
+    }
   });
 });

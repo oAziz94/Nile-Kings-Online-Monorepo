@@ -1,3 +1,4 @@
+import { correctGovernorateForArea } from "@/lib/data/egypt-areas";
 import { requireCustomer } from "@/lib/auth/session";
 import { placeOrder } from "@/lib/checkout/place-order";
 import { apiSuccess, apiBadRequest, apiUnauthorized } from "@/lib/api/response";
@@ -78,7 +79,8 @@ async function postHandler(req: Request) {
   const result = await placeOrder({
     userId: user.userId,
     address: {
-      governorate: String(address.governorate).trim(),
+      // Never trust the client's correction alone (10.48): a known area of another governorate wins.
+      governorate: correctGovernorateForArea(String(address.governorate).trim(), String(address.area)),
       city: String(address.city).trim(),
       area: String(address.area).trim(),
       street: String(address.street).trim(),

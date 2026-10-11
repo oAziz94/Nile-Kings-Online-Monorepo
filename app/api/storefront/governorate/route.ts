@@ -10,6 +10,7 @@ import { isCheckoutAddressComplete } from "@/lib/addresses/completeness";
 import { createSavedAddress } from "@/lib/addresses/create";
 import { pruneCartItemsForGovernorate } from "@/lib/cart/prune-for-governorate";
 import { getOrCreateCart } from "@/lib/cart/cart";
+import { correctGovernorateForArea } from "@/lib/data/egypt-areas";
 import { getCurrentUser } from "@/lib/auth/session";
 
 const MAX_AGE_SEC = 60 * 60 * 24 * 180;
@@ -31,8 +32,14 @@ export async function POST(req: NextRequest) {
     return apiBadRequest("جسم الطلب غير صالح");
   }
 
-  const governorate = normalizeStorefrontGovernorate(readOptionalString(body.governorate));
-  if (!governorate) return apiBadRequest("اختر محافظة صحيحة");
+  const submittedGovernorate = normalizeStorefrontGovernorate(readOptionalString(body.governorate));
+  if (!submittedGovernorate) return apiBadRequest("اختر محافظة صحيحة");
+  // 10.48: a known area of a different governorate overwrites the submitted one (never trust the
+  // client's correction alone). Homonyms and unknown areas leave it untouched.
+  const governorate =
+    normalizeStorefrontGovernorate(
+      correctGovernorateForArea(submittedGovernorate, readOptionalString(body.area))
+    ) ?? submittedGovernorate;
 
   const address: StorefrontAddress = {
     governorate,

@@ -187,7 +187,9 @@ test.describe("Checkout — COD order placement (money walk)", () => {
     await page.getByLabel("المحافظة *").selectOption(TEST_ADDRESS.governorate);
     await page.getByLabel("المدينة *").fill(TEST_ADDRESS.city);
     await page.getByLabel("هاتف التوصيل *").fill(TEST_ADDRESS.phone);
-    await page.getByLabel("المنطقة *").fill(TEST_ADDRESS.area);
+    // 10.48: المنطقة is a dropdown; a district not on the list goes through "أخرى…" + free text.
+    await page.getByLabel("المنطقة *").selectOption({ label: "أخرى…" });
+    await page.getByLabel("اسم المنطقة").fill(TEST_ADDRESS.area);
     await page.getByLabel("العنوان بالتفصيل *").fill(TEST_ADDRESS.street);
 
     // Order review shows the line we just added (all lines, not a first-6 cutoff).
@@ -258,7 +260,9 @@ test.describe("Checkout — InstaPay instructions modal", () => {
     await page.getByLabel("المحافظة *").selectOption(TEST_ADDRESS.governorate);
     await page.getByLabel("المدينة *").fill(TEST_ADDRESS.city);
     await page.getByLabel("هاتف التوصيل *").fill(TEST_ADDRESS.phone);
-    await page.getByLabel("المنطقة *").fill(TEST_ADDRESS.area);
+    // 10.48: المنطقة is a dropdown; a district not on the list goes through "أخرى…" + free text.
+    await page.getByLabel("المنطقة *").selectOption({ label: "أخرى…" });
+    await page.getByLabel("اسم المنطقة").fill(TEST_ADDRESS.area);
     await page.getByLabel("العنوان بالتفصيل *").fill(TEST_ADDRESS.street);
 
     await page.getByRole("radio", { name: "الدفع عبر InstaPay" }).check();

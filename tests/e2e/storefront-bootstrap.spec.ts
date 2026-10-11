@@ -204,7 +204,7 @@ test.describe("bootstrap failure — the guest must never be locked out (verifie
     await expect(dialog).toBeVisible();
 
     // Real, non-empty list: the static fallback (placeholder + 27 governorates).
-    await expect(dialog.locator("select option")).toHaveCount(28);
+    await expect(dialog.getByTestId("governorate-select").locator("option")).toHaveCount(28);
   });
 });
 

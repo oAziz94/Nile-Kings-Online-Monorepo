@@ -152,7 +152,7 @@ test("addresses: add, set default, delete via the styled dialog", async ({ page 
   await page.getByLabel("المحافظة", { exact: false }).selectOption({ label: "القاهرة" });
   await page.getByLabel("المدينة", { exact: false }).fill("مدينة نصر");
   await page.getByLabel("هاتف التوصيل", { exact: false }).fill("01011122233");
-  await page.getByLabel("المنطقة", { exact: false }).fill("الحي السابع");
+  await page.getByTestId("area-select").selectOption({ label: "مدينة نصر" });
   await page.getByLabel("العنوان بالتفصيل", { exact: false }).fill("شارع الاختبار 1");
 
   await page.getByRole("button", { name: "حفظ العنوان" }).click();
@@ -208,7 +208,7 @@ test("addresses: a double-click on save sends exactly one POST", async ({ page }
   await page.getByLabel("المحافظة", { exact: false }).selectOption({ label: "القاهرة" });
   await page.getByLabel("المدينة", { exact: false }).fill("مدينة الشروق");
   await page.getByLabel("هاتف التوصيل", { exact: false }).fill("01011122234");
-  await page.getByLabel("المنطقة", { exact: false }).fill("الحي الأول");
+  await page.getByTestId("area-select").selectOption({ label: "مدينة نصر" });
   await page.getByLabel("العنوان بالتفصيل", { exact: false }).fill("شارع الاختبار 2");
 
   let postCount = 0;

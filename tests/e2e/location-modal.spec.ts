@@ -86,15 +86,16 @@ test.describe("fresh visitor (no location cookie)", () => {
     const d = await expectLocked(page);
     await page.keyboard.press("Escape");
     await expect(d).toBeVisible();
-    // 27 governorates + the placeholder option.
-    await expect(d.locator("select option")).toHaveCount(28);
+    // 27 governorates + the placeholder option (the governorate select only — 10.48 added a
+    // second select for the area).
+    await expect(d.getByTestId("governorate-select").locator("option")).toHaveCount(28);
   });
 
   test("saving closes the lock: reload, then the pill shows the governorate", async ({ page }) => {
     await page.goto("/");
     const d = await expectLocked(page);
-    await d.locator("select").selectOption("القاهرة");
-    await d.getByPlaceholder("مثال: الدقي").fill("مدينة نصر");
+    await d.getByTestId("governorate-select").selectOption("القاهرة");
+    await d.getByTestId("area-select").selectOption({ label: "مدينة نصر" });
     await Promise.all([
       page.waitForEvent("load"),
       d.getByRole("button", { name: "حفظ العنوان" }).click(),

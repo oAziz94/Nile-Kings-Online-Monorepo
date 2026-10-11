@@ -9,6 +9,12 @@ import {
   authBareInputClass,
 } from "@/components/auth/auth-ui";
 import { cn } from "@/lib/utils";
+import {
+  AREA_OTHER_LABEL,
+  AREA_OTHER_VALUE,
+  AREA_PLACEHOLDER,
+  useAreaField,
+} from "@/components/shared/use-area-field";
 import type { AddressFormValues } from "./types";
 
 // The canvas's own 10×6 chevron (same asset `auth-ui.tsx` draws for the country select), reused
@@ -54,12 +60,18 @@ export function AddressForm({
   onChange: (next: AddressFormValues) => void;
 }) {
   const idPrefix = useId();
+  const areaField = useAreaField({
+    governorate: address.governorate,
+    area: address.area,
+    onChange: (patch) => onChange({ ...address, ...patch }),
+  });
   const ids = {
     label: `${idPrefix}-label`,
     governorate: `${idPrefix}-governorate`,
     city: `${idPrefix}-city`,
     phone: `${idPrefix}-phone`,
     area: `${idPrefix}-area`,
+    areaOther: `${idPrefix}-area-other`,
     street: `${idPrefix}-street`,
     notes: `${idPrefix}-notes`,
   };
@@ -128,14 +140,41 @@ export function AddressForm({
 
         <Field id={ids.area} label="المنطقة" required>
           <div className={authFieldBoxClass()}>
-            <input
+            <select
               id={ids.area}
-              value={address.area}
-              onChange={(e) => onChange({ ...address, area: e.target.value })}
+              value={areaField.selectValue}
+              onChange={(e) => areaField.onSelect(e.target.value)}
+              disabled={areaField.disabled}
               required
-              className={authBareInputClass}
-            />
+              dir="rtl"
+              data-testid="area-select"
+              className={cn(fullWidthSelectClass, "disabled:cursor-not-allowed disabled:opacity-60")}
+              style={fullWidthSelectStyle}
+            >
+              <option value="">{AREA_PLACEHOLDER}</option>
+              {areaField.options.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+              <option value={AREA_OTHER_VALUE}>{AREA_OTHER_LABEL}</option>
+            </select>
           </div>
+          {areaField.isOther ? (
+            <div className={authFieldBoxClass()}>
+              <input
+                id={ids.areaOther}
+                value={address.area}
+                onChange={(e) => areaField.onText(e.target.value)}
+                onBlur={areaField.onTextBlur}
+                required
+                aria-label="اسم المنطقة"
+                placeholder="اكتب اسم المنطقة"
+                data-testid="area-other-input"
+                className={authBareInputClass}
+              />
+            </div>
+          ) : null}
         </Field>
 
         <div className="sm:col-span-2">

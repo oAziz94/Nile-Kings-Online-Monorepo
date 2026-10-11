@@ -12,6 +12,7 @@ import {
   copyInstapayAddress,
   getInstapayDetailsForPartner,
 } from "@/lib/checkout/instapay";
+import { correctGovernorateForArea } from "@/lib/data/egypt-areas";
 import { parseJsonResponse } from "@/lib/api/parse-json";
 import {
   isCheckoutAddressComplete,
@@ -311,7 +312,7 @@ export function CheckoutContent() {
     if (!useNewAddress) return;
     const saveBody = {
       label: addr.label?.trim() || null,
-      governorate: addr.governorate.trim(),
+      governorate: correctGovernorateForArea(addr.governorate.trim(), addr.area),
       city: addr.city.trim(),
       area: addr.area?.trim() || null,
       street: addr.street.trim(),

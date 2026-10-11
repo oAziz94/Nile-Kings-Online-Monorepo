@@ -8,7 +8,13 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { parseJsonResponse } from "@/lib/api/parse-json";
-import { resolveGovernorateForArea } from "@/lib/data/egypt-areas-greater-cairo";
+import { correctGovernorateForArea } from "@/lib/data/egypt-areas";
+import {
+  AREA_OTHER_LABEL,
+  AREA_OTHER_VALUE,
+  AREA_PLACEHOLDER,
+  useAreaField,
+} from "@/components/shared/use-area-field";
 import { GOVERNORATE_AS_CITY_VALUES } from "@/lib/addresses/completeness";
 import { useStorefrontBootstrap } from "@/components/storefront/storefront-bootstrap-provider";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
@@ -171,29 +177,31 @@ export function GovernorateSelector() {
     }
   }, [toast]);
 
-  function setArea(area: string) {
-    setDraft((d) => ({ ...d, area }));
-  }
-
-  function applyAreaCorrection() {
-    const resolved = resolveGovernorateForArea(draft.area);
-    if (resolved && resolved !== draft.governorate) {
-      setDraft((d) => ({ ...d, governorate: resolved }));
-    }
-  }
-
   function setGovernorate(governorate: string) {
-    setDraft((d) => ({
-      ...d,
-      governorate,
-      city: GOVERNORATE_AS_CITY_VALUES.includes(governorate as (typeof GOVERNORATE_AS_CITY_VALUES)[number]) && !d.city.trim()
-        ? governorate
-        : d.city,
-    }));
+    setDraft((d) => {
+      const isCityGov = (g: string) => GOVERNORATE_AS_CITY_VALUES.includes(g as (typeof GOVERNORATE_AS_CITY_VALUES)[number]);
+      // A city that was auto-filled from the previous governorate-as-city pick (or is empty) follows
+      // the new governorate; a city the customer typed themselves is kept. Verifier finding on
+      // 10.48: القاهرة → كفر الشيخ used to leave city = "القاهرة" in the cookie.
+      const cityWasAuto = !d.city.trim() || (isCityGov(d.governorate) && d.city.trim() === d.governorate);
+      const city = cityWasAuto ? (isCityGov(governorate) ? governorate : "") : d.city;
+      return { ...d, governorate, city };
+    });
   }
+
+  const areaField = useAreaField({
+    governorate: draft.governorate,
+    area: draft.area,
+    onChange: (patch) => {
+      if (patch.area !== undefined) setDraft((d) => ({ ...d, area: patch.area as string }));
+      if (patch.governorate !== undefined) setGovernorate(patch.governorate);
+    },
+  });
 
   async function saveLocation() {
     if (!draft.governorate || !draft.area.trim()) return;
+    // Same silent correction the server applies; done here too so the payload is already right.
+    const governorate = correctGovernorateForArea(draft.governorate, draft.area);
     setSaving(true);
     try {
       const res = await fetch("/api/storefront/governorate", {
@@ -201,7 +209,7 @@ export function GovernorateSelector() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          governorate: draft.governorate,
+          governorate,
           area: draft.area.trim(),
           city: draft.city.trim() || null,
           street: draft.street.trim() || null,
@@ -295,10 +303,12 @@ export function GovernorateSelector() {
 
             <div className="mt-5 space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-[hsl(228_26%_24%)]">المحافظة *</label>
+                <label htmlFor="storefront-governorate" className="mb-2 block text-sm font-medium text-[hsl(228_26%_24%)]">المحافظة *</label>
                 <Select
+                  id="storefront-governorate"
                   value={draft.governorate}
                   onChange={(e) => setGovernorate(e.target.value)}
+                  data-testid="governorate-select"
                   className="h-11 rounded-none"
                 >
                   <option value="">اختر المحافظة</option>
@@ -311,14 +321,35 @@ export function GovernorateSelector() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-[hsl(228_26%_24%)]">المنطقة *</label>
-                <Input
-                  value={draft.area}
-                  onChange={(e) => setArea(e.target.value)}
-                  onBlur={applyAreaCorrection}
-                  placeholder="مثال: الدقي"
+                <label htmlFor="storefront-area" className="mb-2 block text-sm font-medium text-[hsl(228_26%_24%)]">المنطقة *</label>
+                <Select
+                  id="storefront-area"
+                  value={areaField.selectValue}
+                  onChange={(e) => areaField.onSelect(e.target.value)}
+                  disabled={areaField.disabled}
+                  data-testid="area-select"
                   className="h-11 rounded-none"
-                />
+                >
+                  <option value="">{AREA_PLACEHOLDER}</option>
+                  {areaField.options.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                  <option value={AREA_OTHER_VALUE}>{AREA_OTHER_LABEL}</option>
+                </Select>
+                {areaField.isOther ? (
+                  <Input
+                    value={draft.area}
+                    onChange={(e) => areaField.onText(e.target.value)}
+                    onBlur={areaField.onTextBlur}
+                    placeholder="اكتب اسم المنطقة"
+                    aria-label="اسم المنطقة"
+                    data-testid="area-other-input"
+                    required
+                    className="mt-2 h-11 rounded-none"
+                  />
+                ) : null}
               </div>
 
               <button

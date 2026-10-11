@@ -238,3 +238,15 @@ export function isKnownAreaOf(governorate: string, area: string): boolean {
   const govs = getIndex().byArea.get(normalizeAreaName(area));
   return !!govs && govs.includes(governorate.trim());
 }
+
+/**
+ * Silent governorate correction (backlog 10.48), shared by the client forms and every server
+ * entry point that stores an address. Returns the governorate the area confidently belongs to
+ * when it differs from the submitted one; otherwise returns `governorate` unchanged. Unknown
+ * areas and `AREA_HOMONYMS` (listed under several governorates) never correct anything.
+ */
+export function correctGovernorateForArea(governorate: string, area: string | null | undefined): string {
+  if (!area || !area.trim()) return governorate;
+  const resolved = resolveGovernorateForArea(area);
+  return resolved && resolved !== governorate.trim() ? resolved : governorate;
+}
