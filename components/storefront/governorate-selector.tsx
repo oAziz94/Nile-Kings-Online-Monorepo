@@ -178,13 +178,15 @@ export function GovernorateSelector() {
   }, [toast]);
 
   function setGovernorate(governorate: string) {
-    setDraft((d) => ({
-      ...d,
-      governorate,
-      city: GOVERNORATE_AS_CITY_VALUES.includes(governorate as (typeof GOVERNORATE_AS_CITY_VALUES)[number]) && !d.city.trim()
-        ? governorate
-        : d.city,
-    }));
+    setDraft((d) => {
+      const isCityGov = (g: string) => GOVERNORATE_AS_CITY_VALUES.includes(g as (typeof GOVERNORATE_AS_CITY_VALUES)[number]);
+      // A city that was auto-filled from the previous governorate-as-city pick (or is empty) follows
+      // the new governorate; a city the customer typed themselves is kept. Verifier finding on
+      // 10.48: القاهرة → كفر الشيخ used to leave city = "القاهرة" in the cookie.
+      const cityWasAuto = !d.city.trim() || (isCityGov(d.governorate) && d.city.trim() === d.governorate);
+      const city = cityWasAuto ? (isCityGov(governorate) ? governorate : "") : d.city;
+      return { ...d, governorate, city };
+    });
   }
 
   const areaField = useAreaField({

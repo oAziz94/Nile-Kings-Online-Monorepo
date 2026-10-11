@@ -102,6 +102,17 @@ test.describe("location modal", () => {
     expect(await cookieAddress(page)).toMatchObject({ governorate: "الجيزة", area: "الدقي" });
   });
 
+  test("city auto-filled from a governorate-as-city pick follows a later governorate change (verifier, 10.48)", async ({ page }) => {
+    const d = await openModal(page);
+    await d.getByLabel("المحافظة *").selectOption("القاهرة");
+    await d.getByLabel("المحافظة *").selectOption("كفر الشيخ");
+    await d.getByTestId("area-select").selectOption({ label: "بيلا" });
+    await Promise.all([page.waitForEvent("load"), d.getByRole("button", { name: "حفظ العنوان" }).click()]);
+    const saved = (await cookieAddress(page)) as { governorate: string; area: string | null; city?: string | null } | null;
+    expect(saved).toMatchObject({ governorate: "كفر الشيخ", area: "بيلا" });
+    expect(saved?.city ?? null).not.toBe("القاهرة");
+  });
+
   test("changing governorate clears a dropdown pick from the previous list", async ({ page }) => {
     const d = await openModal(page);
     await d.getByLabel("المحافظة *").selectOption("القاهرة");
