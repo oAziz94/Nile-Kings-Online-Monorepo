@@ -313,7 +313,11 @@ export default function NewAdminOrderPage() {
           >
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
             <div className="min-w-0 flex-1">
-              <p className="font-bold">{submitError.message}</p>
+              <p className="font-bold">
+                {submitError.items.length > 0
+                  ? "لا يوجد شريك يغطي كل الأصناف في هذه المحافظة. الأصناف الناقصة لدى الشريك:"
+                  : submitError.message}
+              </p>
               {submitError.items.length > 0 && (
                 <ul className="mt-2 space-y-1">
                   {submitError.items.map((i) => (
