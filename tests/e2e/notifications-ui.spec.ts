@@ -48,8 +48,12 @@ async function hashPassword(plain: string): Promise<string> {
 
 const ADMIN_PHONE = `+2010${String(Date.now()).slice(-7)}2`;
 const ADMIN_PASSWORD = "NotifUiAdmin123!";
+const CUSTOMER_PHONE = `+2010${String(Date.now()).slice(-7)}3`;
 
 let adminUserId: string;
+let customerUserId: string;
+let tickOrderId: string;
+let tickTicketId: string | undefined;
 let pair: PartnerFixturePair;
 const ADMIN_UNREAD_COUNT = 22;
 const ADMIN_READ_COUNT = 3;
@@ -71,6 +75,25 @@ test.beforeAll(async () => {
   adminUserId = admin.id;
 
   pair = await seedPartnerPair(prisma);
+
+  // Backlog 10.52 — a customer + one order for the real-path poll-tick test (the customer
+  // opens a ticket through the app, which `notify()`s every admin, including this one).
+  const customer = await prisma.user.create({
+    data: { phone: CUSTOMER_PHONE, role: "CUSTOMER", passwordHash: await hashPassword(ADMIN_PASSWORD), name: `عميل اختبار الإشعارات ${uniqueSuffix}` },
+  });
+  customerUserId = customer.id;
+  const tickOrder = await prisma.order.create({
+    data: {
+      userId: customerUserId,
+      status: "CONFIRMED",
+      subtotalPiastres: 10000,
+      totalPiastres: 10000,
+      shippingAddress: { governorate: "القاهرة", city: "القاهرة", street: "شارع الاختبار", phone: CUSTOMER_PHONE },
+      shippingProvider: "Egypt Post",
+      paymentMethod: "COD",
+    },
+  });
+  tickOrderId = tickOrder.id;
 
   // Admin: 22 unread + 3 already-read = 25 rows, enough to exercise the history page's
   // cursor pagination (limit 20) and give the "unread" tab its own hasMore state.
@@ -126,6 +149,13 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await prisma.notification.deleteMany({ where: safeWhere({ userId: { in: [adminUserId, pair.agent.userId] } }) });
+  // 10.52 — the ticket's notification rows for any OTHER admin were written by the app path and
+  // carry the ticket id as entityId; remove exactly those, then the ticket/order/customer.
+  await deleteByIds(prisma.notification, [tickTicketId], "entityId");
+  await deleteByIds(prisma.orderTicketMessage, [tickTicketId], "ticketId");
+  await deleteByIds(prisma.orderTicket, [tickTicketId]);
+  await deleteByIds(prisma.order, [tickOrderId]);
+  await deleteByIds(prisma.user, [customerUserId]);
   await cleanupPartnerPair(prisma, pair);
   await deleteByIds(prisma.user, [adminUserId]);
   await prisma.$disconnect();
@@ -156,6 +186,8 @@ test("10.39 — reopening the bell shows a row created after the first open, wit
     },
   });
 
+  await bustBadgeCache(page);
+
   // Reopen without reloading: the list must be fetched fresh and include the new row.
   await bell.click();
   await expect(page.getByText(lateTitle)).toBeVisible({ timeout: 10_000 });
@@ -163,22 +195,35 @@ test("10.39 — reopening the bell shows a row created after the first open, wit
 
   // Remove it again so the seeded counts the following tests assert on are unchanged.
   await prisma.notification.deleteMany({ where: safeWhere({ userId: adminUserId, entityId: `notif-late-${uniqueSuffix}` }) });
+  await bustBadgeCache(page);
 });
+
+// Backlog 10.52 — the unread count is answered from a Redis cache (up to 15 min) that only
+// application writes invalidate. These tests change rows straight through Prisma, so after each
+// such write they call the real `POST /api/notifications/read` with an id that matches nothing:
+// the route's normal behaviour (mark dirty + drop the cached count) invalidates the badge, and
+// no production code has a test-only bypass.
+async function bustBadgeCache(page: Page) {
+  const res = await page.request.post("/api/notifications/read", { data: { ids: [`nonexistent-${uniqueSuffix}`] } });
+  expect(res.ok()).toBeTruthy();
+}
 
 // Backlog 10.40 — the owner still had to reload after 10.39: the badge only polled (paused while
 // the tab was hidden, no refetch on return), opening the bell refreshed the list but not the
 // badge, and the history page fetched once. Each test below expects the update within 5 s,
 // well under the 20 s poll, so it can only pass through the focus / open refetch paths.
-async function insertLateRow(tag: string) {
+async function insertLateRow(page: Page, tag: string) {
   const entityId = `notif-live-${tag}-${uniqueSuffix}`;
   const title = `طلب جديد #TESTLIVE${tag}${uniqueSuffix} · الجيزة · 300 ج.م`;
   await prisma.notification.create({
     data: { userId: adminUserId, kind: "order.created", title, body: null, href: `/admin/orders/${entityId}`, entityType: "order", entityId },
   });
+  await bustBadgeCache(page);
   return { entityId, title };
 }
-async function removeLateRow(entityId: string) {
+async function removeLateRow(page: Page, entityId: string) {
   await prisma.notification.deleteMany({ where: safeWhere({ userId: adminUserId, entityId }) });
+  await bustBadgeCache(page);
 }
 async function simulateTabReturn(page: Page) {
   await page.evaluate(() => {
@@ -192,12 +237,12 @@ test("10.40 — returning to the tab refreshes the badge without a reload", asyn
   const bell = bellButton(page);
   await expect(bell).toHaveAttribute("aria-label", `الإشعارات (${ADMIN_UNREAD_COUNT} غير مقروء)`);
 
-  const late = await insertLateRow("focus");
+  const late = await insertLateRow(page, "focus");
   try {
     await simulateTabReturn(page);
     await expect(bell).toHaveAttribute("aria-label", `الإشعارات (${ADMIN_UNREAD_COUNT + 1} غير مقروء)`, { timeout: 5_000 });
   } finally {
-    await removeLateRow(late.entityId);
+    await removeLateRow(page, late.entityId);
   }
 });
 
@@ -206,14 +251,14 @@ test("10.40 — opening the bell refreshes the badge and shows the new row", asy
   const bell = bellButton(page);
   await expect(bell).toHaveAttribute("aria-label", `الإشعارات (${ADMIN_UNREAD_COUNT} غير مقروء)`);
 
-  const late = await insertLateRow("open");
+  const late = await insertLateRow(page, "open");
   try {
     await bell.click();
     await expect(page.getByText(late.title)).toBeVisible({ timeout: 5_000 });
     await expect(bell).toHaveAttribute("aria-label", `الإشعارات (${ADMIN_UNREAD_COUNT + 1} غير مقروء)`, { timeout: 5_000 });
     await page.keyboard.press("Escape");
   } finally {
-    await removeLateRow(late.entityId);
+    await removeLateRow(page, late.entityId);
   }
 });
 
@@ -222,13 +267,42 @@ test("10.40 — the history page shows a new row without a reload", async ({ pag
   await page.goto("/admin/notifications");
   await expect(page.getByText(`طلب جديد #TESTORD${uniqueSuffix}0`)).toBeVisible();
 
-  const late = await insertLateRow("history");
+  const late = await insertLateRow(page, "history");
   try {
     await simulateTabReturn(page);
     await expect(page.getByText(late.title)).toBeVisible({ timeout: 5_000 });
   } finally {
-    await removeLateRow(late.entityId);
+    await removeLateRow(page, late.entityId);
   }
+});
+
+test("10.52 — a ticket opened by a customer reaches the admin badge on a poll tick, with no interaction", async ({ page, playwright, baseURL }) => {
+  await loginAsAdmin(page);
+  const bell = bellButton(page);
+  await expect(bell).toHaveAttribute("aria-label", `الإشعارات (${ADMIN_UNREAD_COUNT} غير مقروء)`);
+
+  // A real application path: the customer's ticket POST runs `notify()` for every admin, which
+  // marks the Redis cache dirty. No page interaction from here on — only the 20 s poll can move
+  // the badge (it must still poll under the idle-pause logic, and must not serve a stale cache).
+  const customerApi = await playwright.request.newContext({ baseURL });
+  try {
+    const login = await customerApi.post("/api/auth/login", { data: { phone: CUSTOMER_PHONE, password: ADMIN_PASSWORD } });
+    expect(login.ok()).toBeTruthy();
+    const ticketRes = await customerApi.post(`/api/profile/orders/${tickOrderId}/ticket`, {
+      data: { subject: "DELIVERY_DELAY", body: "أين طلبي؟ لم يصل بعد وتأخر كثيرًا عن الموعد المتوقع.", contactPhone: "01000000000" },
+    });
+    expect(ticketRes.ok()).toBeTruthy();
+    tickTicketId = (await ticketRes.json()).data.id as string;
+  } finally {
+    await customerApi.dispose();
+  }
+
+  await expect(bell).toHaveAttribute("aria-label", `الإشعارات (${ADMIN_UNREAD_COUNT + 1} غير مقروء)`, { timeout: 35_000 });
+
+  // Put the admin's state back for the tests that follow: remove the ticket's row for this
+  // admin (the ticket itself is removed in afterAll) and invalidate the cached count.
+  await prisma.notification.deleteMany({ where: safeWhere({ userId: adminUserId, entityId: tickTicketId }) });
+  await bustBadgeCache(page);
 });
 
 test("admin bell: badge matches unread count, popover lists seeded rows", async ({ page }) => {
@@ -284,7 +358,9 @@ test("admin bell: mark-all clears the badge", async ({ page }) => {
   await bellButton(page).click();
   await page.getByRole("button", { name: "تعليم الكل كمقروء" }).click();
 
-  await expect(bellButton(page)).toHaveAttribute("aria-label", "الإشعارات", { timeout: 10_000 });
+  // 10.52 — the read route drops the cached count, so the badge clears at once (well inside
+  // the 20 s poll), not on a later tick.
+  await expect(bellButton(page)).toHaveAttribute("aria-label", "الإشعارات", { timeout: 4_000 });
 
   const countRes = await page.request.get("/api/notifications/unread-count");
   expect((await countRes.json()).data.unreadCount).toBe(0);

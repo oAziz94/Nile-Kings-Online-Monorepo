@@ -1,13 +1,14 @@
-import { getCurrentUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { getSessionUserIdFromJwt } from "@/lib/auth/session";
+import { getUnreadCountCached } from "@/lib/notifications/unread-cache";
 import { apiSuccess, apiUnauthorized } from "@/lib/api/response";
 
-/** GET /api/notifications/unread-count (backlog 10.34 d) — the bell's 30s poll (10.35) hits
- * this instead of the full list endpoint. */
+/** GET /api/notifications/unread-count (backlog 10.34 d) — the bell's 20s poll (10.35).
+ * Backlog 10.52: identity from the JWT only and the count from Redis, so a cache hit makes zero
+ * Postgres queries (Neon can sleep while a dashboard tab is open). */
 export async function GET() {
-  const user = await getCurrentUser();
-  if (!user) return apiUnauthorized("يجب تسجيل الدخول");
+  const userId = await getSessionUserIdFromJwt();
+  if (!userId) return apiUnauthorized("يجب تسجيل الدخول");
 
-  const unreadCount = await prisma.notification.count({ where: { userId: user.userId, readAt: null } });
+  const unreadCount = await getUnreadCountCached(userId);
   return apiSuccess({ unreadCount });
 }

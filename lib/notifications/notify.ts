@@ -7,6 +7,7 @@
  */
 import type { Prisma } from "@prisma/client";
 import type { NotificationKind } from "./kinds";
+import { markUnreadDirty } from "./unread-cache";
 
 type Tx = Omit<Prisma.TransactionClient, "$transaction">;
 
@@ -50,4 +51,8 @@ export async function notify(tx: Tx, input: NotifyInput): Promise<void> {
       entityId: input.entity?.id ?? null,
     })),
   });
+  // Backlog 10.52 — invalidate the Redis unread cache. Inside the tx on purpose (a failing
+  // Redis must not fail the order; `markUnreadDirty` never throws); the cache's 5 s grace covers
+  // a poll that runs between this mark and the commit.
+  await markUnreadDirty(recipientIds);
 }

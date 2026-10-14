@@ -8,6 +8,8 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+vi.mock("@/lib/notifications/unread-cache", () => ({ markUnreadDirty: vi.fn(async () => undefined) }));
+
 type NotificationRow = {
   userId: string;
   kind: string;

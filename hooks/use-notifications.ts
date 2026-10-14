@@ -5,7 +5,9 @@
  * `GET /api/notifications/unread-count` and `POST /api/notifications/read`. Shared by both
  * dashboards (the routes are session-scoped, see `app/api/notifications/route.ts`).
  */
+import * as React from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { currentPollInterval, onActivityResume } from "@/hooks/notification-activity";
 import type { NotificationKind } from "@/lib/notifications/kinds";
 
 export type NotificationRow = {
@@ -53,10 +55,22 @@ const LIVE_QUERY = {
 
 /** The bell badge — the lightweight count-only endpoint. */
 export function useNotificationsUnreadCount() {
+  const queryClient = useQueryClient();
+  // Backlog 10.52 — the first activity after an idle pause (interval = false) refetches now,
+  // which also restarts the interval.
+  React.useEffect(
+    () =>
+      onActivityResume(() => {
+        void queryClient.refetchQueries({ queryKey: ["notifications", "unread-count"] });
+      }),
+    [queryClient]
+  );
   return useQuery({
     queryKey: ["notifications", "unread-count"],
     queryFn: () => fetchJson<{ unreadCount: number }>("/api/notifications/unread-count"),
     ...LIVE_QUERY,
+    // Backlog 10.52 — 20 s while the user was active in the last 30 min, otherwise no polling.
+    refetchInterval: () => currentPollInterval(),
   });
 }
 

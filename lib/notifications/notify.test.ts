@@ -3,7 +3,10 @@
  * both audience shapes, and that `notify()` writes exactly one row per resolved recipient with
  * the fields the write points pass through untouched.
  */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+vi.mock("./unread-cache", () => ({ markUnreadDirty: vi.fn(async () => undefined) }));
+
 import { notify, resolveRecipientIds } from "./notify";
 
 type NotificationRow = {

@@ -8,6 +8,8 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+vi.mock("@/lib/notifications/unread-cache", () => ({ markUnreadDirty: vi.fn(async () => undefined) }));
+
 vi.mock("@/lib/inventory/partner-inventory", () => ({
   reservePartnerStockForOrder: vi.fn(async () => {}),
   commitPartnerReservation: vi.fn(async () => {}),

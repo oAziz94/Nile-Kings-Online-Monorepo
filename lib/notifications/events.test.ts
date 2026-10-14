@@ -2,7 +2,9 @@
  * Unit test for `notifyOrderAssigned` (backlog 10.38) — the shared "order.assigned" write
  * point called from `place-order.ts`, `assign-partner.ts` and `rerouting/assign.ts`.
  */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+vi.mock("@/lib/notifications/unread-cache", () => ({ markUnreadDirty: vi.fn(async () => undefined) }));
 import { notifyOrderAssigned } from "./events";
 
 type NotificationRow = {
