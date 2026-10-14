@@ -85,7 +85,7 @@ export type OutOfStockItem = {
 };
 
 export type PlaceOrderResult =
-  | { success: true; orderId: string; status: "CREATED" | "CONFIRMED" }
+  | { success: true; orderId: string; status: "CREATED" | "CONFIRMED"; finalTotal: number }
   | { success: false; error: string; code?: string; outOfStockItems?: OutOfStockItem[] };
 
 type OrderLineRow = {
@@ -394,6 +394,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       success: true,
       orderId: result.orderId,
       status: result.status as "CREATED" | "CONFIRMED",
+      finalTotal: summary.finalTotal,
     };
   } catch (e) {
     if (e instanceof InsufficientPartnerStockError) {

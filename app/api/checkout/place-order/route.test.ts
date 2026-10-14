@@ -29,7 +29,7 @@ function request(governorate: string) {
 describe("POST /api/checkout/place-order location guard", () => {
   beforeEach(() => {
     placeOrder.mockReset();
-    placeOrder.mockResolvedValue({ success: true, orderId: "o1", status: "CREATED" });
+    placeOrder.mockResolvedValue({ success: true, orderId: "o1", status: "CREATED", finalTotal: 12300 });
     getContext.mockReset();
   });
 

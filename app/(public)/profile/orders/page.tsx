@@ -77,6 +77,13 @@ function paymentLabel(method: string) {
   return "بطاقة";
 }
 
+// Backlog 10.50 — an InstaPay order is created before the transfer; until the owner confirms it,
+// it reads "بانتظار التحويل" instead of "تم الاستلام" (label only).
+const AWAITING_INSTAPAY_LABEL = "بانتظار التحويل عبر InstaPay";
+function isAwaitingInstaPay(status: string, paymentMethod: string) {
+  return status === "CREATED" && paymentMethod === "INSTAPAY_PREPAID";
+}
+
 // Internal actor tags stored in `cancellationReason` that should never be shown to a customer
 // verbatim (see `lib/orders/partner-status-transition.ts`) — a
 // free-text reason (set by an admin) is shown as-is; these codes are not.
@@ -86,12 +93,12 @@ const INTERNAL_CANCELLATION_TAGS = new Set(["customer", "partner_agent", "admin"
 // Status pill — `.pill` (13px/500 text, 7px leading dot), one colour vocabulary
 // (`ORDER_STATUS_COLORS`, lib/constants/order-status.ts).
 // ---------------------------------------------------------------------------
-function StatusPill({ status }: { status: string }) {
+function StatusPill({ status, paymentMethod }: { status: string; paymentMethod: string }) {
   const color = ORDER_STATUS_COLORS[status] ?? ORDER_STATUS_COLORS.CREATED;
   return (
     <span className="inline-flex items-center gap-[7px] text-[13px] font-medium" style={{ color }}>
       <i aria-hidden="true" className="inline-block h-[7px] w-[7px] rounded-full" style={{ background: color }} />
-      {getOrderStatusLabel(status)}
+      {isAwaitingInstaPay(status, paymentMethod) ? AWAITING_INSTAPAY_LABEL : getOrderStatusLabel(status)}
     </span>
   );
 }
@@ -108,7 +115,7 @@ const STEP_LABELS: Record<(typeof STEP_STATUSES)[number], string> = {
   DELIVERED: "تم التسليم",
 };
 
-function Stepper({ status }: { status: string }) {
+function Stepper({ status, paymentMethod }: { status: string; paymentMethod: string }) {
   const idx = status === "READY_TO_SHIP" ? 2 : STEP_STATUSES.indexOf(status as (typeof STEP_STATUSES)[number]);
   return (
     <div className="flex items-center gap-0" role="list" aria-label="مراحل الطلب">
@@ -145,7 +152,7 @@ function Stepper({ status }: { status: string }) {
                 boxShadow: now ? "0 0 0 4px rgba(184,144,47,.14)" : "none",
               }}
             />
-            <span>{STEP_LABELS[s]}</span>
+            <span>{i === 0 && isAwaitingInstaPay(status, paymentMethod) ? AWAITING_INSTAPAY_LABEL : STEP_LABELS[s]}</span>
           </div>
         );
       })}
@@ -244,7 +251,7 @@ function OrderCard({
             {formatDateEn(order.createdAt)}
           </span>
         </div>
-        <StatusPill status={order.status} />
+        <StatusPill status={order.status} paymentMethod={order.paymentMethod} />
       </header>
 
       {order.status === "CANCELLED" ? (
@@ -256,7 +263,7 @@ function OrderCard({
           {showReason ? ` السبب: ${order.cancellationReason}` : ""}
         </p>
       ) : (
-        <Stepper status={order.status} />
+        <Stepper status={order.status} paymentMethod={order.paymentMethod} />
       )}
 
       <div className="flex flex-wrap items-center gap-4">
