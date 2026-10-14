@@ -30,6 +30,8 @@ function ga4VariantLabel(v: { colorName?: string | null; name?: string | null } 
   return parts.length > 0 ? parts.join(" / ") : undefined;
 }
 
+// 10.26: rendered with `unoptimized` below — `cloudinaryLoader` passes non-Cloudinary URLs through
+// unchanged and Next warns that the loader "does not implement width" for them.
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&h=800&fit=crop";
 
@@ -437,7 +439,7 @@ export function ProductPageContent({
               )}
               sizes="(max-width: 1024px) 100vw, 50vw"
               priority
-              unoptimized={mainImageUrl.startsWith("data:")}
+              unoptimized={mainImageUrl.startsWith("data:") || mainImageUrl === PLACEHOLDER_IMAGE}
             />
             {/* Backlog 10.3, updated by 10.25 — desktop-only 2x zoom, the magnified region tracking
                 the cursor. The zoom's base must match the frame's own rendered content, not the raw
@@ -684,7 +686,14 @@ export function ProductPageContent({
         <DialogContent className="max-w-3xl overflow-hidden rounded-none border-none bg-transparent p-0 shadow-none">
           <DialogTitle className="sr-only">{product.name}</DialogTitle>
           <div className="relative aspect-[4/5] w-full overflow-hidden bg-[hsl(38_22%_93%)]">
-            <CatalogImage src={mainImageUrl} alt={product.name} fill fit="balanced" sizes="90vw" />
+            <CatalogImage
+              src={mainImageUrl}
+              alt={product.name}
+              fill
+              fit="balanced"
+              sizes="90vw"
+              unoptimized={mainImageUrl === PLACEHOLDER_IMAGE}
+            />
             <DialogClose asChild>
               <button
                 type="button"
