@@ -333,6 +333,67 @@ test("delete is refused (409) while an asset is in use, and allowed once unused"
   if (piIdx >= 0) createdPublicIds.splice(piIdx, 1);
 });
 
+test("10.43: deleting the same unused asset twice is 200 then 200 alreadyDeleted (idempotent)", async ({ page }) => {
+  await apiLoginAsAdmin(page);
+  const asset = HAS_CLOUDINARY ? await uploadRealAsset(page, "idem") : await createFakeAsset("idem");
+  const assetId = HAS_CLOUDINARY ? (asset as { assetId: string }).assetId : (asset as { id: string }).id;
+
+  const first = await page.request.delete(`/api/admin/media/${assetId}`);
+  expect(first.status()).toBe(200);
+  expect((await first.json()).data.alreadyDeleted).toBeUndefined();
+
+  // Row is gone now: a repeat is a 404 at lookup (never existed from the route's view) ...
+  const second = await page.request.delete(`/api/admin/media/${assetId}`);
+  expect([200, 404]).toContain(second.status());
+
+  // ... and two truly concurrent requests for one fresh asset never 500.
+  const asset2 = HAS_CLOUDINARY ? await uploadRealAsset(page, "idem2") : await createFakeAsset("idem2");
+  const id2 = HAS_CLOUDINARY ? (asset2 as { assetId: string }).assetId : (asset2 as { id: string }).id;
+  const [a, b] = await Promise.all([page.request.delete(`/api/admin/media/${id2}`), page.request.delete(`/api/admin/media/${id2}`)]);
+  expect(a.status()).toBeLessThan(500);
+  expect(b.status()).toBeLessThan(500);
+  expect([a.status(), b.status()]).toContain(200);
+  expect(await prisma.mediaAsset.findUnique({ where: { id: id2 } })).toBeNull();
+  for (const [id, pid] of [[assetId, asset.publicId], [id2, asset2.publicId]]) {
+    createdAssetIds.splice(createdAssetIds.indexOf(id), 1);
+    const i = createdPublicIds.indexOf(pid);
+    if (i >= 0) createdPublicIds.splice(i, 1);
+  }
+});
+
+test("10.43: selecting 3 unused tiles and clicking delete once removes all 3 with a single toast", async ({ page }) => {
+  await loginAsAdmin(page);
+  const assets = [] as { id: string; publicId: string }[];
+  for (const n of ["bulk1", "bulk2", "bulk3"]) {
+    if (HAS_CLOUDINARY) {
+      const a = await uploadRealAsset(page, n);
+      assets.push({ id: a.assetId, publicId: a.publicId });
+    } else {
+      const a = await createFakeAsset(n);
+      assets.push({ id: a.id, publicId: a.publicId });
+    }
+  }
+  await page.goto("/admin/media");
+  await expect(page.getByRole("heading", { name: "الصور" })).toBeVisible({ timeout: 20_000 });
+  for (const a of assets) {
+    await page.getByRole("checkbox", { name: `تحديد ${a.publicId}` }).check({ timeout: 20_000 });
+  }
+  const deleteButton = page.getByRole("button", { name: "حذف (غير المستخدمة فقط)" });
+  const deletes: string[] = [];
+  page.on("request", (r) => {
+    if (r.method() === "DELETE" && r.url().includes("/api/admin/media/")) deletes.push(r.url());
+  });
+  await deleteButton.dblclick(); // a double click must not double-send
+  await expect(page.getByText("تم حذف 3 صورة")).toHaveCount(1, { timeout: 30_000 });
+  expect(deletes).toHaveLength(3);
+  expect(await prisma.mediaAsset.count({ where: { id: { in: assets.map((a) => a.id) } } })).toBe(0);
+  for (const a of assets) {
+    createdAssetIds.splice(createdAssetIds.indexOf(a.id), 1);
+    const i = createdPublicIds.indexOf(a.publicId);
+    if (i >= 0) createdPublicIds.splice(i, 1);
+  }
+});
+
 test("replace keeps the VariantImage pointing at the new asset, and the old asset becomes unused", async ({ page }) => {
   test.skip(!HAS_CLOUDINARY, "replace re-uploads to Cloudinary — needs credentials");
   await apiLoginAsAdmin(page);

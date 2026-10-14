@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
 import { cn } from "@/lib/utils";
+import { deleteMediaAssets, mediaDeleteToast } from "@/lib/media/delete-client";
 
 type UsageEntry =
   | { kind: "product_hero"; productId: string; productName: string }
@@ -113,6 +114,7 @@ export default function AdminMediaPage() {
   const [loadingMore, setLoadingMore] = React.useState(false);
 
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
   const [syncProgress, setSyncProgress] = React.useState<{ scanned: number; estimatedTotal: number } | null>(null);
   const [uploadStatuses, setUploadStatuses] = React.useState<{ name: string; status: "uploading" | "done" | "error" }[]>([]);
@@ -289,18 +291,16 @@ export default function AdminMediaPage() {
   };
 
   const deleteSelected = async () => {
-    const ids = Array.from(selected);
-    let deleted = 0;
-    const refused: string[] = [];
-    for (const id of ids) {
-      const res = await fetch(`/api/admin/media/${id}`, { method: "DELETE", credentials: "include" });
-      const json = await res.json().catch(() => null);
-      if (res.ok && json?.success) deleted++;
-      else refused.push(json?.error?.message ?? id);
+    if (bulkDeleting) return;
+    setBulkDeleting(true);
+    try {
+      const summary = await deleteMediaAssets(Array.from(selected));
+      toast(mediaDeleteToast(summary));
+      setSelected(new Set());
+      load();
+    } finally {
+      setBulkDeleting(false);
     }
-    if (deleted > 0) toast({ title: `حُذفت ${deleted} صورة` });
-    if (refused.length > 0) toast({ title: `تعذّر حذف ${refused.length}`, description: refused[0], variant: "destructive" });
-    load();
   };
 
   const canHero = selected.size === 1;
@@ -435,8 +435,8 @@ export default function AdminMediaPage() {
             <Button type="button" size="sm" variant="outline" className="rounded-full" disabled={!canHero} onClick={() => setHeroOpen(true)}>
               تعيين كصورة رئيسية
             </Button>
-            <Button type="button" size="sm" variant="outline" className="rounded-full text-danger-text" onClick={deleteSelected}>
-              حذف (غير المستخدمة فقط)
+            <Button type="button" size="sm" variant="outline" className="rounded-full text-danger-text" disabled={bulkDeleting} onClick={deleteSelected}>
+              {bulkDeleting ? "جاري الحذف…" : "حذف (غير المستخدمة فقط)"}
             </Button>
             <button type="button" className="mr-auto text-xs font-bold text-lapis-800 underline" onClick={() => setSelected(new Set())}>
               إلغاء التحديد
@@ -761,16 +761,14 @@ function MediaDetailSheet({
   };
 
   const doDelete = async () => {
+    if (deleting) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/media/${item.id}`, { method: "DELETE", credentials: "include" });
-      const json = await res.json();
-      if (res.ok && json?.success) {
-        toast({ title: "حُذفت الصورة" });
+      const summary = await deleteMediaAssets([item.id]);
+      toast(mediaDeleteToast(summary));
+      if (summary.deleted > 0) {
         onOpenChange(false);
         onChanged();
-      } else {
-        toast({ title: json?.error?.message ?? "تعذّر الحذف", variant: "destructive" });
       }
     } finally {
       setDeleting(false);
