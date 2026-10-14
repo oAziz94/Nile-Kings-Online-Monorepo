@@ -131,3 +131,15 @@ Owner screenshots, Cloudinary "last 30 days" (Sep 14 – Oct 13) and Vercel cycl
 **Vercel** — on-demand $3.36 in 11 days (~$0.30/day → ~$9–10 for the full cycle), fully inside the $20 included credit; projected bill $20 (the Pro seat). The image bandwidth moved here as expected: CDN requests 1.74M, fast data transfer 34 GB (included), image optimization 8.18K transformations ($0.52) against 130.6K cache reads and 45.9K cache writes — the 31-day `minimumCacheTTL` is doing its job (16 reads per transformation). Largest line is Fluid Active CPU, 8 h, $1.55. Build minutes 32 (free).
 
 **Conclusion:** 10.42 removed the Cloudinary overage without adding a Vercel charge beyond the included credit. No action; re-read both in early November.
+
+## Neon invoices — 2026-10-14 review (correction to the 2026-10-01 figures above)
+
+The "62.45 compute hours → $6.58" read on Oct 1 was a partial-period console figure, not the month. Invoices (Launch plan, $0.106 per CU-hour, storage and transfer effectively $0):
+
+| Invoice | Period | CU-hours | Compute $ | Total |
+|---|---|---|---|---|
+| KJQYFU-00006 | Aug 2026 | 152.25 | 16.14 | 16.19 |
+| KJQYFU-00007 | Sep 2026 | 216.22 | 22.92 | 22.99 |
+| console | Oct 1–14 | 90.65 | — | pace ≈ 200 CU-h → ≈ $21 |
+
+Reading: a 0.25 CU compute awake 24 h = 6 CU-h/day = 180 CU-h/month, so August's 152 h means the production compute was awake ~85 % of the time even before v2 (it sleeps only at night), and September's 216 h means it either autoscaled above 0.25 CU under load (campaign Sep 4–11, e2e runs) or the `redesign` branch compute was awake for the difference. The 2026-10-01 decision ("sleeps ~90 % of the time") was based on the wrong figure; the cold starts seen in Sentry are the night/early-morning wake-ups. Levers under review with the owner: autoscaling ceiling on production (16 CU is far above anything the query profile needs), compute size and scale-to-zero on the `redesign` branch, long-lived local connections (`tools/inventory-dashboard` defaults to the production `.env`; the PM's dev server on the test branch), and the 20 s notification poll keeping a dashboard tab's connection alive.
