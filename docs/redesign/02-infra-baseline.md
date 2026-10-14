@@ -121,3 +121,13 @@ Confirmed: genuinely negligible usage, free tier, effectively zero risk of hitti
 **Finding:** the Cloudinary jump is at the cutover, not at the campaign. Backlog 6.4 pointed `next/image` at Cloudinary directly (`cloudinaryLoader`: `f_auto,q_auto,c_limit,w_<n>`), expecting to cut both Vercel image cost and Cloudinary bandwidth. The first held; the second was wrong: Vercel's optimizer fetched each photo from Cloudinary once per size and served it from its own cache, so Cloudinary only ever paid for origin fetches. Now every impression is Cloudinary bandwidth. Vercel's image lines at this traffic cost ≈ $0.75/month; Cloudinary's next plan is $89/month, and a free account at ~2× its limit risks delivery being throttled. **Decision:** revert to Vercel-cached delivery with Cloudinary as origin, but cap the origin (`c_limit,w_1600,q_auto`) so each fetch is small, and set `images.minimumCacheTTL` to 31 days — backlog 10.42.
 
 **Provider-swap question:** still no. Vercel is ≈ $20 flat at current traffic; the campaign week cost ≈ $50 on top, which is the cost of success and would be partly offset next time by fra1 (fewer long-running functions). Neon ≈ $6.6, Upstash $0, Cloudinary back to free once 10.42 lands.
+
+## 6.6 re-measure — 2026-10-14 (12 days after 10.42, v2.4.31 shipped 2026-10-02)
+
+Owner screenshots, Cloudinary "last 30 days" (Sep 14 – Oct 13) and Vercel cycle Oct 3 – Nov 3 (11 days in).
+
+**Cloudinary** — image impressions 302.6K / bandwidth 55.47 GB / transformations 11.7K / storage 1.45 GB over the 30-day window, but the daily impressions chart shows the step: 20–30K/day from Sep 20 to Oct 1 (direct-Cloudinary delivery, 6.4) → **2–3K/day from Oct 2 onwards** (Vercel-cached delivery, 10.42), a ~90% drop. Most of the 55 GB is the pre-fix half of the window; the next full Cloudinary credit cycle should land well under the 25 free credits. Re-read once more in early November to confirm.
+
+**Vercel** — on-demand $3.36 in 11 days (~$0.30/day → ~$9–10 for the full cycle), fully inside the $20 included credit; projected bill $20 (the Pro seat). The image bandwidth moved here as expected: CDN requests 1.74M, fast data transfer 34 GB (included), image optimization 8.18K transformations ($0.52) against 130.6K cache reads and 45.9K cache writes — the 31-day `minimumCacheTTL` is doing its job (16 reads per transformation). Largest line is Fluid Active CPU, 8 h, $1.55. Build minutes 32 (free).
+
+**Conclusion:** 10.42 removed the Cloudinary overage without adding a Vercel charge beyond the included credit. No action; re-read both in early November.
