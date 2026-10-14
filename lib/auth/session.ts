@@ -91,6 +91,25 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   }
 }
 
+/**
+ * JWT-only identity (backlog 10.52): verifies the cookie and returns `sub`, with NO database
+ * read. Only for count-only/cache endpoints (the bell's unread-count poll), where a stale role
+ * or a since-deleted user cannot grant anything — the worst case is a count of 0 for a user
+ * that no longer exists. Anything that returns content or checks a role keeps `getCurrentUser`.
+ */
+export async function getSessionUserIdFromJwt(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+  if (!token) return null;
+  try {
+    const secret = await getSecret();
+    const { payload } = await jwtVerify(token, secret, { issuer: JWT_ISSUER, audience: JWT_AUDIENCE });
+    return typeof payload.sub === "string" && payload.sub.length > 0 ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Require customer: must be logged in (any role). Returns user or throws with status 401. */
 export async function requireCustomer(): Promise<SessionUser> {
   const user = await getCurrentUser();

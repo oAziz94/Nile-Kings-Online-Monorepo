@@ -1,7 +1,14 @@
 import { NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { clearUnreadCache, markUnreadDirty } from "@/lib/notifications/unread-cache";
 import { apiBadRequest, apiSuccess, apiUnauthorized } from "@/lib/api/response";
+
+/** Backlog 10.52 — mark dirty and drop the cached count so the badge drops immediately. */
+async function invalidateBadge(userId: string) {
+  await markUnreadDirty([userId]);
+  await clearUnreadCache(userId);
+}
 
 /**
  * POST /api/notifications/read — `{ ids: string[] }` or `{ all: true }` (backlog 10.34 d).
@@ -25,6 +32,7 @@ export async function POST(req: NextRequest) {
       where: { userId: user.userId, readAt: null },
       data: { readAt: new Date() },
     });
+    await invalidateBadge(user.userId);
     return apiSuccess({ updated: result.count });
   }
 
@@ -37,5 +45,6 @@ export async function POST(req: NextRequest) {
     where: { userId: user.userId, id: { in: ids }, readAt: null },
     data: { readAt: new Date() },
   });
+  await invalidateBadge(user.userId);
   return apiSuccess({ updated: result.count });
 }
