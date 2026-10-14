@@ -56,6 +56,10 @@ test.setTimeout(60_000);
 let adminUserId: string;
 let customerUserId: string;
 let categoryId: string;
+// The storefront lists only products the location's partner stocks (9.9 / location-aware
+// catalog), so the fixture product is stocked at every active partner of القاهرة's rule —
+// whichever partner the default cookie resolves, the hero test's search card can render.
+const fixtureInventoryIds: string[] = [];
 let productId: string;
 let productName: string;
 let productSlug: string;
@@ -183,6 +187,20 @@ test.beforeAll(async () => {
     },
   });
   productId = product.id;
+  const rule = await prisma.reroutingRule.findUnique({
+    where: { governorate: "القاهرة" },
+    include: { partners: { where: { isActive: true } } },
+  });
+  if (!rule || rule.partners.length === 0) throw new Error("No active rule partners for القاهرة in the redesign DB.");
+  const variants = await prisma.variant.findMany({ where: { productId }, select: { id: true } });
+  for (const rp of rule.partners) {
+    for (const v of variants) {
+      const row = await prisma.partnerInventory.create({
+        data: { partnerId: rp.partnerId, variantId: v.id, stockAvailable: 10, stockReserved: 0 },
+      });
+      fixtureInventoryIds.push(row.id);
+    }
+  }
 });
 
 test.afterAll(async () => {
@@ -205,6 +223,9 @@ test.afterAll(async () => {
   await prisma.adminAuditLog.deleteMany({ where: { OR: [safeWhere({ entityId: productId }), { entityId: { in: allAssetIds } }] } });
   await prisma.variantImage.deleteMany({ where: safeWhere({ productId }) });
   await prisma.mediaAsset.deleteMany({ where: { id: { in: allAssetIds } } });
+  if (fixtureInventoryIds.length > 0) await prisma.partnerInventory.deleteMany({ where: { id: { in: fixtureInventoryIds } } });
+  const fixtureVariantIds = (await prisma.variant.findMany({ where: safeWhere({ productId }), select: { id: true } })).map((v) => v.id);
+  if (fixtureVariantIds.length > 0) await prisma.inventoryLedger.deleteMany({ where: { variantId: { in: fixtureVariantIds } } });
   await prisma.variant.deleteMany({ where: safeWhere({ productId }) });
   await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
   await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
