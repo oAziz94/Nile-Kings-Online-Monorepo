@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { test, type Page } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { definedIds, safeWhere } from "./db-cleanup";
@@ -72,12 +72,24 @@ export type PartnerFixtureOptions = {
   distributor?: PartnerFixtureProfile;
 };
 
-/** Unique-per-run Egyptian mobile number, distinct across a single test process. */
+/** Playwright worker slot of the caller (0 when called outside a test/hook, e.g. a script). The
+ * `seq` counter below is per-process, so two workers both start at 1; this digit is what keeps
+ * their numbers apart (10.31 — `Unique constraint failed on (phone)` under 5 workers). */
+function workerDigit(): number {
+  try {
+    return test.info().parallelIndex % 10;
+  } catch {
+    return Number(process.env.TEST_PARALLEL_INDEX ?? 0) % 10;
+  }
+}
+
+/** Unique Egyptian mobile number: "10" + worker digit + 2-digit per-process counter + the last
+ * 5 digits of the clock. Distinct across workers by construction, and across calls in one
+ * worker by the counter (the old form sliced the counter away entirely). */
 let seq = 0;
 function uniqueLocalPhone(): string {
-  seq += 1;
-  const suffix = String(Date.now()).slice(-7) + String(seq).padStart(2, "0");
-  return `10${suffix}`.slice(0, 10);
+  seq = (seq % 99) + 1;
+  return `10${workerDigit()}${String(seq).padStart(2, "0")}${String(Date.now()).slice(-5)}`;
 }
 
 export async function seedPartnerPair(
