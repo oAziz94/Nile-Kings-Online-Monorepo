@@ -56,6 +56,10 @@ test.setTimeout(60_000);
 let adminUserId: string;
 let customerUserId: string;
 let categoryId: string;
+// The storefront lists only products the location's partner stocks (9.9 / location-aware
+// catalog), so the fixture product is stocked at every active partner of القاهرة's rule —
+// whichever partner the default cookie resolves, the hero test's search card can render.
+const fixtureInventoryIds: string[] = [];
 let productId: string;
 let productName: string;
 let productSlug: string;
@@ -183,6 +187,20 @@ test.beforeAll(async () => {
     },
   });
   productId = product.id;
+  const rule = await prisma.reroutingRule.findUnique({
+    where: { governorate: "القاهرة" },
+    include: { partners: { where: { isActive: true } } },
+  });
+  if (!rule || rule.partners.length === 0) throw new Error("No active rule partners for القاهرة in the redesign DB.");
+  const variants = await prisma.variant.findMany({ where: { productId }, select: { id: true } });
+  for (const rp of rule.partners) {
+    for (const v of variants) {
+      const row = await prisma.partnerInventory.create({
+        data: { partnerId: rp.partnerId, variantId: v.id, stockAvailable: 10, stockReserved: 0 },
+      });
+      fixtureInventoryIds.push(row.id);
+    }
+  }
 });
 
 test.afterAll(async () => {
@@ -205,6 +223,9 @@ test.afterAll(async () => {
   await prisma.adminAuditLog.deleteMany({ where: { OR: [safeWhere({ entityId: productId }), { entityId: { in: allAssetIds } }] } });
   await prisma.variantImage.deleteMany({ where: safeWhere({ productId }) });
   await prisma.mediaAsset.deleteMany({ where: { id: { in: allAssetIds } } });
+  if (fixtureInventoryIds.length > 0) await prisma.partnerInventory.deleteMany({ where: { id: { in: fixtureInventoryIds } } });
+  const fixtureVariantIds = (await prisma.variant.findMany({ where: safeWhere({ productId }), select: { id: true } })).map((v) => v.id);
+  if (fixtureVariantIds.length > 0) await prisma.inventoryLedger.deleteMany({ where: { variantId: { in: fixtureVariantIds } } });
   await prisma.variant.deleteMany({ where: safeWhere({ productId }) });
   await prisma.product.deleteMany({ where: safeWhere({ id: productId }) });
   await prisma.category.deleteMany({ where: safeWhere({ id: categoryId }) });
@@ -331,6 +352,67 @@ test("delete is refused (409) while an asset is in use, and allowed once unused"
   createdAssetIds.splice(createdAssetIds.indexOf(assetId), 1);
   const piIdx = createdPublicIds.indexOf(asset.publicId);
   if (piIdx >= 0) createdPublicIds.splice(piIdx, 1);
+});
+
+test("10.43: deleting the same unused asset twice is 200 then 200 alreadyDeleted (idempotent)", async ({ page }) => {
+  await apiLoginAsAdmin(page);
+  const asset = HAS_CLOUDINARY ? await uploadRealAsset(page, "idem") : await createFakeAsset("idem");
+  const assetId = HAS_CLOUDINARY ? (asset as { assetId: string }).assetId : (asset as { id: string }).id;
+
+  const first = await page.request.delete(`/api/admin/media/${assetId}`);
+  expect(first.status()).toBe(200);
+  expect((await first.json()).data.alreadyDeleted).toBeUndefined();
+
+  // Row is gone now: a repeat is a 404 at lookup (never existed from the route's view) ...
+  const second = await page.request.delete(`/api/admin/media/${assetId}`);
+  expect([200, 404]).toContain(second.status());
+
+  // ... and two truly concurrent requests for one fresh asset never 500.
+  const asset2 = HAS_CLOUDINARY ? await uploadRealAsset(page, "idem2") : await createFakeAsset("idem2");
+  const id2 = HAS_CLOUDINARY ? (asset2 as { assetId: string }).assetId : (asset2 as { id: string }).id;
+  const [a, b] = await Promise.all([page.request.delete(`/api/admin/media/${id2}`), page.request.delete(`/api/admin/media/${id2}`)]);
+  expect(a.status()).toBeLessThan(500);
+  expect(b.status()).toBeLessThan(500);
+  expect([a.status(), b.status()]).toContain(200);
+  expect(await prisma.mediaAsset.findUnique({ where: { id: id2 } })).toBeNull();
+  for (const [id, pid] of [[assetId, asset.publicId], [id2, asset2.publicId]]) {
+    createdAssetIds.splice(createdAssetIds.indexOf(id), 1);
+    const i = createdPublicIds.indexOf(pid);
+    if (i >= 0) createdPublicIds.splice(i, 1);
+  }
+});
+
+test("10.43: selecting 3 unused tiles and clicking delete once removes all 3 with a single toast", async ({ page }) => {
+  await loginAsAdmin(page);
+  const assets = [] as { id: string; publicId: string }[];
+  for (const n of ["bulk1", "bulk2", "bulk3"]) {
+    if (HAS_CLOUDINARY) {
+      const a = await uploadRealAsset(page, n);
+      assets.push({ id: a.assetId, publicId: a.publicId });
+    } else {
+      const a = await createFakeAsset(n);
+      assets.push({ id: a.id, publicId: a.publicId });
+    }
+  }
+  await page.goto("/admin/media");
+  await expect(page.getByRole("heading", { name: "الصور" })).toBeVisible({ timeout: 20_000 });
+  for (const a of assets) {
+    await page.getByRole("checkbox", { name: `تحديد ${a.publicId}` }).check({ timeout: 20_000 });
+  }
+  const deleteButton = page.getByRole("button", { name: "حذف (غير المستخدمة فقط)" });
+  const deletes: string[] = [];
+  page.on("request", (r) => {
+    if (r.method() === "DELETE" && r.url().includes("/api/admin/media/")) deletes.push(r.url());
+  });
+  await deleteButton.dblclick(); // a double click must not double-send
+  await expect(page.getByText("تم حذف 3 صورة")).toHaveCount(1, { timeout: 30_000 });
+  expect(deletes).toHaveLength(3);
+  expect(await prisma.mediaAsset.count({ where: { id: { in: assets.map((a) => a.id) } } })).toBe(0);
+  for (const a of assets) {
+    createdAssetIds.splice(createdAssetIds.indexOf(a.id), 1);
+    const i = createdPublicIds.indexOf(a.publicId);
+    if (i >= 0) createdPublicIds.splice(i, 1);
+  }
 });
 
 test("replace keeps the VariantImage pointing at the new asset, and the old asset becomes unused", async ({ page }) => {

@@ -541,7 +541,8 @@ test.describe("movements tab", () => {
     await loginAs(page, pair, "AGENT");
     await page.goto("/partner/stock/movements");
     const skuText = page.getByText(`SKU-MV-${RUN_TAG}`, { exact: false });
-    await expect(skuText.first()).toBeVisible();
+    // Under five parallel workers the dev server + Neon make this first paint miss the 5 s default.
+    await expect(skuText.first()).toBeVisible({ timeout: 15_000 });
 
     const res = await page.request.get(`/api/partner/inventory/ledger?variantId=${variantId}`);
     expect(res.ok()).toBeTruthy();

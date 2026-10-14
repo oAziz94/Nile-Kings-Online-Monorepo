@@ -43,7 +43,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 /** DELETE /api/admin/media/[id] — refused (409) while the asset is in use; otherwise
- * Cloudinary `destroy` then the row deleted, audit-logged (backlog 9.8a (e)/(f)). */
+ * Cloudinary `destroy` (a "not found" result counts as success) then the row deleted,
+ * audit-logged (backlog 9.8a (e)/(f)). Idempotent (10.43): a row already removed by a concurrent
+ * request answers 200 `{ id, alreadyDeleted: true }` with no second audit row. */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let actor;
   try {
@@ -73,7 +75,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
   }
 
-  await prisma.mediaAsset.delete({ where: { id } });
+  // deleteMany, not delete: a concurrent request for the same id may have removed the row since
+  // the lookup above (Sentry JAVASCRIPT-NEXTJS-T). count 0 = already gone, which is success.
+  const removed = await prisma.mediaAsset.deleteMany({ where: { id } });
+  if (removed.count === 0) return apiSuccess({ id, alreadyDeleted: true });
 
   await logAdminAction(prisma, {
     actor,

@@ -80,8 +80,10 @@ export async function cloudinaryResourceExists(publicId: string): Promise<boolea
   return true;
 }
 
-/** Signed `destroy` — only ever called on an asset already confirmed unused by the caller. */
-export async function destroyCloudinaryAsset(publicId: string): Promise<void> {
+/** Signed `destroy` — only ever called on an asset already confirmed unused by the caller.
+ * Resolves `"ok"` or `"not found"` (the asset is gone either way — callers treat both as
+ * success, 10.43); throws on any other Cloudinary result or HTTP failure. */
+export async function destroyCloudinaryAsset(publicId: string): Promise<"ok" | "not found"> {
   const { cloudName, apiKey, apiSecret } = credentials();
   const timestamp = Math.floor(Date.now() / 1000);
   const toSign = `public_id=${publicId}&timestamp=${timestamp}`;
@@ -100,7 +102,6 @@ export async function destroyCloudinaryAsset(publicId: string): Promise<void> {
   const text = await res.text();
   if (!res.ok) throw new Error(`Cloudinary destroy failed: ${res.status} ${text.slice(0, 200)}`);
   const json = JSON.parse(text) as { result?: string };
-  if (json.result !== "ok" && json.result !== "not found") {
-    throw new Error(`Cloudinary destroy result: ${json.result}`);
-  }
+  if (json.result === "ok" || json.result === "not found") return json.result;
+  throw new Error(`Cloudinary destroy result: ${json.result}`);
 }

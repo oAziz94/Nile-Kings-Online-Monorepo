@@ -54,6 +54,7 @@ let adminUserId: string;
 let customerUserId: string;
 let tickOrderId: string;
 let tickTicketId: string | undefined;
+let capAdminUserId: string | undefined;
 let pair: PartnerFixturePair;
 const ADMIN_UNREAD_COUNT = 22;
 const ADMIN_READ_COUNT = 3;
@@ -148,6 +149,8 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  await deleteByIds(prisma.notification, [capAdminUserId], "userId");
+  await deleteByIds(prisma.user, [capAdminUserId]);
   await prisma.notification.deleteMany({ where: safeWhere({ userId: { in: [adminUserId, pair.agent.userId] } }) });
   // 10.52 — the ticket's notification rows for any OTHER admin were written by the app path and
   // carry the ticket id as entityId; remove exactly those, then the ticket/order/customer.
@@ -425,6 +428,44 @@ test("partner history page renders the seeded rows", async ({ page }) => {
   await page.goto("/partner/notifications");
   await expect(page).toHaveTitle("الإشعارات · لوحة الشريك");
   await expect(page.getByText(`طلب جديد #TESTPART${uniqueSuffix}1`)).toBeVisible();
+});
+
+test("10.37 — the badge caps at 99+ when an admin has 120 unread rows", async ({ page }) => {
+  // A dedicated admin so the other tests' exact counts (22/25) are untouched. Rows are seeded
+  // BEFORE this user's first login, so the first poll computes the count from Postgres and no
+  // stale Redis entry (10.52) can exist for the new user id.
+  const capPhone = `+2010${String(Date.now()).slice(-7)}4`;
+  const capAdmin = await prisma.user.create({
+    data: { phone: capPhone, role: "ADMIN", passwordHash: await hashPassword(ADMIN_PASSWORD), name: `مسؤول سقف الإشعارات ${uniqueSuffix}` },
+  });
+  capAdminUserId = capAdmin.id;
+  const now = Date.now();
+  await prisma.notification.createMany({
+    data: Array.from({ length: 120 }, (_, i) => ({
+      userId: capAdmin.id,
+      kind: "order.created",
+      title: `طلب جديد #TESTCAP${uniqueSuffix}${i}`,
+      body: null,
+      href: `/admin/orders/notif-cap-${uniqueSuffix}-${i}`,
+      entityType: "order",
+      entityId: `notif-cap-${uniqueSuffix}-${i}`,
+      createdAt: new Date(now - i * 1000),
+    })),
+  });
+
+  await page.goto("/login");
+  await page.getByLabel("رقم الهاتف").fill(capPhone.replace("+20", ""));
+  await page.getByLabel("كلمة المرور").fill(ADMIN_PASSWORD);
+  await page.getByRole("button", { name: "تسجيل الدخول" }).click();
+  await expect(page).toHaveURL("/admin", { timeout: 20_000 });
+
+  const bell = bellButton(page);
+  await expect(bell).toHaveAttribute("aria-label", "الإشعارات (أكثر من 99 غير مقروء)", { timeout: 15_000 });
+  await expect(bell.getByText("99+", { exact: true })).toBeVisible();
+
+  // The API still reports the true number; only the badge text is capped.
+  const countRes = await page.request.get("/api/notifications/unread-count");
+  expect((await countRes.json()).data.unreadCount).toBeGreaterThanOrEqual(120);
 });
 
 test("screenshots: popover and history page, both surfaces, both viewports", async ({ page }) => {

@@ -33,7 +33,13 @@ test("searching a nonsense term shows the empty state with the query echoed", as
   await page.goto("/products");
 
   const search = page.locator("#catalog-search");
+  // 10.22: wait for the debounced search request to come back instead of racing the 250 ms
+  // timer — register the wait before typing so the response cannot be missed.
+  const searchResponse = page.waitForResponse(
+    (r) => r.url().includes("/api/products?") && r.url().includes("q=zzzznonexistentproductxyz123") && r.ok()
+  );
   await search.fill("zzzznonexistentproductxyz123");
+  await searchResponse;
 
   await expect(page.getByText("لم نجد ما تبحث عنه")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText("0 نتائج لـ «zzzznonexistentproductxyz123»")).toBeVisible();
