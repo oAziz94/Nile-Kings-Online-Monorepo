@@ -183,6 +183,16 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  // 10.23: orders created outside `createOrder` (an app path the tests drive, e.g. a split or
+  // duplicate) are still ours — they belong to this file's fixture users. Fold every such id
+  // into the list before deleting, so `Order_userId_fkey` can never block the user delete.
+  const strays = await prisma.order.findMany({
+    where: { userId: { in: [adminUserId, customerUserId].filter(Boolean) } },
+    select: { id: true },
+  });
+  for (const o of strays) if (!allOrderIds.includes(o.id)) allOrderIds.push(o.id);
+  await prisma.orderTicketMessage.deleteMany({ where: { ticket: { orderId: { in: allOrderIds } } } });
+  await prisma.orderTicket.deleteMany({ where: { orderId: { in: allOrderIds } } });
   await prisma.orderTicketMessage.deleteMany({ where: safeWhere({ ticketId }) });
   await prisma.orderTicket.deleteMany({ where: safeWhere({ id: ticketId }) });
   await prisma.adminAuditLog.deleteMany({ where: { entityId: { in: allOrderIds } } });
