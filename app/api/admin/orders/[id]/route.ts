@@ -28,6 +28,12 @@ const orderDetailInclude = {
   // Additive (backlog 6.5b): the order's ticket id/status for the admin order page's
   // "سؤال العميل" link.
   ticket: { select: { id: true, status: true } },
+  // Additive (backlog 10.50): the InstaPay attempt's `metadata.customerClaimedAt` for the
+  // "العميل أكد التحويل" badge.
+  paymentAttempts: {
+    select: { id: true, status: true, provider: true, metadata: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  },
   // Additive (backlog 9.3 c): the "الشريك المنفّذ" card — the assigned partner's own SLA
   // hours (never a network-wide constant) and the routed row's proof-of-delivery fields.
   assignedPartner: { select: { id: true, name: true, phone: true, confirmSlaHours: true, shipSlaHours: true } },

@@ -93,6 +93,7 @@ type OrderDetail = {
   shippingAddress: ShippingAddress;
   user: { id: string; phone: string; name: string | null };
   ticket: { id: string; status: "OPEN" | "ANSWERED" | "CLOSED" } | null;
+  paymentAttempts?: { id: string; status: string; provider: string; metadata: unknown; createdAt: string }[];
   assignedPartner: { id: string; name: string; phone: string; confirmSlaHours: number; shipSlaHours: number } | null;
   routedOrder: {
     id: string;
@@ -150,6 +151,22 @@ const STATUS_PILL_VARIANT: Record<string, PillVariant> = {
   DELIVERED: "success",
   CANCELLED: "danger",
 };
+
+function claimedAtFromAttempts(attempts: OrderDetail["paymentAttempts"]): string | null {
+  for (const a of attempts ?? []) {
+    if (a.provider !== "INSTAPAY_PREPAID" || a.status !== "PENDING") continue;
+    const m = a.metadata;
+    if (m && typeof m === "object" && !Array.isArray(m)) {
+      const v = (m as Record<string, unknown>).customerClaimedAt;
+      if (typeof v === "string") return v;
+    }
+  }
+  return null;
+}
+
+function formatDateTimeEn(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" });
+}
 
 const NEXT_STATUS: Record<string, string | undefined> = {
   CREATED: "CONFIRMED",
@@ -730,6 +747,12 @@ export default function AdminOrderDetailPage() {
     </Button>
   );
 
+  // Backlog 10.50 — the owner checks his bank app before confirming an InstaPay order.
+  const instaPayClaim =
+    order.paymentMethod === "INSTAPAY_PREPAID" && order.status === "CREATED"
+      ? { claimedAt: claimedAtFromAttempts(order.paymentAttempts) }
+      : null;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -741,6 +764,17 @@ export default function AdminOrderDetailPage() {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            {instaPayClaim && (
+              <Badge
+                variant={instaPayClaim.claimedAt ? "success" : "warning"}
+                className="rounded-full"
+                data-testid="instapay-claim-badge"
+              >
+                {instaPayClaim.claimedAt
+                  ? `العميل أكد التحويل · ${formatDateTimeEn(instaPayClaim.claimedAt)}`
+                  : "لم يؤكد العميل التحويل بعد"}
+              </Badge>
+            )}
             {BackLink}
             {order.ticket && (
               <Button asChild type="button" variant="outline" size="sm" className="rounded-full">

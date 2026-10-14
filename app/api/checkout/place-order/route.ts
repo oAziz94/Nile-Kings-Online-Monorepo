@@ -122,6 +122,7 @@ async function postHandler(req: Request) {
   return apiSuccess({
     orderId: result.orderId,
     status: result.status,
+    finalTotal: result.finalTotal,
   });
 }
 

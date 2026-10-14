@@ -123,6 +123,9 @@ export function CheckoutContent() {
   const [isGuest, setIsGuest] = useState(false);
   const [instaPayModalOpen, setInstaPayModalOpen] = useState(false);
   const [instaPayConfirmLoading, setInstaPayConfirmLoading] = useState(false);
+  const [instaPayCancelLoading, setInstaPayCancelLoading] = useState(false);
+  /** The InstaPay order already created (status CREATED, stock reserved) while its modal is open. */
+  const [placedInstaPay, setPlacedInstaPay] = useState<{ orderId: string; finalTotal: number } | null>(null);
   const [instapayTransferHref, setInstapayTransferHref] = useState("#");
   const [successModalOpen, setSuccessModalOpen] = useState(false);
 
@@ -164,9 +167,9 @@ export function CheckoutContent() {
 
   useEffect(() => {
     if (!instaPayModalOpen) return;
-    const amountEgp = summary ? Math.round(summary.finalTotal / 100) : undefined;
+    const amountEgp = placedInstaPay ? Math.round(placedInstaPay.finalTotal / 100) : undefined;
     setInstapayTransferHref(getInstapayTransferHref(amountEgp, instapayDetails.ipa));
-  }, [instaPayModalOpen, summary, instapayDetails.ipa]);
+  }, [instaPayModalOpen, placedInstaPay, instapayDetails.ipa]);
 
   const handleInstapayAddressClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
     try {
@@ -450,7 +453,7 @@ export function CheckoutContent() {
         couponCode: appliedCouponCode.trim() || null,
       }),
     });
-    const json = await parseJsonResponse<{ success?: boolean; data?: { orderId?: string }; error?: { message?: string } }>(res);
+    const json = await parseJsonResponse<{ success?: boolean; data?: { orderId?: string; finalTotal?: number }; error?: { message?: string } }>(res);
     return { res, json };
   };
 
@@ -496,10 +499,6 @@ export function CheckoutContent() {
       // Before anything is committed (and before the InstaPay amount is shown): align the
       // storefront location/partner and stock with the delivery address.
       if ((await ensureLocationMatchesAddress(addr)) === "stop") return;
-      if (paymentMethod === "INSTAPAY_PREPAID") {
-        setInstaPayModalOpen(true);
-        return;
-      }
       if (selectedSavedAddress && isSavedAddressIncomplete(selectedSavedAddress)) {
         const ok = await persistSavedAddressCity(selectedSavedAddress.id, addr.city);
         if (!ok) return;
@@ -511,6 +510,17 @@ export function CheckoutContent() {
         return;
       }
       if (res.ok && json?.success && json.data?.orderId) {
+        if (paymentMethod === "INSTAPAY_PREPAID") {
+          // Backlog 10.50: the order now exists with its stock reserved — only now show the QR.
+          // Do NOT refreshCart() here: it would swap in the empty-cart view behind the modal.
+          firePurchaseOnce(json.data.orderId, summary, cart?.items ?? []);
+          setPlacedInstaPay({
+            orderId: json.data.orderId,
+            finalTotal: typeof json.data.finalTotal === "number" ? json.data.finalTotal : summary.finalTotal,
+          });
+          setInstaPayModalOpen(true);
+          return;
+        }
         if (summary) firePurchaseOnce(json.data.orderId, summary, cart?.items ?? []);
         toast({ title: "تم إنشاء الطلب بنجاح", variant: "success" });
         await refreshCart();
@@ -526,41 +536,57 @@ export function CheckoutContent() {
   };
 
   const handleInstaPayConfirm = async () => {
-    const addr = currentAddress;
-    if (!addr || !summary) return;
-    if (!isCheckoutAddressComplete(addr)) {
-      toast({
-        title: needsCityCompletion && !pendingCity.trim()
-          ? "أدخل المدينة لإكمال العنوان المحفوظ"
-          : "أكمل بيانات عنوان التوصيل",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!placedInstaPay) return;
     setInstaPayConfirmLoading(true);
     try {
-      if (selectedSavedAddress && isSavedAddressIncomplete(selectedSavedAddress)) {
-        const ok = await persistSavedAddressCity(selectedSavedAddress.id, addr.city);
-        if (!ok) return;
-      }
-      await saveNewAddressIfNeeded(addr);
-      const { res, json } = await doPlaceOrder(addr);
+      const res = await fetch(`/api/checkout/orders/${placedInstaPay.orderId}/instapay-claimed`, {
+        method: "POST",
+        credentials: "include",
+      });
       if (res.status === 401) {
         router.replace("/login?redirect=/checkout");
         return;
       }
-      if (res.ok && json?.success && json.data?.orderId) {
-        firePurchaseOnce(json.data.orderId, summary, cart?.items ?? []);
+      if (res.ok) {
         setInstaPayModalOpen(false);
         setSuccessModalOpen(true);
         // Do NOT refreshCart() here — it would clear cart and trigger empty-cart view before user clicks تم. Refresh after redirect in تم handler.
       } else {
-        toast({ title: json?.error?.message ?? "فشل إنشاء الطلب", variant: "destructive" });
+        const json = await parseJsonResponse<{ error?: { message?: string } }>(res);
+        toast({ title: json?.error?.message ?? "تعذر تأكيد التحويل. حاول مرة أخرى", variant: "destructive" });
       }
     } catch {
       toast({ title: "خطأ في الاتصال أو في قراءة الرد", variant: "destructive" });
     } finally {
       setInstaPayConfirmLoading(false);
+    }
+  };
+
+  const handleInstaPayCancelOrder = async () => {
+    if (!placedInstaPay) return;
+    setInstaPayCancelLoading(true);
+    try {
+      const res = await fetch(`/api/profile/orders/${placedInstaPay.orderId}/cancel`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.status === 401) {
+        router.replace("/login?redirect=/checkout");
+        return;
+      }
+      if (res.ok) {
+        setInstaPayModalOpen(false);
+        setPlacedInstaPay(null);
+        await refreshCart();
+        toast({ title: "تم إلغاء الطلب. أضف الأصناف للسلة مرة أخرى إن أردت", variant: "success" });
+      } else {
+        const json = await parseJsonResponse<{ error?: { message?: string } }>(res);
+        toast({ title: json?.error?.message ?? "تعذر إلغاء الطلب", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ في الاتصال أو في قراءة الرد", variant: "destructive" });
+    } finally {
+      setInstaPayCancelLoading(false);
     }
   };
 
@@ -726,14 +752,15 @@ export function CheckoutContent() {
 
       <InstapayModal
         open={instaPayModalOpen}
-        onOpenChange={setInstaPayModalOpen}
-        summary={summary}
+        orderNumber={placedInstaPay ? placedInstaPay.orderId.slice(-8).toUpperCase() : ""}
+        amountPiastres={placedInstaPay?.finalTotal ?? null}
         instapayDetails={instapayDetails}
         instapayTransferHref={instapayTransferHref}
         onAddressClick={handleInstapayAddressClick}
-        onCancel={() => setInstaPayModalOpen(false)}
         onConfirm={handleInstaPayConfirm}
+        onCancelOrder={handleInstaPayCancelOrder}
         confirmLoading={instaPayConfirmLoading}
+        cancelLoading={instaPayCancelLoading}
       />
 
       <SuccessModal
