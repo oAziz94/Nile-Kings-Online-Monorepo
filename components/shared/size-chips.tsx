@@ -41,7 +41,7 @@ export function SizeChips({ options, value, onSelect, className, ariaLabel = "ا
   }
 
   return (
-    <div role="radiogroup" aria-label={ariaLabel} className={cn("flex flex-wrap gap-2", className)}>
+    <div role="radiogroup" data-avoid-location-pill aria-label={ariaLabel} className={cn("flex flex-wrap gap-2", className)}>
       {options.map((opt) => {
         const selected = value === opt.id;
         return (

@@ -290,8 +290,15 @@ test("admin order detail: click opens the dialog, Escape / X / outside-click eac
   const dialog = page.locator("div.fixed.inset-0.z-\\[200\\]");
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("img", { name: `${productWithImageName} – ${variantAName}` })).toBeVisible();
+  // 10.24: focus is inside the dialog, Tab stays inside, Escape closes and focus returns to the opener.
+  await expect(dialog.getByRole("button", { name: "إغلاق" })).toBeFocused();
+  for (let i = 0; i < 4; i++) {
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
+  }
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
+  await expect(thumbButton).toBeFocused();
 
   // X button closes.
   await thumbButton.click();
@@ -302,7 +309,7 @@ test("admin order detail: click opens the dialog, Escape / X / outside-click eac
   // Click outside (the overlay itself) closes.
   await thumbButton.click();
   await expect(dialog).toBeVisible();
-  await dialog.click({ position: { x: 5, y: 5 } });
+  await page.mouse.click(5, 5);
   await expect(dialog).toBeHidden();
 });
 
