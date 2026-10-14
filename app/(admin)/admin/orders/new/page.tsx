@@ -315,7 +315,7 @@ export default function NewAdminOrderPage() {
             <div className="min-w-0 flex-1">
               <p className="font-bold">
                 {submitError.items.length > 0
-                  ? "لا يوجد شريك يغطي كل الأصناف في هذه المحافظة. الأصناف الناقصة لدى الشريك:"
+                  ? "لا يوجد شريك يغطي كل الأصناف في هذه المحافظة. الناقص لدى الشريك:"
                   : submitError.message}
               </p>
               {submitError.items.length > 0 && (
