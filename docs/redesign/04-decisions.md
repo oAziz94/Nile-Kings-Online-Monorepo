@@ -1,3 +1,7 @@
+## 2026-10-14 — InstaPay order-first and admin create-order hardening (10.50–10.51)
+
+**Business rule (owner go 2026-10-14, after the Tolbagaballah case):** no QR, amount or InstaPay address is shown until the order exists with its stock reserved. The order is created on "تأكيد الطلب" exactly like COD (location check, address persistence, `placeOrder`), stays `CREATED` with a PENDING `PaymentAttempt`, and the modal offers only "أتممت التحويل" (records `PaymentAttempt.metadata.customerClaimedAt`; admin order header shows "العميل أكد التحويل · time" so the owner checks his bank app before confirming) or "إلغاء الطلب" (customer-side cancel: row lock, reservation released, audit `cancelled/customer`). Unpaid CREATED orders still have no auto-expiry — admin confirms or cancels, as before. **Admin create-order:** `findFulfillablePartnerForGovernorate` reports per-partner `shortages` on `NO_PARTNER`; the admin error and a persistent inline alert name each short item with its SKU and the partner; customers keep item-only wording (no partner names). Picker options and the selected-items table carry the SKU; product search matches SKU. **Test-infra:** fixture variants that were reserved/released leave `InventoryLedger` rows — teardown must delete them before the variants. Turbopack dev cache can break `next/font/google` after a detached checkout (500 on every page) — `rm -rf .next` and restart.
+
 ## 2026-10-14 — Owner close-outs after v2.4.32
 
 - **Location modal verified on the owner's phone** — cannot be dismissed (10.46 accepted in production).
