@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 const store = new Map<string, unknown>();
-const state = { failReads: false, failWrites: false };
+const state = { failReads: false, failWrites: false, stallWrites: false };
 const count = vi.fn(async () => 7);
 
 vi.mock("@/lib/redis", () => {
@@ -22,6 +22,7 @@ vi.mock("@/lib/redis", () => {
           return p;
         },
         async exec() {
+          if (state.stallWrites) return new Promise<never>(() => {});
           if (state.failReads || state.failWrites) throw new Error("redis down");
           return ops.map((o) => o());
         },
@@ -48,6 +49,7 @@ import {
   unreadKey,
   dirtyKey,
   DIRTY_GRACE_MS,
+  WRITE_TIMEOUT_MS,
 } from "./unread-cache";
 
 beforeEach(() => {
@@ -122,6 +124,19 @@ describe("markUnreadDirty", () => {
     await markUnreadDirty(["a", "b"], () => 555);
     expect(store.get(dirtyKey("a"))).toBe(555);
     expect(store.get(dirtyKey("b"))).toBe(555);
+  });
+
+  it("gives up after WRITE_TIMEOUT_MS when Redis stalls, without throwing", async () => {
+    vi.useFakeTimers();
+    try {
+      state.stallWrites = true;
+      const p = markUnreadDirty(["u1"]);
+      await vi.advanceTimersByTimeAsync(WRITE_TIMEOUT_MS + 1);
+      await expect(p).resolves.toBeUndefined();
+    } finally {
+      state.stallWrites = false;
+      vi.useRealTimers();
+    }
   });
 
   it("never throws when Redis fails", async () => {

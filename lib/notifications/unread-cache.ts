@@ -16,6 +16,17 @@ import { prisma } from "@/lib/db";
 
 export const UNREAD_TTL_SEC = 15 * 60;
 export const DIRTY_GRACE_MS = 5_000;
+/** Upper bound on how long an invalidation may hold the caller (notify() runs inside an order
+ * transaction and the Upstash client has no request timeout of its own). On expiry the write is
+ * abandoned — the badge is stale for ≤15 min, the order is not delayed. */
+export const WRITE_TIMEOUT_MS = 2_000;
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms} ms`)), ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+  });
+}
 
 export function unreadKey(userId: string): string {
   return `notif:unread:${userId}`;
@@ -74,7 +85,7 @@ export async function markUnreadDirty(userIds: string[], now: () => number = Dat
     const ts = now();
     const pipe = redis.pipeline();
     for (const id of userIds) pipe.set(dirtyKey(id), ts, { ex: UNREAD_TTL_SEC });
-    await pipe.exec();
+    await withTimeout(pipe.exec(), WRITE_TIMEOUT_MS, "markUnreadDirty");
   } catch (err) {
     console.error("[notifications] markUnreadDirty failed", err);
   }
@@ -83,7 +94,7 @@ export async function markUnreadDirty(userIds: string[], now: () => number = Dat
 /** Drops the cached count (read route: badge must drop immediately). Never throws. */
 export async function clearUnreadCache(userId: string): Promise<void> {
   try {
-    await redis.del(unreadKey(userId));
+    await withTimeout(redis.del(unreadKey(userId)), WRITE_TIMEOUT_MS, "clearUnreadCache");
   } catch (err) {
     console.error("[notifications] clearUnreadCache failed", err);
   }
