@@ -244,6 +244,42 @@ export function GovernorateSelector() {
     }
   }
 
+  // 10.27 / 10.48: the fixed pill covers the size chips on the PDP and the bottom of the address
+  // forms on short phones. Hide it (visibility, so it also leaves the tab order) while it overlaps
+  // an element marked `data-avoid-location-pill`; it returns as soon as the visitor scrolls past.
+  const pillRef = React.useRef<HTMLButtonElement | null>(null);
+  const [pillCovering, setPillCovering] = React.useState(false);
+  React.useEffect(() => {
+    if (loading || editing) return;
+    let frame = 0;
+    const check = () => {
+      frame = 0;
+      const pill = pillRef.current;
+      if (!pill) return;
+      const pr = pill.getBoundingClientRect();
+      const overlaps = Array.from(document.querySelectorAll("[data-avoid-location-pill]")).some((el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && r.left < pr.right && r.right > pr.left && r.top < pr.bottom && r.bottom > pr.top;
+      });
+      setPillCovering(overlaps);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(check);
+    };
+    schedule();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    // Late-mounting targets (variant data, the address form opening) and layout shifts.
+    const mo = new MutationObserver(schedule);
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      mo.disconnect();
+    };
+  }, [loading, editing]);
+
   if (loading) {
     // No browsable gap before the modal appears: opaque overlay until the location state resolves.
     return (
@@ -259,9 +295,14 @@ export function GovernorateSelector() {
     <>
       {!editing ? (
         <button
+          ref={pillRef}
           type="button"
+          data-testid="location-pill"
           onClick={() => setEditing(true)}
-          className="fixed bottom-4 start-4 z-[95] flex items-center gap-2 rounded-none border border-[hsl(228_40%_14%)] bg-papyrus px-4 py-2 text-sm font-medium text-[hsl(228_26%_24%)] shadow-[0_10px_30px_-8px_rgba(21,26,46,0.25)] transition-colors hover:bg-[hsl(38_22%_93%)]"
+          className={cn(
+            pillCovering && "invisible",
+            "fixed bottom-4 start-4 z-[95] flex items-center gap-2 rounded-none border border-[hsl(228_40%_14%)] bg-papyrus px-4 py-2 text-sm font-medium text-[hsl(228_26%_24%)] shadow-[0_10px_30px_-8px_rgba(21,26,46,0.25)] transition-colors hover:bg-[hsl(38_22%_93%)]"
+          )}
         >
           <MapPin className="h-4 w-4 text-gold-600" />
           {savedAddress ? savedAddress.governorate : "اختر محافظتك"}

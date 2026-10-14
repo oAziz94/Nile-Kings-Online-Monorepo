@@ -166,6 +166,7 @@ export function SummaryAside({
 
       <Button
         type="submit"
+        data-avoid-location-pill
         size="lg"
         className="h-14 w-full rounded-none bg-[hsl(228_40%_14%)] text-base font-medium text-papyrus hover:bg-[hsl(228_40%_20%)]"
         disabled={!summary || placeLoading}

@@ -77,7 +77,7 @@ export function AddressForm({
   };
 
   return (
-    <div className="mt-5">
+    <div className="mt-5" data-avoid-location-pill>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field id={ids.label} label="تسمية">
           <div className={authFieldBoxClass()}>
