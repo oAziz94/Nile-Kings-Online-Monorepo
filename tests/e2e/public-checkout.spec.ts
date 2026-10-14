@@ -198,6 +198,8 @@ test.afterAll(async () => {
   if (fixtureVariantIds.length > 0) {
     await prisma.order.deleteMany({ where: { items: { some: { variantId: { in: fixtureVariantIds } } } } });
     await prisma.cartItem.deleteMany({ where: { variantId: { in: fixtureVariantIds } } });
+    // Reservations/releases on our fixture rows wrote ledger lines that reference our variants.
+    await prisma.inventoryLedger.deleteMany({ where: { variantId: { in: fixtureVariantIds } } });
   }
   if (fixtureInventoryIds.length > 0) await prisma.partnerInventory.deleteMany({ where: { id: { in: fixtureInventoryIds } } });
   if (fixtureProductId) {
@@ -416,14 +418,16 @@ test.describe("Checkout — InstaPay: order first, then the QR (10.50)", () => {
     expect(order?.status).toBe("CREATED");
 
     // Confirm step first; "رجوع" returns to the QR without cancelling.
+    const confirmDialog = page.getByRole("dialog", { name: "إلغاء الطلب؟" });
     await modal.getByRole("button", { name: "إلغاء الطلب" }).click();
-    await expect(modal.getByText("سيتم إلغاء الطلب وإعادة الأصناف للمخزون")).toBeVisible();
-    await modal.getByRole("button", { name: "رجوع" }).click();
+    await expect(confirmDialog.getByText("سيتم إلغاء الطلب وإعادة الأصناف للمخزون")).toBeVisible();
+    await confirmDialog.getByRole("button", { name: "رجوع" }).click();
+    await expect(confirmDialog).toHaveCount(0);
     await expect(modal.getByRole("button", { name: "أتممت التحويل" })).toBeVisible();
     expect((await prisma.order.findUnique({ where: safeWhere({ id: order!.id }) }))?.status).toBe("CREATED");
 
     await modal.getByRole("button", { name: "إلغاء الطلب" }).click();
-    await modal.getByRole("button", { name: "نعم، إلغاء الطلب" }).click();
+    await confirmDialog.getByRole("button", { name: "نعم، إلغاء الطلب" }).click();
     await expect(page.getByText("تم إلغاء الطلب. أضف الأصناف للسلة مرة أخرى إن أردت").first()).toBeVisible({ timeout: 15_000 });
     await expect(modal).toHaveCount(0);
     await expect(page).toHaveURL(/\/checkout/);
