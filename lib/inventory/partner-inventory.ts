@@ -145,9 +145,20 @@ export async function canPartnerFulfillLines(
   return (await getInsufficientVariantIds(partnerId, lines)).length === 0;
 }
 
+export type PartnerShortage = {
+  partnerId: string;
+  partnerName: string;
+  insufficientVariantIds: string[];
+};
+
 export type PartnerFulfillmentResult =
   | { ok: true; partnerId: string; ruleId: string; sequence: number; originGovernorate: string }
-  | { ok: false; reason: "NO_PARTNER" }
+  | {
+      ok: false;
+      reason: "NO_PARTNER";
+      /** Present when eligible partners exist but none covers every line: one entry per eligible partner, rule order. */
+      shortages?: PartnerShortage[];
+    }
   | { ok: false; reason: "INSUFFICIENT_STOCK"; insufficientVariantIds: string[] };
 
 export async function findFulfillablePartnerForGovernorate(input: {
@@ -209,7 +220,15 @@ export async function findFulfillablePartnerForGovernorate(input: {
     }
   }
 
-  return { ok: false, reason: "NO_PARTNER" };
+  const shortages: PartnerShortage[] = [];
+  for (const entry of eligible) {
+    shortages.push({
+      partnerId: entry.partner.id,
+      partnerName: entry.partner.name,
+      insufficientVariantIds: await getInsufficientVariantIds(entry.partner.id, input.lines),
+    });
+  }
+  return { ok: false, reason: "NO_PARTNER", shortages };
 }
 
 /** One multi-row ledger insert instead of one round trip per line. */

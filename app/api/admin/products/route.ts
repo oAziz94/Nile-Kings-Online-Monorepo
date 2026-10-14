@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
       OR: [
         { name: { contains: q, mode: "insensitive" } },
         { slug: { contains: q, mode: "insensitive" } },
+        { variants: { some: { sku: { contains: q, mode: "insensitive" } } } },
       ],
     }),
   };

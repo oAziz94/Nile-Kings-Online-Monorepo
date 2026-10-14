@@ -34,7 +34,7 @@ type LedgerRow = {
 class FakeDb {
   rows: Row[] = [];
   ledger: LedgerRow[] = [];
-  partners: { id: string; isActive: boolean; governorate: string }[] = [];
+  partners: { id: string; isActive: boolean; governorate: string; name?: string }[] = [];
   reroutingRules: any[] = [];
   private seq = 0;
 
@@ -309,6 +309,53 @@ describe("2. Partial fulfillment: customer notified about the specific short ite
     });
 
     expect(result).toMatchObject({ ok: false, reason: "INSUFFICIENT_STOCK" });
+  });
+});
+
+describe("2b. NO_PARTNER reports per-partner shortages (backlog 10.51)", () => {
+  it("returns one shortage entry per eligible partner, in rule order, naming the short variants", async () => {
+    fakeDb.partners.push(
+      { id: PARTNER_A, isActive: true, governorate: "Cairo", name: "شريك أ" },
+      { id: PARTNER_B, isActive: true, governorate: "Cairo", name: "شريك ب" }
+    );
+    fakeDb.reroutingRules.push({
+      id: "rule_1",
+      governorate: "Cairo",
+      isActive: true,
+      lastAssignedPartnerId: null,
+      partners: [
+        { partnerId: PARTNER_A, isActive: true, priority: 1, createdAt: 1 },
+        { partnerId: PARTNER_B, isActive: true, priority: 2, createdAt: 2 },
+      ],
+    });
+    fakeDb.seedInventory(PARTNER_A, VARIANT_1, 5);
+    fakeDb.seedInventory(PARTNER_A, VARIANT_2, 0); // A short on 2
+    fakeDb.seedInventory(PARTNER_B, VARIANT_2, 5); // B short on 1
+
+    const result = await findFulfillablePartnerForGovernorate({
+      governorate: "Cairo",
+      lines: [
+        { variantId: VARIANT_1, quantity: 1 },
+        { variantId: VARIANT_2, quantity: 1 },
+      ],
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "NO_PARTNER",
+      shortages: [
+        { partnerId: PARTNER_A, partnerName: "شريك أ", insufficientVariantIds: [VARIANT_2] },
+        { partnerId: PARTNER_B, partnerName: "شريك ب", insufficientVariantIds: [VARIANT_1] },
+      ],
+    });
+  });
+
+  it("omits shortages when no partner is eligible for the governorate", async () => {
+    const result = await findFulfillablePartnerForGovernorate({
+      governorate: "Nowhere",
+      lines: [{ variantId: VARIANT_1, quantity: 1 }],
+    });
+    expect(result).toEqual({ ok: false, reason: "NO_PARTNER" });
   });
 });
 

@@ -13,7 +13,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatNumberEn } from "@/lib/format-en-numbers";
 import { PAYMENT_METHODS } from "@/lib/checkout/types";
-import { ShoppingBag, Loader2, Plus, Trash2 } from "lucide-react";
+import { ShoppingBag, Loader2, Plus, Trash2, AlertTriangle } from "lucide-react";
 
 type ClientSummary = { id: string; phone: string; name: string | null; role: "CUSTOMER" | "ADMIN" };
 type SavedAddress = {
@@ -31,10 +31,22 @@ type EditableItem = {
   variantId: string;
   productName: string;
   variantName: string;
+  sku: string;
   unitPricePiastres: number;
   quantity: number;
 };
-type ProductVariantOption = { id: string; label: string; pricePiastres: number };
+type ProductVariantOption = {
+  id: string;
+  productName: string;
+  variantName: string;
+  sku: string;
+  pricePiastres: number;
+};
+type ShortItem = { variantId: string; sku: string; productName: string; variantName: string };
+
+function optionText(o: ProductVariantOption): string {
+  return `${o.productName} — ${o.variantName} · ${o.sku}`;
+}
 type CheckoutSummary = {
   subtotal: number;
   couponDiscount: number;
@@ -77,6 +89,7 @@ export default function NewAdminOrderPage() {
   const [summary, setSummary] = React.useState<CheckoutSummary | null>(null);
   const [previewLoading, setPreviewLoading] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<{ message: string; items: ShortItem[] } | null>(null);
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedClientSearch(clientSearch.trim()), 350);
@@ -146,10 +159,15 @@ export default function NewAdminOrderPage() {
           return;
         }
         const options: ProductVariantOption[] = (json.data?.products ?? []).flatMap(
-          (p: { name: string; variants?: { id: string; name: string; colorName: string | null; pricePiastres: number }[] }) =>
+          (p: {
+            name: string;
+            variants?: { id: string; sku: string; name: string; colorName: string | null; pricePiastres: number }[];
+          }) =>
             (p.variants ?? []).map((v) => ({
               id: v.id,
-              label: `${p.name} - ${v.name}${v.colorName ? ` - ${v.colorName}` : ""}`,
+              productName: p.name,
+              variantName: `${v.name}${v.colorName ? ` — ${v.colorName}` : ""}`,
+              sku: v.sku,
               pricePiastres: v.pricePiastres,
             }))
         );
@@ -216,9 +234,6 @@ export default function NewAdminOrderPage() {
     if (!selectedVariantId) return;
     const option = variantOptions.find((o) => o.id === selectedVariantId);
     if (!option) return;
-    const parts = option.label.split(" - ");
-    const productName = parts[0] ?? option.label;
-    const variantName = parts.slice(1).join(" - ") || option.label;
     setEditableItems((prev) => {
       const existing = prev.find((i) => i.variantId === option.id);
       if (existing) {
@@ -232,8 +247,9 @@ export default function NewAdminOrderPage() {
         ...prev,
         {
           variantId: option.id,
-          productName,
-          variantName,
+          productName: option.productName,
+          variantName: option.variantName,
+          sku: option.sku,
           unitPricePiastres: option.pricePiastres,
           quantity: Math.max(1, Math.trunc(newItemQty || 1)),
         },
@@ -250,6 +266,7 @@ export default function NewAdminOrderPage() {
       return;
     }
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const res = await fetch("/api/admin/orders", {
         method: "POST",
@@ -262,7 +279,11 @@ export default function NewAdminOrderPage() {
         toast({ title: json.message ?? "تم إنشاء الطلب" });
         router.push(`/admin/orders/${json.data.orderId}`);
       } else {
-        toast({ title: json?.error?.message ?? "فشل إنشاء الطلب", variant: "destructive" });
+        const message: string = json?.error?.message ?? "فشل إنشاء الطلب";
+        const short: ShortItem[] =
+          json?.error?.details?.outOfStockItems ?? json?.error?.outOfStockItems ?? json?.outOfStockItems ?? [];
+        toast({ title: message, variant: "destructive" });
+        setSubmitError({ message, items: Array.isArray(short) ? short : [] });
       }
     } catch {
       toast({ title: "خطأ في الاتصال", variant: "destructive" });
@@ -284,6 +305,30 @@ export default function NewAdminOrderPage() {
       />
 
       <form onSubmit={submit} className="space-y-6">
+        {submitError && (
+          <div
+            role="alert"
+            data-testid="create-order-error"
+            className="flex items-start gap-3 rounded-xl border border-carnelian-500 bg-danger-bg p-4 text-sm text-danger-text"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="font-bold">{submitError.message}</p>
+              {submitError.items.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {submitError.items.map((i) => (
+                    <li key={i.variantId} data-testid="create-order-short-item">
+                      {i.productName} — {i.variantName} —{" "}
+                      <span className="font-archivo" dir="ltr">
+                        {i.sku}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
         <Card className="rounded-2xl shadow-card">
           <CardHeader>
             <CardTitle>العميل</CardTitle>
@@ -365,17 +410,20 @@ export default function NewAdminOrderPage() {
                 className="min-w-[12rem] flex-1"
                 value={variantSearch}
                 onChange={(e) => setVariantSearch(e.target.value)}
-                placeholder="بحث منتج / متغير…"
+                placeholder="بحث باسم المنتج أو الكود (SKU)…"
+                aria-label="بحث عن صنف"
               />
               <Select
                 value={selectedVariantId}
+                aria-label="اختر متغيراً"
+                data-testid="variant-picker"
                 onChange={(e) => setSelectedVariantId(e.target.value)}
                 className="min-w-[14rem]"
               >
                 <option value="">اختر متغيراً</option>
                 {variantOptions.map((o) => (
                   <option key={o.id} value={o.id}>
-                    {o.label} — {egp(o.pricePiastres)}
+                    {optionText(o)} — {egp(o.pricePiastres)}
                   </option>
                 ))}
               </Select>
@@ -400,6 +448,9 @@ export default function NewAdminOrderPage() {
                     <div>
                       <p className="font-medium">{item.productName}</p>
                       <p className="text-muted-foreground">{item.variantName}</p>
+                      <p className="font-archivo text-xs text-muted-foreground" dir="ltr">
+                        {item.sku}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Input

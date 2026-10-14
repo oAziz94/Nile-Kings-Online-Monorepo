@@ -249,9 +249,49 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         outOfStockItems,
       };
     }
+    const firstShortage = selectedPartner.shortages?.[0];
+    if (firstShortage && firstShortage.insufficientVariantIds.length > 0) {
+      const shortIds = new Set(firstShortage.insufficientVariantIds);
+      const outOfStockItems: OutOfStockItem[] = orderLines
+        .filter((line) => shortIds.has(line.variantId))
+        .map((line) => ({
+          variantId: line.variantId,
+          sku: line.sku,
+          productName: line.productName,
+          variantName: line.variantName,
+        }));
+      if (input.createdByAdmin) {
+        const governorate = input.selectedGovernorate ?? input.address.governorate;
+        return {
+          success: false,
+          error: `لا يوجد شريك في ${governorate} يغطي كل الأصناف. الناقص لدى ${firstShortage.partnerName}: ${outOfStockItems
+            .map((item) => `${item.variantName} (${item.sku})`)
+            .join("، ")}`,
+          code: "NO_PARTNER_CAN_FULFILL_CART",
+          outOfStockItems,
+        };
+      }
+      return {
+        success: false,
+        error: `الأصناف التالية غير متوفرة حالياً، برجاء إزالتها من السلة: ${outOfStockItems
+          .map((item) => item.variantName)
+          .join("، ")}`,
+        code: "NO_PARTNER_CAN_FULFILL_CART",
+        outOfStockItems,
+      };
+    }
+    if (selectedPartner.shortages) {
+      return {
+        success: false,
+        error: "الأصناف المطلوبة غير متوفرة لدى شريك واحد في هذه المحافظة",
+        code: "NO_PARTNER_CAN_FULFILL_CART",
+      };
+    }
     return {
       success: false,
-      error: "الأصناف المطلوبة غير متوفرة لدى شريك واحد في هذه المحافظة",
+      error: input.createdByAdmin
+        ? `لا يوجد شريك يخدم محافظة ${input.selectedGovernorate ?? input.address.governorate}`
+        : "الأصناف المطلوبة غير متوفرة لدى شريك واحد في هذه المحافظة",
       code: "NO_PARTNER_CAN_FULFILL_CART",
     };
   }
