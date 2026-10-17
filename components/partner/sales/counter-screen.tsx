@@ -77,6 +77,8 @@ export function CounterScreen() {
   const [sellerName, setSellerName] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
+  // A double tap can fire before the `submitting` re-render disables the button — guard with a ref too.
+  const submitLock = React.useRef(false);
   const [error, setError] = React.useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
 
@@ -162,7 +164,8 @@ export function CounterScreen() {
   }
 
   async function submit() {
-    if (cart.length === 0 || submitting) return;
+    if (cart.length === 0 || submitting || submitLock.current) return;
+    submitLock.current = true;
     setSubmitting(true);
     setError(null);
     try {
@@ -203,9 +206,11 @@ export function CounterScreen() {
       }
       setError(json?.error?.message ?? "تعذّر تسجيل البيع");
       setSubmitting(false);
+      submitLock.current = false;
     } catch {
       setError("تعذّر الاتصال بالخادم، حاول مرة أخرى");
       setSubmitting(false);
+      submitLock.current = false;
     }
   }
 
@@ -233,7 +238,7 @@ export function CounterScreen() {
 
   return (
     <div className="grid gap-5 pb-24 lg:grid-cols-[minmax(0,1fr)_400px] lg:pb-0">
-      <section aria-label="البحث عن الأصناف" className="min-w-0">
+      <section aria-label="البحث عن الأصناف" className="min-w-0 pb-24 lg:pb-0">
         <div className="relative">
           <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" aria-hidden />
           <Input
@@ -293,7 +298,8 @@ export function CounterScreen() {
         </aside>
       ) : (
         <>
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[hsl(228_16%_86%)] bg-white p-3">
+          {/* Sits above the dashboard shell's phone tab bar (fixed, z-40, ~4.5rem incl. safe area). */}
+          <div className="fixed inset-x-0 bottom-[4.75rem] z-30 border-t border-[hsl(228_16%_86%)] bg-white p-3">
             <Button type="button" className="h-12 w-full justify-between" onClick={() => setSheetOpen(true)} data-testid="cart-open">
               <span className="flex items-center gap-2">
                 <ShoppingBag aria-hidden />

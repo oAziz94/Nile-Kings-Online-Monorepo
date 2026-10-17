@@ -82,7 +82,7 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
         </>
       }
     >
-      {blockedForOutlet ? null : children}
+      {blockedForOutlet || (isLoading && isAgentOnlyRoute(pathname)) ? null : children}
     </DashboardShell>
   );
 }
