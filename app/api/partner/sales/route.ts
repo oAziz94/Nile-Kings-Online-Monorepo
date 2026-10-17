@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/response";
 import { createStoreSale, SALE_TRANSACTION_TIMEOUT_MS, StoreSaleError } from "@/lib/sales/create-sale";
 import { validateSaleBody } from "@/lib/sales/validation";
+import { listStoreSales, parseSalesQuery, type SalesListDb } from "@/lib/sales/list-sales";
 
 /** `POST /api/partner/sales` (backlog 11.3): record a counter sale. DISTRIBUTOR (outlet) only. */
 export async function POST(req: NextRequest) {
@@ -49,6 +50,29 @@ export async function POST(req: NextRequest) {
       }
       throw error;
     }
+  } catch (error: unknown) {
+    const err = error as { status?: number };
+    if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
+    if (err.status === 403) return apiForbidden("غير مصرح");
+    throw error;
+  }
+}
+
+/** `GET /api/partner/sales` (backlog 11.4): the outlet's sales log, cursor-paged newest first. */
+export async function GET(req: NextRequest) {
+  try {
+    const user = await requirePartner();
+    const partner = await prisma.partner.findUnique({
+      where: { id: user.partnerId },
+      select: { partnerType: true },
+    });
+    if (partner?.partnerType !== "DISTRIBUTOR") return apiForbidden("هذه الصفحة متاحة للمنافذ فقط");
+
+    const parsed = parseSalesQuery(new URL(req.url).searchParams);
+    if (!parsed.ok) return apiBadRequest(parsed.message);
+    const result = await listStoreSales(prisma as unknown as SalesListDb, user.partnerId, parsed.value);
+    if ("badCursor" in result) return apiBadRequest("المؤشر غير صالح");
+    return apiSuccess(result);
   } catch (error: unknown) {
     const err = error as { status?: number };
     if (err.status === 401) return apiUnauthorized("يجب تسجيل الدخول");
