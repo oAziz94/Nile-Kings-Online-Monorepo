@@ -127,7 +127,7 @@ test("sales report: KPIs with comparison arrows, voided sale excluded, by-produc
   await expect(units).toContainText("4");
   await expect(units).toContainText("+300%");
   const average = tile(page, "متوسط الإيصال");
-  await expect(average).toContainText("183");
+  await expect(average).toContainText("183.33");
   await expect(average).toContainText("+83%");
   await expect(page.getByText("مقارنةً بـ")).toBeVisible();
 

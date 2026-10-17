@@ -33,6 +33,8 @@ export type OutletSaleLine = {
   unitPricePiastres: number;
   productName: string;
   variantName: string;
+  /** The size alone (`Variant.name`); `variantName` on the sale line is the "size – colour" snapshot. */
+  sizeName: string;
   sku: string;
   variantId: string;
   colorName: string | null;
@@ -114,7 +116,7 @@ export type OutletSalesDb = {
           variantName: string;
           sku: string;
           variantId: string;
-          variant: { colorName: string | null; product: { id: string; slug: string } | null } | null;
+          variant: { name: string; colorName: string | null; product: { id: string; slug: string } | null } | null;
         }[];
       }[]
     >;
@@ -137,7 +139,7 @@ async function loadSales(db: OutletSalesDb, partnerId: string, range: { from: st
           variantName: true,
           sku: true,
           variantId: true,
-          variant: { select: { colorName: true, product: { select: { id: true, slug: true } } } },
+          variant: { select: { name: true, colorName: true, product: { select: { id: true, slug: true } } } },
         },
       },
     },
@@ -152,6 +154,8 @@ async function loadSales(db: OutletSalesDb, partnerId: string, range: { from: st
       unitPricePiastres: it.unitPricePiastres,
       productName: it.productName,
       variantName: it.variantName,
+      // Size alone: the variant's own name; fall back to the snapshot's first segment ("M – أحمر" → "M").
+      sizeName: it.variant?.name ?? it.variantName.split(" – ")[0] ?? it.variantName,
       sku: it.sku,
       variantId: it.variantId,
       colorName: it.variant?.colorName ?? null,
@@ -306,7 +310,7 @@ export function buildOutletBreakdowns(current: OutletSaleRow[], previous: Outlet
   return {
     product,
     payment,
-    size: attributeRows((l) => l.variantName || "—"),
+    size: attributeRows((l) => l.sizeName || "—"),
     colour: attributeRows((l) => l.colorName || "—"),
     day,
     hour,

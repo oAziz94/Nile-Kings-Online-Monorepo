@@ -29,7 +29,7 @@ const line = (productId: string, name: string, size: string, colour: string, qty
   quantity: qty,
   unitPricePiastres: price,
   productName: name,
-  variantName: size,
+  variantName: `${size} – أحمر`, // real snapshot shape (11.3 writes "size – colour"); the size list must still read "M"
   sku: `${productId}-${size}`,
   variantId: `${productId}-${size}-${colour}`,
   colorName: colour,
@@ -58,7 +58,8 @@ function fakeDb(sales: FakeSale[]): OutletSalesDb {
               variantName: i.variantName,
               sku: i.sku,
               variantId: i.variantId,
-              variant: { colorName: i.colorName, product: { id: i.productId, slug: `slug-${i.productId}` } },
+              // `name` is the size alone, as on the real Variant row; `variantName` above is the "size – colour" snapshot.
+              variant: { name: i.variantName.split(" – ")[0], colorName: i.colorName, product: { id: i.productId, slug: `slug-${i.productId}` } },
             })),
           }));
       },
