@@ -52,7 +52,7 @@ model StoreSaleItem {
 enum StoreSaleStatus { COMPLETED VOIDED }
 enum StorePaymentMethod { CASH INSTAPAY CARD }
 // InventoryLedgerReason gains STORE_SALE and STORE_SALE_VOID
-// Partner gains: storeName String?, storeAddress String?, taxRegistrationNo String? (printed if set), receiptFooter String? (printed exchange-policy / thanks line)
+// Partner gains: storeName String?, storeAddress String?, receiptFooter String? (printed thanks line; no tax fields, no policy line — D10/D12)
 // No InstaPay field: the outlet takes its own money; the sale only records the payment TYPE (owner 2026-10-17).
 ```
 
@@ -100,7 +100,7 @@ Nothing changes. Stores are not visible to customers.
 | 11.6 | Admin: distributor detail (inventory, sales, intake), create/convert without agent, partners list copy | 11.3 |
 | 11.7 | Legacy sweep: inventory dead code with a tool (knip/ts-prune), owner confirms the list, remove (see §8) | — |
 | 11.8 | Removal of the agent↔distributor network feature + migration asserting zero rows; public `/partners` copy | 11.2–11.6 live |
-| 11.9 | Receipt design pass with the owner (logo, both 80 mm thermal and A5 via print CSS; see §9) | 11.3 |
+| 11.9 | Receipt design on the canvas with the owner, 80 mm thermal only, then its print CSS (see §9, D11) | 11.3 |
 
 Rough size: 11.1–11.6 is comparable to the partner-portal v2 round (about two weeks of implementer/verifier runs at the current pace), 11.7–11.9 a few days.
 
@@ -116,6 +116,9 @@ Rough size: 11.1–11.6 is comparable to the partner-portal v2 round (about two 
 - **D7 — Name:** **منفذ** everywhere in the UI (plural منافذ). Code keeps `DISTRIBUTOR`. ✅
 - **D8 — Logins:** one shared login per outlet; no per-employee logins; `sellerName` is free text on the sale. ✅
 - **D9 — InstaPay field on the partner:** dropped; not needed for outlets. ✅
+- **D10 — Taxes:** none for now; no tax number, no VAT line on the receipt (owner 2026-10-17). `taxRegistrationNo` stays out of the schema until needed.
+- **D11 — Receipt format:** **80 mm thermal only**, "with a very nice design" — a proper design round (11.9) on the canvas before the print CSS is final; A5 dropped.
+- **D12 — Exchange policy line:** none printed. The footer is the thanks line only (`receiptFooter` optional, default "شكراً لتسوقكم من ملوك النيل").
 
 ## 8. Legacy sweep (owner 2026-10-17: "remove the unusable code that we don't need anymore to clean our old decisions")
 Item 11.7 runs a dead-code inventory (knip or ts-prune over `app/`, `lib/`, `components/`, `hooks/`, plus a Prisma-model usage check) and brings the owner one list to confirm before deletion. Known candidates already: the agent↔distributor network feature (11.8), `cloudinaryLoader` in `lib/images/cloudinary-loader.ts` (unused since 10.42), the dead round-robin branch in `lib/rerouting/assign.ts` (**only after Q1 is decided**), the `PLACEHOLDER_IMAGE` Unsplash constants (replace with the neutral placeholder), any `*.test.ts` fakes for removed features, and docs sections describing removed behaviour. Rule: one PR per removal group, each with the counts/tests proving nothing referenced it; never remove a Prisma model without a migration that first asserts zero rows.
