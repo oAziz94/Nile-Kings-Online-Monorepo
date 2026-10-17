@@ -237,6 +237,7 @@ model Variant {
   inventoryLedgerEntries InventoryLedger[]
   restockRequestItems RestockRequestItem[]
   stockReceiptLines StockReceiptLine[]
+  storeSaleItems StoreSaleItem[]
 
   @@index([productId])
   @@index([sku])
@@ -668,6 +669,10 @@ model Partner {
   // N days marks a SKU "dead". `targetCoverDays`: the reorder formula's target cover.
   deadStockDays     Int      @default(60)
   targetCoverDays   Int      @default(21)
+  // Outlet (منفذ) profile — backlog 11.1; printed on the store receipt.
+  storeName         String?
+  storeAddress      String?
+  receiptFooter     String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -686,6 +691,7 @@ model Partner {
   stockThresholds PartnerStockThreshold[]
   payments      PartnerPayment[]
   stockSnapshots PartnerStockSnapshot[]
+  storeSales StoreSale[]
 
   @@index([userId])
   @@index([phone])
@@ -796,6 +802,9 @@ enum InventoryLedgerReason {
   // Factory intake / import-export source-of-truth (backlog 4.23)
   FACTORY_RECEIPT
   STOCK_COUNT
+  // Outlet (منفذ) counter sales — backlog 11.1, plan 12 §2
+  STORE_SALE
+  STORE_SALE_VOID
 }
 
 model PartnerInventory {
@@ -1057,4 +1066,58 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, readAt, createdAt(sort: Desc)])
+}
+
+// Outlet (منفذ) counter sales — backlog 11.1, plan 12 §2. Never touches `Order`.
+enum StoreSaleStatus {
+  COMPLETED
+  VOIDED
+}
+
+enum StorePaymentMethod {
+  CASH
+  INSTAPAY
+  CARD
+}
+
+model StoreSale {
+  id               String             @id @default(cuid())
+  partnerId        String
+  receiptNo        Int
+  status           StoreSaleStatus    @default(COMPLETED)
+  paymentMethod    StorePaymentMethod
+  customerPhone    String?
+  customerName     String?
+  sellerName       String?
+  subtotalPiastres Int
+  notes            String?
+  soldAt           DateTime           @default(now())
+  voidedAt         DateTime?
+  voidReason       String?
+  recordedByUserId String?
+  createdAt        DateTime           @default(now())
+
+  partner Partner         @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  items   StoreSaleItem[]
+
+  @@unique([partnerId, receiptNo])
+  @@index([partnerId, soldAt])
+  @@index([partnerId, status])
+}
+
+model StoreSaleItem {
+  id                String @id @default(cuid())
+  saleId            String
+  variantId         String
+  quantity          Int
+  unitPricePiastres Int
+  productName       String
+  variantName       String
+  sku               String
+
+  sale    StoreSale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  variant Variant   @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([variantId])
 }
