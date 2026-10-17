@@ -82,7 +82,20 @@ async function fetchPage(url: string): Promise<SalesListResponse> {
   return json.data as SalesListResponse;
 }
 
-export function SalesLog() {
+export const SALES_LOG_QUERY_KEY = "partner-sales-log";
+
+/**
+ * `baseUrl` is the list endpoint (outlet portal by default; the admin outlet detail passes
+ * `/api/admin/partners/[id]/sales`). With `onOpenSale` the rows open in place (the admin drawer)
+ * instead of navigating to `/partner/sales/[id]`, and the page header ("بيع جديد") is not rendered.
+ */
+export function SalesLog({
+  baseUrl = "/api/partner/sales",
+  onOpenSale,
+}: {
+  baseUrl?: string;
+  onOpenSale?: (saleId: string) => void;
+} = {}) {
   const router = useRouter();
   const todayIso = React.useMemo(() => cairoDateIso(new Date()), []);
   const [preset, setPreset] = React.useState<Preset>("today");
@@ -101,14 +114,14 @@ export function SalesLog() {
   const rangeValid = Boolean(range.from && range.to && range.from <= range.to);
 
   const query = useInfiniteQuery({
-    queryKey: ["partner-sales-log", range.from, range.to, payment, q],
+    queryKey: [SALES_LOG_QUERY_KEY, baseUrl, range.from, range.to, payment, q],
     enabled: rangeValid,
     queryFn: ({ pageParam }) => {
       const p = new URLSearchParams({ from: range.from, to: range.to, limit: "30" });
       if (payment) p.set("paymentMethod", payment);
       if (q) p.set("q", q);
       if (pageParam) p.set("cursor", pageParam);
-      return fetchPage(`/api/partner/sales?${p.toString()}`);
+      return fetchPage(`${baseUrl}?${p.toString()}`);
     },
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
@@ -124,13 +137,26 @@ export function SalesLog() {
         id: "receipt",
         header: "إيصال",
         cell: ({ row }) => (
-          <Link
-            href={`/partner/sales/${row.original.id}`}
-            className="font-archivo font-bold text-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <bdi dir="ltr">#{row.original.receiptNo}</bdi>
-          </Link>
+          onOpenSale ? (
+            <button
+              type="button"
+              className="font-archivo font-bold text-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenSale(row.original.id);
+              }}
+            >
+              <bdi dir="ltr">#{row.original.receiptNo}</bdi>
+            </button>
+          ) : (
+            <Link
+              href={`/partner/sales/${row.original.id}`}
+              className="font-archivo font-bold text-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <bdi dir="ltr">#{row.original.receiptNo}</bdi>
+            </Link>
+          )
         ),
       },
       {
@@ -172,25 +198,27 @@ export function SalesLog() {
         cell: ({ row }) => (row.original.status === "VOIDED" ? <StatusBadge /> : null),
       },
     ],
-    []
+    [onOpenSale]
   );
 
   const filtersActive = Boolean(payment || q);
 
   return (
     <div>
-      <PageHeader
-        title="المبيعات"
-        description="كل إيصالات المنفذ. افتح إيصالاً لإعادة طباعته أو إلغائه."
-        actions={
-          <Button asChild>
-            <Link href="/partner/sales/new">
-              <Plus aria-hidden />
-              بيع جديد
-            </Link>
-          </Button>
-        }
-      />
+      {!onOpenSale && (
+        <PageHeader
+          title="المبيعات"
+          description="كل إيصالات المنفذ. افتح إيصالاً لإعادة طباعته أو إلغائه."
+          actions={
+            <Button asChild>
+              <Link href="/partner/sales/new">
+                <Plus aria-hidden />
+                بيع جديد
+              </Link>
+            </Button>
+          }
+        />
+      )}
 
       <div className="grid grid-cols-3 gap-2 sm:gap-3" data-testid="sales-kpis">
         <Kpi label="عدد الإيصالات" value={totals ? String(totals.count) : "-"} testId="kpi-count" />
@@ -278,6 +306,34 @@ export function SalesLog() {
               {query.isLoading && rangeValid && <li className="rounded-2xl bg-white p-4 text-sm text-ink-soft shadow-subtle">جارٍ التحميل...</li>}
               {rows.map((r) => (
                 <li key={r.id}>
+                  {onOpenSale ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpenSale(r.id)}
+                      className="block w-full rounded-2xl bg-white p-3 text-start shadow-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      data-testid="sale-card"
+                      data-receipt={r.receiptNo}
+                    >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-archivo font-bold text-ink">
+                        إيصال <bdi dir="ltr">#{r.receiptNo}</bdi>
+                      </span>
+                      <span className="flex items-center gap-2">
+                        {r.status === "VOIDED" && <StatusBadge />}
+                        <bdi dir="ltr" className={cn("font-archivo font-extrabold text-ink", r.status === "VOIDED" && "text-ink-soft line-through")}>
+                          {formatEgp(r.subtotalPiastres)}
+                        </bdi>
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-ink-soft">
+                      <bdi dir="ltr" className="font-archivo">{formatSaleDateTime(r.soldAt)}</bdi>
+                      <span>
+                        <bdi dir="ltr" className="font-archivo">{r.itemCount}</bdi> قطع
+                      </span>
+                      <span>{PAYMENT_METHOD_LABELS[r.paymentMethod]}</span>
+                    </div>
+                                      </button>
+                  ) : (
                   <Link
                     href={`/partner/sales/${r.id}`}
                     className="block rounded-2xl bg-white p-3 shadow-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -303,6 +359,7 @@ export function SalesLog() {
                       <span>{PAYMENT_METHOD_LABELS[r.paymentMethod]}</span>
                     </div>
                   </Link>
+                  )}
                 </li>
               ))}
             </ul>
@@ -313,7 +370,7 @@ export function SalesLog() {
                 data={rows}
                 loading={query.isLoading && rangeValid}
                 getRowId={(r) => r.id}
-                onRowClick={(r) => router.push(`/partner/sales/${r.id}`)}
+                onRowClick={(r) => (onOpenSale ? onOpenSale(r.id) : router.push(`/partner/sales/${r.id}`))}
                 getRowProps={(r) => ({ "data-testid": "sale-row", "data-receipt": r.receiptNo }) as React.HTMLAttributes<HTMLTableRowElement>}
                 emptyTitle="لا توجد إيصالات"
                 emptyDescription={filtersActive ? "جرّب تغيير البحث أو الفلاتر." : "لا مبيعات في هذه الفترة."}

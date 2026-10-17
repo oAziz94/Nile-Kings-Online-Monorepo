@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/phone";
 import { getPartnerNetworkDefaults } from "@/lib/settings";
+import { outletLinkedAgentError } from "@/lib/admin/outlet-validation";
 import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 
 type Params = Promise<{ id: string }>;
@@ -24,12 +25,9 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
   if (!partnerRequest) return apiNotFound("طلب الشريك غير موجود");
 
   const linkedAgentId = (req.nextUrl.searchParams.get("linkedAgentId") ?? "").trim() || null;
-  if (partnerRequest.requestType === "DISTRIBUTOR" && linkedAgentId) {
-    const agent = await prisma.partner.findFirst({
-      where: { id: linkedAgentId, partnerType: "AGENT", isActive: true },
-    });
-    if (!agent) return apiBadRequest("الوكيل المحدد غير موجود أو غير نشط");
-  }
+  // Backlog 11.6 (d) — an outlet request is never converted with a linked agent.
+  const outletAgentError = outletLinkedAgentError(partnerRequest.requestType, linkedAgentId);
+  if (outletAgentError) return apiBadRequest(outletAgentError);
   if (partnerRequest.requestType === "AGENT" && linkedAgentId) {
     return apiBadRequest("وكيل لا يمكن ربطه بوكيل آخر");
   }
@@ -54,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
         youtubeUrl: partnerRequest.youtubeUrl,
         websiteUrl: partnerRequest.websiteUrl,
         otherUrl: partnerRequest.otherUrl,
-        linkedAgentId: partnerRequest.requestType === "DISTRIBUTOR" ? linkedAgentId : null,
+        linkedAgentId: null,
         isActive: true,
         notes: partnerRequest.notes,
         confirmSlaHours: networkDefaults.confirmSlaHours,

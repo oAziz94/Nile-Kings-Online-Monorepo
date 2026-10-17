@@ -14,6 +14,8 @@ import { PartnerStockTab } from "@/components/admin/partner-stock-tab";
 import { PartnerFinanceTab } from "@/components/admin/partner-finance-tab";
 import { PartnerSettingsTab } from "@/components/admin/partner-settings-tab";
 import { PartnerPerformanceTab } from "@/components/admin/partner-performance-tab";
+import { OutletSalesTab } from "@/components/admin/outlet-sales-tab";
+import { OutletReceiptsTab } from "@/components/admin/outlet-receipts-tab";
 
 /**
  * `/admin/partners/[id]` (backlog 9.4a (e), 9.4b) — the partner profile. Header (back link,
@@ -37,8 +39,8 @@ type PartnerDetail = {
   governorate: string;
   phone: string;
   isActive: boolean;
-  linkedAgentId: string | null;
-  linkedAgent: { id: string; name: string; phone: string } | null;
+  storeName: string | null;
+  storeAddress: string | null;
   createdAt: string;
 };
 
@@ -50,7 +52,15 @@ const TABS = [
   { id: "finance", label: "الحساب المالي" },
   { id: "settings", label: "الإعدادات" },
 ] as const;
-type TabId = (typeof TABS)[number]["id"];
+type TabId = (typeof TABS)[number]["id"] | "sales" | "receipts";
+
+/** Backlog 11.6 (a): an outlet sees only its stock, sales, receipts and settings (no الأداء/SLA, no التمويل). */
+const OUTLET_TABS: { id: TabId; label: string }[] = [
+  { id: "stock", label: "المخزون" },
+  { id: "sales", label: "المبيعات" },
+  { id: "receipts", label: "الاستلامات" },
+  { id: "settings", label: "الإعدادات" },
+];
 
 export default function AdminPartnerProfilePage() {
   return (
@@ -67,10 +77,8 @@ function AdminPartnerProfilePageInner() {
   const { toast } = useToast();
 
   const tabParam = searchParams.get("tab") as TabId | null;
-  const tab: TabId = TABS.some((t) => t.id === tabParam) ? (tabParam as TabId) : "profile";
 
   const [partner, setPartner] = React.useState<PartnerDetail | null>(null);
-  const [agents, setAgents] = React.useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   const load = React.useCallback(() => {
@@ -86,16 +94,6 @@ function AdminPartnerProfilePageInner() {
   React.useEffect(() => {
     load();
   }, [load]);
-
-  React.useEffect(() => {
-    if (partner?.partnerType === "DISTRIBUTOR") {
-      fetch("/api/admin/partners?partnerType=AGENT&limit=200", { credentials: "include" })
-        .then((r) => r.json())
-        .then((json: { success?: boolean; data?: { partners: { id: string; name: string }[] } }) => {
-          if (json?.success && json.data) setAgents(json.data.partners);
-        });
-    }
-  }, [partner?.partnerType]);
 
   const setTab = (next: TabId) => {
     router.replace(`/admin/partners/${id}?tab=${next}`, { scroll: false });
@@ -115,6 +113,9 @@ function AdminPartnerProfilePageInner() {
   }
 
   const sinceLabel = formatDateEn(partner.createdAt);
+  const isOutlet = partner.partnerType === "DISTRIBUTOR";
+  const tabs: readonly { id: TabId; label: string }[] = isOutlet ? OUTLET_TABS : TABS;
+  const tab: TabId = tabs.some((t) => t.id === tabParam) ? (tabParam as TabId) : tabs[0].id;
 
   return (
     <div className="space-y-6">
@@ -131,6 +132,12 @@ function AdminPartnerProfilePageInner() {
             <p className="text-xs text-ink-soft">
               {partner.partnerType === "AGENT" ? "وكيل" : "منفذ"} · {partner.governorate} · نشط منذ {sinceLabel}
             </p>
+            {isOutlet && partner.storeName && (
+              <p className="text-xs text-ink-soft" data-testid="outlet-store">
+                {partner.storeName}
+                {partner.storeAddress ? ` · ${partner.storeAddress}` : ""}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -144,7 +151,7 @@ function AdminPartnerProfilePageInner() {
       </div>
 
       <div role="tablist" aria-label="أقسام ملف الشريك" className="flex flex-wrap gap-1 rounded-2xl bg-white p-1.5 shadow-soft">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -161,23 +168,29 @@ function AdminPartnerProfilePageInner() {
         ))}
       </div>
 
-      {tab === "profile" && (
+      {tab === "profile" && !isOutlet && (
         <div className="rounded-2xl bg-white p-5 shadow-soft">
           <p className="mb-3 text-sm">
             <strong>الحالة:</strong> {partner.isActive ? "نشط" : "غير نشط"}
           </p>
-          <PartnerEditForm
-            partner={{ ...partner, linkedAgentId: partner.linkedAgent?.id ?? partner.linkedAgentId ?? null }}
-            agents={agents}
-            onUpdated={handleUpdated}
-          />
+          <PartnerEditForm partner={partner} onUpdated={handleUpdated} />
         </div>
       )}
-      {tab === "performance" && <PartnerPerformanceTab partnerId={id} partnerType={partner.partnerType} />}
-      {tab === "orders" && <PartnerOrdersTab partnerId={id} />}
+      {tab === "performance" && !isOutlet && <PartnerPerformanceTab partnerId={id} partnerType={partner.partnerType} />}
+      {tab === "orders" && !isOutlet && <PartnerOrdersTab partnerId={id} />}
       {tab === "stock" && <PartnerStockTab partnerId={id} />}
-      {tab === "finance" && <PartnerFinanceTab partnerId={id} />}
-      {tab === "settings" && <PartnerSettingsTab partnerId={id} />}
+      {tab === "finance" && !isOutlet && <PartnerFinanceTab partnerId={id} />}
+      {tab === "sales" && isOutlet && <OutletSalesTab partnerId={id} />}
+      {tab === "receipts" && isOutlet && <OutletReceiptsTab partnerId={id} />}
+      {tab === "settings" && !isOutlet && <PartnerSettingsTab partnerId={id} />}
+      {tab === "settings" && isOutlet && (
+        <div className="rounded-2xl bg-white p-5 shadow-soft" data-testid="outlet-settings">
+          <p className="mb-3 text-sm">
+            <strong>الحالة:</strong> {partner.isActive ? "نشط" : "غير نشط"}
+          </p>
+          <PartnerEditForm partner={partner} onUpdated={handleUpdated} />
+        </div>
+      )}
     </div>
   );
 }

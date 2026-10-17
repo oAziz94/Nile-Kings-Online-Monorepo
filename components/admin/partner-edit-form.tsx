@@ -35,7 +35,6 @@ export type EditablePartner = {
   governorate: string;
   phone: string;
   isActive: boolean;
-  linkedAgentId?: string | null;
 };
 
 export type PartnerPatchResponse = {
@@ -44,7 +43,6 @@ export type PartnerPatchResponse = {
   governorate: string;
   phone: string;
   isActive: boolean;
-  linkedAgentId: string | null;
 };
 
 const partnerEditSchema = z.object({
@@ -55,7 +53,6 @@ const partnerEditSchema = z.object({
     .trim()
     .min(1, "رقم التليفون مطلوب")
     .refine((v) => !!normalizeEgyptMobilePhone(v), EGYPT_MOBILE_ERROR_MESSAGE),
-  linkedAgentId: z.string(),
 });
 type PartnerEditValues = z.infer<typeof partnerEditSchema>;
 
@@ -76,12 +73,9 @@ async function patchPartner(
 
 export function PartnerEditForm({
   partner,
-  agents,
   onUpdated,
 }: {
   partner: EditablePartner;
-  /** Only used when `partner.partnerType === "DISTRIBUTOR"`. */
-  agents: { id: string; name: string }[];
   onUpdated: (updated: PartnerPatchResponse) => void;
 }) {
   const [mode, setMode] = React.useState<"read" | "edit">("read");
@@ -100,7 +94,6 @@ export function PartnerEditForm({
       name: partner.name,
       governorate: partner.governorate,
       phone: partner.phone,
-      linkedAgentId: partner.linkedAgentId ?? "",
     },
   });
 
@@ -119,7 +112,6 @@ export function PartnerEditForm({
       name: partner.name,
       governorate: partner.governorate,
       phone: partner.phone,
-      linkedAgentId: partner.linkedAgentId ?? "",
     });
     setServerError(null);
     setMode("edit");
@@ -138,9 +130,6 @@ export function PartnerEditForm({
       governorate: values.governorate.trim(),
       phone: values.phone.trim(),
     };
-    if (partner.partnerType === "DISTRIBUTOR") {
-      body.linkedAgentId = values.linkedAgentId || null;
-    }
     const result = await patchPartner(partner.id, body);
     setSaving(false);
     if (result.success && result.data) {
@@ -165,10 +154,6 @@ export function PartnerEditForm({
   };
 
   if (mode === "read") {
-    const linkedAgentName =
-      partner.partnerType === "DISTRIBUTOR"
-        ? agents.find((a) => a.id === partner.linkedAgentId)?.name ?? "—"
-        : null;
     return (
       <div className="space-y-2 text-sm">
         <p>
@@ -180,11 +165,6 @@ export function PartnerEditForm({
         <p>
           <strong>رقم التليفون:</strong> {partner.phone}
         </p>
-        {linkedAgentName !== null && (
-          <p>
-            <strong>الوكيل المرتبط:</strong> {linkedAgentName}
-          </p>
-        )}
         <div className="flex flex-wrap gap-2 pt-1">
           <Button ref={editButtonRef} type="button" size="sm" variant="outline" onClick={startEdit}>
             تعديل
@@ -273,25 +253,6 @@ export function PartnerEditForm({
           <p className="mt-1 text-xs font-semibold text-destructive">{form.formState.errors.phone.message}</p>
         )}
       </div>
-      {partner.partnerType === "DISTRIBUTOR" && (
-        <div>
-          <label htmlFor="partner-edit-linked-agent" className="mb-1 block text-sm font-medium">
-            الوكيل المرتبط (اختياري)
-          </label>
-          <Select
-            id="partner-edit-linked-agent"
-            {...form.register("linkedAgentId")}
-            className="rounded-xl px-3"
-          >
-            <option value="">— لا وكيل —</option>
-            {agents.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-      )}
       {serverError && <p className="text-sm font-semibold text-destructive">{serverError}</p>}
       <div className="flex gap-2 pt-1">
         <Button type="submit" size="sm" disabled={saving}>

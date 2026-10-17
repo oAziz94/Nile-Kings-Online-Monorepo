@@ -20,11 +20,14 @@ export function VoidSaleControl({
   receiptNo,
   canVoid,
   url = `/api/partner/sales/${saleId}/void`,
+  onVoided,
 }: {
   saleId: string;
   receiptNo: number;
   canVoid: boolean;
   url?: string;
+  /** Called after a successful void instead of `router.refresh()` (the admin drawer refetches itself). */
+  onVoided?: () => void;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -57,7 +60,8 @@ export function VoidSaleControl({
       setOpen(false);
       setReason("");
       toast({ title: `تم إلغاء الإيصال رقم ${receiptNo} وإرجاع المخزون` });
-      router.refresh();
+      if (onVoided) onVoided();
+      else router.refresh();
     } catch {
       setError("تعذّر الاتصال، حاول مرة أخرى");
     } finally {
@@ -87,7 +91,8 @@ export function VoidSaleControl({
       )}
 
       <Dialog open={open} onOpenChange={(o) => !busy && setOpen(o)}>
-        <DialogContent className="max-w-md">
+        {/* Above the admin receipt drawer (Sheet, z-110): otherwise the dialog opens behind it. */}
+        <DialogContent className="z-[130] max-w-md" overlayClassName="z-[129] bg-black/50">
           <DialogHeader>
             <DialogTitle>إلغاء الإيصال رقم {receiptNo}</DialogTitle>
             <DialogDescription>
