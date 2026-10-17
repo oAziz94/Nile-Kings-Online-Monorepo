@@ -94,7 +94,11 @@ export const OUTLET_MOBILE_TABS: typeof PARTNER_MOBILE_TABS = [
 ];
 
 export function getPartnerMobileTabs(partnerType: PartnerType | undefined): typeof PARTNER_MOBILE_TABS {
-  return partnerType === "DISTRIBUTOR" ? OUTLET_MOBILE_TABS : PARTNER_MOBILE_TABS;
+  if (partnerType === "DISTRIBUTOR") return OUTLET_MOBILE_TABS;
+  // Type not known yet (first paint before /me resolves): show only the tabs both types share, so an
+  // outlet never flashes الطلبات.
+  if (!partnerType) return PARTNER_MOBILE_TABS.filter((t) => OUTLET_MOBILE_TABS.some((o) => o.href === t.href));
+  return PARTNER_MOBILE_TABS;
 }
 
 /**
