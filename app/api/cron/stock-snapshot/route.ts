@@ -4,6 +4,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { computePartnerStockTotals } from "@/lib/analytics/partner-stock-totals";
 import { addDaysIsoUtc, cairoEndOfDayUtc, cairoYesterdayIso, dayIsoToDate } from "@/lib/analytics/cairo-day";
 import { pruneAdminAuditLog } from "@/lib/audit/retention";
+import { ONLINE_PARTNER_WHERE } from "@/lib/partner/channel";
 
 /** Backlog 7.5: rows older than this are pruned every run (~62-day "الشهر الماضي"
  * comparison plus a full year-over-year custom range headroom, at ~10 rows/day/partner). */
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
   const at = cairoEndOfDayUtc(dayIso);
   const day = dayIsoToDate(dayIso);
 
-  const partners = await prisma.partner.findMany({ where: { isActive: true }, select: { id: true } });
+  const partners = await prisma.partner.findMany({ where: { isActive: true, ...ONLINE_PARTNER_WHERE }, select: { id: true } });
 
   let written = 0;
   for (const partner of partners) {

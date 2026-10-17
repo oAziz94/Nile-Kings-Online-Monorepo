@@ -7,6 +7,7 @@ import {
   catalogExportFilename,
   type CatalogExportProduct,
 } from "@/lib/catalog-export";
+import { ONLINE_INVENTORY_WHERE } from "@/lib/partner/channel";
 
 export async function GET(req: NextRequest) {
   try {
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
   // the network-wide sellable quantity per variant for the feed, instead of a per-variant read.
   const stockGroups = await prisma.partnerInventory.groupBy({
     by: ["variantId"],
+    where: ONLINE_INVENTORY_WHERE,
     _sum: { stockAvailable: true, stockReserved: true },
   });
   const sellableByVariant = new Map(

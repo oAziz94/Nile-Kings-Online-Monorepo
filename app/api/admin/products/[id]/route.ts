@@ -5,6 +5,7 @@ import { slugify } from "@/lib/admin/slug";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound, apiConflict } from "@/lib/api/response";
 import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 import { revalidateCatalog } from "@/lib/cache/catalog-tags";
+import { ONLINE_INVENTORY_WHERE } from "@/lib/partner/channel";
 
 type Params = Promise<{ id: string }>;
 
@@ -33,7 +34,7 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
   const counts = product.variants.length
     ? await prisma.partnerInventory.groupBy({
         by: ["variantId"],
-        where: { variantId: { in: product.variants.map((v) => v.id) }, stockAvailable: { gt: 0 } },
+        where: { variantId: { in: product.variants.map((v) => v.id) }, stockAvailable: { gt: 0 }, ...ONLINE_INVENTORY_WHERE },
         _count: { partnerId: true },
       })
     : [];

@@ -11,6 +11,7 @@ import { prisma } from "@/lib/db";
 import { computeInventoryRows, type InventorySkuRow } from "./partner-inventory-report";
 import { resolvePeriod } from "./partner-reports";
 import { resolveThreshold } from "@/lib/partner/resolve-threshold";
+import { ONLINE_PARTNER_WHERE } from "@/lib/partner/channel";
 
 export type NetworkStockStatus = "out" | "low" | "ok";
 
@@ -41,7 +42,7 @@ let networkStockCache: { ledgerKey: string; expiresAt: number; value: NetworkSto
 
 async function computeNetworkStockRows(): Promise<NetworkStockRow[]> {
   const partners = await prisma.partner.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...ONLINE_PARTNER_WHERE },
     select: { id: true, name: true },
   });
   const period = resolvePeriod({ preset: "30d" });

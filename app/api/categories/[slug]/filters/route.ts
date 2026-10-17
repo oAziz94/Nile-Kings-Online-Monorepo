@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiNotFound } from "@/lib/api/response";
 import { piastresToEgp } from "@/lib/catalog";
 import { CATALOG_TAG, CATEGORIES_TAG } from "@/lib/cache/catalog-tags";
+import { ONLINE_INVENTORY_WHERE } from "@/lib/partner/channel";
 
 /** Category filter facets (sizes/price range/stock) rarely change; cached per category slug. */
 const getCategoryFilters = unstable_cache(
@@ -29,7 +30,7 @@ const getCategoryFilters = unstable_cache(
       ? (
           await prisma.partnerInventory.groupBy({
             by: ["variantId"],
-            where: { variantId: { in: variants.map((v) => v.id) } },
+            where: { variantId: { in: variants.map((v) => v.id) }, ...ONLINE_INVENTORY_WHERE },
             _sum: { stockAvailable: true, stockReserved: true },
           })
         ).some((g) => (g._sum.stockAvailable ?? 0) - (g._sum.stockReserved ?? 0) > 0)

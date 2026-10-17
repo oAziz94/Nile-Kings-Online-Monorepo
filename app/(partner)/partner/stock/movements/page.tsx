@@ -46,6 +46,8 @@ const REASONS: { value: string; label: string }[] = [
   { value: "RESTOCK_REQUEST_FULFILL", label: "تنفيذ توريد" },
   { value: "FACTORY_RECEIPT", label: "استلام من المصنع" },
   { value: "STOCK_COUNT", label: "جرد فعلي" },
+  { value: "STORE_SALE", label: "بيع من المنفذ" },
+  { value: "STORE_SALE_VOID", label: "إلغاء بيع من المنفذ" },
   { value: "LEGACY_BACKFILL", label: "تسوية سابقة" },
 ];
 
