@@ -20,7 +20,6 @@ import { DeltaCell } from "@/components/partner/reports/delta-cell";
 import { ProductIdentity } from "@/components/dashboard/product-identity";
 import { formatNumberEn } from "@/lib/format-en-numbers";
 import { piastresToEgp } from "@/lib/catalog";
-import { formatEgp } from "@/lib/sales/format";
 import type { SalesReportPreset } from "@/lib/analytics/partner-reports";
 import type { OutletSalesBreakdownKey, OutletSalesReportResponse } from "@/lib/analytics/outlet-sales-report";
 
@@ -49,8 +48,7 @@ const BREAKDOWN_TABS: { id: OutletSalesBreakdownKey; label: string }[] = [
   { id: "hour", label: "حسب الساعة" },
 ];
 
-// Same formatter as the sales log (up to 2 decimals) so a receipt total never reads differently here.
-const egp = (piastres: number) => `${formatEgp(piastres)} ج.م`;
+const egp = (piastres: number) => `${formatNumberEn(piastresToEgp(piastres))} ج.م`;
 
 async function fetchReport(params: URLSearchParams): Promise<OutletSalesReportResponse> {
   const res = await fetch(`/api/partner/reports/sales?${params}`, { credentials: "include" });
