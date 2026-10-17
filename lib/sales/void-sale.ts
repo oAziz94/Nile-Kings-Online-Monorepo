@@ -1,7 +1,14 @@
 import { Prisma } from "@prisma/client";
 import type { PrismaTx } from "@/lib/inventory/partner-inventory";
-import { cairoDateIso, cairoStartOfDayUtc } from "@/lib/analytics/cairo-day";
 import { StoreSaleError } from "@/lib/sales/create-sale";
+import {
+  VOID_REASON_MAX,
+  VOID_REASON_MIN,
+  VOID_TODAY_ONLY_MESSAGE,
+  isBeforeCairoToday,
+  validateVoidReason,
+  type VoidActor,
+} from "@/lib/sales/void-sale-shared";
 
 /**
  * Void a counter sale (backlog 11.4, plan 12 D2/D6). One writer shared by the outlet route and the
@@ -14,24 +21,8 @@ import { StoreSaleError } from "@/lib/sales/create-sale";
  * row, so it is never reused (`createStoreSale` takes max+1 over every status).
  */
 
-export const VOID_REASON_MIN = 3;
-export const VOID_REASON_MAX = 200;
-export const VOID_TODAY_ONLY_MESSAGE = "يمكن إلغاء إيصال اليوم فقط";
-
-export type VoidActor = "OUTLET" | "ADMIN";
-
-export function validateVoidReason(raw: unknown): { ok: true; reason: string } | { ok: false; message: string } {
-  const reason = typeof raw === "string" ? raw.trim() : "";
-  if (reason.length < VOID_REASON_MIN || reason.length > VOID_REASON_MAX) {
-    return { ok: false, message: `سبب الإلغاء يجب أن يكون بين ${VOID_REASON_MIN} و ${VOID_REASON_MAX} حرفاً` };
-  }
-  return { ok: true, reason };
-}
-
-/** True when `soldAt` falls before 00:00 Africa/Cairo of the day containing `now`. */
-export function isBeforeCairoToday(soldAt: Date, now: Date = new Date()): boolean {
-  return soldAt.getTime() < cairoStartOfDayUtc(cairoDateIso(now)).getTime();
-}
+export { VOID_REASON_MAX, VOID_REASON_MIN, VOID_TODAY_ONLY_MESSAGE, isBeforeCairoToday, validateVoidReason };
+export type { VoidActor };
 
 export async function voidStoreSale(
   tx: PrismaTx,
