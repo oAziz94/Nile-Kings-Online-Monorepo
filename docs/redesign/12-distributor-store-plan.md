@@ -1,4 +1,4 @@
-# Distributor = physical store — redesign plan (draft 1, 2026-10-17)
+# Distributor = منفذ (physical outlet) — redesign plan (draft 2, 2026-10-17)
 
 Owner decisions (2026-10-17), verbatim intent: agents keep selling online exactly as today. A **distributor** becomes a **physical store** that buys stock from the factory **upfront** (no debt tracking, units only), sells **only in its own shop**, and is **no longer linked to an agent**. The store logs every sale in our system with a printable receipt (receipt design comes after the plan is settled). Online and offline are **completely separate**: online reports stay as they are; offline sales are seen **per distributor** only, by the admin and by that distributor. Distributor stock is **excluded** from every admin stock total. No real distributors exist in production today, so there is no data migration. The agent↔distributor network feature **goes away**. Returns/exchanges are out of scope now but must not be designed out. No discounts. One shared login per store, used by an employee, picking items from a list and typing quantities, with internet.
 
@@ -52,7 +52,8 @@ model StoreSaleItem {
 enum StoreSaleStatus { COMPLETED VOIDED }
 enum StorePaymentMethod { CASH INSTAPAY CARD }
 // InventoryLedgerReason gains STORE_SALE and STORE_SALE_VOID
-// Partner gains: storeName String?, storeAddress String?, receiptFooter String? (printed), instapayIpa String? (gap G4, used by both channels)
+// Partner gains: storeName String?, storeAddress String?, taxRegistrationNo String? (printed if set), receiptFooter String? (printed exchange-policy / thanks line)
+// No InstaPay field: the outlet takes its own money; the sale only records the payment TYPE (owner 2026-10-17).
 ```
 
 `StockReceipt` is reused for the store's factory intake **as units only**: for a DISTRIBUTOR the `unitCostPiastres`/`totalCostPiastres` are null and the money report is not offered (they paid upfront). `linkedAgentId`, `RestockRequest*`, and the network feature are removed in the last phase.
@@ -97,17 +98,31 @@ Nothing changes. Stores are not visible to customers.
 | 11.4 | Sales log, reopen/reprint, void with reason + ledger | 11.3 |
 | 11.5 | Store reports (sales, inventory) | 11.3 |
 | 11.6 | Admin: distributor detail (inventory, sales, intake), create/convert without agent, partners list copy | 11.3 |
-| 11.7 | InstaPay IPA as a partner field used by checkout (G4) — small, independent | 11.1 |
-| 11.8 | Removal of the network feature + migration asserting zero rows; public `/partners` copy | 11.2–11.6 live |
-| 11.9 | Receipt design pass with the owner (logo, layout, thermal 80 mm vs A5) | 11.3 |
+| 11.7 | Legacy sweep: inventory dead code with a tool (knip/ts-prune), owner confirms the list, remove (see §8) | — |
+| 11.8 | Removal of the agent↔distributor network feature + migration asserting zero rows; public `/partners` copy | 11.2–11.6 live |
+| 11.9 | Receipt design pass with the owner (logo, both 80 mm thermal and A5 via print CSS; see §9) | 11.3 |
 
 Rough size: 11.1–11.6 is comparable to the partner-portal v2 round (about two weeks of implementer/verifier runs at the current pace), 11.7–11.9 a few days.
 
-## 7. Still to decide (owner)
-- **D1 — Receipt format:** 80 mm thermal printer, A5 on a normal printer, or both? (Affects 11.3's print CSS; both is fine.)
-- **D2 — Void window:** store may void only the same day; admin any time. OK?
-- **D3 — Customer phone on a sale:** optional free field, or should it create/link a customer account (future loyalty)? Recommendation: optional free field now, normalised, so it can be linked later.
-- **D4 — Card payments:** include CARD as a method now or only CASH and INSTAPAY?
-- **D5 — Stock entry for stores:** store enters its own factory intake (recommended, same as agents), or admin only?
-- **D6 — Store prices:** always the catalogue price (recommended; no discounts per the owner). Confirm a store cannot override a unit price.
-- **D7 — Name:** keep "موزع" in the UI or rename to "متجر"? Code keeps `DISTRIBUTOR` either way.
+**Gap G4 (agents' InstaPay accounts hard-coded by name) is NOT part of this plan** — it concerns the online channel and stays a separate small backlog item.
+
+## 7. Decisions (owner, 2026-10-17)
+- **D1 — Receipt format:** owner asked for research (see §9); design supports both 80 mm thermal and A5 through print CSS.
+- **D2 — Void window:** outlet same day only; admin any time. ✅
+- **D3 — Customer phone:** optional free field, normalised, linkable later. ✅
+- **D4 — Payments:** the system takes no money; it records the type only: CASH / INSTAPAY / CARD. ✅
+- **D5 — Factory intake:** the outlet enters its own intake when goods arrive (same screen as agents). ✅
+- **D6 — Prices:** always the catalogue price; an outlet cannot change a unit price; no discounts. ✅
+- **D7 — Name:** **منفذ** everywhere in the UI (plural منافذ). Code keeps `DISTRIBUTOR`. ✅
+- **D8 — Logins:** one shared login per outlet; no per-employee logins; `sellerName` is free text on the sale. ✅
+- **D9 — InstaPay field on the partner:** dropped; not needed for outlets. ✅
+
+## 8. Legacy sweep (owner 2026-10-17: "remove the unusable code that we don't need anymore to clean our old decisions")
+Item 11.7 runs a dead-code inventory (knip or ts-prune over `app/`, `lib/`, `components/`, `hooks/`, plus a Prisma-model usage check) and brings the owner one list to confirm before deletion. Known candidates already: the agent↔distributor network feature (11.8), `cloudinaryLoader` in `lib/images/cloudinary-loader.ts` (unused since 10.42), the dead round-robin branch in `lib/rerouting/assign.ts` (**only after Q1 is decided**), the `PLACEHOLDER_IMAGE` Unsplash constants (replace with the neutral placeholder), any `*.test.ts` fakes for removed features, and docs sections describing removed behaviour. Rule: one PR per removal group, each with the counts/tests proving nothing referenced it; never remove a Prisma model without a migration that first asserts zero rows.
+
+## 9. Receipt research (2026-10-17)
+**Legal side (Egypt).** The Egyptian Tax Authority's B2C e-receipt system applies to taxpayers **named on the ETA's published lists** (latest expansion: Resolution 281/2025, effective 15 Sep 2025). Listed businesses must register each POS device and submit signed JSON receipts to the ETA platform within a short window; a printed or PDF receipt alone does not satisfy that obligation. Secondary sources disagree on details (24 h vs 72 h, a 2026 QR requirement), so: **the owner confirms with his accountant whether the outlets fall under an ETA list.** If not, a plain printed receipt is fine and this plan stands. If yes later, ETA integration is a separate project (device registration, signing, submission); the data we capture per sale is already what such a submission needs (seller identity, receipt no, date/time, lines with code/qty/unit price, totals, payment method), so nothing here is wasted.
+
+**Common practice for clothing receipts (vendor POS documentation, no formal standard).** Header: logo, outlet name, address, phone, optional tax registration no. Body: receipt no, date and time, seller name, one line per item as **product – size – colour – SKU · qty × unit price = line total** (SKU on the receipt speeds up exchanges), item count, total. Footer: payment method, an exchange-policy line (e.g. "الاستبدال خلال 14 يوم بالفاتورة وبحالة سليمة"), thanks line. 80 mm thermal paper fits about 42 characters per line, so the layout uses flexible columns and wraps product names; the same template prints on A5 with the logo larger. No barcode/QR on v1 (nothing scans it); a QR with the receipt no can be added if ETA ever requires it.
+
+Sources: [Comarch — Egypt expands e-receipt requirements from Sep 2025](https://www.comarch.com/trade-and-services/data-management/legal-regulation-changes/egypt-expands-e-receipt-requirements-for-b2c-transactions-from-september-2025/), [Flick — Egypt B2C e-receipt mandate](https://www.flick.network/en-eg/egypt-b2c-e-receipt-mandate), [e-invoicing.org — Egypt 2026](https://e-invoicing.org/egypt/), [invoicedataextraction — Egypt e-receipt compliance guide](https://invoicedataextraction.com/blog/egypt-electronic-receipt-compliance-guide), [WCPOS — thermal templates](https://docs.wcpos.com/receipts/thermal-templates), [Stockagile — sales ticket configuration](https://support.stockagile.com/en/articles/10477052-sales-ticket-and-return-policy-configuration).
