@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Outlet Receipt 80mm — directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Amiri:wght@400;700&family=Archivo:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --ink: #0f172a; --soft: #475569; --rule: #111; }
+  body { margin: 0; background: #e8e6e0; font-family: Cairo, system-ui, sans-serif; color: var(--ink); }
+  .board { display: flex; gap: 40px; padding: 32px; align-items: flex-start; }
+  .slip { width: 302px; background: #fff; padding: 14px 12px; box-shadow: 0 2px 10px rgba(0,0,0,.15); box-sizing: border-box; }
+  .label { text-align: center; font: 600 13px Cairo; color: #334155; margin: 0 0 8px; }
+  .num { font-family: Archivo, monospace; direction: ltr; unicode-bidi: isolate; }
+  .center { text-align: center; }
+  .logo { width: 88px; height: auto; display: block; margin: 0 auto 6px; filter: grayscale(1) contrast(1.3); }
+  .store { font-weight: 800; font-size: 16px; margin: 0; }
+  .addr { font-size: 11px; color: var(--soft); margin: 2px 0 0; line-height: 1.5; }
+  .meta { display: flex; justify-content: space-between; font-size: 11.5px; margin: 0; }
+  .line { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: baseline; font-size: 12px; }
+  .line .name { font-weight: 700; }
+  .line .sub { font-size: 10.5px; color: var(--soft); }
+  .line .amt { font-family: Archivo; font-weight: 700; direction: ltr; }
+  .line .calc { font-size: 10px; color: var(--soft); font-family: Archivo; direction: ltr; text-align: right; }
+  .tot { display: flex; justify-content: space-between; align-items: baseline; }
+  .foot { text-align: center; font-size: 11px; color: var(--soft); }
+  /* A — Classic ledger */
+  .a .store { font-family: Amiri, serif; font-size: 20px; }
+  .a .rule { border-top: 1px dashed var(--rule); margin: 8px 0; }
+  .a .items .line { padding: 5px 0; border-bottom: 1px dotted #999; }
+  .a .tot { font-size: 15px; font-weight: 800; margin-top: 6px; }
+  .a .tot .num { font-size: 20px; }
+  .a .foot { font-family: Amiri, serif; font-size: 13px; margin-top: 10px; }
+  /* B — Modern block */
+  .b .head { border: 2px solid var(--rule); padding: 8px 6px; margin-bottom: 8px; }
+  .b .rule { border-top: 1px solid var(--rule); margin: 8px 0; }
+  .b .items .line { padding: 6px 0; }
+  .b .totbox { background: var(--rule); color: #fff; padding: 8px 10px; margin-top: 6px; display: flex; justify-content: space-between; align-items: baseline; }
+  .b .totbox .num { font-size: 22px; font-weight: 700; }
+  .b .chip { display: inline-block; border: 1px solid var(--rule); border-radius: 999px; padding: 1px 8px; font-size: 10.5px; }
+  .b .foot { margin-top: 10px; font-weight: 600; }
+  /* C — Crest */
+  .c .crest { border-top: 3px double var(--rule); border-bottom: 3px double var(--rule); padding: 8px 0; margin-bottom: 8px; }
+  .c .store { font-family: Amiri, serif; font-size: 22px; letter-spacing: .5px; }
+  .c .brand { font-size: 10px; letter-spacing: 2px; color: var(--soft); margin: 2px 0 0; }
+  .c .rule { border-top: 1px solid var(--rule); margin: 8px 0; }
+  .c .items .line { padding: 5px 0; }
+  .c .items .line:not(:last-child) { border-bottom: 1px solid #ddd; }
+  .c .tot { border-top: 3px double var(--rule); padding-top: 6px; margin-top: 6px; font-size: 15px; font-weight: 800; }
+  .c .tot .num { font-size: 21px; }
+  .c .foot { font-family: Amiri, serif; font-size: 13px; margin-top: 10px; }
+  .c .foot .orn { letter-spacing: 6px; display: block; color: #777; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="board">
+
+  <div>
+    <p class="label">A — دفتر كلاسيكي</p>
+    <div class="slip a">
+      <div class="center">
+        <img class="logo" src="file:///D:/Personal/Nile-Kings-Online-Monorepo/public/brand/logo-lapis-mark.png" alt="" />
+        <p class="store">منفذ مدينة نصر</p>
+        <p class="addr">شارع عباس العقاد، مدينة نصر<br /><span class="num">01000215197</span></p>
+      </div>
+      <div class="rule"></div>
+      <p class="meta"><span>إيصال رقم <b class="num">1</b></span><span class="num">17/10/2026 13:10</span></p>
+      <p class="meta"><span>البائع: منى</span><span>الدفع: نقدي</span></p>
+      <div class="rule"></div>
+      <div class="items">
+        <div class="line"><div><div class="name">تيشيرت قطن ملوك النيل</div><div class="sub">M – أحمر · SHOT-A-1792</div></div><div><div class="amt">200</div><div class="calc">2 × 100</div></div></div>
+        <div class="line"><div><div class="name">تيشيرت قطن ملوك النيل</div><div class="sub">L – أزرق · SHOT-B-1792</div></div><div><div class="amt">250</div><div class="calc">1 × 250</div></div></div>
+      </div>
+      <p class="meta" style="margin-top:6px"><span>عدد القطع</span><span class="num">3</span></p>
+      <div class="tot"><span>الإجمالي</span><span class="num">450 <small style="font:600 11px Cairo">ج.م</small></span></div>
+      <p class="foot">شكراً لتسوقكم من ملوك النيل</p>
+    </div>
+  </div>
+
+  <div>
+    <p class="label">B — كتلة حديثة</p>
+    <div class="slip b">
+      <div class="head center">
+        <img class="logo" src="file:///D:/Personal/Nile-Kings-Online-Monorepo/public/brand/logo-lapis-mark.png" alt="" />
+        <p class="store">منفذ مدينة نصر</p>
+        <p class="addr">شارع عباس العقاد، مدينة نصر · <span class="num">01000215197</span></p>
+      </div>
+      <p class="meta"><span>إيصال <b class="num">#1</b></span><span class="num">17/10/2026 · 13:10</span></p>
+      <p class="meta" style="margin-top:4px"><span>البائع: منى</span><span class="chip">نقدي</span></p>
+      <div class="rule"></div>
+      <div class="items">
+        <div class="line"><div><div class="name">تيشيرت قطن ملوك النيل</div><div class="sub">M – أحمر · SHOT-A-1792</div></div><div><div class="amt">200</div><div class="calc">2 × 100</div></div></div>
+        <div class="line"><div><div class="name">تيشيرت قطن ملوك النيل</div><div class="sub">L – أزرق · SHOT-B-1792</div></div><div><div class="amt">250</div><div class="calc">1 × 250</div></div></div>
+      </div>
+      <div class="rule"></div>
+      <p class="meta"><span>عدد القطع</span><span class="num">3</span></p>
+      <div class="totbox"><span style="font-weight:700">الإجمالي</span><span class="num">450 <small style="font:600 11px Cairo">ج.م</small></span></div>
+      <p class="foot center">شكراً لتسوقكم من ملوك النيل</p>
+    </div>
+  </div>
+
+  <div>
+    <p class="label">C — الشعار الملكي</p>
+    <div class="slip c">
+      <div class="crest center">
+        <img class="logo" src="file:///D:/Personal/Nile-Kings-Online-Monorepo/public/brand/logo-lapis-mark.png" alt="" />
+        <p class="store">منفذ مدينة نصر</p>
+        <p class="brand">قطن ملوك النيل</p>
+        <p class="addr">شارع عباس العقاد، مدينة نصر<br /><span class="num">01000215197</span></p>
+      </div>
+      <p class="meta"><span>إيصال رقم <b class="num">1</b></span><span class="num">17/10/2026 13:10</span></p>
+      <p class="meta" style="margin-top:4px"><span>البائع: منى</span><span>الدفع: نقدي</span></p>
+      <div class="rule"></div>
+      <div class="items">
+        <div class="line"><div><div class="name">تيشيرت قطن ملوك النيل</div><div class="sub">M – أحمر · SHOT-A-1792</div></div><div><div class="amt">200</div><div class="calc">2 × 100</div></div></div>
+        <div class="line"><div><div class="name">تيشيرت قطن ملوك النيل</div><div class="sub">L – أزرق · SHOT-B-1792</div></div><div><div class="amt">250</div><div class="calc">1 × 250</div></div></div>
+      </div>
+      <p class="meta" style="margin-top:6px"><span>عدد القطع</span><span class="num">3</span></p>
+      <div class="tot"><span>الإجمالي</span><span class="num">450 <small style="font:600 11px Cairo">ج.م</small></span></div>
+      <p class="foot"><span class="orn">✦ ✦ ✦</span>شكراً لتسوقكم من ملوك النيل</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
