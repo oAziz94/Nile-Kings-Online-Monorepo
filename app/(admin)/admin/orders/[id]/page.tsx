@@ -406,15 +406,15 @@ export default function AdminOrderDetailPage() {
 
   React.useEffect(() => {
     if (!assignOpen) return;
-    Promise.all([
-      fetch("/api/admin/partners?partnerType=AGENT&limit=200", { credentials: "include" }).then((r) => r.json()),
-      fetch("/api/admin/partners?partnerType=DISTRIBUTOR&limit=200", { credentials: "include" }).then((r) => r.json()),
-    ]).then(([a, b]) => {
-      const list: PartnerOption[] = [...(a?.data?.partners ?? []), ...(b?.data?.partners ?? [])]
-        .filter((p: { isActive?: boolean }) => p.isActive !== false)
-        .map((p: { id: string; name: string; phone: string }) => ({ id: p.id, name: p.name, phone: p.phone }));
-      setPartners(list);
-    });
+    // Agents only (backlog 11.1): outlets (DISTRIBUTOR) never receive online orders.
+    fetch("/api/admin/partners?partnerType=AGENT&limit=200", { credentials: "include" })
+      .then((r) => r.json())
+      .then((a) => {
+        const list: PartnerOption[] = (a?.data?.partners ?? [])
+          .filter((p: { isActive?: boolean }) => p.isActive !== false)
+          .map((p: { id: string; name: string; phone: string }) => ({ id: p.id, name: p.name, phone: p.phone }));
+        setPartners(list);
+      });
   }, [assignOpen]);
 
   const loadTicket = React.useCallback(async () => {

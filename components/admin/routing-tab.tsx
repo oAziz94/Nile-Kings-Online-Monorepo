@@ -90,7 +90,7 @@ export function RoutingTab() {
   }, [load]);
 
   React.useEffect(() => {
-    fetch("/api/admin/partners?health=1&limit=200", { credentials: "include" })
+    fetch("/api/admin/partners?health=1&partnerType=AGENT&limit=200", { credentials: "include" })
       .then((r) => r.json())
       .then((json: { success?: boolean; data?: { partners: { id: string; name: string; isActive: boolean }[] } }) => {
         if (json?.success && json.data) {
