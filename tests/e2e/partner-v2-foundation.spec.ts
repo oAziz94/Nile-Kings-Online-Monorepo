@@ -95,9 +95,11 @@ test("both roles see the v2 nav", async ({ page }) => {
   await loginAs(page, pair, "DISTRIBUTOR");
   await page.goto("/partner");
   const distributorNav = page.getByRole("navigation", { name: "التنقل في لوحة الشريك" });
-  for (const label of ["اليوم", "الطلبات", "المخزون", "التقارير", "الإعدادات"]) {
+  // Backlog 11.2: outlet menu — المبيعات instead of الطلبات.
+  for (const label of ["اليوم", "المبيعات", "المخزون", "التقارير", "الإعدادات"]) {
     await expect(distributorNav.getByRole("link", { name: label })).toBeVisible();
   }
+  await expect(distributorNav.getByRole("link", { name: "الطلبات" })).toHaveCount(0);
   await expect(distributorNav.getByRole("link", { name: "الموزعون" })).toHaveCount(0);
 });
 

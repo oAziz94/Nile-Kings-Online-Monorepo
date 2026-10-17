@@ -286,10 +286,14 @@ test("pick list renders only the partner's own orders and refuses a foreign id",
   await expect(page.getByText("غير مصرح")).toBeVisible({ timeout: 15_000 });
 });
 
-test("distributor gets a 403 panel opening an order detail URL directly", async ({ page }) => {
+test("distributor (outlet) opening an order detail URL directly is redirected home; the API still 403s", async ({ page }) => {
   await loginAs(page, pair, "DISTRIBUTOR");
   await page.goto(`/partner/orders/${orderFreshId}`);
-  await expect(page.getByText("هذا الطلب متاح للوكلاء فقط")).toBeVisible({ timeout: 15_000 });
+  // Backlog 11.2: the shell's client guard redirects outlets off /partner/orders*.
+  await page.waitForURL((url) => url.pathname === "/partner", { timeout: 15_000 });
+  await expect(page.getByText("هذه الصفحة للوكلاء فقط").first()).toBeVisible();
+  const res = await page.request.get(`/api/partner/orders/${orderFreshId}`);
+  expect(res.status()).toBe(403);
 });
 
 test("order detail notes round-trip", async ({ page }) => {

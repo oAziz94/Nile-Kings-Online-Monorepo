@@ -38,7 +38,9 @@ test("agent sees the agent nav set, distributor sees the distributor nav set", a
   await page.goto("/partner/stock");
   const distributorNav = page.getByRole("navigation", { name: "التنقل في لوحة الشريك" });
   await expect(distributorNav.getByRole("link", { name: "اليوم" })).toBeVisible();
-  await expect(distributorNav.getByRole("link", { name: "الطلبات" })).toBeVisible();
+  // Backlog 11.2: the DISTRIBUTOR is an outlet — المبيعات replaces الطلبات (full set: outlet-shell.spec).
+  await expect(distributorNav.getByRole("link", { name: "المبيعات" })).toBeVisible();
+  await expect(distributorNav.getByRole("link", { name: "الطلبات" })).toHaveCount(0);
   await expect(distributorNav.getByRole("link", { name: "المخزون" })).toBeVisible();
   await expect(distributorNav.getByRole("link", { name: "الموزعون" })).toHaveCount(0);
   await expect(distributorNav.getByRole("link", { name: "التقارير" })).toBeVisible();
