@@ -91,7 +91,8 @@ export function VoidSaleControl({
       )}
 
       <Dialog open={open} onOpenChange={(o) => !busy && setOpen(o)}>
-        <DialogContent className="max-w-md">
+        {/* Above the admin receipt drawer (Sheet, z-110): otherwise the dialog opens behind it. */}
+        <DialogContent className="z-[130] max-w-md" overlayClassName="z-[129] bg-black/50">
           <DialogHeader>
             <DialogTitle>إلغاء الإيصال رقم {receiptNo}</DialogTitle>
             <DialogDescription>
