@@ -10,7 +10,6 @@ import {
   computeDelta,
   daysOfCoverForVelocity,
   formatComparisonLabel,
-  getSkuVelocityForPeriod,
   isNetworkScope,
   periodToDateRange,
   resolvePeriod,
@@ -28,6 +27,7 @@ import { sumStockOutDays, type VariantStockOutInput } from "./stock-out-days";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { INVENTORY_EXPORT_HEADERS } from "@/lib/inventory/receipts";
 import { ONLINE_PARTNER_WHERE } from "@/lib/partner/channel";
+import { velocitySourceFor, type VelocitySource } from "./velocity-source";
 
 export type InventorySkuRow = {
   variantId: string;
@@ -85,16 +85,23 @@ type PartnerReportSettings = { deadStockDays: number; targetCoverDays: number };
  */
 export async function computeInventoryRows(
   partnerId: string,
-  period: ReturnType<typeof resolvePeriod>
-): Promise<{ rows: InventorySkuRow[]; partner: PartnerReportSettings; costRateBps: number }> {
-  const [partner, costRateBps, currentVelocity, lastSaleByVariant] = await Promise.all([
+  period: ReturnType<typeof resolvePeriod>,
+  /** Backlog 11.5 — where sales velocity comes from. Omitted: chosen by the partner's type
+   * (online orders for an agent, counter sales for an outlet). Network callers only ever
+   * load agents, so they get the order source exactly as before. */
+  velocitySource?: VelocitySource
+): Promise<{ rows: InventorySkuRow[]; partner: PartnerReportSettings; costRateBps: number; source: VelocitySource }> {
+  const [partner, costRateBps] = await Promise.all([
     prisma.partner.findUniqueOrThrow({
       where: { id: partnerId },
-      select: { deadStockDays: true, targetCoverDays: true },
+      select: { deadStockDays: true, targetCoverDays: true, partnerType: true },
     }),
     getPartnerCostRate(partnerId),
-    getSkuVelocityForPeriod(partnerId, period.current),
-    getLastSaleDateByVariant(partnerId),
+  ]);
+  const source = velocitySource ?? velocitySourceFor(partner.partnerType);
+  const [currentVelocity, lastSaleByVariant] = await Promise.all([
+    source.velocityForPeriod(partnerId, period.current),
+    source.lastSaleByVariant(partnerId),
   ]);
 
   const inventories = await prisma.partnerInventory.findMany({
@@ -149,7 +156,7 @@ export async function computeInventoryRows(
     return aCover - bCover;
   });
 
-  return { rows, partner, costRateBps };
+  return { rows, partner, costRateBps, source };
 }
 
 /** Every SKU that needs a reorder, unpaginated — the CSV export's source of truth. */
@@ -219,13 +226,13 @@ export async function getPartnerInventoryReport(
   let settings: { deadStockDays: number; targetCoverDays: number };
 
   if (!network) {
-    const { rows: partnerRows, partner, costRateBps } = await computeInventoryRows(scope.partnerId, period);
+    const { rows: partnerRows, partner, costRateBps, source } = await computeInventoryRows(scope.partnerId, period);
     rows = partnerRows;
     costRateOf = () => costRateBps;
     deadStockDaysForHint = partner.deadStockDays;
     settings = { deadStockDays: partner.deadStockDays, targetCoverDays: partner.targetCoverDays };
     [totals, stockOut, snapshot] = await Promise.all([
-      computePartnerStockTotals(scope.partnerId),
+      computePartnerStockTotals(scope.partnerId, new Date(), source),
       computeStockOutHeadline(scope.partnerId, rows, period),
       findNearestStockSnapshot(scope.partnerId, period.previous.to),
     ]);
@@ -355,21 +362,6 @@ export async function getPartnerInventoryReport(
     deadStockValuePiastres,
     settings,
   };
-}
-
-async function getLastSaleDateByVariant(partnerId: string): Promise<Map<string, Date>> {
-  const items = await prisma.orderItem.findMany({
-    where: { order: { assignedPartnerId: partnerId, status: { not: "CANCELLED" } } },
-    select: { variantId: true, order: { select: { createdAt: true } } },
-  });
-  const map = new Map<string, Date>();
-  for (const item of items) {
-    const existing = map.get(item.variantId);
-    if (!existing || item.order.createdAt > existing) {
-      map.set(item.variantId, item.order.createdAt);
-    }
-  }
-  return map;
 }
 
 /**
