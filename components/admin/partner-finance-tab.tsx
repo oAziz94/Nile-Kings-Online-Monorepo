@@ -245,7 +245,7 @@ export function PartnerFinanceTab({ partnerId }: { partnerId: string }) {
 
 type VariantOption = { id: string; sku: string; label: string };
 
-function RecordReceiptDialog({
+export function RecordReceiptDialog({
   partnerId,
   open,
   onOpenChange,

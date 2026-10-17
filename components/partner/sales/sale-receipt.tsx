@@ -114,7 +114,19 @@ function Slip({ sale }: { sale: Sale }) {
   );
 }
 
-export function SaleReceipt({ sale, canVoid = false }: { sale: Sale; canVoid?: boolean }) {
+/**
+ * `admin` (backlog 11.6) turns the same receipt into the admin drawer's content: no "بيع جديد" link,
+ * void goes through the admin route (any day, reason required) and `onVoided` refetches.
+ */
+export function SaleReceipt({
+  sale,
+  canVoid = false,
+  admin,
+}: {
+  sale: Sale;
+  canVoid?: boolean;
+  admin?: { voidUrl: string; onVoided: () => void };
+}) {
   const [portalRoot, setPortalRoot] = React.useState<HTMLElement | null>(null);
   React.useEffect(() => {
     const el = document.createElement("div");
@@ -142,12 +154,14 @@ export function SaleReceipt({ sale, canVoid = false }: { sale: Sale; canVoid?: b
               <Printer aria-hidden />
               طباعة
             </Button>
-            <Button asChild>
-              <Link href="/partner/sales/new">
-                <Plus aria-hidden />
-                بيع جديد
-              </Link>
-            </Button>
+            {!admin && (
+              <Button asChild>
+                <Link href="/partner/sales/new">
+                  <Plus aria-hidden />
+                  بيع جديد
+                </Link>
+              </Button>
+            )}
           </div>
         }
       />
@@ -231,7 +245,13 @@ export function SaleReceipt({ sale, canVoid = false }: { sale: Sale; canVoid?: b
         </div>
       </section>
 
-      {!voided && <VoidSaleControl saleId={sale.id} receiptNo={sale.receiptNo} canVoid={canVoid} />}
+      {!voided && <VoidSaleControl
+          saleId={sale.id}
+          receiptNo={sale.receiptNo}
+          canVoid={admin ? true : canVoid}
+          url={admin?.voidUrl}
+          onVoided={admin?.onVoided}
+        />}
 
       {portalRoot && createPortal(<Slip sale={sale} />, portalRoot)}
     </div>

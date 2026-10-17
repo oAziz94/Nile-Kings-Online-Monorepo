@@ -232,7 +232,7 @@ function PartnersTab() {
             r.health?.overdueOrders ?? 0,
             r.health?.overduePct ?? 0,
             r.health?.coverDays ?? "",
-            r.health ? Math.round(r.health.balancePiastres) / 100 : "",
+            r.health && r.partnerType === "AGENT" ? Math.round(r.health.balancePiastres) / 100 : "",
             r.isActive ? "نشط" : "غير نشط",
           ]
             .map(escape)
@@ -259,7 +259,7 @@ function PartnersTab() {
         header: "الشريك",
         cell: ({ row }) => {
           const p = row.original;
-          const subtitle = [p.partnerType === "AGENT" ? "وكيل" : "منفذ", p.governorate, p.linkedAgent ? `تابع لـ ${p.linkedAgent.name}` : null]
+          const subtitle = [p.partnerType === "AGENT" ? "وكيل" : "منفذ", p.governorate, p.partnerType === "AGENT" && p.linkedAgent ? `تابع لـ ${p.linkedAgent.name}` : null]
             .filter(Boolean)
             .join(" · ");
           return (
@@ -275,7 +275,17 @@ function PartnersTab() {
                 >
                   {p.name}
                 </Link>
-                <p className="truncate text-xs text-ink-soft">{subtitle}</p>
+                <p className="truncate text-xs text-ink-soft">
+                  {p.partnerType === "DISTRIBUTOR" && (
+                    <span
+                      className="me-1.5 inline-block rounded-full bg-lapis-800 px-2 py-px align-middle text-[10px] font-extrabold text-white"
+                      data-testid="outlet-chip"
+                    >
+                      منفذ
+                    </span>
+                  )}
+                  {subtitle}
+                </p>
               </div>
             </div>
           );
@@ -317,7 +327,8 @@ function PartnersTab() {
         header: "مستحق للمصنع",
         cell: ({ row }) => {
           const h = row.original.health;
-          if (!h) return <span className="text-ink-soft">—</span>;
+          // Outlets pay the factory upfront (11.1): nothing is ever "due".
+          if (!h || row.original.partnerType === "DISTRIBUTOR") return <span className="text-ink-soft" data-testid="balance-dash">—</span>;
           return <span className={cn("font-extrabold tabular-nums", h.balancePiastres > 0 && "text-danger-text")}>{egp(h.balancePiastres)}</span>;
         },
       },
@@ -429,26 +440,13 @@ function NewPartnerDialog({
   const [name, setName] = React.useState("");
   const [governorate, setGovernorate] = React.useState("");
   const [phone, setPhone] = React.useState("");
-  const [agents, setAgents] = React.useState<{ id: string; name: string }[]>([]);
-  const [linkedAgentId, setLinkedAgentId] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
-
-  React.useEffect(() => {
-    if (open && partnerType === "DISTRIBUTOR") {
-      fetch("/api/admin/partners?partnerType=AGENT&limit=200", { credentials: "include" })
-        .then((r) => r.json())
-        .then((json: { success?: boolean; data?: { partners: { id: string; name: string }[] } }) => {
-          if (json?.success && json.data) setAgents(json.data.partners);
-        });
-    }
-  }, [open, partnerType]);
 
   const reset = () => {
     setPartnerType("AGENT");
     setName("");
     setGovernorate("");
     setPhone("");
-    setLinkedAgentId("");
   };
 
   const submit = async () => {
@@ -467,7 +465,6 @@ function NewPartnerDialog({
           name: name.trim(),
           governorate: governorate.trim(),
           phone: phone.trim(),
-          linkedAgentId: partnerType === "DISTRIBUTOR" && linkedAgentId ? linkedAgentId : null,
           isActive: true,
         }),
       });
@@ -517,17 +514,6 @@ function NewPartnerDialog({
             <Label htmlFor="np-phone">رقم التليفون *</Label>
             <Input id="np-phone" dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
-          {partnerType === "DISTRIBUTOR" && (
-            <div className="grid gap-2">
-              <Label htmlFor="np-agent">الوكيل المرتبط (اختياري)</Label>
-              <Select id="np-agent" value={linkedAgentId} onChange={(e) => setLinkedAgentId(e.target.value)}>
-                <option value="">— لا وكيل —</option>
-                {agents.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </Select>
-            </div>
-          )}
         </div>
         <DialogFooter>
           <DialogClose asChild>
@@ -572,8 +558,6 @@ function PartnerRequestsTab({ onChanged }: { onChanged: () => void }) {
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [statusModal, setStatusModal] = React.useState<{ id: string; status: string; notes: string } | null>(null);
   const [convertModal, setConvertModal] = React.useState<{ id: string; requestType: string } | null>(null);
-  const [agents, setAgents] = React.useState<{ id: string; name: string }[]>([]);
-  const [convertAgentId, setConvertAgentId] = React.useState("");
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(search.trim()), 400);
@@ -598,16 +582,6 @@ function PartnerRequestsTab({ onChanged }: { onChanged: () => void }) {
   React.useEffect(() => {
     load();
   }, [load]);
-
-  React.useEffect(() => {
-    if (convertModal?.requestType === "DISTRIBUTOR") {
-      fetch("/api/admin/partners?partnerType=AGENT&limit=200", { credentials: "include" })
-        .then((r) => r.json())
-        .then((json: { success?: boolean; data?: { partners: { id: string; name: string }[] } }) => {
-          if (json?.success && json.data) setAgents(json.data.partners);
-        });
-    }
-  }, [convertModal]);
 
   const updateStatus = (id: string, status: string, notes: string) => {
     setActionLoading(id);
@@ -646,18 +620,14 @@ function PartnerRequestsTab({ onChanged }: { onChanged: () => void }) {
       .finally(() => setActionLoading(null));
   };
 
-  const convert = (id: string, linkedAgentId: string | null) => {
+  const convert = (id: string) => {
     setActionLoading(id);
-    const url = linkedAgentId
-      ? `/api/admin/partner-requests/${id}/convert?linkedAgentId=${encodeURIComponent(linkedAgentId)}`
-      : `/api/admin/partner-requests/${id}/convert`;
-    fetch(url, { method: "POST", credentials: "include" })
+    fetch(`/api/admin/partner-requests/${id}/convert`, { method: "POST", credentials: "include" })
       .then((r) => r.json())
       .then((json) => {
         if (json?.success) {
           toast({ title: "تم التحويل إلى شريك بنجاح" });
           setConvertModal(null);
-          setConvertAgentId("");
           load();
           onChanged();
         } else toast({ title: json?.error?.message ?? "فشل التحويل", variant: "destructive" });
@@ -773,19 +743,8 @@ function PartnerRequestsTab({ onChanged }: { onChanged: () => void }) {
           {convertModal && (
             <div className="grid gap-3">
               <p className="text-sm text-ink-soft">
-                {convertModal.requestType === "DISTRIBUTOR" ? "اختر الوكيل المرتبط (اختياري):" : "سيتم إنشاء وكيل جديد."}
+                {convertModal.requestType === "DISTRIBUTOR" ? "سيتم إنشاء منفذ جديد." : "سيتم إنشاء وكيل جديد."}
               </p>
-              {convertModal.requestType === "DISTRIBUTOR" && (
-                <div className="grid gap-2">
-                  <Label htmlFor="convert-agent">الوكيل</Label>
-                  <Select id="convert-agent" value={convertAgentId} onChange={(e) => setConvertAgentId(e.target.value)}>
-                    <option value="">— لا وكيل —</option>
-                    {agents.map((a) => (
-                      <option key={a.id} value={a.id}>{a.name}</option>
-                    ))}
-                  </Select>
-                </div>
-              )}
             </div>
           )}
           <DialogFooter>
@@ -793,7 +752,7 @@ function PartnerRequestsTab({ onChanged }: { onChanged: () => void }) {
             {convertModal && (
               <Button
                 className="rounded-full"
-                onClick={() => convert(convertModal.id, convertModal.requestType === "DISTRIBUTOR" ? convertAgentId || null : null)}
+                onClick={() => convert(convertModal.id)}
                 disabled={!!actionLoading}
               >
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "تحويل"}
