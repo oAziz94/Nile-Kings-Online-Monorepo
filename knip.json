@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "app/**/{page,layout,route,loading,error,not-found,global-error,template,default}.{ts,tsx}",
+    "app/**/{sitemap,robots,manifest,opengraph-image,icon}.{ts,tsx}",
+    "middleware.ts",
+    "instrumentation*.ts",
+    "next.config.ts",
+    "tailwind.config.*",
+    "playwright.config.ts",
+    "vitest.config.*",
+    "prisma.config.ts"
+  ],
+  "project": ["app/**", "lib/**", "components/**", "hooks/**", "contexts/**", "*.ts"],
+  "ignore": [
+    "tests/**",
+    "scripts/**",
+    "tools/**",
+    "codex/**",
+    "prisma/migrations/**",
+    "docs/**",
+    ".claude/**",
+    "design-canvas/**"
+  ]
+}
