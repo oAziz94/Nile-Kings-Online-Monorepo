@@ -1,3 +1,4 @@
+import { OUTLET_NO_AGENT_MESSAGE } from "@/lib/admin/outlet-validation";
 import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
@@ -130,11 +131,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     if (body.linkedAgentId === null || body.linkedAgentId === "") {
       linkedAgentId = null;
     } else if (existing.partnerType === "DISTRIBUTOR") {
-      const agent = await prisma.partner.findFirst({
-        where: { id: String(body.linkedAgentId).trim(), partnerType: "AGENT" },
-      });
-      if (!agent) return apiBadRequest("الوكيل المحدد غير موجود");
-      linkedAgentId = agent.id;
+      // Backlog 11.6 (d) — an outlet is never linked to an agent.
+      return apiBadRequest(OUTLET_NO_AGENT_MESSAGE);
     }
   }
 

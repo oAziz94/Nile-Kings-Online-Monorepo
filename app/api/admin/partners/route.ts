@@ -7,6 +7,7 @@ import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/pho
 import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 import { computePartnersHealth } from "@/lib/admin/partners-list";
 import { getPartnerNetworkDefaults } from "@/lib/settings";
+import { outletLinkedAgentError } from "@/lib/admin/outlet-validation";
 
 export async function GET(req: NextRequest) {
   try {
@@ -120,14 +121,10 @@ export async function POST(req: NextRequest) {
   const normalizedPhone = normalizeEgyptMobilePhone(body.phone);
   if (!normalizedPhone) return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
 
-  let linkedAgentId: string | null = null;
-  if (body.partnerType === "DISTRIBUTOR" && body.linkedAgentId?.trim()) {
-    const agent = await prisma.partner.findFirst({
-      where: { id: body.linkedAgentId.trim(), partnerType: "AGENT" },
-    });
-    if (!agent) return apiBadRequest("الوكيل المحدد غير موجود");
-    linkedAgentId = agent.id;
-  }
+  // Backlog 11.6 (d) — an outlet is never linked to an agent.
+  const outletAgentError = outletLinkedAgentError(body.partnerType, body.linkedAgentId);
+  if (outletAgentError) return apiBadRequest(outletAgentError);
+  const linkedAgentId: string | null = null;
 
   // Backlog 9.7 (a) — a new partner inherits the stored network defaults, not the Partner
   // model's own column defaults, so an admin-changed default takes effect for partners
