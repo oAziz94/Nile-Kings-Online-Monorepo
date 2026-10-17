@@ -140,8 +140,8 @@ test("detail sheet shows the distributor's stock, requests and fill rate; approv
   await expect(sheet.getByText(pair.distributor.name)).toBeVisible();
 
   // Stock table.
-  await expect(sheet.getByText(variantA.sku)).toBeVisible();
-  await expect(sheet.getByText(variantB.sku)).toBeVisible();
+  await expect(sheet.getByText(variantA.sku, { exact: true })).toBeVisible();
+  await expect(sheet.getByText(variantB.sku, { exact: true })).toBeVisible();
 
   // Fill rate = 40%.
   await expect(sheet.getByText("40%", { exact: true })).toBeVisible();
