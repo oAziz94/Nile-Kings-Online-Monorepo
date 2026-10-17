@@ -11,7 +11,13 @@
  * state and cache it. The 5 s grace keeps such a cache entry invalid until it was computed well
  * after the mark, i.e. after the transaction (a few ms-seconds) has committed.
  */
-import { redis } from "@/lib/redis";
+// Loaded lazily: importing `@/lib/redis` evaluates `@/lib/env` (full validation), and this
+// module is reachable from `notify()` → `lib/rerouting/assign` → Playwright specs that run
+// without the server env. Only the request-time code paths need the client.
+async function getRedis() {
+  const mod = await import("@/lib/redis");
+  return mod.redis;
+}
 import { prisma } from "@/lib/db";
 
 export const UNREAD_TTL_SEC = 15 * 60;
@@ -58,7 +64,7 @@ export function isCacheValid(at: number, dirty: number | null): boolean {
 
 export async function getUnreadCountCached(userId: string, now: () => number = Date.now): Promise<number> {
   try {
-    const [rawCache, rawDirty] = await redis.pipeline().get(unreadKey(userId)).get(dirtyKey(userId)).exec();
+    const [rawCache, rawDirty] = await (await getRedis()).pipeline().get(unreadKey(userId)).get(dirtyKey(userId)).exec();
     const entry = parseEntry(rawCache);
     const dirtyNum = rawDirty === null || rawDirty === undefined ? null : Number(rawDirty);
     const dirty = dirtyNum !== null && Number.isFinite(dirtyNum) ? dirtyNum : null;
@@ -71,7 +77,7 @@ export async function getUnreadCountCached(userId: string, now: () => number = D
   const at = now();
   const count = await prisma.notification.count({ where: { userId, readAt: null } });
   try {
-    await redis.set(unreadKey(userId), JSON.stringify({ count, at }), { ex: UNREAD_TTL_SEC });
+    await (await getRedis()).set(unreadKey(userId), JSON.stringify({ count, at }), { ex: UNREAD_TTL_SEC });
   } catch (err) {
     console.error("[notifications] unread cache write failed", err);
   }
@@ -83,7 +89,7 @@ export async function markUnreadDirty(userIds: string[], now: () => number = Dat
   if (userIds.length === 0) return;
   try {
     const ts = now();
-    const pipe = redis.pipeline();
+    const pipe = (await getRedis()).pipeline();
     for (const id of userIds) pipe.set(dirtyKey(id), ts, { ex: UNREAD_TTL_SEC });
     await withTimeout(pipe.exec(), WRITE_TIMEOUT_MS, "markUnreadDirty");
   } catch (err) {
@@ -94,7 +100,7 @@ export async function markUnreadDirty(userIds: string[], now: () => number = Dat
 /** Drops the cached count (read route: badge must drop immediately). Never throws. */
 export async function clearUnreadCache(userId: string): Promise<void> {
   try {
-    await withTimeout(redis.del(unreadKey(userId)), WRITE_TIMEOUT_MS, "clearUnreadCache");
+    await withTimeout((await getRedis()).del(unreadKey(userId)), WRITE_TIMEOUT_MS, "clearUnreadCache");
   } catch (err) {
     console.error("[notifications] clearUnreadCache failed", err);
   }
