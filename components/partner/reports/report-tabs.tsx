@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { usePartnerMe } from "@/hooks/use-partner-me";
 
 /**
  * Report family switcher (backlog 5.6a) — "المبيعات · التجهيز · المخزون · الشبكة · المال"
@@ -57,8 +58,20 @@ export function ReportTabs({
   basePath?: string;
 }) {
   const pathname = usePathname();
+  // Backlog 11.5 - the partner's own hub (default basePath, no caller-supplied families) is
+  // type-aware: an outlet gets only المبيعات and المخزون. Until the type is known only those
+  // two shared chips render, so an outlet never flashes agent-only chips. Admin / embedded
+  // callers pass `families` or `onSelect` and never fire the fetch.
+  const ownHub = !families && !onSelect && basePath === "/partner/reports";
+  const me = usePartnerMe({ enabled: ownHub });
+  const ownFamilies: ReportFamilyId[] | undefined = ownHub
+    ? me.data?.partnerType === "AGENT"
+      ? undefined
+      : ["sales", "inventory"]
+    : undefined;
   const allFamilies = reportFamilies(basePath);
-  const items = families ? allFamilies.filter((f) => families.includes(f.id)) : allFamilies;
+  const visible = families ?? ownFamilies;
+  const items = visible ? allFamilies.filter((f) => visible.includes(f.id)) : allFamilies;
 
   if (onSelect) {
     return (

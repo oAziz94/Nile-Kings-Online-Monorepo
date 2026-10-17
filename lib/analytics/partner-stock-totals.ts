@@ -12,6 +12,8 @@
  */
 import { prisma } from "@/lib/db";
 import { getPartnerCostRate } from "@/lib/partner/cost-rate";
+import { addDaysIsoUtc, cairoDateIso } from "./cairo-day";
+import type { VelocitySource } from "./velocity-source";
 
 /** Fixed lookback window for the snapshot's own "days of cover" velocity — deliberately
  * *not* the inventory report's selected preset (7d/30d/90d/custom): a point-in-time
@@ -108,7 +110,13 @@ export function aggregatePartnerStockTotals(
  * the quantities. The cron runs minutes after Cairo midnight specifically so this gap is
  * negligible in practice.
  */
-export async function computePartnerStockTotals(partnerId: string, at: Date = new Date()): Promise<PartnerStockTotals> {
+export async function computePartnerStockTotals(
+  partnerId: string,
+  at: Date = new Date(),
+  /** Backlog 11.5 - an outlet passes the store velocity source; omitted (every pre-11.5 caller,
+   * the snapshot cron included) keeps the order queries below untouched. */
+  velocitySource?: VelocitySource
+): Promise<PartnerStockTotals> {
   const [partner, costRateBps, inventories] = await Promise.all([
     prisma.partner.findUniqueOrThrow({ where: { id: partnerId }, select: { deadStockDays: true } }),
     getPartnerCostRate(partnerId),
@@ -132,6 +140,20 @@ export async function computePartnerStockTotals(partnerId: string, at: Date = ne
 
   if (rows.length === 0) {
     return aggregatePartnerStockTotals([], costRateBps, partner.deadStockDays, new Map(), new Map(), at);
+  }
+
+  if (velocitySource && velocitySource.kind === "store") {
+    const toIso = cairoDateIso(at);
+    const [velocities, lastSales] = await Promise.all([
+      velocitySource.velocityForPeriod(partnerId, {
+        from: addDaysIsoUtc(toIso, -(STOCK_TOTALS_VELOCITY_WINDOW_DAYS - 1)),
+        to: toIso,
+      }),
+      velocitySource.lastSaleByVariant(partnerId),
+    ]);
+    const perDay = new Map([...velocities].map(([id, v]) => [id, v.velocityPerDay]));
+    const lastBefore = new Map([...lastSales].filter(([, d]) => d <= at));
+    return aggregatePartnerStockTotals(rows, costRateBps, partner.deadStockDays, perDay, lastBefore, at);
   }
 
   const variantIds = rows.map((r) => r.variantId);

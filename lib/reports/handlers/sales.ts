@@ -1,8 +1,10 @@
 import { NextRequest } from "next/server";
 import { apiBadRequest, apiSuccess } from "@/lib/api/response";
 import { getPartnerSalesFullBreakdown, getPartnerSalesReport } from "@/lib/analytics/partner-sales-report";
+import { prisma } from "@/lib/db";
+import { handleOutletSalesReport } from "@/lib/reports/handlers/outlet-sales";
 import type { SalesOrderSet } from "@/lib/analytics/partner-sales-report";
-import type { ReportScope, SalesReportPreset } from "@/lib/analytics/partner-reports";
+import { isNetworkScope, type ReportScope, type SalesReportPreset } from "@/lib/analytics/partner-reports";
 
 /**
  * Shared body of `GET /api/partner/reports/sales` and `GET /api/admin/partners/[id]/reports/sales`
@@ -65,6 +67,11 @@ function rowsToCsv(key: string, rows: unknown[]): string {
 }
 
 export async function handleSalesReport(req: NextRequest, scope: ReportScope): Promise<Response> {
+  // Backlog 11.5 - an outlet's sales are counter receipts (StoreSale), never online orders.
+  if (!isNetworkScope(scope)) {
+    const partner = await prisma.partner.findUnique({ where: { id: scope.partnerId }, select: { partnerType: true } });
+    if (partner?.partnerType === "DISTRIBUTOR") return handleOutletSalesReport(req, scope.partnerId);
+  }
   const { searchParams } = new URL(req.url);
   const presetParam = searchParams.get("preset") ?? "30d";
   if (!PRESETS.includes(presetParam as SalesReportPreset)) {
