@@ -52,11 +52,11 @@ test.describe("Become a partner (/partners)", () => {
     await setStorefrontLocation(page, baseURL);
     await page.goto("/partners?type=distributor");
 
-    await expect(page.getByRole("radio", { name: "موزع أونلاين" })).toHaveAttribute(
+    await expect(page.getByRole("radio", { name: "منفذ" })).toHaveAttribute(
       "aria-checked",
       "true"
     );
-    await expect(page.getByRole("heading", { name: "طلب تسجيل موزع أونلاين" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "طلب تسجيل منفذ" })).toBeVisible();
   });
 
   test("plain /partners (no query param) defaults to AGENT", async ({ page, baseURL }) => {
@@ -80,7 +80,7 @@ test.describe("Become a partner (/partners)", () => {
     await page.getByLabel("الاسم").fill("محمد أحمد");
 
     // Cancel: data must survive, type must not switch.
-    await page.getByRole("radio", { name: "موزع أونلاين" }).click();
+    await page.getByRole("radio", { name: "منفذ" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText("سيتم مسح البيانات المكتوبة");
@@ -93,11 +93,11 @@ test.describe("Become a partner (/partners)", () => {
     );
 
     // Confirm: type switches and the form resets to blank.
-    await page.getByRole("radio", { name: "موزع أونلاين" }).click();
+    await page.getByRole("radio", { name: "منفذ" }).click();
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "متابعة" }).click();
     await expect(dialog).toBeHidden();
-    await expect(page.getByRole("radio", { name: "موزع أونلاين" })).toHaveAttribute(
+    await expect(page.getByRole("radio", { name: "منفذ" })).toHaveAttribute(
       "aria-checked",
       "true"
     );

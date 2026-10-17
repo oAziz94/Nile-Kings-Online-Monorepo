@@ -35,7 +35,7 @@ const MODAL_TITLES: Record<PartnerRegistrationType, { welcome: string; sub: stri
   DISTRIBUTOR: {
     welcome: "أهلًا بك فى عالم شركاء ملوك النيل",
     sub: "NILE KINGS PARTNER'S",
-    formTitle: "طلب تسجيل موزع أونلاين",
+    formTitle: "طلب تسجيل منفذ",
   },
 };
 

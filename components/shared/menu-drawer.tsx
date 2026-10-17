@@ -536,7 +536,7 @@ export function MenuDrawer({
 
             <div className="my-4 border border-[hsl(228_16%_86%)] bg-white p-4">
               <p className="mb-1 text-sm font-medium text-[hsl(228_40%_14%)]">كن شريكًا لملوك النيل</p>
-              <p className="mb-3 text-xs text-[hsl(228_18%_50%)]">وكيل أو موزع أونلاين — سجّل طلبك في دقيقة.</p>
+              <p className="mb-3 text-xs text-[hsl(228_18%_50%)]">وكيل أو منفذ — سجّل طلبك في دقيقة.</p>
               <div className="flex gap-2">
                 <Button asChild variant="outline" size="sm" className="flex-1 rounded-none">
                   <Link href="/partners?type=agent" onClick={onClose}>
@@ -545,7 +545,7 @@ export function MenuDrawer({
                 </Button>
                 <Button asChild variant="outline" size="sm" className="flex-1 rounded-none">
                   <Link href="/partners?type=distributor" onClick={onClose}>
-                    موزع
+                    منفذ
                   </Link>
                 </Button>
               </div>

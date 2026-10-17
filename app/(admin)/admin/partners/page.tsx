@@ -127,7 +127,7 @@ export default function AdminPartnersPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="الشركاء" description="الوكلاء والموزعون، صحتهم التشغيلية والمالية." />
+      <PageHeader title="الشركاء" description="الوكلاء والمنافذ، صحتهم التشغيلية والمالية." />
 
       <div role="tablist" aria-label="أقسام الشركاء" className="flex flex-wrap gap-1 rounded-2xl bg-white p-1.5 shadow-soft">
         {TABS.map((t) => {
@@ -226,7 +226,7 @@ function PartnersTab() {
         lines.push(
           [
             r.name,
-            r.partnerType === "AGENT" ? "وكيل" : "موزع",
+            r.partnerType === "AGENT" ? "وكيل" : "منفذ",
             r.governorate,
             r.health?.openOrders ?? 0,
             r.health?.overdueOrders ?? 0,
@@ -259,7 +259,7 @@ function PartnersTab() {
         header: "الشريك",
         cell: ({ row }) => {
           const p = row.original;
-          const subtitle = [p.partnerType === "AGENT" ? "وكيل" : "موزع", p.governorate, p.linkedAgent ? `تابع لـ ${p.linkedAgent.name}` : null]
+          const subtitle = [p.partnerType === "AGENT" ? "وكيل" : "منفذ", p.governorate, p.linkedAgent ? `تابع لـ ${p.linkedAgent.name}` : null]
             .filter(Boolean)
             .join(" · ");
           return (
@@ -354,7 +354,7 @@ function PartnersTab() {
           <Select value={filters.type} onChange={(e) => setFilter("type", e.target.value)} className="h-8 w-auto rounded-full border-stone-200 px-3 text-xs" aria-label="النوع">
             <option value="">النوع</option>
             <option value="AGENT">وكيل</option>
-            <option value="DISTRIBUTOR">موزع</option>
+            <option value="DISTRIBUTOR">منفذ</option>
           </Select>
           <Select value={filters.governorate} onChange={(e) => setFilter("governorate", e.target.value)} className="h-8 w-auto rounded-full border-stone-200 px-3 text-xs" aria-label="المحافظة">
             <option value="">المحافظة</option>
@@ -490,14 +490,14 @@ function NewPartnerDialog({
       <DialogContent className="rounded-2xl border-stone-200 bg-white">
         <DialogHeader>
           <DialogTitle>شريك جديد</DialogTitle>
-          <DialogDescription>إضافة وكيل أو موزع يدوياً.</DialogDescription>
+          <DialogDescription>إضافة وكيل أو منفذ يدوياً.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
           <div className="grid gap-2">
             <Label htmlFor="np-type">نوع الشريك *</Label>
             <Select id="np-type" value={partnerType} onChange={(e) => setPartnerType(e.target.value as "AGENT" | "DISTRIBUTOR")}>
               <option value="AGENT">وكيل</option>
-              <option value="DISTRIBUTOR">موزع</option>
+              <option value="DISTRIBUTOR">منفذ</option>
             </Select>
           </div>
           <div className="grid gap-2">
@@ -675,7 +675,7 @@ function PartnerRequestsTab({ onChanged }: { onChanged: () => void }) {
           <DataTable
             columns={
               [
-                { id: "type", header: "النوع", cell: ({ row }) => (row.original.requestType === "AGENT" ? "وكيل" : "موزع") },
+                { id: "type", header: "النوع", cell: ({ row }) => (row.original.requestType === "AGENT" ? "وكيل" : "منفذ") },
                 { id: "name", header: "الاسم", cell: ({ row }) => row.original.name },
                 { id: "gov", header: "المحافظة", cell: ({ row }) => row.original.governorate },
                 { id: "phone", header: "الهاتف", cell: ({ row }) => <span dir="ltr" className="font-mono text-xs">{row.original.phone}</span> },

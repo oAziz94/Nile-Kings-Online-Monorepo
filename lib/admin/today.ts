@@ -99,7 +99,7 @@ export type AdminTodayResponse = {
 
 const PARTNER_REQUEST_TYPE_LABELS: Record<string, string> = {
   AGENT: "وكيل",
-  DISTRIBUTOR: "موزع",
+  DISTRIBUTOR: "منفذ",
 };
 
 function relativeCairoDaysFromNow(target: Date, now: Date): number {
