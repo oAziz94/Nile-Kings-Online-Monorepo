@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { Plus, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { VoidSaleControl } from "@/components/partner/sales/void-sale-dialog";
 import type { StoreSaleDetail } from "@/lib/sales/get-sale";
 import { DEFAULT_RECEIPT_FOOTER, PAYMENT_METHOD_LABELS, formatEgp, formatSaleDateTime } from "@/lib/sales/format";
 
@@ -76,6 +77,7 @@ function Slip({ sale }: { sale: Sale }) {
         <bdi dir="ltr" style={{ fontFamily: "var(--font-archivo), sans-serif" }}>{formatSaleDateTime(sale.soldAt)}</bdi>
       </div>
       {sale.sellerName && <div>البائع: {sale.sellerName}</div>}
+      {sale.status === "VOIDED" && sale.voidReason && <div>سبب الإلغاء: {sale.voidReason}</div>}
       <hr style={{ border: 0, borderTop: "1px dashed #000", margin: "3mm 0" }} />
       {sale.items.map((i) => (
         <div key={i.id} style={{ marginBottom: "2mm" }} data-testid="receipt-line">
@@ -112,7 +114,7 @@ function Slip({ sale }: { sale: Sale }) {
   );
 }
 
-export function SaleReceipt({ sale }: { sale: Sale }) {
+export function SaleReceipt({ sale, canVoid = false }: { sale: Sale; canVoid?: boolean }) {
   const [portalRoot, setPortalRoot] = React.useState<HTMLElement | null>(null);
   React.useEffect(() => {
     const el = document.createElement("div");
@@ -149,6 +151,26 @@ export function SaleReceipt({ sale }: { sale: Sale }) {
           </div>
         }
       />
+
+      {voided && (
+        <section
+          className="mb-3 max-w-xl rounded-2xl bg-[hsl(0_84%_97%)] p-4 text-sm"
+          aria-label="بيانات الإلغاء"
+          data-testid="void-info"
+        >
+          <div className="font-bold text-destructive">هذا الإيصال ملغي</div>
+          {sale.voidReason && (
+            <div className="mt-1 text-ink">
+              السبب: <span data-testid="void-reason-text">{sale.voidReason}</span>
+            </div>
+          )}
+          {sale.voidedAt && (
+            <div className="mt-1 text-xs text-ink-soft">
+              بتاريخ <bdi dir="ltr" className="font-archivo">{formatSaleDateTime(sale.voidedAt)}</bdi>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="max-w-xl rounded-2xl bg-white p-4 shadow-subtle sm:p-5" aria-label="تفاصيل الإيصال" data-testid="receipt-card">
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -208,6 +230,8 @@ export function SaleReceipt({ sale }: { sale: Sale }) {
           </span>
         </div>
       </section>
+
+      {!voided && <VoidSaleControl saleId={sale.id} receiptNo={sale.receiptNo} canVoid={canVoid} />}
 
       {portalRoot && createPortal(<Slip sale={sale} />, portalRoot)}
     </div>

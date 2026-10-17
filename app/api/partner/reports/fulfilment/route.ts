@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { requirePartner } from "@/lib/auth/session";
+import { forbidOutlet } from "@/lib/reports/handlers/outlet-gate";
 import { apiForbidden, apiUnauthorized } from "@/lib/api/response";
 import { handleFulfilmentReport } from "@/lib/reports/handlers/fulfilment";
 
@@ -11,6 +12,8 @@ import { handleFulfilmentReport } from "@/lib/reports/handlers/fulfilment";
 export async function GET(req: NextRequest) {
   try {
     const user = await requirePartner();
+    const blocked = await forbidOutlet(user.partnerId);
+    if (blocked) return blocked;
     return await handleFulfilmentReport(req, { partnerId: user.partnerId });
   } catch (error: unknown) {
     const err = error as { status?: number };

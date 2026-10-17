@@ -20,6 +20,7 @@ export const ACTION_LABELS: Record<string, string> = {
   resume_partner: "تفعيل شريك",
   set_mode: "تغيير وضع التوجيه",
   stock_correction: "تصحيح مخزون",
+  void_sale: "إلغاء إيصال بيع",
   assign: "إسناد",
   reassign: "إعادة إسناد",
   status_change: "تغيير الحالة",
