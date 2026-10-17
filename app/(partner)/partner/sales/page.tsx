@@ -1,15 +1,32 @@
-import { ReceiptText } from "lucide-react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { PanelCard } from "@/components/dashboard/panel-card";
+import { Button } from "@/components/ui/button";
+import { requireOutletPage } from "@/lib/sales/page-guard";
 
-/** Placeholder until backlog 11.3 (counter screen + sales) replaces this file. */
-export default function PartnerSalesPlaceholderPage() {
+export const metadata = { title: "المبيعات" };
+
+/** `/partner/sales` (backlog 11.3 placeholder): the sales log arrives in 11.4. */
+export default async function SalesPage() {
+  await requireOutletPage();
   return (
     <div>
-      <PageHeader title="المبيعات" description="تسجيل البيع من المنفذ وإيصالاته." />
-      <div className="flex flex-col items-center justify-center gap-3 rounded-[14px] border border-stone-200 bg-white px-6 py-16 text-center">
-        <ReceiptText className="h-10 w-10 text-stone-300" strokeWidth={1.5} />
-        <p className="text-base font-extrabold text-ink">قريباً</p>
-      </div>
+      <PageHeader
+        title="المبيعات"
+        description="سجّل بيعاً جديداً من المنفذ."
+        actions={
+          <Button asChild>
+            <Link href="/partner/sales/new">
+              <Plus aria-hidden />
+              بيع جديد
+            </Link>
+          </Button>
+        }
+      />
+      <PanelCard title="سجل المبيعات">
+        <p className="text-sm text-ink-soft">السجل قريباً</p>
+      </PanelCard>
     </div>
   );
 }
