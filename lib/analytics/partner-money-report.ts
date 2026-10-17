@@ -14,6 +14,7 @@
  * database — `lib/analytics/partner-money-report.test.ts`.
  */
 import { prisma } from "@/lib/db";
+import { ONLINE_PARTNER_WHERE } from "@/lib/partner/channel";
 import { getPartnerCostRate } from "@/lib/partner/cost-rate";
 import { netMerchandisePiastres } from "./queries";
 import {
@@ -230,7 +231,8 @@ async function getNetworkMoneyReport(
 ): Promise<MoneyReportResponse> {
   const period = resolvePeriod(input);
   const page = Math.max(1, input.page ?? 1);
-  const partners = await prisma.partner.findMany({ where: { isActive: true }, select: { id: true, name: true } });
+  // Network money = agents only; outlets buy upfront and never owe the factory (11.1 verifier F1).
+  const partners = await prisma.partner.findMany({ where: { isActive: true, ...ONLINE_PARTNER_WHERE }, select: { id: true, name: true } });
   const perPartnerReports = await Promise.all(
     partners.map(async (p) => ({
       partner: p,

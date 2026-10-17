@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeReceiptLines, parseReceiptLines } from "./apply-receipt";
+import { costRateForPartner, mergeReceiptLines, parseReceiptLines } from "./apply-receipt";
 
 describe("parseReceiptLines", () => {
   it("rejects an empty array", () => {
@@ -17,6 +17,15 @@ describe("parseReceiptLines", () => {
 
   it("parses valid lines", () => {
     expect(parseReceiptLines([{ variantId: "v1", quantity: 5 }])).toEqual([{ variantId: "v1", quantity: 5 }]);
+  });
+});
+
+describe("costRateForPartner", () => {
+  it("returns the agent's rate", () => {
+    expect(costRateForPartner({ costRateBps: 7200, partnerType: "AGENT" })).toBe(7200);
+  });
+  it("returns null for an outlet — it pays upfront and never owes the factory", () => {
+    expect(costRateForPartner({ costRateBps: 7500, partnerType: "DISTRIBUTOR" })).toBeNull();
   });
 });
 

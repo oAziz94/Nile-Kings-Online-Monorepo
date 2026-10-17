@@ -229,7 +229,7 @@ export async function buildLowStockQueue(): Promise<AdminTodayGroup<LowStockQueu
  */
 async function buildDuePaymentsQueue(now: Date): Promise<AdminTodayGroup<DueBalanceRow>> {
   const partners = await prisma.partner.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...ONLINE_PARTNER_WHERE },
     select: { id: true, name: true },
   });
 
