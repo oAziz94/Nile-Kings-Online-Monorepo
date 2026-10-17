@@ -140,8 +140,8 @@ test("detail sheet shows the distributor's stock, requests and fill rate; approv
   await expect(sheet.getByText(pair.distributor.name)).toBeVisible();
 
   // Stock table.
-  await expect(sheet.getByText(variantA.sku)).toBeVisible();
-  await expect(sheet.getByText(variantB.sku)).toBeVisible();
+  await expect(sheet.getByText(variantA.sku, { exact: true })).toBeVisible();
+  await expect(sheet.getByText(variantB.sku, { exact: true })).toBeVisible();
 
   // Fill rate = 40%.
   await expect(sheet.getByText("40%", { exact: true })).toBeVisible();
@@ -175,9 +175,11 @@ test("keyboard: Enter opens the sheet, Escape closes it and returns focus to the
   await expect(cardA).toBeFocused();
 });
 
-test("distributor visiting the network page gets the role-gate panel, not the roster", async ({ page }) => {
+test("distributor (outlet) visiting the network page is redirected home with a toast, not shown the roster", async ({ page }) => {
   await loginAs(page, pair, "DISTRIBUTOR");
   await page.goto("/partner/network");
-  await expect(page.getByText("هذه الصفحة متاحة للوكلاء فقط")).toBeVisible();
+  // Backlog 11.2: the shell's client guard replaces the old role-gate panel for outlets.
+  await page.waitForURL((url) => url.pathname === "/partner", { timeout: 15_000 });
+  await expect(page.getByText("هذه الصفحة للوكلاء فقط").first()).toBeVisible();
   await expect(page.getByTestId("roster-card")).toHaveCount(0);
 });

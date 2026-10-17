@@ -300,7 +300,9 @@ test("network report: the AGENT sees the roster, the DISTRIBUTOR sees the explic
   expect(distributorRes.status()).toBe(403);
 
   await page.goto("/partner/reports/network");
-  await expect(page.getByText("هذه الصفحة متاحة للوكلاء فقط")).toBeVisible({ timeout: 15_000 });
+  // Backlog 11.2: the shell's client guard redirects an outlet home with a toast.
+  await page.waitForURL((url) => url.pathname === "/partner", { timeout: 15_000 });
+  await expect(page.getByText("هذه الصفحة للوكلاء فقط").first()).toBeVisible();
 
   // Same +300% delta rendered by the distributor table's own "مقارنة بالفترة السابقة" column.
   await page.context().clearCookies();

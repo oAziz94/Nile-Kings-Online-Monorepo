@@ -18,6 +18,7 @@ import { PanelCard } from "@/components/dashboard/panel-card";
 import { Skeleton } from "@/components/shared/skeleton";
 import { Button } from "@/components/ui/button";
 import { QueueGroupSection } from "@/components/partner/today/queue-group";
+import { OutletTodayView } from "@/components/partner/today/outlet-today-view";
 import { OrderQueueRow, RestockQueueRow, LowStockQueueRow } from "@/components/partner/today/rows";
 import { TrendChart } from "@/components/partner/today/trend-chart";
 import { usePartnerMe } from "@/hooks/use-partner-me";
@@ -69,7 +70,7 @@ function ErrorPanel({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-export default function PartnerTodayPage() {
+function AgentTodayPage() {
   const { data: me } = usePartnerMe();
   const { data, isLoading, isError, refetch, isFetching } = usePartnerToday();
   const { toast } = useToast();
@@ -483,4 +484,23 @@ export default function PartnerTodayPage() {
       )}
     </div>
   );
+}
+
+/**
+ * Backlog 11.2: an outlet (DISTRIBUTOR) gets its own اليوم (shop sales + stock, no orders);
+ * an agent gets the unchanged page above. The branch waits for `usePartnerMe()` (already
+ * cached by the shell) so neither type ever fetches the other's payload.
+ */
+export default function PartnerTodayPage() {
+  const { data: me, isLoading } = usePartnerMe();
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-5" aria-busy="true">
+        <Skeleton className="h-16 w-full rounded-2xl" />
+        <Skeleton className="h-28 w-full rounded-2xl" />
+      </div>
+    );
+  }
+  if (me?.partnerType === "DISTRIBUTOR") return <OutletTodayView partnerName={me.name} />;
+  return <AgentTodayPage />;
 }
