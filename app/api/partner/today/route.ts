@@ -13,6 +13,7 @@ import {
 } from "@/lib/partner/today";
 import { getKpis, getRevenueOverTime } from "@/lib/analytics/queries";
 import { isKidsCategory, getDisplaySizeLabel } from "@/lib/size-display";
+import { buildOutletToday } from "@/lib/partner/outlet-today";
 
 /**
  * GET /api/partner/today (backlog 5.2, `05-partner-portal-v2.md` §4.2) — everything the
@@ -98,6 +99,19 @@ export async function GET() {
       },
     });
     if (!partner) return apiForbidden("غير مصرح");
+
+    // Backlog 11.2: an outlet's اليوم is shop sales + stock only — no orders, SLA or restock.
+    if (partner.partnerType === "DISTRIBUTOR") {
+      const thresholds = await resolveThreshold(partner.id);
+      const outlet = await buildOutletToday(
+        {
+          storeSale: { findMany: (args) => prisma.storeSale.findMany(args) },
+          partnerInventory: { findMany: (args) => prisma.partnerInventory.findMany(args as never) as never },
+        },
+        { partnerId: partner.id, partnerName: partner.name, thresholds }
+      );
+      return apiSuccess(outlet);
+    }
 
     const now = new Date();
     const startOfToday = new Date(now);

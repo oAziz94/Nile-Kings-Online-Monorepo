@@ -80,3 +80,25 @@ export function usePartnerToday() {
     staleTime: 30_000,
   });
 }
+
+/** Outlet (DISTRIBUTOR) payload, backlog 11.2 — see `lib/partner/outlet-today.ts`. */
+export type { OutletTodayResponse } from "@/lib/partner/outlet-today";
+import type { OutletTodayResponse } from "@/lib/partner/outlet-today";
+
+async function fetchOutletToday(): Promise<OutletTodayResponse> {
+  const res = await fetch("/api/partner/today", { credentials: "include" });
+  const json = (await res.json().catch(() => null)) as ApiEnvelope<OutletTodayResponse> | null;
+  if (!res.ok || !json?.data) {
+    throw new Error(json?.error?.message ?? "تعذر تحميل بيانات اليوم");
+  }
+  return json.data;
+}
+
+export function useOutletToday(enabled = true) {
+  return useQuery({
+    queryKey: ["partner-today", "outlet"],
+    queryFn: fetchOutletToday,
+    staleTime: 30_000,
+    enabled,
+  });
+}

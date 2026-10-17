@@ -4,7 +4,7 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertTriangle, Banknote, Boxes, MapPin, RefreshCw, Settings as SettingsIcon, Truck } from "lucide-react";
+import { AlertTriangle, Banknote, Boxes, MapPin, RefreshCw, Settings as SettingsIcon, Store, Truck } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
 import { Skeleton } from "@/components/shared/skeleton";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { usePartnerMe } from "@/hooks/use-partner-me";
 import {
   type HandoverMethod,
   usePartnerSettings,
@@ -68,6 +69,100 @@ const workingProfileSchema = z.object({
   dailyOrderCapacity: z.string().refine((v) => v === "" || /^\d+$/.test(v), "رقم صحيح فقط"),
 });
 type WorkingProfileValues = z.infer<typeof workingProfileSchema>;
+
+const storeProfileSchema = z.object({
+  storeName: z.string().trim().max(80, "الحد الأقصى 80 حرفًا"),
+  storeAddress: z.string().trim().max(200, "الحد الأقصى 200 حرف"),
+  receiptFooter: z.string().trim().max(200, "الحد الأقصى 200 حرف"),
+});
+type StoreProfileValues = z.infer<typeof storeProfileSchema>;
+
+/** Outlet-only (backlog 11.2): the shop's name, address and the line printed under every receipt. */
+function StoreProfileSection() {
+  const { toast } = useToast();
+  const { data, isLoading, isError, refetch, isFetching } = usePartnerSettings();
+  const update = useUpdatePartnerSettings();
+  const form = useForm<StoreProfileValues>({
+    resolver: zodResolver(storeProfileSchema),
+    defaultValues: { storeName: "", storeAddress: "", receiptFooter: "" },
+  });
+
+  React.useEffect(() => {
+    if (data) {
+      form.reset({
+        storeName: data.storeName ?? "",
+        storeAddress: data.storeAddress ?? "",
+        receiptFooter: data.receiptFooter ?? "",
+      });
+    }
+  }, [data, form]);
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    try {
+      await update.mutateAsync(values);
+      toast({ title: "تم حفظ بيانات المنفذ" });
+    } catch (error) {
+      toast({ title: "تعذر الحفظ", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+    }
+  });
+
+  return (
+    <PanelCard layout="split" title="بيانات المنفذ" description="تظهر على إيصال البيع الذي يُطبع للعميل." icon={<Store className="h-4 w-4 text-ink-soft" />}>
+      {isLoading ? (
+        <Skeleton className="h-40 w-full rounded-2xl" />
+      ) : isError ? (
+        <ErrorBlock onRetry={() => refetch()} isFetching={isFetching} />
+      ) : (
+        <Form {...form}>
+          <form onSubmit={onSubmit} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="storeName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>اسم المنفذ</FormLabel>
+                  <FormControl>
+                    <Input maxLength={80} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="storeAddress"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>العنوان</FormLabel>
+                  <FormControl>
+                    <Input maxLength={200} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="receiptFooter"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>نص أسفل الإيصال</FormLabel>
+                  <FormControl>
+                    <Input maxLength={200} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" size="sm" disabled={update.isPending || !form.formState.isDirty}>
+              {update.isPending ? "جاري الحفظ…" : "حفظ"}
+            </Button>
+          </form>
+        </Form>
+      )}
+    </PanelCard>
+  );
+}
 
 function WorkingProfileSection() {
   const { toast } = useToast();
@@ -695,6 +790,29 @@ function HandoverSection() {
 }
 
 export default function PartnerSettingsPage() {
+  const { data: me, isLoading } = usePartnerMe();
+  if (me?.partnerType === "DISTRIBUTOR") {
+    // Outlet (backlog 11.2): store profile + thresholds + inventory-report knobs. Working days,
+    // capacity, SLA, handover, service areas and the factory settlement rate are agent-only.
+    return (
+      <div>
+        <PageHeader title="الإعدادات" description="بيانات منفذك وحدود تنبيه المخزون." />
+        <div className="flex flex-col gap-5">
+          <StoreProfileSection />
+          <ThresholdsSection />
+          <InventoryReportSettingsSection />
+        </div>
+      </div>
+    );
+  }
+  if (isLoading) {
+    return (
+      <div>
+        <PageHeader title="الإعدادات" description="كل ما يجعل البوابة تعمل بطريقتك." />
+        <Skeleton className="h-40 w-full rounded-2xl" />
+      </div>
+    );
+  }
   return (
     <div>
       <PageHeader title="الإعدادات" description="كل ما يجعل البوابة تعمل بطريقتك." />

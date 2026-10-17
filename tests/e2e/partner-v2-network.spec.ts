@@ -175,9 +175,11 @@ test("keyboard: Enter opens the sheet, Escape closes it and returns focus to the
   await expect(cardA).toBeFocused();
 });
 
-test("distributor visiting the network page gets the role-gate panel, not the roster", async ({ page }) => {
+test("distributor (outlet) visiting the network page is redirected home with a toast, not shown the roster", async ({ page }) => {
   await loginAs(page, pair, "DISTRIBUTOR");
   await page.goto("/partner/network");
-  await expect(page.getByText("هذه الصفحة متاحة للوكلاء فقط")).toBeVisible();
+  // Backlog 11.2: the shell's client guard replaces the old role-gate panel for outlets.
+  await page.waitForURL((url) => url.pathname === "/partner", { timeout: 15_000 });
+  await expect(page.getByText("هذه الصفحة للوكلاء فقط").first()).toBeVisible();
   await expect(page.getByTestId("roster-card")).toHaveCount(0);
 });
