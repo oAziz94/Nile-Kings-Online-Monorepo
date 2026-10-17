@@ -1,12 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Store } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { usePartnerMe, type PartnerType } from "@/hooks/use-partner-me";
 import {
   PARTNER_ACCOUNT_NAV,
-  PARTNER_MOBILE_TABS,
+  getPartnerMobileTabs,
   getPartnerNavForRole,
+  isAgentOnlyRoute,
 } from "@/components/partner/partner-nav-config";
 import { NotificationsBell } from "@/components/dashboard/notifications-bell";
 import {
@@ -36,6 +39,18 @@ function partnerTypeLabel(type: PartnerType): string {
 
 export function PartnerShell({ children }: { children: React.ReactNode }) {
   const { data: partner, isLoading, isError, refetch } = usePartnerMe();
+  const pathname = usePathname();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  // Backlog 11.2: an outlet never sees an agent-only page — the server 403s these routes
+  // already; this replaces the dead page with a redirect home and a toast.
+  const blockedForOutlet = partner?.partnerType === "DISTRIBUTOR" && isAgentOnlyRoute(pathname);
+  React.useEffect(() => {
+    if (!blockedForOutlet) return;
+    toast({ title: "هذه الصفحة للوكلاء فقط", variant: "destructive" });
+    router.replace("/partner");
+  }, [blockedForOutlet, router, toast]);
 
   const sections: ShellNavSection[] = partner ? getPartnerNavForRole(partner.partnerType) : [];
   const displayName = partner?.name?.trim() || "شريك";
@@ -49,7 +64,7 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
       identity={{ status, name: displayName, caption, onRetry: () => refetch() }}
       sections={sections}
       accountNav={PARTNER_ACCOUNT_NAV}
-      mobileTabs={PARTNER_MOBILE_TABS}
+      mobileTabs={getPartnerMobileTabs(partner?.partnerType)}
       drawerTitle="قائمة الشريك"
       navAriaLabel="التنقل في لوحة الشريك"
       menuButtonLabel="فتح قائمة لوحة الشريك"
@@ -67,7 +82,7 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
         </>
       }
     >
-      {children}
+      {blockedForOutlet ? null : children}
     </DashboardShell>
   );
 }

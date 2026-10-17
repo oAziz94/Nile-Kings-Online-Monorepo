@@ -48,3 +48,33 @@ export const partnerNetworkDefaultsSchema = z.object({
 });
 
 export type PartnerNetworkDefaults = z.infer<typeof partnerNetworkDefaultsSchema>;
+
+/** Outlet (DISTRIBUTOR) store profile, backlog 11.2 (plan `12-distributor-store-plan.md` §3).
+ * An empty string clears the field (stored as null); the receipt footer then falls back to
+ * `DEFAULT_RECEIPT_FOOTER`. Accepted by `PATCH /api/partner/settings` from a DISTRIBUTOR only. */
+export const DEFAULT_RECEIPT_FOOTER = "شكراً لتسوقكم من ملوك النيل";
+
+const optionalStoreText = (max: number, label: string) =>
+  z
+    .string()
+    .trim()
+    .max(max, `${label} يجب ألا يزيد عن ${max} حرفًا`)
+    .transform((v) => (v === "" ? null : v));
+
+export const storeNameSchema = optionalStoreText(80, "اسم المنفذ");
+export const storeAddressSchema = optionalStoreText(200, "العنوان");
+export const receiptFooterSchema = optionalStoreText(200, "نص أسفل الإيصال");
+
+export const OUTLET_ONLY_SETTINGS_FIELDS = ["storeName", "storeAddress", "receiptFooter"] as const;
+/**
+ * Per-type gate for a settings PATCH body: returns an Arabic error message, or null when the
+ * body's keys are allowed for `partnerType`.
+ */
+export function validateSettingsFieldsForType(partnerType: "AGENT" | "DISTRIBUTOR", body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const keys = Object.keys(body as Record<string, unknown>);
+  if (partnerType === "AGENT" && keys.some((k) => (OUTLET_ONLY_SETTINGS_FIELDS as readonly string[]).includes(k))) {
+    return "بيانات المنفذ متاحة للمنافذ فقط";
+  }
+  return null;
+}

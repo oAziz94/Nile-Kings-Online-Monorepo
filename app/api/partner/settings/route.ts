@@ -8,8 +8,13 @@ import {
   dailyOrderCapacitySchema,
   deadStockDaysSchema,
   handoverMethodSchema,
+  DEFAULT_RECEIPT_FOOTER,
   lowStockThresholdSchema,
+  receiptFooterSchema,
+  storeAddressSchema,
+  storeNameSchema,
   targetCoverDaysSchema,
+  validateSettingsFieldsForType,
   workingDaysSchema,
 } from "@/lib/partner/settings-schema";
 
@@ -38,10 +43,18 @@ const patchSchema = z
     // Reports platform (backlog 5.6a) — inventory report settings.
     deadStockDays: deadStockDaysSchema.optional(),
     targetCoverDays: targetCoverDaysSchema.optional(),
+    // Outlet store profile (backlog 11.2) — DISTRIBUTOR only, enforced below.
+    storeName: storeNameSchema.optional(),
+    storeAddress: storeAddressSchema.optional(),
+    receiptFooter: receiptFooterSchema.optional(),
   })
   .strict();
 
 function serialize(partner: {
+  partnerType: string;
+  storeName: string | null;
+  storeAddress: string | null;
+  receiptFooter: string | null;
   lowStockThreshold: number;
   workingDays: string[];
   dailyOrderCapacity: number | null;
@@ -54,7 +67,14 @@ function serialize(partner: {
   deadStockDays: number;
   targetCoverDays: number;
 }) {
+  const isOutlet = partner.partnerType === "DISTRIBUTOR";
   return {
+    partnerType: partner.partnerType,
+    ...(isOutlet && {
+      storeName: partner.storeName,
+      storeAddress: partner.storeAddress,
+      receiptFooter: partner.receiptFooter ?? DEFAULT_RECEIPT_FOOTER,
+    }),
     lowStockThreshold: partner.lowStockThreshold,
     workingDays: partner.workingDays,
     dailyOrderCapacity: partner.dailyOrderCapacity,
@@ -73,6 +93,10 @@ function serialize(partner: {
 }
 
 const SETTINGS_SELECT = {
+  partnerType: true,
+  storeName: true,
+  storeAddress: true,
+  receiptFooter: true,
   lowStockThreshold: true,
   workingDays: true,
   dailyOrderCapacity: true,
@@ -123,6 +147,11 @@ export async function PATCH(req: NextRequest) {
     ) {
       return apiBadRequest("المهل يحددها المصنع");
     }
+
+    const self = await prisma.partner.findUnique({ where: { id: user.partnerId }, select: { partnerType: true } });
+    if (!self) return apiForbidden("غير مصرح");
+    const typeError = validateSettingsFieldsForType(self.partnerType, body);
+    if (typeError) return apiBadRequest(typeError);
 
     const parsed = patchSchema.safeParse(body);
     if (!parsed.success) {

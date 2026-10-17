@@ -16,6 +16,7 @@ import {
   Bell,
   Boxes,
   LayoutDashboard,
+  ReceiptText,
   Truck,
   Users,
 } from "lucide-react";
@@ -41,7 +42,9 @@ export const PARTNER_NAV_SECTIONS: readonly PartnerNavSection[] = [
     label: "الرئيسية",
     items: [
       { href: "/partner", label: "اليوم", icon: LayoutDashboard, roles: ["AGENT", "DISTRIBUTOR"] },
-      { href: "/partner/orders", label: "الطلبات", icon: Truck, roles: ["AGENT", "DISTRIBUTOR"] },
+      { href: "/partner/orders", label: "الطلبات", icon: Truck, roles: ["AGENT"] },
+      // Outlet counter sales (backlog 11.2; the screen itself is 11.3).
+      { href: "/partner/sales", label: "المبيعات", icon: ReceiptText, roles: ["DISTRIBUTOR"] },
     ],
   },
   {
@@ -69,7 +72,7 @@ export const PARTNER_NAV_SECTIONS: readonly PartnerNavSection[] = [
     id: "notifications",
     label: "الإشعارات",
     items: [
-      { href: "/partner/notifications", label: "الإشعارات", icon: Bell, roles: ["AGENT", "DISTRIBUTOR"] },
+      { href: "/partner/notifications", label: "الإشعارات", icon: Bell, roles: ["AGENT"] },
     ],
   },
 ] as const;
@@ -81,6 +84,38 @@ export const PARTNER_MOBILE_TABS: readonly { href: string; label: string; icon: 
   { href: "/partner/stock", label: "المخزون", icon: Boxes },
   { href: "/partner/reports/sales", label: "التقارير", icon: BarChart3 },
 ];
+
+/** Outlet (DISTRIBUTOR) bottom tab bar, backlog 11.2: اليوم · المبيعات · المخزون · التقارير. */
+export const OUTLET_MOBILE_TABS: typeof PARTNER_MOBILE_TABS = [
+  { href: "/partner", label: "اليوم", icon: LayoutDashboard },
+  { href: "/partner/sales", label: "المبيعات", icon: ReceiptText },
+  { href: "/partner/stock", label: "المخزون", icon: Boxes },
+  { href: "/partner/reports/sales", label: "التقارير", icon: BarChart3 },
+];
+
+export function getPartnerMobileTabs(partnerType: PartnerType | undefined): typeof PARTNER_MOBILE_TABS {
+  return partnerType === "DISTRIBUTOR" ? OUTLET_MOBILE_TABS : PARTNER_MOBILE_TABS;
+}
+
+/**
+ * Routes only an AGENT may open (backlog 11.2). The server already 403s each of them for an
+ * outlet; the shell uses this to redirect an outlet to /partner with a toast instead of
+ * rendering a dead page. Segment-aware: "/partner/orders-x" does not match "/partner/orders".
+ */
+export const AGENT_ONLY_ROUTE_PREFIXES: readonly string[] = [
+  "/partner/orders",
+  "/partner/routed-orders",
+  "/partner/network",
+  "/partner/restock-requests",
+  "/partner/distributor-requests",
+  "/partner/reports/fulfilment",
+  "/partner/reports/network",
+  "/partner/reports/money",
+];
+
+export function isAgentOnlyRoute(pathname: string): boolean {
+  return AGENT_ONLY_ROUTE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(prefix + "/"));
+}
 
 /** Static "الحساب" section — not role-filtered: settings, store link, logout. */
 export const PARTNER_ACCOUNT_NAV = {

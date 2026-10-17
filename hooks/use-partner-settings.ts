@@ -11,6 +11,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 export type HandoverMethod = "COURIER" | "PICKUP" | "OWN_DELIVERY";
 
 export type PartnerSettings = {
+  partnerType: "AGENT" | "DISTRIBUTOR";
+  /** Outlet store profile (backlog 11.2) — present for a DISTRIBUTOR only. */
+  storeName?: string | null;
+  storeAddress?: string | null;
+  receiptFooter?: string;
   lowStockThreshold: number;
   workingDays: string[];
   dailyOrderCapacity: number | null;
@@ -28,8 +33,12 @@ export type PartnerSettings = {
 };
 
 export type PartnerSettingsPatch = Partial<
-  Omit<PartnerSettings, "costRateBps" | "marginBps" | "paymentMethodLabel">
->;
+  Omit<PartnerSettings, "partnerType" | "costRateBps" | "marginBps" | "paymentMethodLabel" | "storeName" | "storeAddress" | "receiptFooter">
+> & {
+  storeName?: string;
+  storeAddress?: string;
+  receiptFooter?: string;
+};
 
 type ApiEnvelope<T> = { data?: T; error?: { message?: string } };
 
