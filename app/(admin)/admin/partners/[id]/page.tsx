@@ -129,7 +129,7 @@ function AdminPartnerProfilePageInner() {
           <div>
             <p className="text-lg font-extrabold text-ink">{partner.name}</p>
             <p className="text-xs text-ink-soft">
-              {partner.partnerType === "AGENT" ? "وكيل" : "موزع"} · {partner.governorate} · نشط منذ {sinceLabel}
+              {partner.partnerType === "AGENT" ? "وكيل" : "منفذ"} · {partner.governorate} · نشط منذ {sinceLabel}
             </p>
           </div>
         </div>

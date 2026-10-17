@@ -31,7 +31,7 @@ import {
 export const PartnerTopbarSlot = DashboardTopbarSlot;
 
 function partnerTypeLabel(type: PartnerType): string {
-  return type === "DISTRIBUTOR" ? "موزع" : "وكيل";
+  return type === "DISTRIBUTOR" ? "منفذ" : "وكيل";
 }
 
 export function PartnerShell({ children }: { children: React.ReactNode }) {

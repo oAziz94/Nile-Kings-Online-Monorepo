@@ -18,6 +18,7 @@ import { cairoDateIso, cairoStartOfDayUtc, addDaysIsoUtc } from "@/lib/analytics
 import { getOrderTicketSubjectLabel } from "@/lib/constants/order-ticket";
 import { describeAdminAudit } from "@/lib/audit/describe-admin-audit";
 import { resolveActorNames } from "@/lib/audit/resolve-actor-names";
+import { ONLINE_PARTNER_WHERE } from "@/lib/partner/channel";
 
 const TREND_DAYS = 30;
 const ROWS_PER_CARD = 3;
@@ -98,7 +99,7 @@ export type AdminTodayResponse = {
 
 const PARTNER_REQUEST_TYPE_LABELS: Record<string, string> = {
   AGENT: "وكيل",
-  DISTRIBUTOR: "موزع",
+  DISTRIBUTOR: "منفذ",
 };
 
 function relativeCairoDaysFromNow(target: Date, now: Date): number {
@@ -186,9 +187,9 @@ async function buildPartnerRequestsQueue(): Promise<AdminTodayGroup<PartnerReque
  * `InventorySkuRow` carries `productId`/`categoryId` since 9.5, so the network queue no
  * longer falls back to the partner-wide default.
  */
-async function buildLowStockQueue(): Promise<AdminTodayGroup<LowStockQueueRow>> {
+export async function buildLowStockQueue(): Promise<AdminTodayGroup<LowStockQueueRow>> {
   const partners = await prisma.partner.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...ONLINE_PARTNER_WHERE },
     select: { id: true, name: true },
   });
 
@@ -228,7 +229,7 @@ async function buildLowStockQueue(): Promise<AdminTodayGroup<LowStockQueueRow>> 
  */
 async function buildDuePaymentsQueue(now: Date): Promise<AdminTodayGroup<DueBalanceRow>> {
   const partners = await prisma.partner.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...ONLINE_PARTNER_WHERE },
     select: { id: true, name: true },
   });
 

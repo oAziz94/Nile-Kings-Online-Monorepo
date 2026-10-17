@@ -27,6 +27,7 @@ import { computePartnerStockTotals, findNearestStockSnapshot, type NearestSnapsh
 import { sumStockOutDays, type VariantStockOutInput } from "./stock-out-days";
 import { formatDateEn } from "@/lib/format-en-numbers";
 import { INVENTORY_EXPORT_HEADERS } from "@/lib/inventory/receipts";
+import { ONLINE_PARTNER_WHERE } from "@/lib/partner/channel";
 
 export type InventorySkuRow = {
   variantId: string;
@@ -167,11 +168,11 @@ export async function getPartnerReorderRows(
  * cost rate/settings kept alongside for the aggregate math below. Same pattern as 9.5b's
  * `getNetworkStockRows`, parameterised by the report's own period instead of a fixed 30d.
  */
-async function computeNetworkInventoryRows(period: ReturnType<typeof resolvePeriod>): Promise<{
+export async function computeNetworkInventoryRows(period: ReturnType<typeof resolvePeriod>): Promise<{
   perPartner: { partnerId: string; partnerName: string; rows: InventorySkuRow[]; costRateBps: number; deadStockDays: number; targetCoverDays: number }[];
   rows: InventorySkuRow[];
 }> {
-  const partners = await prisma.partner.findMany({ where: { isActive: true }, select: { id: true, name: true } });
+  const partners = await prisma.partner.findMany({ where: { isActive: true, ...ONLINE_PARTNER_WHERE }, select: { id: true, name: true } });
   const perPartner = await Promise.all(
     partners.map(async (partner) => {
       const { rows, partner: settings, costRateBps } = await computeInventoryRows(partner.id, period);

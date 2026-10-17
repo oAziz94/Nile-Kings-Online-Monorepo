@@ -5,6 +5,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { GOVERNORATE_OPTIONS } from "@/lib/services/shipping";
 import { REROUTING_RULES_TAG } from "@/lib/cache/catalog-tags";
+import { ONLINE_PARTNER_WHERE } from "@/lib/partner/channel";
 
 /**
  * Holds the customer's full delivery location, not just the governorate — the location
@@ -98,7 +99,7 @@ const getCachedPartnerIdForGovernorate = unstable_cache(
       where: { governorate: normalized, isActive: true },
       include: {
         partners: {
-          where: { isActive: true, partner: { isActive: true } },
+          where: { isActive: true, partner: { isActive: true, ...ONLINE_PARTNER_WHERE } },
           orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
           include: { partner: { select: { id: true } } },
         },

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { REPORT_ORDER_STATUS } from "./types";
 import type { DateGranularity } from "./types";
 import { ORDER_STATUSES } from "@/lib/constants/order-status";
+import { ONLINE_INVENTORY_WHERE } from "@/lib/partner/channel";
 
 function parseRange(from?: string | null, to?: string | null): { from: Date; to: Date } {
   const toDate = to ? new Date(to) : new Date();
@@ -197,7 +198,7 @@ export async function getProductVariantReport(
     : (
         await prisma.partnerInventory.groupBy({
           by: ["variantId"],
-          where: { variantId: { in: variantIds } },
+          where: { variantId: { in: variantIds }, ...ONLINE_INVENTORY_WHERE },
           _sum: { stockAvailable: true, stockReserved: true },
         })
       ).map((g) => ({

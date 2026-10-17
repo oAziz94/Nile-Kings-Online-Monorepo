@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiBadRequest, apiUnauthorized, apiForbidden, apiNotFound } from "@/lib/api/response";
 import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 import { revalidateReroutingRules } from "@/lib/cache/catalog-tags";
+import { isOnlinePartner } from "@/lib/partner/channel";
 
 type Params = Promise<{ id: string }>;
 
@@ -55,9 +56,11 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
 
   const partner = await prisma.partner.findUnique({
     where: { id: partnerId },
-    select: { id: true },
+    select: { id: true, partnerType: true },
   });
   if (!partner) return apiBadRequest("الشريك غير موجود");
+  // Backlog 11.1 (plan 12 §1.3): an outlet sells only in its shop and never receives an online order.
+  if (!isOnlinePartner(partner)) return apiBadRequest("المنافذ لا تستقبل طلبات أونلاين");
 
   const existing = await prisma.reroutingRulePartner.findUnique({
     where: { ruleId_partnerId: { ruleId, partnerId } },

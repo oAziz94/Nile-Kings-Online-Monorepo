@@ -59,18 +59,18 @@ const TYPE_OPTIONS: {
   {
     id: "AGENT",
     label: "وكيل أونلاين",
-    description: "الوكيل يحتفظ بالمخزون ويشرف على الموزعين المرتبطين بحسابه.",
+    description: "الوكيل يحتفظ بالمخزون ويستقبل طلبات العملاء أونلاين في محافظته.",
   },
   {
     id: "DISTRIBUTOR",
-    label: "موزع أونلاين",
-    description: "الموزع يبيع من مخزون الوكيل الخاص به ويطلب منه إعادة التوريد عند الحاجة.",
+    label: "منفذ",
+    description: "المنفذ يبيع من متجره ويستلم بضاعته من المصنع",
   },
 ];
 
 const FORM_TITLES: Record<PartnerRegistrationType, string> = {
   AGENT: "طلب تسجيل وكيل أونلاين",
-  DISTRIBUTOR: "طلب تسجيل موزع أونلاين",
+  DISTRIBUTOR: "طلب تسجيل منفذ",
 };
 
 type FormState = {

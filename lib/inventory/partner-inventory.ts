@@ -1,6 +1,7 @@
 import { Prisma, type InventoryLedgerReason, type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import type { StockLine } from "@/lib/services/stock";
+import { ONLINE_PARTNER_WHERE } from "@/lib/partner/channel";
 
 export type PrismaTx = Omit<
   typeof prisma,
@@ -90,7 +91,7 @@ export async function getEligiblePartnersForGovernorate(governorate: string) {
     where: { governorate: trimmed, isActive: true },
     include: {
       partners: {
-        where: { isActive: true, partner: { isActive: true } },
+        where: { isActive: true, partner: { isActive: true, ...ONLINE_PARTNER_WHERE } },
         orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
         include: { partner: true },
       },

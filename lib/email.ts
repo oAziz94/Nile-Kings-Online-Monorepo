@@ -24,7 +24,7 @@ export type PartnerRequestPayload = {
 const TO_EMAIL = env.PARTNER_NOTIFICATION_EMAIL ?? "info@nilekingscotton.com";
 
 function buildTextBody(p: PartnerRequestPayload): string {
-  const typeLabel = p.requestType === "AGENT" ? "وكيل أونلاين" : "موزع أونلاين";
+  const typeLabel = p.requestType === "AGENT" ? "وكيل أونلاين" : "منفذ";
   const lines = [
     `نوع الطلب: طلب تسجيل ${typeLabel}`,
     `الاسم: ${p.name}`,
@@ -46,7 +46,7 @@ export async function sendPartnerRequestNotification(
   const subject =
     payload.requestType === "AGENT"
       ? "طلب تسجيل وكيل أونلاين جديد - Nile Kings"
-      : "طلب تسجيل موزع أونلاين جديد - Nile Kings";
+      : "طلب تسجيل منفذ جديد - Nile Kings";
   const text = buildTextBody(payload);
 
   const resendApiKey = env.RESEND_API_KEY?.trim();

@@ -15,6 +15,12 @@
 import type { PrismaClient, StockReceiptKind, StockReceiptRecordedBy } from "@prisma/client";
 import { computeUnitCostPiastres } from "@/lib/inventory/receipts";
 
+/** The settlement rate to snapshot on a FACTORY receipt, or null for a partner that never owes the
+ * factory: an outlet (DISTRIBUTOR) buys upfront (plan 12-distributor-store-plan.md §2, D3). */
+export function costRateForPartner(partner: { costRateBps: number; partnerType: "AGENT" | "DISTRIBUTOR" }): number | null {
+  return partner.partnerType === "DISTRIBUTOR" ? null : partner.costRateBps;
+}
+
 export class ApplyReceiptError extends Error {
   constructor(public readonly publicMessage: string) {
     super(publicMessage);
@@ -105,9 +111,9 @@ export async function applyStockReceipt(tx: PrismaLike, input: ApplyReceiptInput
   if (kind === "FACTORY") {
     const partnerRow = await tx.partner.findUniqueOrThrow({
       where: { id: partnerId },
-      select: { costRateBps: true },
+      select: { costRateBps: true, partnerType: true },
     });
-    costRateBps = partnerRow.costRateBps;
+    costRateBps = costRateForPartner(partnerRow);
   }
   let totalCostPiastres = 0;
 
@@ -182,7 +188,9 @@ export async function applyStockReceipt(tx: PrismaLike, input: ApplyReceiptInput
   if (kind === "FACTORY") {
     await tx.stockReceipt.update({
       where: { id: created.id },
-      data: { totalCostPiastres },
+      // An outlet (DISTRIBUTOR) pays the factory upfront — no settlement cost is ever recorded
+      // for it (plan 12 §2, decision D3 2026-10-17), so the receipt carries no total either.
+      data: { totalCostPiastres: costRateBps === null ? null : totalCostPiastres },
     });
   }
 
