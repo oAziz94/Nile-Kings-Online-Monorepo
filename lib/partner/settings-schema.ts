@@ -52,7 +52,7 @@ export type PartnerNetworkDefaults = z.infer<typeof partnerNetworkDefaultsSchema
 /** Outlet (DISTRIBUTOR) store profile, backlog 11.2 (plan `12-distributor-store-plan.md` §3).
  * An empty string clears the field (stored as null); the receipt footer then falls back to
  * `DEFAULT_RECEIPT_FOOTER`. Accepted by `PATCH /api/partner/settings` from a DISTRIBUTOR only. */
-export const DEFAULT_RECEIPT_FOOTER = "شكراً لتسوقكم من ملوك النيل";
+export const DEFAULT_RECEIPT_FOOTER = "شكراً لتسوقكم من قطن ملوك النيل";
 
 const optionalStoreText = (max: number, label: string) =>
   z

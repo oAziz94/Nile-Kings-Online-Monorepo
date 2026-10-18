@@ -6,7 +6,7 @@ export const PAYMENT_METHOD_LABELS: Record<"CASH" | "INSTAPAY" | "CARD", string>
   CARD: "بطاقة",
 };
 
-export const DEFAULT_RECEIPT_FOOTER = "شكراً لتسوقكم من ملوك النيل";
+export { DEFAULT_RECEIPT_FOOTER } from "@/lib/partner/settings-schema";
 
 /** 12500 piastres -> "125" ; 12550 -> "125.5". */
 export function formatEgp(piastres: number): string {
