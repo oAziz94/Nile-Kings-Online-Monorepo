@@ -59,3 +59,6 @@ design-canvas/**/nile-kings-*.html
 .env.deploy
 .env.deploy.*
 .env.rehearsal
+
+# TypeScript incremental build state (removed from git 2026-10-18, sweep PR-I)
+tsconfig.tsbuildinfo
