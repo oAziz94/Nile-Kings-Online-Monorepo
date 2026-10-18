@@ -30,7 +30,7 @@ test("agent sees the agent nav set, distributor sees the distributor nav set", a
   await expect(agentNav.getByRole("link", { name: "اليوم" })).toBeVisible();
   await expect(agentNav.getByRole("link", { name: "الطلبات" })).toBeVisible();
   await expect(agentNav.getByRole("link", { name: "المخزون" })).toBeVisible();
-  await expect(agentNav.getByRole("link", { name: "الموزعون" })).toBeVisible();
+  await expect(agentNav.getByRole("link", { name: "الموزعون" })).toHaveCount(0); // network removed in 11.8
   await expect(agentNav.getByRole("link", { name: "التقارير" })).toBeVisible();
 
   await page.context().clearCookies();
@@ -42,7 +42,6 @@ test("agent sees the agent nav set, distributor sees the distributor nav set", a
   await expect(distributorNav.getByRole("link", { name: "المبيعات" })).toBeVisible();
   await expect(distributorNav.getByRole("link", { name: "الطلبات" })).toHaveCount(0);
   await expect(distributorNav.getByRole("link", { name: "المخزون" })).toBeVisible();
-  await expect(distributorNav.getByRole("link", { name: "الموزعون" })).toHaveCount(0);
   await expect(distributorNav.getByRole("link", { name: "التقارير" })).toBeVisible();
 
   // Backlog 9.0b (i): المتجر is a real `Link` to "/" with an accessible name — shared shell,

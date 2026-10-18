@@ -1,5 +1,7 @@
 # Admin — Routed Orders (list, detail/status/proof/reassign)
 
+> **Removed in 11.8 (2026-10-18):** the agent-distributor network (الشبكة, restock requests, linked agent, `Partner.linkedAgentId`) no longer exists; the type DISTRIBUTOR is now a physical outlet (منفذ), see `12-distributor-store-plan.md`. Kept as history; rows below that describe the network are obsolete.
+
 Route(s): `app/(admin)/admin/routed-orders/page.tsx` (list), `app/(admin)/admin/routed-orders/[id]/page.tsx` (detail: routing status, delivery-proof upload, manual reassignment)
 Key files: `lib/rerouting/assign.ts` (`assignOrderToGovernorate` — the auto-routing engine that feeds this screen), `lib/inventory/partner-inventory.ts` (`reassignReservedPartnerStock`), `app/api/admin/routed-orders/route.ts`, `app/api/admin/routed-orders/[id]/route.ts`, `app/api/admin/routed-orders/[id]/reassign/route.ts`, `app/api/admin/upload/route.ts` (proof-photo upload, `folder: "routed-proofs"`). Covered as one file (list + detail) — the detail page has real complexity (status, proof upload, reassignment dialog with stock movement) but shares the same `RoutedOrder` record and status vocabulary throughout, so splitting would fragment one continuous story.
 

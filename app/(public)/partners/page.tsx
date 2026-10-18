@@ -44,12 +44,9 @@ export type PartnerRegistrationType = "AGENT" | "DISTRIBUTOR";
  * The two explainer lines under each option — must trace to the partner-portal inventories
  * (`00-feature-inventory/partner/*`), not be invented copy.
  *
- * Agent: "gives an AGENT a single read-only roster of every DISTRIBUTOR linked beneath them"
- * (distributors.md) + agent-held stock feeding downstream transfers (products.md's "authoritative
- * record of what they physically have on hand"; distributor-requests.md's stock moving out of
- * "the agent's `PartnerInventory`").
- * Distributor: "lets a DISTRIBUTOR request stock transfers from their linked AGENT" — the
- * restock-requests.md screen title itself, "distributor's request stock from my agent screen".
+ * Agent: agent-held stock (products.md's "authoritative record of what they physically
+ * have on hand"). Outlet (DISTRIBUTOR, backlog 11.1): buys from the factory upfront and sells
+ * only from its own shop.
  */
 const TYPE_OPTIONS: {
   id: PartnerRegistrationType;

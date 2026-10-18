@@ -100,7 +100,7 @@ export async function GET() {
     });
     if (!partner) return apiForbidden("غير مصرح");
 
-    // Backlog 11.2: an outlet's اليوم is shop sales + stock only — no orders, SLA or restock.
+    // Backlog 11.2: an outlet's اليوم is shop sales + stock only — no orders or SLA.
     if (partner.partnerType === "DISTRIBUTOR") {
       const thresholds = await resolveThreshold(partner.id);
       const outlet = await buildOutletToday(
@@ -158,7 +158,6 @@ export async function GET() {
       createdOrders,
       confirmedProcessingOrders,
       readyToShipOrders,
-      restockRows,
       capacityUsed,
     ] = await Promise.all([
       prisma.order.count({
@@ -225,30 +224,6 @@ export async function GET() {
           user: { select: { name: true, phone: true } },
         },
       }),
-      partner.partnerType === "AGENT"
-        ? prisma.restockRequest.findMany({
-            where: { sourcePartnerId: partner.id, status: "PENDING" },
-            orderBy: { createdAt: "desc" },
-            select: {
-              id: true,
-              status: true,
-              createdAt: true,
-              destinationPartner: { select: { name: true } },
-              items: { select: { id: true } },
-            },
-          })
-        : prisma.restockRequest.findMany({
-            where: { destinationPartnerId: partner.id, status: { not: "PENDING" } },
-            orderBy: { updatedAt: "desc" },
-            take: 20,
-            select: {
-              id: true,
-              status: true,
-              updatedAt: true,
-              sourcePartner: { select: { name: true } },
-              items: { select: { id: true } },
-            },
-          }),
       countEnteredStatusSince(partner.id, ["CONFIRMED", "PROCESSING"], startOfToday),
     ]);
 
@@ -323,25 +298,6 @@ export async function GET() {
       line.velocityPerWeek = sold > 0 ? Math.round((sold / COVER_DAYS_WINDOW) * 7 * 10) / 10 : null;
     }
 
-    const restock =
-      partner.partnerType === "AGENT"
-        ? (restockRows as { id: string; createdAt: Date; destinationPartner: { name: string }; items: { id: string }[] }[]).map(
-            (r) => ({
-              id: r.id,
-              counterpartyName: r.destinationPartner.name,
-              itemCount: r.items.length,
-              occurredAt: r.createdAt.toISOString(),
-            })
-          )
-        : (restockRows as { id: string; status: string; updatedAt: Date; sourcePartner: { name: string }; items: { id: string }[] }[]).map(
-            (r) => ({
-              id: r.id,
-              counterpartyName: r.sourcePartner.name,
-              itemCount: r.items.length,
-              occurredAt: r.updatedAt.toISOString(),
-            })
-          );
-
     const trend = buildTrendSeries(trendBuckets, TREND_DAYS, now);
     const previousPeriodEnd = new Date(startOfToday.getTime() - TREND_DAYS * 86_400_000);
     const previousTrend = buildTrendSeries(previousTrendBuckets, TREND_DAYS, previousPeriodEnd);
@@ -372,7 +328,6 @@ export async function GET() {
           readyToShipOrders.map((o) => mapOrderRow(o, auditByOrderId.get(o.id) ?? o.updatedAt))
         ),
         confirmed: group(confirmedOrders.map(({ row, enteredAt }) => mapOrderRow(row, enteredAt))),
-        restock: group(restock),
         lowStock: group(lowStockLines),
       },
       trend,

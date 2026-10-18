@@ -277,42 +277,6 @@ test("money report UI renders at /partner/reports/money", async ({ page }) => {
   await expect(page.getByText("نقدك من العملاء")).toBeVisible();
 });
 
-test("network report: the AGENT sees the roster, the DISTRIBUTOR sees the explicit role panel", async ({ page }) => {
-  await loginAs(page, pair, "AGENT");
-  const agentRes = await page.request.get("/api/partner/reports/network?preset=30d", { headers: { accept: "application/json" } });
-  expect(agentRes.ok()).toBeTruthy();
-  const agentJson = await agentRes.json();
-
-  // Distributor breakdown delta (backlog 7.4): 40,000 now vs. 10,000 previously -> +30,000, +300%.
-  const distRow = agentJson.data.breakdowns.distributor.rows.find(
-    (r: { partnerId: string }) => r.partnerId === pair.distributor.partnerId
-  );
-  expect(distRow).toBeTruthy();
-  expect(distRow.salesPiastres).toBe(40000);
-  expect(distRow.previousSalesPiastres).toBe(10000);
-  expect(distRow.salesDelta.direction).toBe("up");
-  expect(distRow.salesDelta.changeAbs).toBe(30000);
-  expect(distRow.salesDelta.changePct).toBe(300);
-
-  await page.context().clearCookies();
-  await loginAs(page, pair, "DISTRIBUTOR");
-  const distributorRes = await page.request.get("/api/partner/reports/network?preset=30d", { headers: { accept: "application/json" } });
-  expect(distributorRes.status()).toBe(403);
-
-  await page.goto("/partner/reports/network");
-  // Backlog 11.2: the shell's client guard redirects an outlet home with a toast.
-  await page.waitForURL((url) => url.pathname === "/partner", { timeout: 15_000 });
-  await expect(page.getByText("هذه الصفحة للوكلاء فقط").first()).toBeVisible();
-
-  // Same +300% delta rendered by the distributor table's own "مقارنة بالفترة السابقة" column.
-  await page.context().clearCookies();
-  await loginAs(page, pair, "AGENT");
-  await page.goto("/partner/reports/network");
-  const distRowLocator = page.locator("tr", { hasText: pair.distributor.name }).first();
-  await expect(distRowLocator).toBeVisible({ timeout: 15_000 });
-  await expect(distRowLocator.getByText("+300%", { exact: true })).toBeVisible();
-});
-
 // Design-review screenshots (standing rule 16). Not an assertion of pixel-parity.
 const VIEWPORTS: { name: string; width: number; height: number }[] = [
   { name: "1440x900", width: 1440, height: 900 },
@@ -324,11 +288,10 @@ const VIEWPORTS: { name: string; width: number; height: number }[] = [
   { name: "390x844", width: 390, height: 844 },
 ];
 
-test("screenshots: fulfilment, network and money reports at every required viewport", async ({ page }) => {
+test("screenshots: fulfilment and money reports at every required viewport", async ({ page }) => {
   await loginAs(page, pair, "AGENT");
   const routes: { path: string; heading: string }[] = [
     { path: "fulfilment", heading: "تقرير التجهيز" },
-    { path: "network", heading: "تقرير الشبكة" },
     { path: "money", heading: "المال" },
   ];
   for (const route of routes) {

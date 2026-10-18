@@ -4,7 +4,7 @@
  * Shared receipts list body for the "الاستلام من المصنع" (kind=FACTORY) and "الجرد"
  * (kind=COUNT) tabs under `/partner/stock` (backlog 5.4) — same
  * `GET /api/partner/receipts?kind=` list, same table, different kind + copy. AGENT only
- * (the factory ships to agents; distributors receive via restock requests, unchanged).
+ * (the factory ships to agents; outlets are served by the admin-recorded intake).
  */
 import * as React from "react";
 import Link from "next/link";

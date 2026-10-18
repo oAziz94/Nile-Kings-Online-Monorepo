@@ -5,7 +5,7 @@
  * "الاستلام من المصنع"/"الجرد" tabs by backlog 5.4). AGENT only. Two ways to build the line
  * list before one shared preview + confirm step:
  *   1. "إدخال يدوي" — search the catalog (same `/api/partner/inventory` endpoint the stock
- *      list and restock-request forms use) and add lines by variant, merged client-side.
+ *      list uses) and add lines by variant, merged client-side.
  *   2. "رفع ملف" — drop the exported `inventory_YYYY_MM_DD.xlsx` (or a JSON re-upload of the
  *      same shape); parsed client-side with `xlsx` for an instant row count, then posted to
  *      `POST /api/partner/inventory/import` for the authoritative preview.

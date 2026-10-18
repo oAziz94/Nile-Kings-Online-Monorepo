@@ -1,5 +1,7 @@
 # Admin — Settings
 
+> **Removed in 11.8 (2026-10-18):** the agent-distributor network (الشبكة, restock requests, linked agent, `Partner.linkedAgentId`) no longer exists; the type DISTRIBUTOR is now a physical outlet (منفذ), see `12-distributor-store-plan.md`. Kept as history; rows below that describe the network are obsolete.
+
 Route(s): `app/(admin)/admin/settings/page.tsx` (single page, client component; no sub-routes).
 Key files: `app/api/admin/settings/cod-fee/route.ts` (GET/PATCH), `app/api/admin/settings/otp-rules/route.ts` (GET/PATCH), `app/api/admin/settings/senior-promo/route.ts` (GET/PATCH — **backend exists, not surfaced on this page**, see Notes), `lib/settings.ts` (`SITE_SETTING_KEYS`, all getter/setter functions, `unstable_cache`/`revalidateTag` wiring), `app/(admin)/admin/senior-promo-toggle.tsx` (**orphaned component — see Notes**), `prisma/schema.prisma` (`SiteSetting` — generic key/value table).
 

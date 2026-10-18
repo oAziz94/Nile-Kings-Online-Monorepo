@@ -7,7 +7,7 @@
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, LayoutGrid, PackageCheck, Truck, Users } from "lucide-react";
+import { ClipboardList, LayoutGrid, PackageCheck, Truck } from "lucide-react";
 import { usePartnerMe } from "@/hooks/use-partner-me";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +23,6 @@ const TABS: StockTab[] = [
   { href: "/partner/stock/movements", label: "الحركات", icon: Truck },
   { href: "/partner/stock/intake", label: "الاستلام من المصنع", icon: PackageCheck, agentOnly: true },
   { href: "/partner/stock/counts", label: "الجرد", icon: ClipboardList, agentOnly: true },
-  { href: "/partner/stock/requests", label: "طلبات التوريد", icon: Users },
 ];
 
 export function StockTabs() {

@@ -9,7 +9,7 @@
  * Contract for callers (kept small/typed/documented — consumed by 4.17–4.23):
  *   const { data, isLoading, isError, refetch } = usePartnerMe();
  *   data?.partnerType   -> "AGENT" | "DISTRIBUTOR" | undefined (undefined while loading/on error)
- *   data?.name/phone/id/governorate/linkedAgentId/isActive -> Partner row fields, as-is
+ *   data?.name/phone/id/governorate/isActive -> Partner row fields, as-is
  *
  * `staleTime` 5 minutes per the task brief — the partner's own type/name/phone essentially
  * never changes mid-session, so this avoids a refetch on every route change/window focus
@@ -25,7 +25,6 @@ export type PartnerMe = {
   phone: string;
   partnerType: PartnerType;
   governorate: string;
-  linkedAgentId: string | null;
   isActive: boolean;
 };
 

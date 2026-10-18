@@ -1,5 +1,7 @@
 # Partner — Dashboard / Home
 
+> **Removed in 11.8 (2026-10-18):** the agent-distributor network (الشبكة, restock requests, linked agent, `Partner.linkedAgentId`) no longer exists; the type DISTRIBUTOR is now a physical outlet (منفذ), see `12-distributor-store-plan.md`. Kept as history; rows below that describe the network are obsolete.
+
 Route(s): `app/(partner)/partner/page.tsx` (server component, no `"use client"`), gated by `app/(partner)/partner/layout.tsx`
 Key files: `components/partner/partner-shell.tsx` (persistent chrome/nav), `lib/auth/session.ts` (`getCurrentUser`, `requirePartner`), `app/api/partner/me/route.ts`
 

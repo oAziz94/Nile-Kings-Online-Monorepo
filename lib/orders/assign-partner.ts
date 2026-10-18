@@ -117,8 +117,6 @@ export async function assignOrderToPartner(
           partnerId,
           assignmentMode: "MANUAL",
           status: "ASSIGNED",
-          notifiedAt: null,
-          notificationError: null,
           notes: mergedNotes,
         },
       });

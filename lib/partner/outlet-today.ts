@@ -1,7 +1,7 @@
 /**
  * اليوم for an outlet (DISTRIBUTOR) — backlog 11.2, plan `12-distributor-store-plan.md` §3.
- * Everything here reads `StoreSale` / `PartnerInventory` for ONE partner; there is no order,
- * SLA or restock input. The Prisma client and the threshold resolver are injected so the
+ * Everything here reads `StoreSale` / `PartnerInventory` for ONE partner; there is no order
+ * or SLA input. The Prisma client and the threshold resolver are injected so the
  * whole builder runs against a fake in `outlet-today.test.ts`; `app/api/partner/today/route.ts`
  * passes the real ones.
  */

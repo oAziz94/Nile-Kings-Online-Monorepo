@@ -1,5 +1,7 @@
 # Admin — Categories
 
+> **Removed in 11.8 (2026-10-18):** the agent-distributor network (الشبكة, restock requests, linked agent, `Partner.linkedAgentId`) no longer exists; the type DISTRIBUTOR is now a physical outlet (منفذ), see `12-distributor-store-plan.md`. Kept as history; rows below that describe the network are obsolete.
+
 Route(s): `app/(admin)/admin/categories/page.tsx` (single page — list + create/edit/delete all via dialogs, no separate `[id]`/`new` routes)
 Key files: `components/dashboard/{empty-state,page-header,panel-card}.tsx`, `lib/admin/slug.ts` (`slugify`), `app/api/admin/categories/route.ts`, `app/api/admin/categories/[id]/route.ts`
 

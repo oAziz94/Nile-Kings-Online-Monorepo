@@ -1,5 +1,7 @@
 # Admin — Partner Inventory
 
+> **Removed in 11.8 (2026-10-18):** the agent-distributor network (الشبكة, restock requests, linked agent, `Partner.linkedAgentId`) no longer exists; the type DISTRIBUTOR is now a physical outlet (منفذ), see `12-distributor-store-plan.md`. Kept as history; rows below that describe the network are obsolete.
+
 Route(s): `app/(admin)/admin/partner-inventory`
 Key files: `components/dashboard/{empty-state,kpi-card,page-header,pagination,panel-card,search-input,table-scroll}.tsx`, `lib/admin/variant-sort.ts` (`sortVariants`), `lib/format-en-numbers.ts`, `hooks/use-toast.ts`
 API: `GET /api/admin/partners?partnerType=AGENT|DISTRIBUTOR&limit=200` (partner picker), `GET /api/admin/partner-inventory?partnerId=...` (table data), `POST /api/admin/partner-inventory` (single-variant stock write)

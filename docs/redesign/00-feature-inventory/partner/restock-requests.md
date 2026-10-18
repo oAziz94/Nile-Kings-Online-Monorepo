@@ -1,5 +1,7 @@
 # Partner — Restock Requests (distributor's "request stock from my agent" screen)
 
+> **Removed in 11.8 (2026-10-18):** the agent-distributor network (الشبكة, restock requests, linked agent, `Partner.linkedAgentId`) no longer exists; the type DISTRIBUTOR is now a physical outlet (منفذ), see `12-distributor-store-plan.md`. Kept as history; rows below that describe the network are obsolete.
+
 Route(s): `app/(partner)/partner/restock-requests/page.tsx` (client component)
 Key files: `app/api/partner/restock-requests/route.ts` (GET list, POST create), `app/api/partner/inventory/route.ts` (GET, variant search for the request form), `lib/inventory/restock-requests.ts` (`createRestockRequest`), `components/dashboard/{page-header,panel-card,empty-state,search-input}.tsx`
 

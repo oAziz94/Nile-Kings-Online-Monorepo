@@ -51,20 +51,12 @@ function coverBadgeVariant(coverDays: number | null): "success" | "warning" | "d
 }
 
 type ReceiptSummary = { id: string; kind: "FACTORY" | "COUNT"; createdAt: string; totalUnits: number; totalCostPiastres: number | null };
-type RestockSummary = { id: string; sourcePartner: { name: string }; destinationPartner: { name: string }; status: string; items: { quantity: number }[]; createdAt: string };
 
 async function fetchLastReceipts(): Promise<ReceiptSummary[]> {
   const res = await fetch("/api/partner/receipts?limit=3&offset=0", { credentials: "include" });
   const json = await res.json().catch(() => null);
   if (!res.ok || !json?.success) return [];
   return json.data.receipts ?? [];
-}
-
-async function fetchIncomingRequests(): Promise<RestockSummary[]> {
-  const res = await fetch("/api/partner/restock-requests", { credentials: "include" });
-  const json = await res.json().catch(() => null);
-  if (!res.ok || !json?.success) return [];
-  return (json.data.requests ?? []).filter((r: RestockSummary) => r.status === "PENDING");
 }
 
 export default function PartnerStockIndexPage() {
@@ -141,10 +133,6 @@ function PartnerStockIndexPageInner() {
     queryKey: ["partner-stock-last-receipts"],
     queryFn: fetchLastReceipts,
     enabled: isAgent,
-  });
-  const { data: incomingRequests } = useQuery({
-    queryKey: ["partner-stock-incoming-requests"],
-    queryFn: fetchIncomingRequests,
   });
 
   const columns = React.useMemo<ColumnDef<ProductRow, unknown>[]>(
@@ -386,24 +374,6 @@ function PartnerStockIndexPageInner() {
                       {r.totalCostPiastres ? egp(r.totalCostPiastres) : "—"}
                     </span>
                   </Link>
-                ))}
-              </div>
-            )}
-          </PanelCard>
-
-          <PanelCard title="طلبات التوريد الواردة" icon={<ArrowLeftRight className="h-5 w-5 text-lapis-800" />}>
-            {(incomingRequests?.length ?? 0) === 0 ? (
-              <p className="text-xs text-ink-soft">لا توجد طلبات بانتظارك.</p>
-            ) : (
-              <div className="space-y-2">
-                {incomingRequests!.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between border-t border-stone-100 pt-2 text-xs first:border-0 first:pt-0">
-                    <span className="font-bold">{r.destinationPartner.name}</span>
-                    <span dir="ltr">{formatNumberEn(r.items.reduce((s, i) => s + i.quantity, 0))} قطعة</span>
-                    <Button type="button" size="sm" variant="outline" className="rounded-lg" asChild>
-                      <Link href="/partner/stock/requests">مراجعة</Link>
-                    </Button>
-                  </div>
                 ))}
               </div>
             )}

@@ -1,5 +1,7 @@
 # Admin dashboard v2 — the operations console
 
+> **Removed in 11.8 (2026-10-18):** the "linked agent" row, "تابع لـ" subtitle and restock-request lines in this document describe the agent-distributor network, which was removed; outlets (منفذ) have no agent. See `12-distributor-store-plan.md`.
+
 Status: **shipped v2.4.0** (2026-09-14; approved as the basis for the canvas 2026-09-13, revisions the same day: catalog ownership, media library, control matrix, audit log screen; priority tool discarded; applications and admins are tabs). User direction: "you should propose and redesign the dashboard logically, not just as a style. Make the admin's life easier, control the things we already need in the partner dashboard, and remove anything that has no necessity."
 
 ## 1. What the admin is for

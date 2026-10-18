@@ -243,17 +243,6 @@ describe("describeAdminAudit", () => {
       expect(sentence).toBe("رفع إثبات تسليم الطلب #NK-1");
     });
 
-    it("describes a restock-request fulfilment", () => {
-      const sentence = describeAdminAudit({
-        action: "update",
-        entityType: "restock_request",
-        entityLabel: "#RR-0001",
-        before: { status: "PENDING" },
-        after: { status: "FULFILLED" },
-      });
-      expect(sentence).toBe("نفّذ نقل المخزون لطلب إعادة التوريد #RR-0001");
-    });
-
     it("describes a partner-inventory manual adjustment", () => {
       const sentence = describeAdminAudit({
         action: "update",

@@ -44,7 +44,7 @@ describe("outlet navigation", () => {
   });
   it("AGENT menu is unchanged", () => {
     const labels = getPartnerNavForRole("AGENT").flatMap((s) => s.items.map((i) => i.label));
-    expect(labels).toEqual(["اليوم", "الطلبات", "المخزون", "الموزعون", "التقارير", "الإشعارات"]);
+    expect(labels).toEqual(["اليوم", "الطلبات", "المخزون", "التقارير", "الإشعارات"]);
     expect(getPartnerMobileTabs("AGENT").map((t) => t.label)).toEqual(["اليوم", "الطلبات", "المخزون", "التقارير"]);
   });
   it("flags the agent-only routes segment-wise", () => {

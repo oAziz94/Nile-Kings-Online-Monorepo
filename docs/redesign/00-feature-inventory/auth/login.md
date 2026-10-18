@@ -1,5 +1,7 @@
 # (auth) — Login
 
+> **Removed in 11.8 (2026-10-18):** the agent-distributor network (الشبكة, restock requests, linked agent, `Partner.linkedAgentId`) no longer exists; the type DISTRIBUTOR is now a physical outlet (منفذ), see `12-distributor-store-plan.md`. Kept as history; rows below that describe the network are obsolete.
+
 Route(s): `app/(auth)/login` → `/login`
 Key files: `app/(auth)/login/page.tsx`, `app/(auth)/login/login-form.tsx`, `app/(auth)/layout.tsx`, `app/api/auth/login/route.ts`, `lib/auth/session.ts`, `lib/auth/password.ts`, `lib/phone.ts`, `lib/country-codes.ts`, `lib/cart/cart.ts` (`mergeGuestCartIntoUser`), `lib/addresses/merge-guest-address.ts`
 

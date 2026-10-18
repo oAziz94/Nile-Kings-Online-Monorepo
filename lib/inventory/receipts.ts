@@ -200,8 +200,7 @@ export const RESERVED_FLOOR_MESSAGE = (reserved: number) =>
 /**
  * Merge duplicate SKUs/rows before validation. Decision (documented per backlog 4.23's
  * "pick one and document it"): duplicates are MERGED, not rejected — receipt-mode values are
- * summed (matching `aggregateStockLines`'s existing convention for restock-request lines
- * elsewhere in this codebase), count-mode values use the LAST occurrence (a physical count is
+ * summed (matching `aggregateStockLines`'s existing convention), count-mode values use the LAST occurrence (a physical count is
  * a single fact about the shelf at read time; summing two counts of the same variant would be
  * meaningless, and last-wins matches "the operator corrected themselves further down the
  * sheet" more sensibly than either summing or rejecting the whole file).

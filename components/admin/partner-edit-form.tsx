@@ -21,7 +21,7 @@ import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/pho
 
 /**
  * Backlog 8.2 — admin partner edit + deactivate. `PATCH /api/admin/partners/[id]` already
- * supports `name`, `governorate`, `phone`, `linkedAgentId`, `isActive` (plus other fields
+ * supports `name`, `governorate`, `phone`, `isActive` (plus other fields
  * out of this task's scope). This turns the read-only rows shown in the two detail dialogs
  * (`AgentsTab`/`DistributorsTab` in `app/(admin)/admin/partners/page.tsx`) into a form when
  * "تعديل" is pressed; a separate "تعطيل الحساب"/"تفعيل الحساب" button + confirm dialog sends

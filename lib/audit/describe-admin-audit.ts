@@ -27,7 +27,6 @@ const ENTITY_LABEL_AR: Record<string, string> = {
   receipt: "الإيصال",
   partner_request: "طلب الشريك",
   ticket: "التذكرة",
-  restock_request: "طلب إعادة التوريد",
   media: "الصورة",
 };
 
@@ -73,7 +72,7 @@ function entityLabelAr(entityType: string): string {
 }
 
 /** "<field label>[ لـ<entityLabel>] <before> → <after>" — the canvas's own shape
- * ("نسبة الشراء لموزع القليوبية 75% → 70%"). */
+ * ("نسبة الشراء لمنفذ القليوبية 75% → 70%"). */
 function describeFieldChange(key: string, before: unknown, after: unknown, entityLabel: string): string {
   const meta = FIELD_LABELS[key];
   const fieldLabel = meta?.label ?? key;
@@ -232,10 +231,6 @@ export function describeAdminAudit(row: AdminAuditRowLike): string {
   }
   if (row.action === "delete") {
     return `حذف ${entityAr} ${label}`.trim();
-  }
-
-  if (row.action === "update" && row.entityType === "restock_request") {
-    return `نفّذ نقل المخزون لطلب إعادة التوريد ${label}`.trim();
   }
 
   if (row.action === "update") {

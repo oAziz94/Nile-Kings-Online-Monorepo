@@ -17,7 +17,7 @@ const PAYMENT_LABELS = { CASH: "نقدًا", INSTAPAY: "إنستاباي", CARD:
 
 /**
  * اليوم for an outlet (backlog 11.2, plan `12-distributor-store-plan.md` §3): shop sales and
- * stock only — no order queue, SLA or restock groups. Same shell/KPI/panel components as the
+ * stock only — no order queue or SLA groups. Same shell/KPI/panel components as the
  * agent's اليوم, so the two portals read as one family.
  */
 export function OutletTodayView({ partnerName }: { partnerName?: string }) {
