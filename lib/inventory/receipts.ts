@@ -194,7 +194,7 @@ export type PreviewRow = {
   error?: string;
 };
 
-const RESERVED_FLOOR_MESSAGE = (reserved: number) =>
+export const RESERVED_FLOOR_MESSAGE = (reserved: number) =>
   `لا يمكن أن يكون المخزون أقل من المحجوز (${reserved})`;
 
 /**

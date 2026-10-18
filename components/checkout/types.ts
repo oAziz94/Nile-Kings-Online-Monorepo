@@ -84,10 +84,3 @@ export function savedToAddress(s: SavedAddress): AddressFormValues {
 export function piastresToEgp(p: number) {
   return Math.round(p / 100);
 }
-
-/** EGP for display when amount may be small (e.g. COD fee); avoids showing 0 for 1 piastre. */
-export function piastresToEgpDisplay(p: number) {
-  if (p <= 0) return 0;
-  const egp = p / 100;
-  return egp < 1 && egp > 0 ? Number(egp.toFixed(2)) : Math.round(egp);
-}

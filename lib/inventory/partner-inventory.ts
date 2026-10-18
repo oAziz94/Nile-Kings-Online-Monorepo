@@ -105,17 +105,6 @@ export async function getEligiblePartnersForGovernorate(governorate: string) {
   }));
 }
 
-export async function getSellableQuantityForPartnerVariant(
-  partnerId: string,
-  variantId: string
-): Promise<number> {
-  const row = await prisma.partnerInventory.findUnique({
-    where: { partnerId_variantId: { partnerId, variantId } },
-    select: { stockAvailable: true, stockReserved: true },
-  });
-  return row ? Math.max(0, row.stockAvailable - row.stockReserved) : 0;
-}
-
 /** Variant IDs among `lines` that this partner cannot fully cover (empty array = can fulfill everything). */
 async function getInsufficientVariantIds(partnerId: string, lines: StockLine[]): Promise<string[]> {
   const aggregated = aggregateStockLines(lines);

@@ -12,7 +12,6 @@
 - **app/api/admin/partner-requests/[id]/convert/route.ts** – Admin POST: convert request to partner (optionally link distributor to agent).
 - **app/api/admin/partners/route.ts** – Admin GET (by `partnerType`), POST (create partner).
 - **app/api/admin/partners/[id]/route.ts** – Admin GET one, PATCH.
-- **components/storefront/partner-registration-modal.tsx** – Storefront modal form (agent/distributor) with RTL, validation, loading, success/error toasts.
 - **app/(admin)/admin/partners/page.tsx** – Admin “شركاؤنا” page with 4 tabs: طلبات شراكة، وكلاء، موزعين، إدخال شريك جديد.
 - **docs/PARTNER_REGISTRATION_FEATURE.md** – This file.
 

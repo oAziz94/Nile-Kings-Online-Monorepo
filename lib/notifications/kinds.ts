@@ -15,18 +15,6 @@ export const NOTIFICATION_KINDS = [
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
-export function isNotificationKind(value: string): value is NotificationKind {
-  return (NOTIFICATION_KINDS as readonly string[]).includes(value);
-}
-
-/** Arabic label per kind, for the settings/history filters (10.35). */
-export const NOTIFICATION_KIND_LABEL: Record<NotificationKind, string> = {
-  "order.created": "طلب جديد",
-  "order.assigned": "طلب مُسنَد",
-  "order.cancelled_by_partner": "إلغاء من الشريك",
-  "ticket.created": "سؤال جديد",
-};
-
 /** lucide-react icon export name per kind — the UI task (10.35) maps this string to the
  * actual component; kept as a string here so this module stays server-safe (no "use client"
  * / no component imports). */

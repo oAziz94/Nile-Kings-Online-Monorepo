@@ -22,16 +22,6 @@ export function formatDateEn(
   });
 }
 
-/** Short date for tables (e.g. numeric day/month/year in English digits). */
-export function formatDateEnShort(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 const CAIRO_TZ = "Africa/Cairo";
 
 const cairoDateSlashFormatter = new Intl.DateTimeFormat("en-GB", {

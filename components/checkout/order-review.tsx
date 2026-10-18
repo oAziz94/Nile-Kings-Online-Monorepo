@@ -1,11 +1,9 @@
 import Link from "next/link";
 import { CatalogImage } from "@/components/shared/catalog-image";
+import { ProductImagePlaceholder } from "@/components/shared/product-image-preview";
 import { Price } from "@/components/shared/price";
 import { friendlyVariantLabel } from "@/lib/cart/variant-label";
 import type { CartItem } from "@/contexts/cart-context";
-
-const PLACEHOLDER_IMAGE =
-  "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=200&h=200&fit=crop";
 
 /**
  * Backlog 4.12: shows *every* cart line, not the old first-6 cutoff (a gap, not a preserved
@@ -22,13 +20,17 @@ export function OrderReview({ items }: { items: CartItem[] }) {
               href={href}
               className="relative block aspect-[4/5] h-14 w-14 shrink-0 overflow-hidden bg-[hsl(38_22%_93%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
             >
-              <CatalogImage
-                src={item.imageUrl || PLACEHOLDER_IMAGE}
-                alt={item.productName}
-                fill
-                fit="balanced"
-                sizes="56px"
-              />
+              {item.imageUrl ? (
+                <CatalogImage
+                  src={item.imageUrl}
+                  alt={item.productName}
+                  fill
+                  fit="balanced"
+                  sizes="56px"
+                />
+              ) : (
+                <ProductImagePlaceholder fill />
+              )}
             </Link>
             <div className="min-w-0 flex-1">
               <Link href={href} className="font-amiri text-base text-[hsl(228_40%_14%)] hover:underline">

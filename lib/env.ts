@@ -9,7 +9,6 @@ const envSchema = z.object({
   ENCRYPTION_KEY: z.string().length(64, "ENCRYPTION_KEY must be 64 hex chars (32 bytes for AES-256)").optional(),
   CRON_SECRET: z.string().min(1).optional(), // optional secret for future scheduled jobs
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
-  NEXT_PUBLIC_API_URL: z.string().url().optional(),
   // Cloudinary (admin product images)
   CLOUDINARY_CLOUD_NAME: z.string().min(1).optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
@@ -53,7 +52,6 @@ function validateEnv(): Env {
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
     CRON_SECRET: process.env.CRON_SECRET,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,

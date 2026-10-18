@@ -55,18 +55,6 @@ export async function listCloudinaryResourcesPage(
   return { resources: json.resources ?? [], nextCursor: json.next_cursor ?? null };
 }
 
-/** Every resource under `prefix`, paginating `next_cursor` until exhausted. */
-export async function listAllCloudinaryResources(prefix: string): Promise<CloudinaryListResource[]> {
-  const all: CloudinaryListResource[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await listCloudinaryResourcesPage(prefix, cursor);
-    all.push(...page.resources);
-    cursor = page.nextCursor ?? undefined;
-  } while (cursor);
-  return all;
-}
-
 /** Read-only single-resource lookup (`GET /resources/image/upload/<publicId>`) — used to
  * confirm a resource is actually gone before deleting its `MediaAsset` row (never delete a row
  * on the strength of a guess; list/look first). Returns `false` on a 404, `true` otherwise. */

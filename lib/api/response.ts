@@ -15,8 +15,6 @@ export type ApiError = {
   };
 };
 
-export type ApiResponse<T = unknown> = ApiSuccess<T> | ApiError;
-
 const ERROR_MAP: Record<string, { status: number; code: string }> = {
   BAD_REQUEST: { status: 400, code: "BAD_REQUEST" },
   UNAUTHORIZED: { status: 401, code: "UNAUTHORIZED" },

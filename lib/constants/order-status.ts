@@ -23,17 +23,6 @@ export const ORDER_STATUSES = [
   "CANCELLED",
 ] as const;
 
-/** Status badge colors, derived from the theme's token palette (burgundy/gold/emerald/destructive). */
-export const ORDER_STATUS_BADGE_CLASSES: Record<string, string> = {
-  CREATED: "border-border bg-muted text-muted-foreground",
-  CONFIRMED: "border-gold/40 bg-gold/15 text-foreground",
-  PROCESSING: "border-gold/40 bg-gold/15 text-foreground",
-  READY_TO_SHIP: "border-burgundy/30 bg-burgundy/10 text-burgundy",
-  SHIPPED: "border-burgundy/30 bg-burgundy/10 text-burgundy",
-  DELIVERED: "border-emerald-500/30 bg-emerald-500/15 text-emerald-700",
-  CANCELLED: "border-destructive/30 bg-destructive/10 text-destructive",
-};
-
 /**
  * One status → colour vocabulary (backlog 6.4), lifted byte-for-byte from
  * `design-canvas/account/build.mjs`'s `STATUS` table. Used by the account-area orders screen's

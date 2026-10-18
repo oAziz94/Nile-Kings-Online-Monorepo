@@ -4,13 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { CatalogImage } from "./catalog-image";
 import { Price } from "./price";
+import { ProductImagePlaceholder } from "./product-image-preview";
 import { QuickShopModal } from "./quick-shop-modal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { colorSwatchPreviewImage, type ColorVariantListItem } from "@/lib/catalog";
-
-const PLACEHOLDER_IMAGE =
-  "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&h=400&fit=crop";
 
 export interface ProductCardProps {
   id: string;
@@ -68,7 +66,7 @@ export function ProductCard({
   const [quickShopOpen, setQuickShopOpen] = useState(false);
   const [intent, setIntent] = useState<"cart" | "buy">("cart");
   const href = variantSlug ? `/products/${variantSlug}` : `/products/${slug}`;
-  const displayImage = hoveredImageUrl ?? imageUrl ?? PLACEHOLDER_IMAGE;
+  const displayImage = hoveredImageUrl ?? imageUrl;
 
   function openQuickShop(nextIntent: "cart" | "buy") {
     setIntent(nextIntent);
@@ -87,13 +85,17 @@ export function ProductCard({
           href={href}
           className="relative block aspect-[4/5] overflow-hidden bg-[hsl(38_22%_93%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
         >
-          <CatalogImage
-            src={displayImage}
-            alt={name}
-            fill
-            fit="balanced"
-            sizes={sizes}
-          />
+          {displayImage ? (
+            <CatalogImage
+              src={displayImage}
+              alt={name}
+              fill
+              fit="balanced"
+              sizes={sizes}
+            />
+          ) : (
+            <ProductImagePlaceholder fill />
+          )}
           {categoryLabel && (
             <span className="absolute start-2 top-2 bg-papyrus px-2 py-1 text-[11px] font-medium text-[hsl(228_26%_24%)]">
               {categoryLabel}
@@ -137,7 +139,7 @@ export function ProductCard({
             <div className="flex flex-wrap gap-1.5" role="list" aria-label="ألوان متاحة">
               {colorVariants.map((c) => {
                 const hex = c.colorHex ?? "#e5e7eb";
-                const variantImage = colorSwatchPreviewImage(c.imageUrl) ?? imageUrl ?? PLACEHOLDER_IMAGE;
+                const variantImage = colorSwatchPreviewImage(c.imageUrl) ?? imageUrl;
                 return (
                   // Hover/focus swaps the card's image to this colour (preserved from v1); there
                   // is no per-colour variant slug on `ColorVariantListItem` (lib/catalog.ts is

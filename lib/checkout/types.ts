@@ -42,8 +42,5 @@ export type CheckoutSummary = {
   paymentMethod?: PaymentMethod;
 };
 
-/** Default weight per cart item in grams when product weight is unknown. */
-export const DEFAULT_ITEM_WEIGHT_GRAMS = 500;
-
 /** COD fee in piastres (configurable). */
 export const COD_FEE_PIASTRES = 0;

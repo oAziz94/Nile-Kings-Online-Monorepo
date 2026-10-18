@@ -18,14 +18,3 @@ export async function getPartnerCostRate(partnerId: string): Promise<number> {
   });
   return partner.costRateBps;
 }
-
-/** Reads the site-wide default rate (used when seeding a new partner), falling back to 7500. */
-export async function getDefaultCostRateBps(): Promise<number> {
-  const row = await prisma.siteSetting.findUnique({
-    where: { key: SITE_SETTING_KEY_DEFAULT_COST_RATE_BPS },
-    select: { value: true },
-  });
-  if (!row) return DEFAULT_COST_RATE_BPS;
-  const parsed = Number(row.value);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : DEFAULT_COST_RATE_BPS;
-}

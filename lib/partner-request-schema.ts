@@ -28,5 +28,3 @@ export const partnerRequestBodySchema = z.object({
   websiteUrl: optionalUrl(),
   otherUrl: optionalUrl(),
 });
-
-export type PartnerRequestBody = z.infer<typeof partnerRequestBodySchema>;

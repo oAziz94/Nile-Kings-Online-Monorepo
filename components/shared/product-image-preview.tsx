@@ -71,12 +71,23 @@ export function ProductImagePreview({
  * Neutral, non-interactive placeholder for a line item with no variant/product image at all
  * (10.21) — same footprint as `ProductImagePreview` so it drops into the same table cell.
  */
-export function ProductImagePlaceholder({ size = 48, className = "" }: { size?: number; className?: string }) {
+export function ProductImagePlaceholder({
+  size = 48,
+  fill = false,
+  className = "",
+}: {
+  size?: number;
+  /** Fill the parent box (parent must be `relative`) instead of a fixed `size` square; no corner rounding. */
+  fill?: boolean;
+  className?: string;
+}) {
   return (
     <div
       aria-hidden="true"
-      className={`flex items-center justify-center rounded-xl bg-papyrus text-stone-400 ${className}`}
-      style={{ width: size, height: size }}
+      className={`flex items-center justify-center bg-papyrus text-stone-400 ${
+        fill ? "absolute inset-0" : "rounded-xl"
+      } ${className}`}
+      style={fill ? undefined : { width: size, height: size }}
     >
       <ImageOff className="h-1/2 w-1/2" />
     </div>
