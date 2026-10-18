@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CatalogImage } from "./catalog-image";
+import { ProductImagePlaceholder } from "./product-image-preview";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/cart-context";
 import {
@@ -27,9 +28,6 @@ function ga4VariantLabel(v: { colorName?: string | null; name?: string | null } 
   const parts = [v.colorName, v.name].filter((p): p is string => !!p && p.trim().length > 0);
   return parts.length > 0 ? parts.join(" / ") : undefined;
 }
-
-const PLACEHOLDER_IMAGE =
-  "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&h=800&fit=crop";
 
 const ARABIC = {
   ...VARIANT_SELECTION_MESSAGES,
@@ -128,7 +126,7 @@ export function QuickShopModal({
       ? displayOriginal - displayPrice
       : 0;
 
-  const mainImageUrl = displayVariantForImage?.imageUrl?.trim() || product?.imageUrl?.trim() || PLACEHOLDER_IMAGE;
+  const mainImageUrl = displayVariantForImage?.imageUrl?.trim() || product?.imageUrl?.trim() || null;
 
   const trackAddToCart = (v: { sku: string; priceEgp: number; colorName?: string | null; name?: string | null }, qty: number) => {
     if (!product) return;
@@ -246,13 +244,17 @@ export function QuickShopModal({
           <div className="space-y-4 p-4 pt-3" dir="rtl">
             <div className="flex gap-3">
               <div className="relative aspect-[4/5] w-24 shrink-0 overflow-hidden bg-[hsl(38_22%_93%)]">
-                <CatalogImage
-                  src={mainImageUrl}
-                  alt={product.name}
-                  fill
-                  fit="balanced"
-                  sizes="96px"
-                />
+                {mainImageUrl ? (
+                  <CatalogImage
+                    src={mainImageUrl}
+                    alt={product.name}
+                    fill
+                    fit="balanced"
+                    sizes="96px"
+                  />
+                ) : (
+                  <ProductImagePlaceholder fill />
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <Price

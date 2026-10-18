@@ -13,7 +13,7 @@
  * LAST occurrence.
  */
 import type { PrismaClient, StockReceiptKind, StockReceiptRecordedBy } from "@prisma/client";
-import { computeUnitCostPiastres } from "@/lib/inventory/receipts";
+import { computeUnitCostPiastres, RESERVED_FLOOR_MESSAGE } from "@/lib/inventory/receipts";
 
 /** The settlement rate to snapshot on a FACTORY receipt, or null for a partner that never owes the
  * factory: an outlet (DISTRIBUTOR) buys upfront (plan 12-distributor-store-plan.md §2, D3). */
@@ -26,9 +26,6 @@ export class ApplyReceiptError extends Error {
     super(publicMessage);
   }
 }
-
-export const RESERVED_FLOOR_MESSAGE = (reserved: number) =>
-  `لا يمكن أن يكون المخزون أقل من المحجوز (${reserved})`;
 
 export type RawReceiptLine = { variantId?: unknown; quantity?: unknown };
 

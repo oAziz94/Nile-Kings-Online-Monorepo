@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback, type MouseEvent, type SyntheticEvent } from "react";
 import Link from "next/link";
 import { CatalogImage } from "@/components/shared/catalog-image";
+import { ProductImagePlaceholder } from "@/components/shared/product-image-preview";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/cart-context";
 import { ProductCard } from "@/components/shared/product-card";
@@ -29,11 +30,6 @@ function ga4VariantLabel(v: { colorName?: string | null; name?: string | null } 
   const parts = [v.colorName, v.name].filter((p): p is string => !!p && p.trim().length > 0);
   return parts.length > 0 ? parts.join(" / ") : undefined;
 }
-
-// 10.26: rendered with `unoptimized` below — `cloudinaryLoader` passes non-Cloudinary URLs through
-// unchanged and Next warns that the loader "does not implement width" for them.
-const PLACEHOLDER_IMAGE =
-  "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&h=800&fit=crop";
 
 type Variant = VariantPublic;
 
@@ -166,7 +162,7 @@ export function ProductPageContent({
     const fromGalleries = activeColorKey ? product.variantGalleries?.[activeColorKey] : undefined;
     if (fromGalleries && fromGalleries.length > 0) return fromGalleries;
     const fallback = displayVariantForImage?.imageUrl?.trim() || product.imageUrl?.trim();
-    return [fallback || PLACEHOLDER_IMAGE];
+    return fallback ? [fallback] : [];
   }, [activeColorKey, product.variantGalleries, product.imageUrl, displayVariantForImage]);
 
   const [galleryIndex, setGalleryIndex] = useState(0);
@@ -206,7 +202,7 @@ export function ProductPageContent({
     setPreviewImageUrl(null);
   }, [activeColorKey, galleryIndex]);
 
-  const mainImageUrl = previewImageUrl ?? gallery[galleryIndex] ?? gallery[0] ?? PLACEHOLDER_IMAGE;
+  const mainImageUrl = previewImageUrl ?? gallery[galleryIndex] ?? gallery[0] ?? null;
 
   // Backlog 10.25 — the frame is always 4:5, so the "balanced" fit's displayed-content scale
   // relative to the frame reduces to a closed form of the photo's own aspect ratio alone (see
@@ -380,6 +376,11 @@ export function ProductPageContent({
             // viewport-height cap; below lg unchanged.
             className="flex max-h-[70dvh] flex-col gap-2.5 overflow-y-auto lg:max-h-[min(52.5vw,800px)]"
           >
+            {gallery.length === 0 && (
+              <div className="relative aspect-[4/5] w-full shrink-0 overflow-hidden border border-[hsl(228_40%_14%)] bg-[hsl(38_22%_93%)]">
+                <ProductImagePlaceholder fill />
+              </div>
+            )}
             {gallery.map((url, i) => {
               const active = i === galleryIndex;
               return (
@@ -427,20 +428,24 @@ export function ProductPageContent({
               isTouchPointer && "cursor-pointer"
             )}
           >
-            <CatalogImage
-              src={mainImageUrl}
-              alt={product.name}
-              fill
-              fit="balanced"
-              onLoad={handleMainImageLoad}
-              className={cn(
-                "transition-opacity duration-150 motion-reduce:transition-none",
-                imageFading ? "opacity-0" : "opacity-100"
-              )}
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              priority
-              unoptimized={mainImageUrl.startsWith("data:") || mainImageUrl === PLACEHOLDER_IMAGE}
-            />
+            {mainImageUrl ? (
+              <CatalogImage
+                src={mainImageUrl}
+                alt={product.name}
+                fill
+                fit="balanced"
+                onLoad={handleMainImageLoad}
+                className={cn(
+                  "transition-opacity duration-150 motion-reduce:transition-none",
+                  imageFading ? "opacity-0" : "opacity-100"
+                )}
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                priority
+                unoptimized={mainImageUrl.startsWith("data:")}
+              />
+            ) : (
+              <ProductImagePlaceholder fill />
+            )}
             {/* Backlog 10.3, updated by 10.25 — desktop-only 2x zoom, the magnified region tracking
                 the cursor. The zoom's base must match the frame's own rendered content, not the raw
                 photo: under the "balanced" fit the displayed content's scale relative to the frame
@@ -457,7 +462,7 @@ export function ProductPageContent({
                 zoomActive && !isTouchPointer && "opacity-100"
               )}
               style={{
-                backgroundImage: `url(${mainImageUrl})`,
+                backgroundImage: mainImageUrl ? `url(${mainImageUrl})` : undefined,
                 backgroundSize: zoomBackgroundSize,
                 backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
               }}
@@ -686,14 +691,17 @@ export function ProductPageContent({
         <DialogContent className="max-w-3xl overflow-hidden rounded-none border-none bg-transparent p-0 shadow-none">
           <DialogTitle className="sr-only">{product.name}</DialogTitle>
           <div className="relative aspect-[4/5] w-full overflow-hidden bg-[hsl(38_22%_93%)]">
-            <CatalogImage
-              src={mainImageUrl}
-              alt={product.name}
-              fill
-              fit="balanced"
-              sizes="90vw"
-              unoptimized={mainImageUrl === PLACEHOLDER_IMAGE}
-            />
+            {mainImageUrl ? (
+              <CatalogImage
+                src={mainImageUrl}
+                alt={product.name}
+                fill
+                fit="balanced"
+                sizes="90vw"
+              />
+            ) : (
+              <ProductImagePlaceholder fill />
+            )}
             <DialogClose asChild>
               <button
                 type="button"

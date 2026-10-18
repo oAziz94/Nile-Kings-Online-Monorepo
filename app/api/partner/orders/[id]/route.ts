@@ -16,26 +16,13 @@ import {
 import { logOrderConfirmed, logOrderStatusChange } from "@/lib/audit/order-audit";
 import {
   mapPartnerOrder,
+  orderInclude,
   PartnerOrderTransitionError,
   transitionPartnerOrderStatus,
 } from "@/lib/orders/partner-status-transition";
 
 const ORDER_STATUSES = ["CREATED", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
 const INT32_MAX = 2_147_483_647;
-
-const orderInclude = {
-  user: { select: { id: true, phone: true, name: true, email: true } },
-  items: {
-    include: {
-      variant: {
-        select: {
-          imageUrl: true,
-          product: { select: { imageUrl: true } },
-        },
-      },
-    },
-  },
-} as const;
 
 type OrderRow = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
 type Params = { params: Promise<{ id: string }> };

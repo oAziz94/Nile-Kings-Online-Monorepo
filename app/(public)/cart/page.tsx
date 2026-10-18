@@ -4,6 +4,7 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CatalogImage } from "@/components/shared/catalog-image";
+import { ProductImagePlaceholder } from "@/components/shared/product-image-preview";
 import { useCart, type CartItem } from "@/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -16,9 +17,6 @@ import { useToast } from "@/hooks/use-toast";
 import { productCardLabel } from "@/lib/catalog";
 import type { ProductListItem } from "@/lib/catalog";
 
-const PLACEHOLDER_IMAGE =
-  "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=200&h=200&fit=crop";
-
 function CartLineImage({ item }: { item: CartItem }) {
   const href = `/products/${item.variantSlug ?? item.productSlug}`;
   return (
@@ -26,13 +24,17 @@ function CartLineImage({ item }: { item: CartItem }) {
       href={href}
       className="relative block aspect-[4/5] h-[88px] shrink-0 overflow-hidden bg-[hsl(38_22%_93%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 md:h-[120px]"
     >
-      <CatalogImage
-        src={item.imageUrl || PLACEHOLDER_IMAGE}
-        alt={item.productName}
-        fill
-        fit="balanced"
-        sizes="120px"
-      />
+      {item.imageUrl ? (
+        <CatalogImage
+          src={item.imageUrl}
+          alt={item.productName}
+          fill
+          fit="balanced"
+          sizes="120px"
+        />
+      ) : (
+        <ProductImagePlaceholder fill />
+      )}
     </Link>
   );
 }

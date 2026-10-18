@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { CatalogImage } from "@/components/shared/catalog-image";
+import { ProductImagePlaceholder } from "@/components/shared/product-image-preview";
 import { useCart } from "@/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,9 +16,6 @@ import {
 import { friendlyVariantLabel } from "@/lib/cart/variant-label";
 import { ShoppingBag, Minus, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-const PLACEHOLDER_IMAGE =
-  "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=200&h=200&fit=crop";
 
 /**
  * Mini-cart drawer (backlog 4.10) — same line language as the full cart page at a smaller scale
@@ -108,13 +106,17 @@ export function CartDrawer() {
                       className="relative aspect-[4/5] h-20 shrink-0 overflow-hidden bg-[hsl(38_22%_93%)]"
                       onClick={closeDrawer}
                     >
-                      <CatalogImage
-                        src={item.imageUrl || PLACEHOLDER_IMAGE}
-                        alt={item.productName}
-                        fill
-                        fit="balanced"
-                        sizes="80px"
-                      />
+                      {item.imageUrl ? (
+                        <CatalogImage
+                          src={item.imageUrl}
+                          alt={item.productName}
+                          fill
+                          fit="balanced"
+                          sizes="80px"
+                        />
+                      ) : (
+                        <ProductImagePlaceholder fill />
+                      )}
                     </Link>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
