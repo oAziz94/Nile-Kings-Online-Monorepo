@@ -14,15 +14,6 @@ export const PHASE1_SHIPPING_PROVIDER_DISPLAY = "Egypt Post" as const;
 export const SHIPPING_PROVIDERS = [PHASE1_SHIPPING_PROVIDER_DISPLAY] as const;
 export type ShippingProvider = (typeof SHIPPING_PROVIDERS)[number];
 
-/** Shipping amount shown to courier/partner (Wasalha only). Falls back for orders before carrier split. */
-export function getCourierFacingShippingPiastres(order: {
-  shippingPiastres: number;
-  carrierShippingPiastres?: number | null;
-}): number {
-  const carrier = order.carrierShippingPiastres ?? 0;
-  return carrier > 0 ? carrier : order.shippingPiastres;
-}
-
 export type ShippingAddress = {
   governorate: string;
   city?: string | null;

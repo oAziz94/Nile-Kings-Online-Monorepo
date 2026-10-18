@@ -7,14 +7,6 @@ export function piastresToEgp(piastres: number): number {
   return Math.round(piastres / 100);
 }
 
-export interface CategoryPublic {
-  id: string;
-  name: string;
-  slug: string;
-  sortOrder: number;
-  productCount?: number;
-}
-
 export interface VariantPublic {
   id: string;
   sku: string;

@@ -207,10 +207,6 @@ function getIndex(): Index {
   return index;
 }
 
-export function getGovernoratesWithAreas(): string[] {
-  return Object.keys(EGYPT_AREAS);
-}
-
 /** Areas for the dropdown, in curated order (main city first). Empty for an unknown governorate. */
 export function getAreasForGovernorate(governorate: string): readonly string[] {
   return EGYPT_AREAS[governorate.trim()] ?? [];

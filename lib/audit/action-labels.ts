@@ -40,7 +40,3 @@ export const ACTION_LABELS: Record<string, string> = {
   gallery_remove: "إزالة صورة من معرض لون",
   bulk_edit: "تعديل جماعي",
 };
-
-export function actionLabelAr(action: string): string {
-  return ACTION_LABELS[action] ?? action;
-}

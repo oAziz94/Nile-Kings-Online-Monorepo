@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -104,22 +103,5 @@ export function PeriodBar<TPreset extends PeriodPreset>({
 
       {toolbar && <div className="flex items-center gap-2 sm:mr-auto">{toolbar}</div>}
     </div>
-  );
-}
-
-export function PeriodBarButton({
-  children,
-  onClick,
-  icon,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={onClick}>
-      {icon}
-      {children}
-    </Button>
   );
 }

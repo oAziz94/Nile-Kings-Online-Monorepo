@@ -32,37 +32,6 @@ export type CourierExportRow = Record<
   string | number
 >;
 
-/** Allowed City values for the template (27 Egyptian governorates). */
-export const TEMPLATE_CITY_VALUES = [
-  "CAIRO",
-  "GIZA",
-  "ALEXANDRIA",
-  "BEHIRA",
-  "QALIUBIA",
-  "GHARBIA",
-  "MONOUFIA",
-  "DOMITTA",
-  "DAKAHLIA",
-  "KAFR EL SHEIKH",
-  "MARSA MATROUH",
-  "ISMAILIA",
-  "SUEZ",
-  "PORT SAID",
-  "SHARKIA",
-  "FAYOUM",
-  "BANI SWEIF",
-  "MENIA",
-  "ASSIUT",
-  "SOUHAGE",
-  "QENA",
-  "ASWAN",
-  "LOUXOR",
-  "RED SEA",
-  "NEW VALLEY",
-  "NORTH SINAI",
-  "SOUTH SINAI",
-] as const;
-
 /** Map governorate (Arabic or normalized) → template City value. */
 const GOVERNORATE_TO_TEMPLATE_CITY: Record<string, string> = {
   // Arabic (from GOVERNORATE_OPTIONS)
@@ -174,12 +143,6 @@ function toEgp(piastres: number): string {
   return (piastres / 100).toFixed(2);
 }
 
-/** COD_Value: 0 if InstaPay (or other non-COD), order total (EGP) if COD. */
-function getCodValue(order: OrderForCourierExport): string {
-  const isCod = order.paymentMethod === "COD";
-  return isCod ? toEgp(order.totalPiastres) : "0";
-}
-
 /** Description text as a brief order summary for easier printing. */
 function getDescription(order: OrderForCourierExport): string {
   if (order.items.length === 0) return "";
@@ -226,32 +189,6 @@ function buildCourierStreetField(addr: ShippingAddressJson): string {
       : streetBase || detailTail;
 
   return [governorate, cityLine, area, detail].join("\n");
-}
-
-/** Build one row: only red columns + COD_Value filled; City = governorate mapped to template list. */
-export function orderToCourierRow(order: OrderForCourierExport): CourierExportRow {
-  const addr = getAddress(order);
-  const city = mapGovernorateToTemplateCity(addr.governorate);
-  const street = buildCourierStreetField(addr);
-
-  return {
-    "Package_Serial": "",
-    "Description": getDescription(order),
-    "Total_Weight": getTotalWeightGrams(order),
-    "Package_volume": "",
-    "COD_Value": getCodValue(order),
-    "Item_Special_Notes": addr.notes ?? "",
-    "Customer_Name": order.user?.name ?? "",
-    "Mobile_No": order.user?.phone ?? addr.phone ?? "",
-    "Street": street,
-    "City": city,
-    "Package_Ref. Number": "",
-    "Merchant_Name": "",
-    "Warehouse_Name": "",
-    "HasPOD": "",
-    "SellerName": "",
-    "Post_Id": "",
-  };
 }
 
 /** Build one data row as an array in exact header order (avoids key-mismatch / stale bundle issues). */

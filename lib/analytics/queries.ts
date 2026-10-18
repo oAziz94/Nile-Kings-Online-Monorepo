@@ -6,7 +6,6 @@
 import { prisma } from "@/lib/db";
 import { REPORT_ORDER_STATUS } from "./types";
 import type { DateGranularity } from "./types";
-import { ORDER_STATUSES } from "@/lib/constants/order-status";
 import { ONLINE_INVENTORY_WHERE } from "@/lib/partner/channel";
 
 function parseRange(from?: string | null, to?: string | null): { from: Date; to: Date } {
@@ -363,35 +362,4 @@ export async function getStockReport(partnerId: string): Promise<StockReportRow[
       ...metrics,
     };
   });
-}
-
-/**
- * Partner order funnel (backlog 4.22) — counts of orders assigned to the partner, created
- * within the selected period, grouped by current status (all statuses, cancelled included).
- * Unlike the revenue/KPI queries, this deliberately does not filter to `DELIVERED` only —
- * the whole point is to show where orders currently sit across the funnel.
- */
-export type OrderFunnelRow = {
-  status: string;
-  count: number;
-};
-
-export async function getOrderFunnel(
-  from?: string | null,
-  to?: string | null,
-  scope: AnalyticsScope = {}
-): Promise<OrderFunnelRow[]> {
-  const { from: fromDate, to: toDate } = parseRange(from, to);
-
-  const groups = await prisma.order.groupBy({
-    by: ["status"],
-    where: {
-      createdAt: { gte: fromDate, lte: toDate },
-      ...(scope.partnerId ? { assignedPartnerId: scope.partnerId } : {}),
-    },
-    _count: true,
-  });
-
-  const map = new Map(groups.map((g) => [g.status, g._count]));
-  return ORDER_STATUSES.map((status) => ({ status, count: map.get(status) ?? 0 }));
 }

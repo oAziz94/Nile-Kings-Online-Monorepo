@@ -137,5 +137,3 @@ export function getPartnerNavForRole(partnerType: PartnerType): PartnerNavSectio
     items: section.items.filter((item) => item.roles.includes(partnerType)),
   })).filter((section) => section.items.length > 0);
 }
-
-export const PARTNER_NAV_BOXES_ICON = Boxes;
