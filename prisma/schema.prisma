@@ -235,7 +235,6 @@ model Variant {
   orderItems OrderItem[]
   partnerInventories PartnerInventory[]
   inventoryLedgerEntries InventoryLedger[]
-  restockRequestItems RestockRequestItem[]
   stockReceiptLines StockReceiptLine[]
   storeSaleItems StoreSaleItem[]
 
@@ -643,7 +642,6 @@ model Partner {
   youtubeUrl    String?
   websiteUrl    String?
   otherUrl      String?
-  linkedAgentId String?
   isActive      Boolean     @default(true)
   notes         String?
   // Partner portal foundation (backlog 4.16) — per-partner low-stock threshold (user decision
@@ -651,7 +649,6 @@ model Partner {
   // products colouring/stock report) and the alerts-read watermark for the computed, table-less
   // in-app alert feed (backlog 4.17).
   lowStockThreshold Int      @default(5)
-  alertsSeenAt      DateTime?
   // Partner portal v2 foundation (backlog 5.1) — working profile, thresholds, alerts,
   // service areas and the factory settlement rate. All additive, all read by
   // `lib/partner/*` helpers rather than compared to directly (05-partner-portal-v2.md §6).
@@ -677,16 +674,12 @@ model Partner {
   updatedAt     DateTime    @updatedAt
 
   user           User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
-  linkedAgent    Partner?   @relation("AgentDistributors", fields: [linkedAgentId], references: [id], onDelete: SetNull)
-  distributors   Partner[]  @relation("AgentDistributors")
   rulePartners   ReroutingRulePartner[]
   routedOrdersAsPartner RoutedOrder[] @relation("RoutedOrderPartner")
   assignedOrders Order[] @relation("OrderAssignedPartner")
   lastAssignedInRules   ReroutingRule[] @relation("ReroutingRuleLastPartner")
   inventories PartnerInventory[]
   inventoryLedgerEntries InventoryLedger[]
-  sourceRestockRequests RestockRequest[] @relation("RestockRequestSourcePartner")
-  destinationRestockRequests RestockRequest[] @relation("RestockRequestDestinationPartner")
   stockReceipts StockReceipt[]
   stockThresholds PartnerStockThreshold[]
   payments      PartnerPayment[]
@@ -696,7 +689,6 @@ model Partner {
   @@index([userId])
   @@index([phone])
   @@index([partnerType])
-  @@index([linkedAgentId])
   @@index([isActive])
   @@index([governorate])
 }
@@ -785,7 +777,7 @@ model PartnerStockSnapshot {
 }
 
 // ---------------------------------------------------------------------------
-// Partner-owned inventory and restock requests
+// Partner-owned inventory
 // ---------------------------------------------------------------------------
 
 enum InventoryLedgerReason {
@@ -796,6 +788,8 @@ enum InventoryLedgerReason {
   ORDER_RESTORE
   TRANSFER_IN
   TRANSFER_OUT
+  // RESTOCK_REQUEST_* are unused since 11.8 (the restock feature was removed); Postgres cannot
+  // drop enum values cheaply and old ledger rows may carry them, so they stay.
   RESTOCK_REQUEST_CREATE
   RESTOCK_REQUEST_FULFILL
   LEGACY_BACKFILL
@@ -834,7 +828,6 @@ model InventoryLedger {
   quantityReservedDelta  Int              @default(0)
   orderId            String?
   routedOrderId      String?
-  restockRequestId   String?
   stockReceiptId     String?
   notes              String?
   createdAt          DateTime              @default(now())
@@ -847,56 +840,9 @@ model InventoryLedger {
   @@index([variantId])
   @@index([orderId])
   @@index([routedOrderId])
-  @@index([restockRequestId])
   @@index([stockReceiptId])
   @@index([reason])
   @@index([createdAt])
-}
-
-enum RestockRequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  FULFILLED
-  CANCELLED
-}
-
-model RestockRequest {
-  id                   String               @id @default(cuid())
-  sourcePartnerId      String
-  destinationPartnerId String
-  status               RestockRequestStatus @default(PENDING)
-  notes                String?
-  responseNotes        String?
-  requestedAt          DateTime             @default(now())
-  approvedAt           DateTime?
-  rejectedAt           DateTime?
-  fulfilledAt          DateTime?
-  cancelledAt          DateTime?
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-
-  sourcePartner Partner @relation("RestockRequestSourcePartner", fields: [sourcePartnerId], references: [id], onDelete: Restrict)
-  destinationPartner Partner @relation("RestockRequestDestinationPartner", fields: [destinationPartnerId], references: [id], onDelete: Restrict)
-  items RestockRequestItem[]
-
-  @@index([sourcePartnerId])
-  @@index([destinationPartnerId])
-  @@index([status])
-  @@index([createdAt])
-}
-
-model RestockRequestItem {
-  id               String @id @default(cuid())
-  restockRequestId String
-  variantId        String
-  quantity         Int
-
-  restockRequest RestockRequest @relation(fields: [restockRequestId], references: [id], onDelete: Cascade)
-  variant Variant @relation(fields: [variantId], references: [id], onDelete: Restrict)
-
-  @@unique([restockRequestId, variantId])
-  @@index([variantId])
 }
 
 // ---------------------------------------------------------------------------
@@ -1025,14 +971,12 @@ model RoutedOrder {
   assignmentSequence  Int               @default(0)
   assignmentMode      AssignmentMode    @default(AUTO)
   status              RoutedOrderStatus  @default(ASSIGNED)
-  notifiedAt          DateTime?
   assignedAt          DateTime          @default(now())
   acceptedAt          DateTime?
   deliveredAt         DateTime?
   proofImageUrl       String?
   proofImagePublicId  String?
   notes               String?
-  notificationError   String?
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
