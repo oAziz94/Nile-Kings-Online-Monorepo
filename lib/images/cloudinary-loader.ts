@@ -1,5 +1,3 @@
-import type { ImageLoader } from "next/image";
-
 // Cloudinary transformation parameter keys we recognise when deciding whether
 // a path segment after `/image/upload/` is a transformation (vs. part of the
 // public id). Kept short and whitelisted on purpose: a public id containing
@@ -78,7 +76,7 @@ function withTransform(src: string, ours: string[]): string {
 /**
  * Backlog 10.42 — the `src` `CatalogImage` hands to `next/image`'s default (Vercel) loader.
  *
- * Backlog 6.4 pointed `next/image` straight at Cloudinary (`cloudinaryLoader` below), so every
+ * Backlog 6.4 pointed `next/image` straight at Cloudinary (a custom loader, since removed), so every
  * storefront impression was Cloudinary bandwidth: 35 GB in the first 30 days of v2 against a
  * 25-credit free plan (02-infra-baseline.md, 6.6 re-measure). Vercel's optimizer instead
  * fetches each photo from Cloudinary once per rendered width and serves it from its own cache
@@ -92,17 +90,3 @@ function withTransform(src: string, ours: string[]): string {
 export function cloudinaryOriginSrc(src: string): string {
   return withTransform(src, ["f_webp", "q_auto", "c_limit", `w_${ORIGIN_MAX_WIDTH}`]);
 }
-
-/**
- * `next/image` loader that delivers straight from Cloudinary at the rendered width
- * (`f_auto,q_auto,c_limit,w_<width>`), bypassing Vercel's optimizer. Backlog 6.4's default;
- * **no longer used by `CatalogImage` since 10.42** (see `cloudinaryOriginSrc` — direct delivery
- * bills every impression as Cloudinary bandwidth). Kept, with its unit tests, in case a surface
- * ever needs Cloudinary-side delivery deliberately (e.g. a non-Vercel host).
- *
- * - A `quality` prop maps to `q_<quality>` instead of `q_auto`.
- */
-export const cloudinaryLoader: ImageLoader = ({ src, width, quality }) => {
-  const qualityParam = quality ? `q_${quality}` : "q_auto";
-  return withTransform(src, ["f_auto", qualityParam, "c_limit", `w_${width}`]);
-};
