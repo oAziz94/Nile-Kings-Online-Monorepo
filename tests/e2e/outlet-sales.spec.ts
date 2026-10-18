@@ -168,7 +168,7 @@ test("print layout smoke at 80 mm width", async ({ page }) => {
   await expect(slip).toBeVisible();
   await expect(page.getByTestId("receipt-card")).toBeHidden();
   await expect(slip).toContainText("إيصال رقم");
-  await expect(slip).toContainText("شكراً لتسوقكم من ملوك النيل");
+  await expect(slip).toContainText("شكراً لتسوقكم من قطن ملوك النيل");
   await expect(page.getByTestId("receipt-line")).toHaveCount(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(302);
 

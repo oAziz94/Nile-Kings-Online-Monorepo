@@ -154,7 +154,7 @@ test("outlet settings: store profile round-trips, agent-only sections are hidden
   await loginAs(page, pair, "DISTRIBUTOR");
   await page.goto("/partner/settings");
 
-  await expect(page.getByLabel("نص أسفل الإيصال")).toHaveValue("شكراً لتسوقكم من ملوك النيل");
+  await expect(page.getByLabel("نص أسفل الإيصال")).toHaveValue("شكراً لتسوقكم من قطن ملوك النيل");
   for (const hidden of ["ملف العمل", "طريقة التسليم", "حسابك مع المصنع"]) {
     await expect(page.getByText(hidden, { exact: true })).toHaveCount(0);
   }
@@ -176,7 +176,7 @@ test("outlet settings: store profile round-trips, agent-only sections are hidden
   await page.getByRole("button", { name: "حفظ" }).first().click();
   await expect(page.getByText("تم حفظ بيانات المنفذ").first()).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel("نص أسفل الإيصال")).toHaveValue("شكراً لتسوقكم من ملوك النيل");
+  await expect(page.getByLabel("نص أسفل الإيصال")).toHaveValue("شكراً لتسوقكم من قطن ملوك النيل");
 });
 
 test("agent portal is unchanged, and the settings API rejects the store fields from an agent", async ({ page }) => {

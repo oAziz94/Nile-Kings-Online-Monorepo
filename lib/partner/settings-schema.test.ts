@@ -32,7 +32,7 @@ describe("store profile bounds", () => {
     expect(receiptFooterSchema.safeParse("x".repeat(201)).success).toBe(false);
   });
   it("exposes the default receipt footer", () => {
-    expect(DEFAULT_RECEIPT_FOOTER).toBe("شكراً لتسوقكم من ملوك النيل");
+    expect(DEFAULT_RECEIPT_FOOTER).toBe("شكراً لتسوقكم من قطن ملوك النيل");
   });
 });
 

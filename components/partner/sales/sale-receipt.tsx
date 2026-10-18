@@ -14,7 +14,7 @@ import { DEFAULT_RECEIPT_FOOTER, PAYMENT_METHOD_LABELS, formatEgp, formatSaleDat
  * Receipt view (backlog 11.3, plan 12 section 3/9). Screen: a plain summary card + lines + actions.
  * Print: the same data as an 80 mm thermal slip, rendered into a portal that is a direct child of
  * <body>; the print stylesheet hides every other body child, so the portal is the only thing that
- * prints regardless of how the portal shell is structured. The final look is the owner's call in 11.9.
+ * prints regardless of how the portal shell is structured. Look: owner-approved direction C with B's black total bar (11.9).
  */
 
 const PRINT_CSS = `
@@ -25,17 +25,21 @@ const PRINT_CSS = `
   body > *:not(#receipt-print-root) { display: none !important; }
   #receipt-print-root { display: block; position: relative; color: #000; background: #fff; font-size: 11px; line-height: 1.45; }
   #receipt-print-root, #receipt-print-root * { color: #000 !important; background: transparent !important; box-shadow: none !important; }
+  #receipt-print-root .receipt-total-bar, #receipt-print-root .receipt-total-bar * { background: #000 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 `;
 
 type Sale = StoreSaleDetail;
+
+const NUM = { fontFamily: "var(--font-archivo), sans-serif" } as const;
+const SUB = { fontSize: "10.5px", color: "#444" } as const;
 
 function Slip({ sale }: { sale: Sale }) {
   const storeName = sale.partner.storeName?.trim() || sale.partner.name;
   const footer = sale.partner.receiptFooter?.trim() || DEFAULT_RECEIPT_FOOTER;
   const itemCount = sale.items.reduce((s, i) => s + i.quantity, 0);
   return (
-    <div dir="rtl" className="mx-auto w-full" style={{ position: "relative", fontFamily: "var(--font-plex-arabic), sans-serif" }} data-testid="receipt-slip">
+    <div dir="rtl" className="mx-auto w-full" style={{ position: "relative", fontFamily: "var(--font-cairo), sans-serif", fontSize: "11px", lineHeight: 1.45 }} data-testid="receipt-slip">
       {sale.status === "VOIDED" && (
         <div
           aria-hidden
@@ -56,60 +60,79 @@ function Slip({ sale }: { sale: Sale }) {
           ملغي
         </div>
       )}
-      <div style={{ textAlign: "center" }}>
+      <div style={{ textAlign: "center", borderTop: "3px double #000", borderBottom: "3px double #000", padding: "2mm 0", marginBottom: "2mm" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/brand/logo-lapis-mark.png"
           alt=""
-          style={{ width: "28mm", height: "auto", margin: "0 auto 2mm", filter: "grayscale(1) contrast(1.6)" }}
+          style={{ width: "22mm", height: "auto", margin: "0 auto 1.5mm", display: "block", filter: "grayscale(1) contrast(1.6)" }}
         />
-        <div style={{ fontWeight: 800, fontSize: "14px" }}>{storeName}</div>
-        {sale.partner.storeAddress && <div>{sale.partner.storeAddress}</div>}
+        <div style={{ fontFamily: "var(--font-amiri), serif", fontWeight: 800, fontSize: "22px", lineHeight: 1.3 }}>{storeName}</div>
+        <div style={{ fontSize: "10px", letterSpacing: "2px", color: "#444" }}>قطن ملوك النيل</div>
+        {sale.partner.storeAddress && <div style={{ marginTop: "0.5mm" }}>{sale.partner.storeAddress}</div>}
         {sale.partner.phone && (
-          <div dir="ltr" style={{ fontFamily: "var(--font-archivo), sans-serif" }}>{sale.partner.phone}</div>
+          <div dir="ltr" style={NUM}>{sale.partner.phone}</div>
         )}
       </div>
-      <hr style={{ border: 0, borderTop: "1px dashed #000", margin: "3mm 0" }} />
-      <div style={{ fontWeight: 700 }}>
-        إيصال رقم <bdi dir="ltr" style={{ fontFamily: "var(--font-archivo), sans-serif" }}>{sale.receiptNo}</bdi>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11.5px" }}>
+        <span style={{ fontWeight: 700 }}>
+          إيصال رقم <bdi dir="ltr" style={NUM}>{sale.receiptNo}</bdi>
+        </span>
+        <bdi dir="ltr" style={NUM}>{formatSaleDateTime(sale.soldAt)}</bdi>
       </div>
-      <div>
-        <bdi dir="ltr" style={{ fontFamily: "var(--font-archivo), sans-serif" }}>{formatSaleDateTime(sale.soldAt)}</bdi>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11.5px", marginTop: "1mm" }}>
+        <span>{sale.sellerName ? `البائع: ${sale.sellerName}` : ""}</span>
+        <span>الدفع: {PAYMENT_METHOD_LABELS[sale.paymentMethod]}</span>
       </div>
-      {sale.sellerName && <div>البائع: {sale.sellerName}</div>}
-      {sale.status === "VOIDED" && sale.voidReason && <div>سبب الإلغاء: {sale.voidReason}</div>}
-      <hr style={{ border: 0, borderTop: "1px dashed #000", margin: "3mm 0" }} />
-      {sale.items.map((i) => (
-        <div key={i.id} style={{ marginBottom: "2mm" }} data-testid="receipt-line">
-          <div style={{ fontWeight: 700 }}>{i.productName}</div>
+      {sale.status === "VOIDED" && sale.voidReason && <div style={{ marginTop: "1mm" }}>سبب الإلغاء: {sale.voidReason}</div>}
+      <hr style={{ border: 0, borderTop: "1px solid #000", margin: "2mm 0" }} />
+      {sale.items.map((i, idx) => (
+        <div
+          key={i.id}
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr auto",
+            gap: "2mm",
+            alignItems: "baseline",
+            padding: "1.5mm 0",
+            borderBottom: idx < sale.items.length - 1 ? "1px solid #ddd" : "none",
+          }}
+          data-testid="receipt-line"
+        >
           <div>
-            {i.variantName} · <bdi dir="ltr" style={{ fontFamily: "var(--font-archivo), sans-serif" }}>{i.sku}</bdi>
+            <div style={{ fontWeight: 700 }}>{i.productName}</div>
+            <div style={SUB}>
+              {i.variantName} · <bdi dir="ltr" style={NUM}>{i.sku}</bdi>
+            </div>
           </div>
-          <div dir="ltr" style={{ display: "flex", justifyContent: "space-between", fontFamily: "var(--font-archivo), sans-serif" }}>
-            <span>{formatEgp(i.quantity * i.unitPricePiastres)}</span>
-            <span>
-              {i.quantity} × {formatEgp(i.unitPricePiastres)} =
-            </span>
+          <div dir="ltr" style={{ textAlign: "right", ...NUM }}>
+            <div style={{ fontWeight: 700 }}>{formatEgp(i.quantity * i.unitPricePiastres)}</div>
+            <div style={{ fontSize: "10px", color: "#444" }}>
+              {i.quantity} × {formatEgp(i.unitPricePiastres)}
+            </div>
           </div>
         </div>
       ))}
-      <hr style={{ border: 0, borderTop: "1px dashed #000", margin: "3mm 0" }} />
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "2mm" }}>
         <span>عدد القطع</span>
-        <bdi dir="ltr" style={{ fontFamily: "var(--font-archivo), sans-serif" }}>{itemCount}</bdi>
+        <bdi dir="ltr" style={NUM}>{itemCount}</bdi>
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: "14px" }}>
-        <span>الإجمالي</span>
-        <bdi dir="ltr" style={{ fontFamily: "var(--font-archivo), sans-serif" }} data-testid="receipt-total">
-          {formatEgp(sale.subtotalPiastres)}
-        </bdi>
+      <div
+        className="receipt-total-bar"
+        style={{ background: "#000", color: "#fff", padding: "2mm 2.5mm", marginTop: "1.5mm", display: "flex", justifyContent: "space-between", alignItems: "baseline" }}
+      >
+        <span style={{ fontWeight: 700 }}>الإجمالي</span>
+        <span>
+          <bdi dir="ltr" style={{ ...NUM, fontSize: "22px", fontWeight: 700 }} data-testid="receipt-total">
+            {formatEgp(sale.subtotalPiastres)}
+          </bdi>{" "}
+          <small style={{ fontSize: "11px", fontWeight: 600 }}>ج.م</small>
+        </span>
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <span>طريقة الدفع</span>
-        <span>{PAYMENT_METHOD_LABELS[sale.paymentMethod]}</span>
+      <div style={{ textAlign: "center", marginTop: "3mm", fontFamily: "var(--font-amiri), serif", fontSize: "13px" }}>
+        <span aria-hidden style={{ display: "block", letterSpacing: "6px", fontSize: "11px", color: "#777" }}>✦ ✦ ✦</span>
+        <div style={{ whiteSpace: "pre-line" }}>{footer}</div>
       </div>
-      <hr style={{ border: 0, borderTop: "1px dashed #000", margin: "3mm 0" }} />
-      <div style={{ textAlign: "center", whiteSpace: "pre-line" }}>{footer}</div>
     </div>
   );
 }
@@ -187,6 +210,10 @@ export function SaleReceipt({
       )}
 
       <section className="max-w-xl rounded-2xl bg-white p-4 shadow-subtle sm:p-5" aria-label="تفاصيل الإيصال" data-testid="receipt-card">
+        <div className="mb-4 border-b border-[hsl(228_16%_90%)] pb-3 text-center">
+          <div className="font-amiri text-xl font-extrabold text-ink">{sale.partner.storeName?.trim() || sale.partner.name}</div>
+          <div className="text-[10px] tracking-[0.2em] text-ink-soft">قطن ملوك النيل</div>
+        </div>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
           <dt className="text-ink-soft">طريقة الدفع</dt>
           <dd className="font-bold text-ink">{PAYMENT_METHOD_LABELS[sale.paymentMethod]}</dd>
@@ -237,9 +264,9 @@ export function SaleReceipt({
           <span>عدد القطع</span>
           <bdi dir="ltr" className="font-archivo">{itemCount}</bdi>
         </div>
-        <div className="mt-1 flex items-center justify-between">
-          <span className="font-bold text-ink">الإجمالي</span>
-          <span dir="ltr" className="font-archivo text-xl font-extrabold text-ink" data-testid="screen-total">
+        <div className="mt-2 flex items-center justify-between rounded-xl bg-ink px-4 py-2.5 text-white">
+          <span className="font-bold">الإجمالي</span>
+          <span dir="ltr" className="font-archivo text-xl font-extrabold" data-testid="screen-total">
             {formatEgp(sale.subtotalPiastres)}
           </span>
         </div>
