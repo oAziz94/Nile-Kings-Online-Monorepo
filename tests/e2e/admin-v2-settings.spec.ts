@@ -105,7 +105,7 @@ test("المتجر: COD fee change shows a confirm dialog, saves, and shows the 
   // Verifier fix (9.7 review): every `role="switch"` needs an accessible name.
   await expect(page.getByRole("switch", { name: "خصم كبار السن" })).toBeVisible();
 
-  const storeCard = page.locator("text=المتجر").first().locator("xpath=ancestor::div[contains(@class,'shadow-soft')]").first();
+  const storeCard = page.locator("main").locator("text=المتجر").first().locator("xpath=ancestor::div[contains(@class,'shadow-soft')]").first() // scoped to <main>: the sidebar account block also says المتجر (9.1 b);
   await storeCard.getByRole("button", { name: "حفظ" }).click();
 
   const dialog = page.getByRole("dialog");

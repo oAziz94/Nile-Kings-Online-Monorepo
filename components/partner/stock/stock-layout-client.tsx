@@ -29,7 +29,7 @@ export function StockLayoutClient({ children }: { children: React.ReactNode }) {
     <div className="space-y-6">
       <PageHeader
         title="المخزون"
-        description="كل ما يخص مخزونك في مكان واحد: المتاح، الحركات، الاستلام من المصنع، الجرد، وطلبات التوريد."
+        description="كل ما يخص مخزونك في مكان واحد: المتاح، الحركات، الاستلام من المصنع، والجرد."
       />
       <div className="overflow-hidden rounded-2xl bg-white shadow-soft">
         <StockTabs />

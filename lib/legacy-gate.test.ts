@@ -10,7 +10,7 @@ import { join, relative } from "node:path";
 const ROOT = join(__dirname, "..");
 const DIRS = ["app", "lib", "components", "hooks"];
 const EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".css"]);
-const FORBIDDEN = ["linkedAgent", "RestockRequest", "restock-requests", "موزع"];
+const FORBIDDEN = ["linkedAgent", "RestockRequest", "restock-requests", "موزع", "طلبات التوريد"];
 /** Files allowed to contain a forbidden string, with the reason. Empty on purpose. */
 const ALLOWED: Record<string, string[]> = {};
 
