@@ -194,6 +194,18 @@ test("voiding today's receipt from the UI puts stock back, writes the ledger, sh
   await expect(page.getByTestId("void-reason-text")).toHaveText("أخطأت في الصنف");
   await expect(page.getByTestId("void-open")).toHaveCount(0);
 
+  // 11.9: the voided slip must not grow wider than itself under print (the rotated "ملغي" watermark
+  // once widened the 80 mm page by ~97 px each side).
+  await page.emulateMedia({ media: "print" });
+  await expect(page.getByTestId("receipt-slip")).toContainText("ملغي");
+  const widths = await page.evaluate(() => {
+    const s = document.querySelector("[data-testid=receipt-slip]") as HTMLElement;
+    return { scroll: s.scrollWidth, client: s.clientWidth, doc: document.documentElement.scrollWidth, win: window.innerWidth };
+  });
+  expect(widths.scroll).toBeLessThanOrEqual(widths.client);
+  expect(widths.doc).toBeLessThanOrEqual(widths.win);
+  await page.emulateMedia({ media: "screen" });
+
   expect((await stock(v1)).stockAvailable).toBe(9);
   const sale = await prisma.storeSale.findUniqueOrThrow({ where: { id: saleIds[1] } });
   expect(sale.status).toBe("VOIDED");

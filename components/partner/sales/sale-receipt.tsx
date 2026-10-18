@@ -39,7 +39,7 @@ function Slip({ sale }: { sale: Sale }) {
   const footer = sale.partner.receiptFooter?.trim() || DEFAULT_RECEIPT_FOOTER;
   const itemCount = sale.items.reduce((s, i) => s + i.quantity, 0);
   return (
-    <div dir="rtl" className="mx-auto w-full" style={{ position: "relative", fontFamily: "var(--font-cairo), sans-serif", fontSize: "11px", lineHeight: 1.45 }} data-testid="receipt-slip">
+    <div dir="rtl" className="mx-auto w-full" style={{ position: "relative", overflow: "hidden", fontFamily: "var(--font-cairo), sans-serif", fontSize: "11px", lineHeight: 1.45 }} data-testid="receipt-slip">
       {sale.status === "VOIDED" && (
         <div
           aria-hidden
@@ -49,7 +49,6 @@ function Slip({ sale }: { sale: Sale }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            transform: "rotate(-30deg)",
             fontSize: "42px",
             fontWeight: 800,
             border: "none",
@@ -57,7 +56,8 @@ function Slip({ sale }: { sale: Sale }) {
             pointerEvents: "none",
           }}
         >
-          ملغي
+          {/* Only the word rotates; rotating the inset:0 box widened the print page (11.9 verifier). */}
+          <span style={{ display: "inline-block", transform: "rotate(-30deg)" }}>ملغي</span>
         </div>
       )}
       <div style={{ textAlign: "center", borderTop: "3px double #000", borderBottom: "3px double #000", padding: "2mm 0", marginBottom: "2mm" }}>
