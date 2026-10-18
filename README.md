@@ -66,7 +66,7 @@ Business logic lives in `lib/`, grouped by domain (`lib/checkout`, `lib/inventor
 3. **Storefront stock** reflects this routing *before* checkout: `lib/storefront-location.ts` resolves the current governorate to its rule's first partner and shows that partner's `PartnerInventory` levels (available minus reserved) instead of central stock, so shoppers only see what's actually deliverable to them.
 4. **On checkout**, `assignOrderToGovernorate()` (`lib/rerouting/assign.ts`) re-resolves the rule for the order's shipping governorate, selects the next partner in round-robin order (advancing `lastAssignedPartnerId`), and creates a `RoutedOrder` record — all inside a transaction.
 5. If no rule exists or no partners are active for a governorate, the order is still created but marked `UNROUTED` for manual admin assignment.
-6. Partner stock is adjusted through an append-only `InventoryLedger` (reserve on order, commit/release/restore as the order progresses, plus manual adjustments and inter-partner transfers via `RestockRequest`s), so stock levels are always reconstructable and auditable.
+6. Partner stock is adjusted through an append-only `InventoryLedger` (reserve on order, commit/release/restore as the order progresses, plus manual adjustments, factory receipts and outlet store sales), so stock levels are always reconstructable and auditable.
 
 ```
 Shopper (governorate) → ReroutingRule → [Partner A, Partner B, …] (round-robin)

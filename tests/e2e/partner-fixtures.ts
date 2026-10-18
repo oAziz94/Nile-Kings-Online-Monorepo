@@ -134,7 +134,6 @@ export async function seedPartnerPair(
       name: "موزع الاختبار",
       governorate: "الجيزة",
       phone: distributorPhone,
-      linkedAgentId: agentPartner.id,
       isActive: true,
       ...(distributorProfile.dailyOrderCapacity !== undefined && {
         dailyOrderCapacity: distributorProfile.dailyOrderCapacity,
@@ -190,7 +189,6 @@ export async function seedLinkedDistributor(
       name: overrides.name ?? "موزع إضافي للاختبار",
       governorate: overrides.governorate ?? "الجيزة",
       phone,
-      linkedAgentId: agentPartnerId,
       isActive: overrides.isActive ?? true,
     },
   });
@@ -242,12 +240,6 @@ export async function cleanupPartnerPair(
   await prisma.partnerStockThreshold.deleteMany({ where: safeWhere({ partnerId: { in: partnerIds } }) });
   await prisma.stockReceiptLine.deleteMany({ where: safeWhere({ receipt: { partnerId: { in: partnerIds } } }) });
   await prisma.stockReceipt.deleteMany({ where: safeWhere({ partnerId: { in: partnerIds } }) });
-  await prisma.restockRequestItem.deleteMany({
-    where: safeWhere({ restockRequest: { OR: [{ sourcePartnerId: { in: partnerIds } }, { destinationPartnerId: { in: partnerIds } }] } }),
-  });
-  await prisma.restockRequest.deleteMany({
-    where: safeWhere({ OR: [{ sourcePartnerId: { in: partnerIds } }, { destinationPartnerId: { in: partnerIds } }] }),
-  });
   await prisma.inventoryLedger.deleteMany({ where: safeWhere({ partnerId: { in: partnerIds } }) });
   await prisma.partnerInventory.deleteMany({ where: safeWhere({ partnerId: { in: partnerIds } }) });
   await prisma.order.updateMany({

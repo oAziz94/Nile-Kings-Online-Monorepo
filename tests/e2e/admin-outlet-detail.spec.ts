@@ -75,7 +75,7 @@ test.beforeAll(async () => {
   const partnerId = pair.distributor.partnerId;
   await prisma.partner.update({
     where: { id: partnerId },
-    data: { name: OUTLET_NAME, storeName: STORE_NAME, storeAddress: STORE_ADDRESS, linkedAgentId: null, lowStockThreshold: 100 },
+    data: { name: OUTLET_NAME, storeName: STORE_NAME, storeAddress: STORE_ADDRESS, lowStockThreshold: 100 },
   });
   categoryId = (await prisma.category.create({ data: { name: `فئة منفذ ${suffix}`, slug: `odet-cat-${suffix}` } })).id;
   productId = (
@@ -157,17 +157,7 @@ test("create dialog: choosing منفذ shows no linked-agent field; the outlet i
   const created = await prisma.partner.findFirstOrThrow({ where: { name: CREATED_NAME } });
   createdPartnerId = created.id;
   expect(created.partnerType).toBe("DISTRIBUTOR");
-  expect(created.linkedAgentId).toBeNull();
 
-  // The API refuses an agent for an outlet.
-  const bad = await page.request.post("/api/admin/partners", {
-    data: { partnerType: "DISTRIBUTOR", name: `مرفوض ${suffix}`, governorate: "القاهرة", phone: "01099988877", linkedAgentId: pair.agent.partnerId },
-  });
-  expect(bad.status()).toBe(400);
-  expect((await bad.json()).error.message).toBe("المنفذ لا يرتبط بوكيل");
-  expect(await prisma.partner.count({ where: { name: `مرفوض ${suffix}` } })).toBe(0);
-  const patch = await page.request.patch(`/api/admin/partners/${created.id}`, { data: { linkedAgentId: pair.agent.partnerId } });
-  expect(patch.status()).toBe(400);
 });
 
 test("a new outlet's detail shows exactly four tabs and no agent row", async ({ page }) => {

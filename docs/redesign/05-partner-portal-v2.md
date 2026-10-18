@@ -83,6 +83,8 @@ Business: one place for everything about stock — what I have, what moved, what
 Technical: tabs are client routes under `/partner/stock/*`; the products table, quick +N, low-stock filter, export/import/apply, receipts and restock screens move in with their APIs unchanged; new: a movements tab over `InventoryLedger` (period filter, reason chips, running balance per variant), threshold badges use `resolveThreshold`, and a "مقترح إعادة الطلب" button on the stock tab that opens the Inventory report's reorder list.
 
 ### 4.5 الشبكة (AGENT)
+
+> **Removed in 11.8 (2026-10-18):** the whole agent network (this section, the restock screens and the Network report) was deleted; see `12-distributor-store-plan.md`. Kept as history.
 Business: the agent sees each distributor's health at a glance and acts on their requests from the same place.
 Technical: roster cards (name, phone, active, sellable units, pending requests, last activity) with a detail drawer: their stock (existing inline query), their requests, their fill rate. No new mutations.
 

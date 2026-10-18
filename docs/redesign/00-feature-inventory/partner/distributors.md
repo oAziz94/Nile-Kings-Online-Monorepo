@@ -1,5 +1,7 @@
 # Partner — Distributors (agent's roster of linked distributors)
 
+> **Removed in 11.8 (2026-10-18):** the agent-distributor network (الشبكة, restock requests, linked agent, `Partner.linkedAgentId`) no longer exists; the type DISTRIBUTOR is now a physical outlet (منفذ), see `12-distributor-store-plan.md`. Kept as history; rows below that describe the network are obsolete.
+
 Route(s): `app/(partner)/partner/distributors/page.tsx` (client component)
 Key files: `app/api/partner/distributors/route.ts` (GET)
 

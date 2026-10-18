@@ -1,5 +1,7 @@
 # Partner types — what exists today and what each can do (2026-10-17)
 
+> **Superseded by `12-distributor-store-plan.md`** (the DISTRIBUTOR type was redefined as a physical outlet and the network removed in 11.8, 2026-10-18). Gaps G4, G6 and G7 below are still open.
+
 Baseline for the next system extension (owner: "we need to extend our system for something, but first analyze what types of partners we have and what each can do"). Traced from `prisma/schema.prisma`, `app/api/partner/**`, `app/(partner)/partner/**`, `lib/inventory/partner-inventory.ts`, `lib/rerouting/assign.ts`, `lib/orders/partner-status-transition.ts`, `lib/checkout/instapay.ts`.
 
 ## 1. The two types

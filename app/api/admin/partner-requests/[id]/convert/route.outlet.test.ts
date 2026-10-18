@@ -1,4 +1,4 @@
-/** Backlog 11.6 (d) — converting an outlet request refuses ?linkedAgentId. */
+/** Backlog 11.6 (d) — there is no linked agent any more (11.8); a stray ?linkedAgentId is ignored. */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const reqFind = vi.fn();
@@ -33,16 +33,15 @@ describe("POST /api/admin/partner-requests/[id]/convert (outlets)", () => {
     reqFind.mockResolvedValue({ id: "r1", requestType: "DISTRIBUTOR", name: "منفذ", governorate: "الجيزة", phone: "01012345678" });
   });
 
-  it("400 المنفذ لا يرتبط بوكيل with a linkedAgentId", async () => {
+  it("ignores a stray linkedAgentId param and never writes it", async () => {
     const res = await call("?linkedAgentId=agent-1");
-    expect(res.status).toBe(400);
-    expect((await res.json()).error.message).toBe("المنفذ لا يرتبط بوكيل");
-    expect(partnerCreate).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(partnerCreate.mock.calls[0][0].data).not.toHaveProperty("linkedAgentId");
   });
 
   it("converts without an agent", async () => {
     const res = await call("");
     expect(res.status).toBe(200);
-    expect(partnerCreate.mock.calls[0][0].data.linkedAgentId).toBeNull();
+    expect(partnerCreate.mock.calls[0][0].data.partnerType).toBe("DISTRIBUTOR");
   });
 });

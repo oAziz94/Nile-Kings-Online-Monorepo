@@ -87,7 +87,7 @@ test("both roles see the v2 nav", async ({ page }) => {
   await loginAs(page, pair, "AGENT");
   await page.goto("/partner");
   const agentNav = page.getByRole("navigation", { name: "التنقل في لوحة الشريك" });
-  for (const label of ["اليوم", "الطلبات", "المخزون", "الموزعون", "التقارير", "الإعدادات"]) {
+  for (const label of ["اليوم", "الطلبات", "المخزون", "التقارير", "الإعدادات"]) {
     await expect(agentNav.getByRole("link", { name: label })).toBeVisible();
   }
 
@@ -100,7 +100,6 @@ test("both roles see the v2 nav", async ({ page }) => {
     await expect(distributorNav.getByRole("link", { name: label })).toBeVisible();
   }
   await expect(distributorNav.getByRole("link", { name: "الطلبات" })).toHaveCount(0);
-  await expect(distributorNav.getByRole("link", { name: "الموزعون" })).toHaveCount(0);
 });
 
 test("every old partner route redirects to its v2 home", async ({ page }) => {
@@ -117,9 +116,6 @@ test("every old partner route redirects to its v2 home", async ({ page }) => {
     ["/partner/products", "/partner/stock"],
     ["/partner/receipts", "/partner/stock/intake"],
     ["/partner/receipts/new", "/partner/stock/intake/new"],
-    ["/partner/restock-requests", "/partner/stock/requests"],
-    ["/partner/distributor-requests", "/partner/stock/requests"],
-    ["/partner/distributors", "/partner/network"],
     ["/partner/reports", "/partner/reports/sales"],
   ];
   for (const [from, to] of cases) {

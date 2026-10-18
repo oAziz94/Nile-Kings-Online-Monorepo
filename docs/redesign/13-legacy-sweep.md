@@ -154,16 +154,16 @@ Risk: **none** = no behaviour change possible; **low** = visible only in an edge
 
 Tick what goes. Each ticked PR is built as its own backlog item and must keep `npx tsc --noEmit`, `npm run lint` and `npm run test` green; proof to attach is listed.
 
-- [ ] **PR-A** placeholders and duplicates (6 Unsplash constants to `ProductImagePlaceholder`, the `images.unsplash.com` remotePattern, `DEFAULT_RECEIPT_FOOTER`, `RESERVED_FLOOR_MESSAGE`, `toIsoDate`, `orderInclude`, default exports). Proof: `git grep unsplash` = 0 outside docs; screenshots of cart, drawer, order review, product card, PDP, quick-shop with a photo-less item at 375 and 1514 px; `lib/partner/settings-schema.test.ts`, `lib/inventory/receipts.test.ts`, `apply-receipt.test.ts` green.
-- [ ] **PR-B** orphan files (hook + `/api/partner/dashboard`, `section-title`, `partner-registration-modal`, `date-range`, `lib/partner/index.ts`, `senior-promo-toggle`) and, if wanted, `components/ui/radio-group.tsx` + `@radix-ui/react-radio-group`. Proof: `npx knip` reports 0 unused files; `git grep` of each removed name = 0; `partner-v2-foundation` and `admin-v2-settings` specs green.
-- [ ] **PR-C** the 22 dead exports (`decryptNationalId` stays unless told otherwise). Proof: knip export count drops accordingly; unit suite unchanged.
-- [ ] **PR-D** `cloudinaryLoader` + its 9 cases, `@neondatabase/serverless`, `@prisma/adapter-neon`, `NEXT_PUBLIC_API_URL`. Proof: `npm ls` clean, `npm run test`, `tests/e2e/image-fit.spec.ts` green.
+- [x] **PR-A** placeholders and duplicates (6 Unsplash constants to `ProductImagePlaceholder`, the `images.unsplash.com` remotePattern, `DEFAULT_RECEIPT_FOOTER`, `RESERVED_FLOOR_MESSAGE`, `toIsoDate`, `orderInclude`, default exports). Proof: `git grep unsplash` = 0 outside docs; screenshots of cart, drawer, order review, product card, PDP, quick-shop with a photo-less item at 375 and 1514 px; `lib/partner/settings-schema.test.ts`, `lib/inventory/receipts.test.ts`, `apply-receipt.test.ts` green. Done (5865863).
+- [x] **PR-B** orphan files (hook + `/api/partner/dashboard`, `section-title`, `partner-registration-modal`, `date-range`, `lib/partner/index.ts`, `senior-promo-toggle`) and, if wanted, `components/ui/radio-group.tsx` + `@radix-ui/react-radio-group`. Proof: `npx knip` reports 0 unused files; `git grep` of each removed name = 0; `partner-v2-foundation` and `admin-v2-settings` specs green. Done (689617b).
+- [x] **PR-C** the 22 dead exports (`decryptNationalId` stays unless told otherwise). Proof: knip export count drops accordingly; unit suite unchanged. Done (9891fa2).
+- [x] **PR-D** `cloudinaryLoader` + its 9 cases, `@neondatabase/serverless`, `@prisma/adapter-neon`, `NEXT_PUBLIC_API_URL`. Proof: `npm ls` clean, `npm run test`, `tests/e2e/image-fit.spec.ts` green. Done (779b40d).
 - [ ] **PR-E** decide `POST /api/admin/orders/courier-export` (remove / keep) and `GET /api/partner/payments` (keep until the payments view is decided).
-- [ ] **PR-F** one migration dropping `Partner.alertsSeenAt`, `RoutedOrder.notifiedAt`, `RoutedOrder.notificationError` (rehearse on a backup branch first). `PaymentAttempt.providerRef` stays unless told.
+- [x] **PR-F** one migration dropping `Partner.alertsSeenAt`, `RoutedOrder.notifiedAt`, `RoutedOrder.notificationError` (rehearse on a backup branch first). `PaymentAttempt.providerRef` stays unless told. Done (d0ee9fe).
 - [ ] **PR-G** round-robin removal. Blocked on **Q1**; Q2 (10.28) and Q3 (10.36) are unaffected by this sweep.
-- [ ] **PR-H = 11.8** network feature, now also covering `app/(partner)/partner/stock/requests`, the stock tab "طلبات التوريد", `components/partner/reports/network-report-view.tsx` (real path), `components/partner/role-gate-panel.tsx`, and the edit-only files listed.
+- [x] **PR-H = 11.8** network feature, now also covering `app/(partner)/partner/stock/requests`, the stock tab "طلبات التوريد", `components/partner/reports/network-report-view.tsx` (real path), `components/partner/role-gate-panel.tsx`, and the edit-only files listed. Done (ec4822e).
 - [ ] **PR-I** keep list confirmed (InstaPay map as its own item for G4, `tools/inventory-dashboard`); decide whether `tsconfig.tsbuildinfo` leaves git.
-- [ ] **PR-J** stale-doc banners (05, 06, 11, feature inventory, `PARTNER_REGISTRATION_FEATURE.md`) after 11.8 merges.
+- [x] **PR-J** stale-doc banners (05, 06, 11, feature inventory, `PARTNER_REGISTRATION_FEATURE.md`) after 11.8 merges. Done (the 11.8 docs commit).
 
 ## Appendix — 151 internal-only exports (surplus `export` keyword; no action recommended)
 

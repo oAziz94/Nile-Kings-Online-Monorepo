@@ -44,7 +44,6 @@ test.describe("stock hub tabs", () => {
       ["/partner/stock/movements", "الحركات"],
       ["/partner/stock/intake", "الاستلام من المصنع"],
       ["/partner/stock/counts", "الجرد"],
-      ["/partner/stock/requests", "طلبات التوريد"],
     ] as const) {
       await page.getByRole("link", { name: label }).click();
       // Cold Turbopack compile of each newly-visited tab route can outlast the default 5s
@@ -58,10 +57,6 @@ test.describe("stock hub tabs", () => {
     await expect(page).toHaveURL(/\/partner\/stock$/);
     await page.goto("/partner/receipts");
     await expect(page).toHaveURL(/\/partner\/stock\/intake$/);
-    await page.goto("/partner/restock-requests");
-    await expect(page).toHaveURL(/\/partner\/stock\/requests$/);
-    await page.goto("/partner/distributor-requests");
-    await expect(page).toHaveURL(/\/partner\/stock\/requests$/);
   });
 
   test("a distributor does not see the AGENT-only intake/counts tabs", async ({ page }) => {
@@ -69,7 +64,6 @@ test.describe("stock hub tabs", () => {
     await page.goto("/partner/stock");
     await expect(page.getByRole("link", { name: "الاستلام من المصنع" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "الجرد" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "طلبات التوريد" })).toBeVisible();
   });
 });
 
@@ -563,124 +557,4 @@ test.describe("movements tab", () => {
     expect(filteredJson.data.rows).toHaveLength(1);
     expect(filteredJson.data.rows[0].reason).toBe("STOCK_COUNT");
   });
-});
-
-test.describe("requests tab (restock transfer)", () => {
-  test.describe.configure({ mode: "serial" });
-  test.setTimeout(90_000);
-  let pair: PartnerFixturePair;
-  let productIds: string[] = [];
-  let variantA: { id: string; sku: string; productName: string };
-  let variantB: { id: string; sku: string; productName: string };
-
-  async function seedTestVariant(label: string): Promise<{ id: string; sku: string; productName: string }> {
-    const category = await prisma.category.findFirst({ select: { id: true } });
-    if (!category) throw new Error("Need at least one Category seeded in the redesign DB to run this spec.");
-    const unique = `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const productName = `منتج اختبار إعادة التوريد ${unique}`;
-    const product = await prisma.product.create({
-      data: {
-        categoryId: category.id,
-        name: productName,
-        slug: `restock-test-${unique}`,
-        active: true,
-        variants: { create: [{ sku: `RESTOCK-TEST-${unique}`, name: "M", pricePiastres: 10000 }] },
-      },
-      include: { variants: true },
-    });
-    productIds.push(product.id);
-    return { id: product.variants[0].id, sku: product.variants[0].sku, productName };
-  }
-
-  test.beforeAll(async () => {
-    pair = await seedPartnerPair(prisma);
-    variantA = await seedTestVariant("A");
-    variantB = await seedTestVariant("B");
-    await prisma.partnerInventory.upsert({
-      where: { partnerId_variantId: { partnerId: pair.agent.partnerId, variantId: variantB.id } },
-      update: { stockAvailable: 50, stockReserved: 0 },
-      create: { partnerId: pair.agent.partnerId, variantId: variantB.id, stockAvailable: 50, stockReserved: 0 },
-    });
-  });
-
-  test.afterAll(async () => {
-    await cleanupPartnerPair(prisma, pair);
-    await prisma.variant.deleteMany({ where: { productId: { in: productIds } } });
-    await prisma.product.deleteMany({ where: { id: { in: productIds } } });
-    await prisma.$disconnect();
-  });
-
-  test("distributor creates then cancels a request, creates another; agent sees distributor stock inline and fulfils the transfer", async ({ page }) => {
-    await loginAs(page, pair, "DISTRIBUTOR");
-    await page.goto("/partner/stock/requests");
-
-    await createDraftLine(page, variantA.sku, 3);
-    await page.getByRole("button", { name: "إرسال الطلب" }).click();
-    await expect(page.getByText("تم إرسال طلب إعادة التوريد", { exact: true })).toBeVisible();
-    const rowA = page.getByRole("row").filter({ hasText: variantA.sku });
-    await expect(rowA.getByText("قيد المراجعة")).toBeVisible();
-
-    await rowA.getByRole("button", { name: "إلغاء الطلب" }).click();
-    const cancelDialog = page.getByRole("dialog");
-    await expect(cancelDialog).toBeVisible();
-    await cancelDialog.getByRole("button", { name: "إلغاء الطلب" }).click();
-    await expect(cancelDialog).toBeHidden();
-    await expect(page.getByText("تم إلغاء الطلب", { exact: true })).toBeVisible({ timeout: 10_000 });
-    await expect(rowA.getByText("ملغي")).toBeVisible();
-
-    await createDraftLine(page, variantB.sku, 5);
-    await page.getByRole("button", { name: "إرسال الطلب" }).click();
-    await expect(page.getByText("تم إرسال طلب إعادة التوريد", { exact: true })).toBeVisible();
-    const rowB = page.getByRole("row").filter({ hasText: variantB.sku });
-    await expect(rowB.getByText("قيد المراجعة")).toBeVisible();
-
-    await page.context().clearCookies();
-    await loginAs(page, pair, "AGENT");
-    await page.goto("/partner/stock/requests");
-
-    const card = page.getByTestId("restock-request-card").filter({ hasText: variantB.sku });
-    await expect(card).toBeVisible();
-    await expect(card.getByText("متاح لدى الموزع")).toBeVisible();
-
-    await card.getByRole("button", { name: "تنفيذ التحويل" }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await page.getByRole("dialog").getByRole("button", { name: "إلغاء", exact: true }).click();
-    await expect(page.getByRole("dialog")).toBeHidden();
-    await expect(card.getByText("قيد المراجعة")).toBeVisible();
-
-    await card.getByRole("button", { name: "تنفيذ التحويل" }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await page.getByRole("dialog").getByRole("button", { name: "تأكيد ونقل المخزون" }).click();
-    await expect(page.getByText("تم تحديث طلب الموزع", { exact: true })).toBeVisible();
-    await expect(card.getByText("تم التنفيذ")).toBeVisible();
-
-    const [agentInventory, distributorInventory] = await Promise.all([
-      prisma.partnerInventory.findUnique({ where: { partnerId_variantId: { partnerId: pair.agent.partnerId, variantId: variantB.id } } }),
-      prisma.partnerInventory.findUnique({ where: { partnerId_variantId: { partnerId: pair.distributor.partnerId, variantId: variantB.id } } }),
-    ]);
-    expect(agentInventory?.stockAvailable).toBe(45);
-    expect(distributorInventory?.stockAvailable).toBe(5);
-
-    const restockRequest = await prisma.restockRequest.findFirst({ where: { destinationPartnerId: pair.distributor.partnerId, status: "FULFILLED" } });
-    expect(restockRequest).not.toBeNull();
-    const ledgerRows = await prisma.inventoryLedger.findMany({ where: { restockRequestId: restockRequest!.id, variantId: variantB.id } });
-    expect(ledgerRows).toHaveLength(4);
-
-    const cancelledRequest = await prisma.restockRequest.findFirst({ where: { destinationPartnerId: pair.distributor.partnerId, status: "CANCELLED" } });
-    await prisma.restockRequestItem.deleteMany({ where: { restockRequestId: { in: [restockRequest!.id, cancelledRequest?.id ?? ""] } } });
-    await prisma.restockRequest.deleteMany({ where: { id: { in: [restockRequest!.id, cancelledRequest?.id ?? ""] } } });
-    await prisma.inventoryLedger.deleteMany({ where: safeWhere({ restockRequestId: restockRequest!.id }) });
-    await prisma.partnerInventory.deleteMany({
-      where: safeWhere({ partnerId: { in: [pair.agent.partnerId, pair.distributor.partnerId] }, variantId: variantB.id }),
-    });
-  });
-
-  async function createDraftLine(page: import("@playwright/test").Page, sku: string, quantity: number) {
-    await page.getByPlaceholder("بحث عن منتج أو SKU").fill(sku);
-    const select = page.locator("#variant-select");
-    await expect(select).toContainText(sku, { timeout: 10_000 });
-    await select.selectOption({ label: (await select.locator(`option:has-text("${sku}")`).textContent()) as string });
-    await page.locator("#quantity-input").fill(String(quantity));
-    await page.getByRole("button", { name: "إضافة" }).click();
-  }
 });

@@ -335,7 +335,6 @@ async function getLedger(params: {
       quantityReservedDelta: row.quantityReservedDelta,
       orderId: row.orderId,
       routedOrderId: row.routedOrderId,
-      restockRequestId: row.restockRequestId,
       notes: row.notes,
       actor: actorFor(row.notes),
       partner: row.partner,

@@ -1,5 +1,7 @@
 # Admin — Partners (requests, agents, distributors, manual entry)
 
+> **Removed in 11.8 (2026-10-18):** the agent-distributor network (الشبكة, restock requests, linked agent, `Partner.linkedAgentId`) no longer exists; the type DISTRIBUTOR is now a physical outlet (منفذ), see `12-distributor-store-plan.md`. Kept as history; rows below that describe the network are obsolete.
+
 Route(s): `app/(admin)/admin/partners/page.tsx` (single page, 4 tabs: طلبات شراكة / وكلاء / موزعين / إدخال شريك جديد — no `[id]`/`new` sub-routes)
 Key files: `lib/services/shipping.ts` (`GOVERNORATE_OPTIONS`), `lib/phone.ts` (`normalizeEgyptMobilePhone`), `app/api/admin/partner-requests/route.ts`, `app/api/admin/partner-requests/[id]/route.ts`, `app/api/admin/partner-requests/[id]/convert/route.ts`, `app/api/admin/partners/route.ts`, `app/api/admin/partners/[id]/route.ts`. Covered as one file — all four tabs live in one page component and share the `Partner`/`PartnerRequest` data model.
 

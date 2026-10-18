@@ -1,4 +1,4 @@
-/** Backlog 11.6 (d) — POST /api/admin/partners refuses a linked agent for an outlet. */
+/** Backlog 11.6 (d) — POST /api/admin/partners ignores a stray linkedAgentId (the field was removed in 11.8). */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const create = vi.fn();
@@ -25,17 +25,15 @@ describe("POST /api/admin/partners (outlets)", () => {
     create.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({ id: "p1", ...data }));
   });
 
-  it("400 المنفذ لا يرتبط بوكيل when a DISTRIBUTOR carries linkedAgentId", async () => {
+  it("ignores a linkedAgentId sent by an old client and never writes it", async () => {
     const res = await call({ ...base, partnerType: "DISTRIBUTOR", linkedAgentId: "agent-1" });
-    expect(res.status).toBe(400);
-    expect((await res.json()).error.message).toBe("المنفذ لا يرتبط بوكيل");
-    expect(create).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(create.mock.calls[0][0].data).not.toHaveProperty("linkedAgentId");
   });
 
   it("creates an outlet with no agent", async () => {
-    const res = await call({ ...base, partnerType: "DISTRIBUTOR", linkedAgentId: null });
+    const res = await call({ ...base, partnerType: "DISTRIBUTOR" });
     expect(res.status).toBe(200);
-    expect(create.mock.calls[0][0].data.linkedAgentId).toBeNull();
     expect(create.mock.calls[0][0].data.partnerType).toBe("DISTRIBUTOR");
   });
 });

@@ -1,5 +1,7 @@
 # Admin — Rerouting Rules (governorate → partner auto-assignment)
 
+> **Removed in 11.8 (2026-10-18):** the agent-distributor network (الشبكة, restock requests, linked agent, `Partner.linkedAgentId`) no longer exists; the type DISTRIBUTOR is now a physical outlet (منفذ), see `12-distributor-store-plan.md`. Kept as history; rows below that describe the network are obsolete.
+
 Route(s): `app/(admin)/admin/rerouting-rules/page.tsx` (list), `app/(admin)/admin/rerouting-rules/new/page.tsx` (create), `app/(admin)/admin/rerouting-rules/[id]/page.tsx` (detail/edit) — all client components. Covered together in this one file: the list is a thin table, "new" only captures one field, and the real complexity (partner roster management) lives entirely on the detail page.
 Key files: `app/api/admin/rerouting-rules/route.ts` (GET list, POST create), `app/api/admin/rerouting-rules/[id]/route.ts` (GET one, PATCH isActive, DELETE), `app/api/admin/rerouting-rules/[id]/partners/route.ts` (GET/POST linked partners), `app/api/admin/rerouting-rules/[id]/partners/[linkId]/route.ts` (PATCH/DELETE one link), `lib/rerouting/assign.ts` (`assignOrderToGovernorate` — the actual round-robin consumer, runs at order-creation time, not in this UI), `lib/services/shipping.ts` (`GOVERNORATE_OPTIONS`), `prisma/schema.prisma` (`ReroutingRule`, `ReroutingRulePartner`, `RoutedOrder`, `RoutedOrderStatus`, `AssignmentMode`).
 

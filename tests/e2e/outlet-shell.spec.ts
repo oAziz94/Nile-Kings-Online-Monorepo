@@ -96,7 +96,7 @@ test("outlet sees exactly the 5-item menu and none of the agent items", async ({
   for (const name of ["اليوم", "المبيعات", "المخزون", "التقارير", "الإعدادات"]) {
     await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
   }
-  for (const name of ["الطلبات", "الموزعون", "الإشعارات"]) {
+  for (const name of ["الطلبات", "الإشعارات"]) {
     await expect(nav.getByRole("link", { name, exact: true })).toHaveCount(0);
   }
   await expect(nav.getByRole("link", { name: "المبيعات", exact: true })).toHaveAttribute("href", "/partner/sales");
@@ -105,7 +105,7 @@ test("outlet sees exactly the 5-item menu and none of the agent items", async ({
 
 test("outlet is redirected from agent-only routes to /partner with a toast", async ({ page }) => {
   await loginAs(page, pair, "DISTRIBUTOR");
-  for (const path of ["/partner/orders", "/partner/network", "/partner/reports/money"]) {
+  for (const path of ["/partner/orders", "/partner/reports/money"]) {
     await page.goto(path);
     await page.waitForURL((url) => url.pathname === "/partner", { timeout: 15_000 });
     await expect(page.getByText("هذه الصفحة للوكلاء فقط").first()).toBeVisible();
@@ -127,9 +127,9 @@ test("outlet اليوم: KPIs count the 2 COMPLETED sales, not the VOIDED one", 
   await expect(page.getByTestId("kpi-stock-value")).toContainText("1,100");
   await expect(page.getByTestId("kpi-stock-alerts")).toContainText("1");
 
-  // Queues: low stock yes; no order / SLA / restock groups; latest receipts link to the sales log.
+  // Queues: low stock yes; no order / SLA groups; latest receipts link to the sales log.
   await expect(page.getByTestId("queue-group-low-stock")).toBeVisible();
-  for (const id of ["queue-group-to-confirm", "queue-group-overdue", "queue-group-restock", "capacity-meter"]) {
+  for (const id of ["queue-group-to-confirm", "queue-group-overdue", "capacity-meter"]) {
     await expect(page.getByTestId(id)).toHaveCount(0);
   }
   await expect(page.getByTestId("receipt-row-1")).toHaveAttribute("href", `/partner/sales/${saleIds.s1}`);
@@ -183,7 +183,7 @@ test("agent portal is unchanged, and the settings API rejects the store fields f
   await loginAs(page, pair, "AGENT");
   await page.goto("/partner/stock");
   const nav = page.getByRole("navigation", { name: "التنقل في لوحة الشريك" });
-  for (const name of ["اليوم", "الطلبات", "المخزون", "الموزعون", "التقارير"]) {
+  for (const name of ["اليوم", "الطلبات", "المخزون", "التقارير"]) {
     await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
   }
   await expect(nav.getByRole("link", { name: "المبيعات", exact: true })).toHaveCount(0);

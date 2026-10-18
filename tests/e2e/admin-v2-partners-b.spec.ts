@@ -182,15 +182,6 @@ test("CSV export 200 from the admin route", async ({ page }) => {
   expect(res.headers()["content-type"]).toContain("text/csv");
 });
 
-test("network report 400 for a distributor's admin route; 200 for the agent", async ({ page }) => {
-  await loginAsAdmin(page);
-  const distributorRes = await page.request.get(`/api/admin/partners/${pair.distributor.partnerId}/reports/network?preset=30d`);
-  expect(distributorRes.status()).toBe(400);
-
-  const agentRes = await page.request.get(`/api/admin/partners/${pair.agent.partnerId}/reports/network?preset=30d`);
-  expect(agentRes.ok()).toBeTruthy();
-});
-
 test("404 for a non-existent partner id; 401 signed-out; 403 for a customer", async ({ page, browser }) => {
   await loginAsAdmin(page);
   const notFoundRes = await page.request.get("/api/admin/partners/does-not-exist/reports/sales");
@@ -226,14 +217,6 @@ test("الأداء tab renders the sales report and switches families without na
   await expect(page.getByRole("heading", { name: "تقرير التجهيز" })).toBeVisible({ timeout: 20_000 });
   await expect(page).toHaveURL(`/admin/partners/${pair.agent.partnerId}?tab=performance`);
 
-  await page.getByRole("button", { name: "الشبكة" }).click();
-  await expect(page.getByRole("heading", { name: "تقرير الشبكة" })).toBeVisible({ timeout: 20_000 });
-});
-
-test("الأداء tab drops الشبكة for a distributor", async ({ page }) => {
-  await loginAsAdmin(page);
-  await page.goto(`/admin/partners/${pair.distributor.partnerId}?tab=performance`);
-  await expect(page.getByRole("heading", { name: "تقرير المبيعات" })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("button", { name: "الشبكة" })).toHaveCount(0);
 });
 

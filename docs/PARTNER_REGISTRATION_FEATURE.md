@@ -1,5 +1,7 @@
 # Partner Registration Feature – Summary & Deliverables
 
+> **Removed in 11.8 (2026-10-18):** the agent-distributor network (الشبكة, restock requests, linked agent, `Partner.linkedAgentId`) no longer exists; the type DISTRIBUTOR is now a physical outlet (منفذ), see `12-distributor-store-plan.md`. Kept as history; rows below that describe the network are obsolete.
+
 ## 1) Summary of Files Changed
 
 ### New files
