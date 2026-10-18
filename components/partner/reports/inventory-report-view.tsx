@@ -284,8 +284,8 @@ export function InventoryReportView({
                   <p className="text-xs leading-relaxed text-ink-soft">
                     {formatNumberEn(data.headline.find((h) => h.key === "deadStockCount")?.value ?? 0)} صنفًا بلا بيع منذ{" "}
                     {data.settings.deadStockDays} يومًا أو أكثر — قيمتها بالتكلفة{" "}
-                    <b dir="ltr">{formatNumberEn(piastresToEgp(data.deadStockValuePiastres))} ج.م</b>. ضعها في عرض أو حوّلها لموزع
-                    يبيعها.
+                    <b dir="ltr">{formatNumberEn(piastresToEgp(data.deadStockValuePiastres))} ج.م</b>. ضعها في عرض أو اعرضها بسعر مخفّض
+                    لتصريفها.
                   </p>
                   <button
                     type="button"

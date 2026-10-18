@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { formatNumberEn } from "@/lib/format-en-numbers";
 import { formatRelativeTimeAr } from "@/lib/format-relative-time-ar";
 import { piastresToEgp } from "@/lib/catalog";
-import type { PartnerTodayOrderRow, PartnerTodayRestockRow, PartnerTodayStockRow } from "@/hooks/use-partner-today";
+import type { PartnerTodayOrderRow, PartnerTodayStockRow } from "@/hooks/use-partner-today";
 
 /** One order row in an اليوم queue group — id, customer, address, total, relative time, and
  * a single next-action button that calls the existing transition endpoint. */
@@ -40,20 +40,6 @@ export function OrderQueueRow({
       >
         {pending ? "..." : actionLabel}
       </Button>
-    </div>
-  );
-}
-
-/** A restock-request row (link only — needs judgement, not a one-click action). */
-export function RestockQueueRow({ row, viewLabel = "عرض" }: { row: PartnerTodayRestockRow; viewLabel?: string }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="min-w-0">
-        <span className="text-sm font-bold text-ink">{row.counterpartyName}</span>
-        <span className="text-xs text-ink-soft"> · {formatNumberEn(row.itemCount)} صنف</span>
-      </div>
-      <span className="text-xs text-ink-soft">{formatRelativeTimeAr(row.occurredAt)}</span>
-      <span className="text-xs font-bold text-lapis-800">{viewLabel}</span>
     </div>
   );
 }

@@ -7,7 +7,6 @@ import { EGYPT_MOBILE_ERROR_MESSAGE, normalizeEgyptMobilePhone } from "@/lib/pho
 import { logAdminAction, requestIp, sanitizeForAudit } from "@/lib/audit/admin-audit";
 import { computePartnersHealth } from "@/lib/admin/partners-list";
 import { getPartnerNetworkDefaults } from "@/lib/settings";
-import { outletLinkedAgentError } from "@/lib/admin/outlet-validation";
 
 export async function GET(req: NextRequest) {
   try {
@@ -24,7 +23,7 @@ export async function GET(req: NextRequest) {
   const partnerTypeParam = searchParams.get("partnerType") as "AGENT" | "DISTRIBUTOR" | null;
 
   // Backlog 9.4a (d) — the الشركاء hub list needs every agent AND distributor in one call
-  // with health columns; every other caller (agents/distributors dropdowns, orders page
+  // with health columns; every other caller (agents/outlets dropdowns, orders page
   // filters, etc.) keeps requiring `partnerType` unchanged.
   if (!health && (!partnerTypeParam || !["AGENT", "DISTRIBUTOR"].includes(partnerTypeParam))) {
     return apiBadRequest("partnerType مطلوب (AGENT أو DISTRIBUTOR)");
@@ -51,24 +50,18 @@ export async function GET(req: NextRequest) {
   };
 
   if (!health) {
-    const include =
-      partnerTypeParam === "DISTRIBUTOR"
-        ? { linkedAgent: { select: { id: true, name: true, phone: true } } }
-        : { _count: { select: { distributors: true } } };
     const [partners, total] = await Promise.all([
-      prisma.partner.findMany({ where, orderBy: { createdAt: "desc" }, take: limit, skip: offset, include }),
+      prisma.partner.findMany({ where, orderBy: { createdAt: "desc" }, take: limit, skip: offset }),
       prisma.partner.count({ where }),
     ]);
     return apiSuccess({ partners, total, limit, offset });
   }
 
   // health=1 — the list page's own call: every matching partner (no take/skip yet, since
-  // "يحتاج انتباه" filters *after* health is computed), with linkedAgent for the "تابع لـ…"
-  // subtitle on distributor rows.
+  // "يحتاج انتباه" filters *after* health is computed).
   const allMatching = await prisma.partner.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    include: { linkedAgent: { select: { id: true, name: true } } },
   });
 
   const healthByPartnerId = await computePartnersHealth(allMatching.map((p) => p.id));
@@ -102,7 +95,6 @@ export async function POST(req: NextRequest) {
     youtubeUrl?: string | null;
     websiteUrl?: string | null;
     otherUrl?: string | null;
-    linkedAgentId?: string | null;
     isActive?: boolean;
     notes?: string | null;
   };
@@ -121,11 +113,6 @@ export async function POST(req: NextRequest) {
   const normalizedPhone = normalizeEgyptMobilePhone(body.phone);
   if (!normalizedPhone) return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
 
-  // Backlog 11.6 (d) — an outlet is never linked to an agent.
-  const outletAgentError = outletLinkedAgentError(body.partnerType, body.linkedAgentId);
-  if (outletAgentError) return apiBadRequest(outletAgentError);
-  const linkedAgentId: string | null = null;
-
   // Backlog 9.7 (a) — a new partner inherits the stored network defaults, not the Partner
   // model's own column defaults, so an admin-changed default takes effect for partners
   // created afterwards (existing partners are never touched).
@@ -143,7 +130,6 @@ export async function POST(req: NextRequest) {
       youtubeUrl: body.youtubeUrl?.trim() || null,
       websiteUrl: body.websiteUrl?.trim() || null,
       otherUrl: body.otherUrl?.trim() || null,
-      linkedAgentId,
       isActive: body.isActive !== false,
       notes: body.notes?.trim() || null,
       confirmSlaHours: networkDefaults.confirmSlaHours,

@@ -42,8 +42,6 @@ const REASONS: { value: string; label: string }[] = [
   { value: "ORDER_RESTORE", label: "استرجاع طلب" },
   { value: "TRANSFER_IN", label: "تحويل وارد" },
   { value: "TRANSFER_OUT", label: "تحويل صادر" },
-  { value: "RESTOCK_REQUEST_CREATE", label: "طلب توريد" },
-  { value: "RESTOCK_REQUEST_FULFILL", label: "تنفيذ توريد" },
   { value: "FACTORY_RECEIPT", label: "استلام من المصنع" },
   { value: "STOCK_COUNT", label: "جرد فعلي" },
   { value: "STORE_SALE", label: "بيع من المنفذ" },

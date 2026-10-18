@@ -83,7 +83,6 @@ type PartnerRow = {
   governorate: string;
   phone: string;
   isActive: boolean;
-  linkedAgent?: { id: string; name: string } | null;
   health: PartnerHealth | null;
 };
 
@@ -259,7 +258,7 @@ function PartnersTab() {
         header: "الشريك",
         cell: ({ row }) => {
           const p = row.original;
-          const subtitle = [p.partnerType === "AGENT" ? "وكيل" : "منفذ", p.governorate, p.partnerType === "AGENT" && p.linkedAgent ? `تابع لـ ${p.linkedAgent.name}` : null]
+          const subtitle = [p.partnerType === "AGENT" ? "وكيل" : "منفذ", p.governorate]
             .filter(Boolean)
             .join(" · ");
           return (

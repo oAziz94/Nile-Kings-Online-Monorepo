@@ -1,4 +1,3 @@
-import { OUTLET_NO_AGENT_MESSAGE } from "@/lib/admin/outlet-validation";
 import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
@@ -30,10 +29,6 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
   const { id } = await params;
   const partner = await prisma.partner.findUnique({
     where: { id },
-    include: {
-      linkedAgent: true,
-      distributors: true,
-    },
   });
   if (!partner) return apiNotFound("الشريك غير موجود");
   return apiSuccess(partner);
@@ -63,7 +58,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     youtubeUrl?: string | null;
     websiteUrl?: string | null;
     otherUrl?: string | null;
-    linkedAgentId?: string | null;
     isActive?: boolean;
     notes?: string | null;
     // Backlog 5.1 — the factory settlement rate, admin-write only (rule 18: a *partner*
@@ -126,16 +120,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     return apiBadRequest(EGYPT_MOBILE_ERROR_MESSAGE);
   }
 
-  let linkedAgentId: string | null | undefined = undefined;
-  if (body.linkedAgentId !== undefined) {
-    if (body.linkedAgentId === null || body.linkedAgentId === "") {
-      linkedAgentId = null;
-    } else if (existing.partnerType === "DISTRIBUTOR") {
-      // Backlog 11.6 (d) — an outlet is never linked to an agent.
-      return apiBadRequest(OUTLET_NO_AGENT_MESSAGE);
-    }
-  }
-
   const updated = await prisma.partner.update({
     where: { id },
     data: {
@@ -148,7 +132,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       ...(body.youtubeUrl !== undefined && { youtubeUrl: body.youtubeUrl?.trim() || null }),
       ...(body.websiteUrl !== undefined && { websiteUrl: body.websiteUrl?.trim() || null }),
       ...(body.otherUrl !== undefined && { otherUrl: body.otherUrl?.trim() || null }),
-      ...(linkedAgentId !== undefined && { linkedAgentId }),
       ...(body.isActive !== undefined && { isActive: body.isActive }),
       ...(body.notes !== undefined && { notes: body.notes?.trim() || null }),
       ...(body.costRateBps !== undefined && { costRateBps: body.costRateBps }),

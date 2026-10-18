@@ -65,7 +65,6 @@ async function writeLedger(
     reservedDelta?: number;
     orderId?: string | null;
     routedOrderId?: string | null;
-    restockRequestId?: string | null;
     notes?: string | null;
   }
 ): Promise<void> {
@@ -78,7 +77,6 @@ async function writeLedger(
       quantityReservedDelta: input.reservedDelta ?? 0,
       orderId: input.orderId ?? null,
       routedOrderId: input.routedOrderId ?? null,
-      restockRequestId: input.restockRequestId ?? null,
       notes: input.notes ?? null,
     },
   });

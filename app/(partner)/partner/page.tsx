@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/shared/skeleton";
 import { Button } from "@/components/ui/button";
 import { QueueGroupSection } from "@/components/partner/today/queue-group";
 import { OutletTodayView } from "@/components/partner/today/outlet-today-view";
-import { OrderQueueRow, RestockQueueRow, LowStockQueueRow } from "@/components/partner/today/rows";
+import { OrderQueueRow, LowStockQueueRow } from "@/components/partner/today/rows";
 import { TrendChart } from "@/components/partner/today/trend-chart";
 import { usePartnerMe } from "@/hooks/use-partner-me";
 import { usePartnerToday } from "@/hooks/use-partner-today";
@@ -438,17 +438,6 @@ function AgentTodayPage() {
                   )}
                 />
                 <QueueGroupSection
-                  testId="queue-group-restock"
-                  rowKey={(row) => row.id}
-                  title={isAgent ? "طلبات توريد واردة" : "قرارات على طلباتك"}
-                  tone="info"
-                  count={data.queue.restock.count}
-                  rows={data.queue.restock.rows}
-                  moreCount={data.queue.restock.moreCount}
-                  viewAllHref={isAgent ? "/partner/distributor-requests" : "/partner/restock-requests"}
-                  renderRow={(row) => <RestockQueueRow row={row} />}
-                />
-                <QueueGroupSection
                   testId="queue-group-low-stock"
                   rowKey={(row) => row.variantId}
                   title="مخزون تحت الحد"
@@ -469,7 +458,6 @@ function AgentTodayPage() {
                   data.queue.overdue.count === 0 &&
                   data.queue.readyToShip.count === 0 &&
                   data.queue.confirmed.count === 0 &&
-                  data.queue.restock.count === 0 &&
                   data.queue.lowStock.count === 0 && (
                     <p className="p-8 text-center text-sm text-ink-soft">لا يوجد ما يحتاج قرارك الآن</p>
                   )}

@@ -14,7 +14,7 @@ import { logAdminAction, requestIp } from "@/lib/audit/admin-audit";
 
 /**
  * `StockReceipt` create/list — backlog 4.23. AGENT only (the factory ships to agents;
- * distributors receive via restock requests, unchanged). The transaction itself (line
+ * outlets are served by the admin-recorded intake). The transaction itself (line
  * validation, cost snapshot, ledger entries, `totalCostPiastres`) lives in
  * `lib/inventory/apply-receipt.ts` (backlog 9.4a (b), B3) — this route only authenticates,
  * parses the request body and calls it with `recordedBy: "PARTNER"`. The admin's equivalent

@@ -13,13 +13,6 @@ export type PartnerTodayOrderRow = {
   status: "CREATED" | "CONFIRMED" | "PROCESSING" | "READY_TO_SHIP";
 };
 
-export type PartnerTodayRestockRow = {
-  id: string;
-  counterpartyName: string;
-  itemCount: number;
-  occurredAt: string;
-};
-
 export type PartnerTodayStockRow = {
   variantId: string;
   productName: string;
@@ -53,7 +46,6 @@ export type PartnerTodayResponse = {
     overdue: PartnerTodayGroup<PartnerTodayOrderRow>;
     readyToShip: PartnerTodayGroup<PartnerTodayOrderRow>;
     confirmed: PartnerTodayGroup<PartnerTodayOrderRow>;
-    restock: PartnerTodayGroup<PartnerTodayRestockRow>;
     lowStock: PartnerTodayGroup<PartnerTodayStockRow>;
   };
   trend: PartnerTodayTrendPoint[];

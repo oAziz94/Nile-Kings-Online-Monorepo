@@ -194,7 +194,7 @@ export async function PATCH(req: NextRequest) {
 
     // Verifier finding (4.18, 2026-09-12): a plain read → compute → upsert lost one of two
     // concurrent `delta` adjustments while still writing a ledger row for both. The row is now
-    // locked (`SELECT … FOR UPDATE`, the same pattern `lib/inventory/restock-requests.ts` uses)
+    // locked (`SELECT … FOR UPDATE`)
     // for the whole read-compute-write, so concurrent edits serialise and the ledger always
     // matches the stock. A never-stocked variant is first materialised as 0/0 so it can be
     // locked; a rejected edit throws so that row (and nothing else) rolls back.

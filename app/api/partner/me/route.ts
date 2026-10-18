@@ -13,7 +13,6 @@ export async function GET() {
         phone: true,
         partnerType: true,
         governorate: true,
-        linkedAgentId: true,
         isActive: true,
       },
     });

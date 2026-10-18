@@ -18,7 +18,6 @@ import {
   LayoutDashboard,
   ReceiptText,
   Truck,
-  Users,
 } from "lucide-react";
 
 export type PartnerType = "AGENT" | "DISTRIBUTOR";
@@ -52,13 +51,6 @@ export const PARTNER_NAV_SECTIONS: readonly PartnerNavSection[] = [
     label: "المخزون",
     items: [
       { href: "/partner/stock", label: "المخزون", icon: Boxes, roles: ["AGENT", "DISTRIBUTOR"] },
-    ],
-  },
-  {
-    id: "network",
-    label: "الشبكة",
-    items: [
-      { href: "/partner/network", label: "الموزعون", icon: Users, roles: ["AGENT"] },
     ],
   },
   {
@@ -109,11 +101,7 @@ export function getPartnerMobileTabs(partnerType: PartnerType | undefined): type
 export const AGENT_ONLY_ROUTE_PREFIXES: readonly string[] = [
   "/partner/orders",
   "/partner/routed-orders",
-  "/partner/network",
-  "/partner/restock-requests",
-  "/partner/distributor-requests",
   "/partner/reports/fulfilment",
-  "/partner/reports/network",
   "/partner/reports/money",
 ];
 

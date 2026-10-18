@@ -47,7 +47,6 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   routing: "توجيه",
   partner_request: "طلب شراكة",
   ticket: "تذكرة",
-  restock_request: "إعادة توريد",
   "partner-inventory": "مخزون شريك",
   product: "منتج",
   media: "صورة",

@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils";
 import { usePartnerMe } from "@/hooks/use-partner-me";
 
 /**
- * Report family switcher (backlog 5.6a) — "المبيعات · التجهيز · المخزون · الشبكة · المال"
+ * Report family switcher (backlog 5.6a) — "المبيعات · التجهيز · المخزون · المال"
  * chips per the artboards, rendered into the topbar slot (`PartnerTopbarSlot` /
- * `DashboardTopbarSlot`). Fulfilment/network/money render a "قريبًا" panel until 5.6b lands
+ * `DashboardTopbarSlot`). Fulfilment/money render a "قريبًا" panel until 5.6b lands
  * (still reachable, per rule 16's "every screen" verification — a chip that 404s would be
  * worse than one that says "soon").
  *
@@ -20,16 +20,15 @@ import { usePartnerMe } from "@/hooks/use-partner-me";
  *
  * Backlog 9.6: the admin's network-wide `/admin/reports/*` pages are real routes (not a
  * tab), so they pass `basePath="/admin/reports"` instead — real `Link`s, just pointed at the
- * admin's own routes; `families` drops "network" (no network-wide agent-network report).
+ * admin's own routes. 
  */
-export type ReportFamilyId = "sales" | "fulfilment" | "inventory" | "network" | "money";
+export type ReportFamilyId = "sales" | "fulfilment" | "inventory" | "money";
 
 function reportFamilies(basePath: string): { id: ReportFamilyId; href: string; label: string }[] {
   return [
     { id: "sales", href: `${basePath}/sales`, label: "المبيعات" },
     { id: "fulfilment", href: `${basePath}/fulfilment`, label: "التجهيز" },
     { id: "inventory", href: `${basePath}/inventory`, label: "المخزون" },
-    { id: "network", href: `${basePath}/network`, label: "الشبكة" },
     { id: "money", href: `${basePath}/money`, label: "المال" },
   ];
 }
@@ -52,7 +51,7 @@ export function ReportTabs({
   activeId?: ReportFamilyId;
   /** Embedded mode: selecting a chip calls this instead of navigating. */
   onSelect?: (id: ReportFamilyId) => void;
-  /** Embedded mode: restrict the chips shown (e.g. drop الشبكة for a non-agent partner). */
+  /** Embedded mode: restrict the chips shown (e.g. drop التجهيز for a non-agent partner). */
   families?: ReportFamilyId[];
   /** Backlog 9.6: the admin's `/admin/reports/*` pages navigate here instead. */
   basePath?: string;
