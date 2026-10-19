@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type ColumnDef } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
+import { usePartnerMe } from "@/hooks/use-partner-me";
 import { useToast } from "@/hooks/use-toast";
 import { piastresToEgp } from "@/lib/catalog";
 import { formatDateEn, formatNumberEn } from "@/lib/format-en-numbers";
@@ -239,6 +240,9 @@ export default function PartnerProductVariantsPage() {
     [adjustDrafts, patchStock, toast]
   );
 
+  // Owner 2026-10-19: outlets have no online orders, so the "عرض الطلبات" column is agents-only.
+  const { data: me } = usePartnerMe();
+  const isOutlet = me?.partnerType === "DISTRIBUTOR";
   const columns = React.useMemo<ColumnDef<VariantRow, unknown>[]>(() => {
     if (!product) return [];
     return [
@@ -401,23 +405,27 @@ export default function PartnerProductVariantsPage() {
           </span>
         ),
       },
-      {
-        id: "reservedOrders",
-        header: "الطلبات المحجوزة",
-        enableSorting: false,
-        cell: ({ row }) => (
-          <Button asChild type="button" size="sm" variant="outline" className="rounded-md">
-            <Link
-              href={`/partner/orders?variantId=${row.original.id}&status=${STOCK_VERIFY_STATUSES}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <ClipboardList className="h-4 w-4" />
-              عرض الطلبات
-            </Link>
-          </Button>
-        ),
-      },
+      ...(isOutlet
+        ? []
+        : [
+            {
+              id: "reservedOrders",
+              header: "الطلبات المحجوزة",
+              enableSorting: false,
+              cell: ({ row }) => (
+                <Button asChild type="button" size="sm" variant="outline" className="rounded-md">
+                  <Link
+                    href={`/partner/orders?variantId=${row.original.id}&status=${STOCK_VERIFY_STATUSES}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ClipboardList className="h-4 w-4" />
+                    عرض الطلبات
+                  </Link>
+                </Button>
+              ),
+            } satisfies ColumnDef<VariantRow, unknown>,
+          ]),
       {
         id: "save",
         header: "حفظ",
@@ -443,7 +451,7 @@ export default function PartnerProductVariantsPage() {
         },
       },
     ];
-  }, [product, forKidsSizes, drafts, adjustDrafts, savingVariantId, saveStock, adjustStock]);
+  }, [product, forKidsSizes, drafts, adjustDrafts, savingVariantId, saveStock, adjustStock, isOutlet]);
 
   if (loading) {
     return (

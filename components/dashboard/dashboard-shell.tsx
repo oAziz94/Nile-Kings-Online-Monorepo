@@ -59,8 +59,9 @@ export type ShellAccountNav = {
    * the account block then shows only المتجر/تسجيل الخروج, per 06-admin-v2.md §4. */
   settingsHref?: string;
   settingsLabel?: string;
-  storeHref: string;
-  storeLabel: string;
+  /** Omit both to hide the storefront link (outlets, owner 2026-10-19: "remove the المتجر tab"). */
+  storeHref?: string;
+  storeLabel?: string;
   logoutLabel: string;
 };
 
@@ -252,20 +253,22 @@ function NavSections({
             </Link>
           </SidebarCollapseTooltip>
         )}
-        <SidebarCollapseTooltip active={collapsed} label={accountNav.storeLabel}>
-          {/* Backlog 9.0b (i): the "المتجر" chip must be a real link with an accessible name —
-              already a `Link` here, but the collapsed (icon-only) state hid its visible text,
-              so the `aria-label` makes the name explicit in every collapse state. */}
-          <Link
-            href={accountNav.storeHref}
-            onClick={onNavigate}
-            aria-label={accountNav.storeLabel}
-            className={cn(NAV_ITEM_BASE, NAV_ITEM_INACTIVE, itemClassName)}
-          >
-            <Store className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
-            <span className={labelClassName}>{accountNav.storeLabel}</span>
-          </Link>
-        </SidebarCollapseTooltip>
+        {accountNav.storeHref && accountNav.storeLabel && (
+          <SidebarCollapseTooltip active={collapsed} label={accountNav.storeLabel}>
+            {/* Backlog 9.0b (i): the "المتجر" chip must be a real link with an accessible name —
+                already a `Link` here, but the collapsed (icon-only) state hid its visible text,
+                so the `aria-label` makes the name explicit in every collapse state. */}
+            <Link
+              href={accountNav.storeHref}
+              onClick={onNavigate}
+              aria-label={accountNav.storeLabel}
+              className={cn(NAV_ITEM_BASE, NAV_ITEM_INACTIVE, itemClassName)}
+            >
+              <Store className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />
+              <span className={labelClassName}>{accountNav.storeLabel}</span>
+            </Link>
+          </SidebarCollapseTooltip>
+        )}
         <SidebarCollapseTooltip active={collapsed} label={accountNav.logoutLabel}>
           <button type="button" onClick={logout} className={cn(NAV_ITEM_BASE, NAV_ITEM_INACTIVE, "w-full", itemClassName)}>
             <LogOut className="h-[17px] w-[17px] shrink-0" strokeWidth={2} />

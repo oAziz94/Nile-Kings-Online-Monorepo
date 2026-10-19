@@ -96,11 +96,17 @@ test("outlet sees exactly the 5-item menu and none of the agent items", async ({
   for (const name of ["اليوم", "المبيعات", "المخزون", "التقارير", "الإعدادات"]) {
     await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
   }
-  for (const name of ["الطلبات", "الإشعارات"]) {
+  for (const name of ["الطلبات", "الإشعارات", "المتجر"]) {
     await expect(nav.getByRole("link", { name, exact: true })).toHaveCount(0);
   }
   await expect(nav.getByRole("link", { name: "المبيعات", exact: true })).toHaveAttribute("href", "/partner/sales");
   await expect(page.getByText("منفذ ·").first()).toBeVisible(); // role label in the shell identity block
+
+  // Owner 2026-10-19: the product stock page shows no "عرض الطلبات" column for an outlet (agents keep it).
+  await page.goto(`/partner/stock/products/${productId}`);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("link", { name: "عرض الطلبات" })).toHaveCount(0);
+  await expect(page.getByRole("cell", { name: "الطلبات المحجوزة" })).toHaveCount(0);
 });
 
 test("outlet is redirected from agent-only routes to /partner with a toast", async ({ page }) => {

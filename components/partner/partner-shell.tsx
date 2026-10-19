@@ -63,7 +63,13 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
       brand={{ subtitle: "بوابة الشركاء" }}
       identity={{ status, name: displayName, caption, onRetry: () => refetch() }}
       sections={sections}
-      accountNav={PARTNER_ACCOUNT_NAV}
+      accountNav={
+        // Owner 2026-10-19: no المتجر link for outlets. Hidden while the type loads too, so an
+        // outlet never sees it flash (same rule as the agent-only mobile tabs).
+        partner?.partnerType === "AGENT"
+          ? PARTNER_ACCOUNT_NAV
+          : { settingsHref: PARTNER_ACCOUNT_NAV.settingsHref, settingsLabel: PARTNER_ACCOUNT_NAV.settingsLabel, logoutLabel: PARTNER_ACCOUNT_NAV.logoutLabel }
+      }
       mobileTabs={getPartnerMobileTabs(partner?.partnerType)}
       drawerTitle="قائمة الشريك"
       navAriaLabel="التنقل في لوحة الشريك"
