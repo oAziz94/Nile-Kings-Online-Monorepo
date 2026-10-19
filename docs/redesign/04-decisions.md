@@ -1,3 +1,9 @@
+## 2026-10-19 — First two outlets opened; outlet logins created by PM script
+
+- **Outlets live in production:** منفذ جسر السويس (القاهرة, 01066694055) and منفذ كفر الشيخ (كفر الشيخ, 01554345454), both created by the owner in the admin.
+- **Logins:** the owner does not contact the shops directly, so the WhatsApp-OTP registration was not usable. PM created each login with a one-off script via `.env.deploy` (a User with the partner's E.164 phone, role CUSTOMER, scrypt hash identical to `/api/auth/register`, `Partner.userId` linked; default password chosen by the owner; shops change it under حسابي → الحساب). File and script deleted afterwards.
+- **If outlets keep coming:** candidate item 11.10 — admin button "إنشاء حساب للمنفذ" with a default password and a forced change on first sign-in (one schema flag, one route, one dialog). Not specced yet; the owner decides.
+
 ## 2026-10-18 — Phase 11 released (v2.4.36); receipt direction; sweep approved
 
 - **Release**: the outlets migration `20261017120000_outlets_foundation` was applied to production with `prisma migrate deploy` (direct URL, host `ep-hidden-butterfly-agp3sg0e` asserted, `.env.deploy` deleted afterwards); v2.4.36 carries 11.1–11.6. No outlet exists in production yet, so the new tables are empty.
