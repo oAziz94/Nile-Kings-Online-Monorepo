@@ -3,7 +3,7 @@ import { loadRedesignTestEnv } from "./test-env";
 loadRedesignTestEnv();
 
 import { PrismaClient } from "@prisma/client";
-import { seedPartnerPair, loginAs, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
+import { seedPartnerPair, loginAs, loginWithPhone, cleanupPartnerPair, type PartnerFixturePair } from "./partner-fixtures";
 import { safeWhere } from "./db-cleanup";
 
 /**
@@ -183,6 +183,35 @@ test("outlet settings: store profile round-trips, agent-only sections are hidden
   await expect(page.getByText("تم حفظ بيانات المنفذ").first()).toBeVisible();
   await page.reload();
   await expect(page.getByLabel("نص أسفل الإيصال")).toHaveValue("شكراً لتسوقكم من قطن ملوك النيل");
+});
+
+test("outlet changes its own password from الإعدادات: wrong current password refused, new password logs in, reverted after", async ({ page }) => {
+  await loginAs(page, pair, "DISTRIBUTOR");
+  await page.goto("/partner/settings");
+  const form = page.getByTestId("password-form");
+  await expect(form).toBeVisible({ timeout: 30_000 });
+
+  // Wrong current password → API 401 surfaced as a toast, nothing changes.
+  await form.getByLabel("كلمة المرور الحالية").fill("wrong-password-1");
+  await form.getByLabel("كلمة المرور الجديدة", { exact: true }).fill("NewOutletPass9!");
+  await form.getByLabel("تأكيد كلمة المرور الجديدة").fill("NewOutletPass9!");
+  await page.getByTestId("password-submit").click();
+  await expect(page.getByText("كلمة المرور الحالية غير صحيحة").first()).toBeVisible();
+
+  // Right current password → changed; the new one logs in.
+  await form.getByLabel("كلمة المرور الحالية").fill(pair.password);
+  await page.getByTestId("password-submit").click();
+  await expect(page.getByText("تم تغيير كلمة المرور").first()).toBeVisible();
+  await page.context().clearCookies();
+  await loginWithPhone(page, pair.distributor.localPhone, "NewOutletPass9!");
+  await page.goto("/partner");
+  await expect(page.getByRole("navigation", { name: "التنقل في لوحة الشريك" }).getByRole("link", { name: "المبيعات", exact: true })).toBeVisible();
+
+  // Revert so the remaining tests and cleanup keep the fixture password.
+  const revert = await page.request.patch("/api/profile/account", {
+    data: { currentPassword: "NewOutletPass9!", newPassword: pair.password, newPasswordConfirm: pair.password },
+  });
+  expect(revert.status()).toBe(200);
 });
 
 test("agent portal is unchanged, and the settings API rejects the store fields from an agent", async ({ page }) => {

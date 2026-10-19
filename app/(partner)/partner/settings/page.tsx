@@ -4,7 +4,7 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertTriangle, Banknote, Boxes, MapPin, RefreshCw, Settings as SettingsIcon, Store, Truck } from "lucide-react";
+import { AlertTriangle, Banknote, Boxes, KeyRound, MapPin, RefreshCw, Settings as SettingsIcon, Store, Truck } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PanelCard } from "@/components/dashboard/panel-card";
 import { Skeleton } from "@/components/shared/skeleton";
@@ -789,6 +789,87 @@ function HandoverSection() {
   );
 }
 
+
+// ---------- كلمة المرور (owner 2026-10-19: outlets get their login with a default password and must
+// be able to change it inside the portal; agents get the same section). Uses the existing account
+// API (`PATCH /api/profile/account`), which verifies the current password and the 8-char minimum.
+const passwordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "كلمة المرور الحالية مطلوبة"),
+    newPassword: z.string().min(8, "كلمة المرور الجديدة مطلوبة (8 أحرف على الأقل)"),
+    newPasswordConfirm: z.string().min(1, "تأكيد كلمة المرور الجديدة مطلوب"),
+  })
+  .refine((v) => v.newPassword === v.newPasswordConfirm, { path: ["newPasswordConfirm"], message: "تأكيد كلمة المرور الجديدة غير مطابق" });
+type PasswordValues = z.infer<typeof passwordSchema>;
+
+function PasswordSection() {
+  const { toast } = useToast();
+  const [pending, setPending] = React.useState(false);
+  const form = useForm<PasswordValues>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: { currentPassword: "", newPassword: "", newPasswordConfirm: "" },
+  });
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    setPending(true);
+    try {
+      const res = await fetch("/api/profile/account", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      const json = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+      if (!res.ok) throw new Error(json?.error?.message ?? "تعذر تغيير كلمة المرور");
+      form.reset();
+      toast({ title: "تم تغيير كلمة المرور" });
+    } catch (error) {
+      toast({ title: "تعذر تغيير كلمة المرور", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+    } finally {
+      setPending(false);
+    }
+  });
+
+  const fields: { name: keyof PasswordValues; label: string; autoComplete: string }[] = [
+    { name: "currentPassword", label: "كلمة المرور الحالية", autoComplete: "current-password" },
+    { name: "newPassword", label: "كلمة المرور الجديدة", autoComplete: "new-password" },
+    { name: "newPasswordConfirm", label: "تأكيد كلمة المرور الجديدة", autoComplete: "new-password" },
+  ];
+
+  return (
+    <PanelCard
+      layout="split"
+      title="كلمة المرور"
+      description="8 أحرف على الأقل. تُستخدم لتسجيل الدخول برقم التليفون."
+      icon={<KeyRound className="h-4 w-4 text-ink-soft" />}
+    >
+      <Form {...form}>
+        <form onSubmit={onSubmit} className="space-y-4" data-testid="password-form">
+          {fields.map((f) => (
+            <FormField
+              key={f.name}
+              control={form.control}
+              name={f.name}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{f.label}</FormLabel>
+                  <FormControl>
+                    <Input type="password" autoComplete={f.autoComplete} dir="ltr" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ))}
+          <Button type="submit" size="sm" disabled={pending || !form.formState.isDirty} data-testid="password-submit">
+            {pending ? "جاري الحفظ…" : "تغيير كلمة المرور"}
+          </Button>
+        </form>
+      </Form>
+    </PanelCard>
+  );
+}
+
 export default function PartnerSettingsPage() {
   const { data: me, isLoading } = usePartnerMe();
   if (me?.partnerType === "DISTRIBUTOR") {
@@ -801,6 +882,7 @@ export default function PartnerSettingsPage() {
           <StoreProfileSection />
           <ThresholdsSection />
           <InventoryReportSettingsSection />
+          <PasswordSection />
         </div>
       </div>
     );
@@ -823,6 +905,7 @@ export default function PartnerSettingsPage() {
         <AccountWithFactorySection />
         <ServiceAreasSection />
         <HandoverSection />
+        <PasswordSection />
       </div>
     </div>
   );
